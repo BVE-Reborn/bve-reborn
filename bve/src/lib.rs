@@ -1,7 +1,1 @@
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
-}
+//! Implementation of the high performance runtime logic for the game BVE-Reborn.

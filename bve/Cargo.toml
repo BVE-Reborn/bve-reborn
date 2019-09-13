@@ -5,7 +5,7 @@ description = "Remaking OpenBVE using a modern architecture, using Unity and Rus
 license = "LGPL-2.1-only"
 authors = ["Connor Fitzgerald <connorwadefitzgerald@gmail.com>"]
 edition = "2018"
-    
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
