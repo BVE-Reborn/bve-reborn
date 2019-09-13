@@ -1,11 +1,10 @@
 [package]
-name = "bve-build"
+name = "bve-native"
 version = "0.0.0-Placeholder"
-description = "Remaking OpenBVE using a modern architecture, using Unity and Rust."
+description = "Remaking OpenBVE using a modern architecture, using Unity and Rust. C API."
 license = "LGPL-2.1-only"
 authors = ["Connor Fitzgerald <connorwadefitzgerald@gmail.com>"]
 edition = "2018"
-publish = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
