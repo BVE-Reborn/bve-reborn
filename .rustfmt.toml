@@ -1,0 +1,11 @@
+max_width = 120
+unstable_features = true
+comment_width = 120
+wrap_comments = true
+merge_imports = false
+normalize_comments = true
+use_field_init_shorthand = true
+use_try_shorthand = true
+edition = "2018"
+version = "Two"
+normalize_doc_attributes = true
