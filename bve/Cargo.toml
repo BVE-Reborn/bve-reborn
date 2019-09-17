@@ -2,7 +2,7 @@
 name = "bve"
 version = "0.0.0-Placeholder"
 description = "Remaking OpenBVE using a modern architecture, using Unity and Rust."
-license = "LGPL-2.1-only"
+license = "MPL-2.0"
 authors = ["Connor Fitzgerald <connorwadefitzgerald@gmail.com>"]
 edition = "2018"
 
