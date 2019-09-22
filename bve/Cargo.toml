@@ -10,3 +10,4 @@ edition = "2018"
 
 [dependencies]
 cgmath = "0.17.0"
+indexmap = "1.2.0"
