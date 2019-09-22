@@ -1,48 +1,89 @@
 use crate::{ColorU8RGBA, ColorU8RGB};
 use cgmath::{Vector3, Vector2};
-use std::collections::HashMap;
+use indexmap::IndexSet;
+
+mod instructions;
+
+pub struct ParsedStaticObject {
+    pub meshes: Vec<Mesh>,
+    pub textures: TextureFileSet,
+    pub errors: Vec<ParsingError>,
+}
+
+pub struct ParsingError {
+    pub kind: ParsingErrorKind
+}
+
+pub enum ParsingErrorKind {
+
+}
 
 pub struct TextureFileSet {
-    data: Vec<String>,
-    mapping: HashMap<String, usize>,
+    filenames: IndexSet<String>,
+}
+
+impl TextureFileSet {
+    pub fn new() -> Self {
+        TextureFileSet {
+            filenames: IndexSet::new(),
+        }
+    }
+
+    pub fn with_capacity(size: usize) -> Self {
+        TextureFileSet {
+            filenames: IndexSet::with_capacity(size),
+        }
+    }
+
+    pub fn add(&mut self, value: String) -> usize {
+        self.filenames.insert_full(value).0
+    }
+
+    pub fn lookup(&self, idx: usize) -> Option<&str> {
+        self.filenames.get_index(idx).map(|s| s.as_str())
+    }
+
+    pub fn merge(&mut self, other: TextureFileSet) {
+        self.filenames.extend(other.filenames)
+    }
 }
 
 pub struct Texture {
-    texture_file: usize,
-    decal_transparent_color: Option<ColorU8RGB>,
+    pub texture_file: usize,
+    pub decal_transparent_color: Option<ColorU8RGB>,
 }
 
 pub struct Mesh {
-    vertices: Vec<Vertex>,
-    indices: Vec<u64>,
-    face_data: Vec<FaceData>,
-    texture: Texture,
-    color: ColorU8RGBA,
-    blend_mode: BlendMode,
-    glow: Glow,
+    pub vertices: Vec<Vertex>,
+    pub indices: Vec<u64>,
+    pub face_data: Vec<FaceData>,
+    pub texture: Texture,
+    pub color: ColorU8RGBA,
+    pub blend_mode: BlendMode,
+    pub glow: Glow,
 }
 
 #[repr(C)]
 pub struct Vertex {
-    position: Vector3<f32>,
-    normal: Vector3<f32>,
-    coord: Vector2<f32>
+    pub position: Vector3<f32>,
+    pub normal: Vector3<f32>,
+    pub coord: Vector2<f32>
 }
 
 #[repr(C)]
 pub struct FaceData {
-    emission_color: ColorU8RGB,
+    pub emission_color: ColorU8RGB,
+}
+
+pub struct Glow {
+    pub attenuation_mode: GlowAttenuationMode,
+    pub half_distance: u16,
 }
 
 #[repr(C)]
 pub enum BlendMode {
     Normal,
     Additive,
-}
-
-pub struct Glow {
-    attenuation_mode: GlowAttenuationMode,
-    half_distance: u16,
 }
 
 #[repr(C)]
