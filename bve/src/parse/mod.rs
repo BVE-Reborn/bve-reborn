@@ -1,3 +1,1 @@
-pub use mesh::*;
-
-mod mesh;
+pub mod mesh;

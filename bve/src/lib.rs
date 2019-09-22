@@ -3,7 +3,6 @@
 #![feature(async_closure)]
 #![feature(test)]
 #![feature(type_alias_impl_trait)]
-
 #![allow(clippy::cognitive_complexity)]
 #![allow(clippy::float_cmp)]
 #![warn(unused)]

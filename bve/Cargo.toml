@@ -9,5 +9,9 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-cgmath = "0.17.0"
-indexmap = "1.2.0"
+cgmath = { version = "0.17", features = ["serde"] }
+csv = { version = "1.1" }
+indexmap = "1.2"
+itertools = "0.8"
+serde = { version = "1.0", features = ["derive"] }
+serde_plain = "0.3"
