@@ -12,6 +12,7 @@
 #![warn(clippy::pedantic)]
 #![allow(clippy::cognitive_complexity)] // This is dumb
 #![allow(clippy::multiple_crate_versions)] // Dependencies are hard
+
 // Clippy Restrictions
 #![warn(clippy::clone_on_ref_ptr)]
 #![warn(clippy::dbg_macro)]

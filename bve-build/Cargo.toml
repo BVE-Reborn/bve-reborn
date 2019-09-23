@@ -7,6 +7,11 @@ authors = ["Connor Fitzgerald <connorwadefitzgerald@gmail.com>"]
 edition = "2018"
 publish = false
 
+repository = "https://gitlab.bvereborn.com/bve-reborn/bve-reborn"
+readme = "README.md"
+categories = ["games", "parsing", "rendering::data-formats", "simulation"]
+keywords = ["bve", "building", "serialization", "simulation"]
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
