@@ -13,6 +13,7 @@
 #![warn(clippy::nursery)]
 #![warn(clippy::pedantic)]
 #![warn(clippy::restriction)]
+// Annoying regular clippy warnings
 #![allow(clippy::cast_sign_loss)] // Annoying
 #![allow(clippy::cast_precision_loss)] // Annoying
 #![allow(clippy::cast_possible_truncation)] // Annoying
