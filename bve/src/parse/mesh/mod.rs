@@ -27,8 +27,7 @@ impl From<csv::Error> for MeshError {
     fn from(e: csv::Error) -> Self {
         match e.kind() {
             csv::ErrorKind::Deserialize {
-                pos: _,
-                err: deserialize_error,
+                err: deserialize_error, ..
             } => match deserialize_error.kind() {
                 csv::DeserializeErrorKind::InvalidUtf8(_) => MeshError {
                     kind: MeshErrorKind::UTF8Error {
@@ -57,7 +56,7 @@ impl From<csv::Error> for MeshError {
                         deserialize_error
                             .field()
                             .map(|f| (f + 1).to_string())
-                            .unwrap_or("?".into())
+                            .unwrap_or_else(|| "?".into())
                     );
 
                     MeshError {
@@ -72,7 +71,7 @@ impl From<csv::Error> for MeshError {
                         deserialize_error
                             .field()
                             .map(|f| (f + 1).to_string())
-                            .unwrap_or("?".into())
+                            .unwrap_or_else(|| "?".into())
                     );
 
                     MeshError {
@@ -87,7 +86,7 @@ impl From<csv::Error> for MeshError {
                         deserialize_error
                             .field()
                             .map(|f| (f + 1).to_string())
-                            .unwrap_or("?".into())
+                            .unwrap_or_else(|| "?".into())
                     );
 
                     MeshError {
@@ -96,7 +95,7 @@ impl From<csv::Error> for MeshError {
                     }
                 }
             },
-            csv::ErrorKind::Utf8 { pos: _, err } => MeshError {
+            csv::ErrorKind::Utf8 { err, .. } => MeshError {
                 kind: MeshErrorKind::UTF8Error {
                     column: Some(err.field() as u64 + 1),
                 },
@@ -158,6 +157,12 @@ impl TextureFileSet {
 
     pub fn merge(&mut self, other: TextureFileSet) {
         self.filenames.extend(other.filenames)
+    }
+}
+
+impl Default for TextureFileSet {
+    fn default() -> Self {
+        TextureFileSet::new()
     }
 }
 

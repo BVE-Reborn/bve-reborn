@@ -237,9 +237,8 @@ fn b3d_to_csv_syntax(input: String) -> String {
     let mut p = String::with_capacity((input.len() as f32 * 1.1) as usize);
     for line in input.lines() {
         let mut lowered = line.to_lowercase();
-        match lowered.find(' ') {
-            Some(idx) => lowered.replace_range(idx..idx, ","),
-            None => {}
+        if let Some(idx) = lowered.find(' ') {
+            lowered.replace_range(idx..idx, ",")
         }
         p.push_str(&lowered);
         p.push('\n');
