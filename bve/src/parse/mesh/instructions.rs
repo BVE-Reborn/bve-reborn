@@ -395,7 +395,7 @@ pub fn create_instructions(input: String, file_type: FileType) -> InstructionLis
                 // Remove the already parsed instruction name
                 let arguments = StringRecord::from_iter(record.iter().skip(1));
                 // Get the line number
-                let span = arguments.position().into();
+                let span = record.position().into();
 
                 let inst = deserialize_instruction(instruction, arguments, span);
 
