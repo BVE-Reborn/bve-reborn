@@ -8,23 +8,25 @@
 #![warn(clippy::cargo)]
 #![warn(clippy::nursery)]
 #![warn(clippy::pedantic)]
+#![warn(clippy::restriction)]
 #![allow(clippy::cast_sign_loss)] // Annoying
 #![allow(clippy::cast_precision_loss)] // Annoying
 #![allow(clippy::cast_possible_truncation)] // Annoying
 #![allow(clippy::cognitive_complexity)] // This is dumb
 #![allow(clippy::multiple_crate_versions)] // Dependencies are hard
-// Clippy Restrictions
-#![warn(clippy::clone_on_ref_ptr)]
-#![warn(clippy::dbg_macro)]
-#![warn(clippy::get_unwrap)]
-#![warn(clippy::mem_forget)]
-#![warn(clippy::multiple_inherent_impl)]
-#![warn(clippy::option_unwrap_used)]
-#![warn(clippy::print_stdout)]
-#![warn(clippy::result_unwrap_used)]
-#![warn(clippy::unimplemented)]
-#![warn(clippy::wildcard_enum_match_arm)]
-#![warn(clippy::wrong_pub_self_convention)]
+// Annoying/irrelevant clippy Restrictions
+#![allow(clippy::decimal_literal_representation)]
+#![allow(clippy::else_if_without_else)]
+#![allow(clippy::float_arithmetic)]
+#![allow(clippy::float_cmp_const)]
+#![allow(clippy::implicit_return)]
+#![allow(clippy::integer_arithmetic)]
+#![allow(clippy::integer_division)]
+#![allow(clippy::missing_docs_in_private_items)]
+#![allow(clippy::missing_inline_in_public_items)]
+#![allow(clippy::shadow_reuse)]
+#![allow(clippy::shadow_same)]
+#![allow(clippy::wildcard_enum_match_arm)]
 
 use std::process::Command;
 use structopt::StructOpt;
