@@ -83,12 +83,31 @@ pub enum InstructionData {
     SetTextureCoordinates(SetTextureCoordinates),
 }
 
+#[derive(Deserialize)]
+struct AddVertexSerde {
+    pub location_x: f32,
+    pub location_y: f32,
+    pub location_z: f32,
+    pub normal_x: f32,
+    pub normal_y: f32,
+    pub normal_z: f32,
+}
+
 #[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(from = "AddVertexSerde")]
 pub struct AddVertex {
-    #[serde(flatten)]
     pub location: Vector3<f32>,
-    #[serde(flatten)]
     pub normal: Vector3<f32>,
+}
+
+impl From<AddVertexSerde> for AddVertex {
+    #[inline]
+    fn from(tmp: AddVertexSerde) -> Self {
+        AddVertex {
+            location: Vector3::new(tmp.location_x, tmp.location_y, tmp.location_z),
+            normal: Vector3::new(tmp.normal_x, tmp.normal_y, tmp.normal_z),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
