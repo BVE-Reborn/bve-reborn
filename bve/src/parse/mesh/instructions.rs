@@ -442,4 +442,60 @@ mod test {
             assert_eq!(b3d_to_csv_syntax("\n\n".into()), "\n\n");
         }
     }
+
+    mod create_instructions {
+        use crate::parse::mesh::instructions::{create_instructions, AddVertex, Instruction, InstructionData};
+        use crate::parse::mesh::{FileType, Span};
+        use cgmath::Vector3;
+
+        macro_rules! single_line_instruction_assert {
+            ( $inputB3D:literal, $inputCSV:literal, $args:literal, $data:expr ) => {
+                let result_a = create_instructions(concat!($inputB3D, " ", $args).into(), FileType::B3D);
+                if !result_a.errors.is_empty() {
+                    panic!("ERRORS!! {:#?}", result_a)
+                }
+                assert_eq!(
+                    result_a.instructions[0],
+                    Instruction {
+                        data: $data,
+                        span: Span { line: Some(1) }
+                    }
+                );
+                let result_b = create_instructions(concat!($inputCSV, ",", $args).into(), FileType::CSV);
+                if !result_b.errors.is_empty() {
+                    panic!("ERRORS!! {:#?}", result_b)
+                }
+                assert_eq!(
+                    result_b.instructions[0],
+                    Instruction {
+                        data: $data,
+                        span: Span { line: Some(1) }
+                    }
+                );
+            };
+        }
+
+        #[test]
+        fn mesh_builder() {
+            single_line_instruction_assert!(
+                "[meshbuilder]",
+                "CreateMeshBuilder",
+                "",
+                InstructionData::CreateMeshBuilder
+            );
+        }
+
+        #[test]
+        fn add_vertex() {
+            single_line_instruction_assert!(
+                "Vertex",
+                "AddVertex",
+                "1, 2, 3, 4, 5, 6",
+                InstructionData::AddVertex(AddVertex {
+                    location: Vector3::new(1.0, 2.0, 3.0),
+                    normal: Vector3::new(4.0, 5.0, 6.0),
+                })
+            );
+        }
+    }
 }
