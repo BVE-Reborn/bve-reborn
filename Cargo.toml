@@ -1,3 +1,6 @@
 [workspace]
 members = ["bve*"]
 exclude = ["bve-reborn"]    # Ignore the Unity project cause it's not a Rust project
+
+[patch.crates-io]
+cgmath = { git = "https://github.com/rustgd/cgmath.git", branch = "master" }

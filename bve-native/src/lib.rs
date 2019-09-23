@@ -3,8 +3,8 @@
 // Rust warnings
 #![allow(unsafe_code)] // We're doing FFI
 #![warn(unused)]
-#![deny(nonstandard_style)]
 #![deny(future_incompatible)]
+#![deny(nonstandard_style)]
 #![deny(rust_2018_idioms)]
 // Clippy warnings
 #![warn(clippy::cargo)]

@@ -1,7 +1,7 @@
 // Rust warnings
 #![warn(unused)]
-#![deny(nonstandard_style)]
 #![deny(future_incompatible)]
+#![deny(nonstandard_style)]
 #![deny(rust_2018_idioms)]
 #![forbid(unsafe_code)]
 // Clippy warnings
