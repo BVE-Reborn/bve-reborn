@@ -18,7 +18,6 @@
 #![allow(clippy::cast_precision_loss)] // Annoying
 #![allow(clippy::cast_possible_truncation)] // Annoying
 #![allow(clippy::cognitive_complexity)] // This is dumb
-#![allow(clippy::multiple_crate_versions)] // Dependencies are hard
 // Annoying/irrelevant clippy Restrictions
 #![allow(clippy::decimal_literal_representation)]
 #![allow(clippy::else_if_without_else)]
