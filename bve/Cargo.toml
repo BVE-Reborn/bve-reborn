@@ -14,7 +14,7 @@ keywords = ["bve", "serialization", "simulation"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-cgmath = { version = "0.17", features = ["serde"] }
+cgmath = { version = "0.17", features = ["serde"], git = "https://github.com/rustgd/cgmath.git", branch = "master" }
 csv = { version = "1.1" }
 indexmap = "1.2"
 itertools = "0.8"
