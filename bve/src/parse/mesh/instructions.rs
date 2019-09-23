@@ -1,4 +1,4 @@
-use crate::parse::mesh::{FileType, MeshError, Span};
+use crate::parse::mesh::{Error, FileType, Span};
 use crate::{ColorU8RGB, ColorU8RGBA};
 use cgmath::{Vector2, Vector3};
 use csv::{ReaderBuilder, StringRecord, Trim};
@@ -8,12 +8,12 @@ use std::iter::FromIterator;
 #[derive(Debug, Clone, PartialEq)]
 pub struct InstructionList {
     pub instructions: Vec<Instruction>,
-    pub errors: Vec<MeshError>,
+    pub errors: Vec<Error>,
 }
 
 impl InstructionList {
-    fn new() -> Self {
-        InstructionList {
+    const fn new() -> Self {
+        Self {
             instructions: Vec::new(),
             errors: Vec::new(),
         }
@@ -26,7 +26,7 @@ pub struct Instruction {
     pub data: InstructionData,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Copy, Clone, PartialEq, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum InstructionType {
     #[serde(alias = "[meshbuilder]")]
@@ -103,7 +103,7 @@ pub struct AddVertex {
 impl From<AddVertexSerde> for AddVertex {
     #[inline]
     fn from(tmp: AddVertexSerde) -> Self {
-        AddVertex {
+        Self {
             location: Vector3::new(tmp.location_x, tmp.location_y, tmp.location_z),
             normal: Vector3::new(tmp.normal_x, tmp.normal_y, tmp.normal_z),
         }
@@ -234,7 +234,7 @@ pub enum Sides {
 
 impl Default for Sides {
     fn default() -> Self {
-        Sides::Unset
+        Self::Unset
     }
 }
 
@@ -247,12 +247,12 @@ pub enum ApplyTo {
 
 impl Default for ApplyTo {
     fn default() -> Self {
-        ApplyTo::Unset
+        Self::Unset
     }
 }
 
 /// Adds a comma after the first space on each line. Forces newline on last line. Lowercases string.
-fn b3d_to_csv_syntax(input: String) -> String {
+fn b3d_to_csv_syntax(input: &str) -> String {
     let mut p = String::with_capacity((input.len() as f32 * 1.1) as usize);
     for line in input.lines() {
         let mut lowered = line.to_lowercase();
@@ -270,9 +270,9 @@ fn b3d_to_csv_syntax(input: String) -> String {
 
 fn deserialize_instruction(
     inst_type: InstructionType,
-    record: StringRecord,
+    record: &StringRecord,
     span: Span,
-) -> Result<Instruction, MeshError> {
+) -> Result<Instruction, Error> {
     let data = match inst_type {
         InstructionType::CreateMeshBuilder => InstructionData::CreateMeshBuilder,
         InstructionType::AddVertex => {
@@ -375,7 +375,7 @@ fn deserialize_instruction(
     Ok(Instruction { data, span })
 }
 
-pub fn create_instructions(input: String, file_type: FileType) -> InstructionList {
+pub fn create(input: &str, file_type: FileType) -> InstructionList {
     // Make entire setup lowercase to make it easy to match.
     let processed = if file_type == FileType::B3D {
         b3d_to_csv_syntax(input)
@@ -415,7 +415,7 @@ pub fn create_instructions(input: String, file_type: FileType) -> InstructionLis
                 // Get the line number
                 let span = record.position().into();
 
-                let inst = deserialize_instruction(instruction, arguments, span);
+                let inst = deserialize_instruction(instruction, &arguments, span);
 
                 match inst {
                     Ok(i) => instructions.instructions.push(i),
@@ -463,7 +463,7 @@ mod test {
     }
 
     mod create_instructions {
-        use crate::parse::mesh::instructions::{create_instructions, AddVertex, Instruction, InstructionData};
+        use crate::parse::mesh::instructions::{create, AddVertex, Instruction, InstructionData};
         use crate::parse::mesh::{FileType, Span};
         use cgmath::Vector3;
 

@@ -1,5 +1,7 @@
 //! Implementation of the high performance runtime logic for the game BVE-Reborn.
 
+// Features
+#![feature(const_vec_new)]
 // Rust warnings
 #![warn(unused)]
 #![deny(nonstandard_style)]
@@ -10,6 +12,9 @@
 #![warn(clippy::cargo)]
 #![warn(clippy::nursery)]
 #![warn(clippy::pedantic)]
+#![allow(clippy::cast_sign_loss)] // Annoying
+#![allow(clippy::cast_precision_loss)] // Annoying
+#![allow(clippy::cast_possible_truncation)] // Annoying
 #![allow(clippy::cognitive_complexity)] // This is dumb
 #![allow(clippy::multiple_crate_versions)] // Dependencies are hard
 // Clippy Restrictions
