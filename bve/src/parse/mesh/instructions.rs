@@ -83,34 +83,19 @@ pub enum InstructionData {
     SetTextureCoordinates(SetTextureCoordinates),
 }
 
-#[derive(Deserialize)]
-struct AddVertexSerde {
-    pub location_x: f32,
-    pub location_y: f32,
-    pub location_z: f32,
-    pub normal_x: f32,
-    pub normal_y: f32,
-    pub normal_z: f32,
+pub struct AddVertexMacro {
+    pub location: cgmath::Vector3<f32>,
+    pub normal: Vector3<f32>,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
-#[serde(from = "AddVertexSerde")]
+#[bve_derive::serde_vector_proxy]
 pub struct AddVertex {
     pub location: Vector3<f32>,
     pub normal: Vector3<f32>,
 }
 
-impl From<AddVertexSerde> for AddVertex {
-    #[inline]
-    fn from(tmp: AddVertexSerde) -> Self {
-        Self {
-            location: Vector3::new(tmp.location_x, tmp.location_y, tmp.location_z),
-            normal: Vector3::new(tmp.normal_x, tmp.normal_y, tmp.normal_z),
-        }
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(from = "Vec<usize>")]
 pub struct AddFace {
     #[serde(flatten)]
     pub indexes: Vec<usize>,
@@ -118,9 +103,17 @@ pub struct AddFace {
     pub sides: Sides,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+impl From<Vec<usize>> for AddFace {
+    fn from(v: Vec<usize>) -> Self {
+        Self {
+            indexes: v,
+            sides: Sides::Unset,
+        }
+    }
+}
+
+#[bve_derive::serde_vector_proxy]
 pub struct Cube {
-    #[serde(flatten)]
     pub half_dim: Vector3<f32>,
 }
 
@@ -131,43 +124,37 @@ pub struct Cylinder {
     pub height: f32,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[bve_derive::serde_vector_proxy]
 pub struct Translate {
-    #[serde(flatten)]
     pub value: Vector3<f32>,
     #[serde(skip)]
     pub application: ApplyTo,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[bve_derive::serde_vector_proxy]
 pub struct Scale {
-    #[serde(flatten)]
     pub value: Vector3<f32>,
     #[serde(skip)]
     pub application: ApplyTo,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[bve_derive::serde_vector_proxy]
 pub struct Rotate {
-    #[serde(flatten)]
     pub value: Vector3<f32>,
     #[serde(skip)]
     pub application: ApplyTo,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[bve_derive::serde_vector_proxy]
 pub struct Sheer {
-    #[serde(flatten)]
     pub direction: Vector3<f32>,
-    #[serde(flatten)]
     pub sheer: Vector3<f32>,
     #[serde(skip)]
     pub application: ApplyTo,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[bve_derive::serde_vector_proxy]
 pub struct Mirror {
-    #[serde(flatten)]
     pub directions: Vector3<bool>,
     #[serde(skip)]
     pub application: ApplyTo,
@@ -454,16 +441,13 @@ mod test {
 
         #[test]
         fn multiline_spaceless() {
-            assert_eq!(
-                b3d_to_csv_syntax("myinstruction\n\nfk2"),
-                "myinstruction\n\nfk2\n"
-            );
+            assert_eq!(b3d_to_csv_syntax("myinstruction\n\nfk2"), "myinstruction\n\nfk2\n");
             assert_eq!(b3d_to_csv_syntax("\n\n"), "\n\n");
         }
     }
 
     mod create_instructions {
-        use crate::parse::mesh::instructions::{create, AddVertex, Instruction, InstructionData};
+        use crate::parse::mesh::instructions::{create, AddFace, AddVertex, Instruction, InstructionData, Sides};
         use crate::parse::mesh::{FileType, Span};
         use cgmath::Vector3;
 
@@ -513,6 +497,19 @@ mod test {
                 InstructionData::AddVertex(AddVertex {
                     location: Vector3::new(1.0, 2.0, 3.0),
                     normal: Vector3::new(4.0, 5.0, 6.0),
+                })
+            );
+        }
+
+        #[test]
+        fn add_face() {
+            single_line_instruction_assert!(
+                "Face",
+                "AddFace",
+                "1, 2, 3, 4, 5, 6",
+                InstructionData::AddFace(AddFace {
+                    indexes: vec![1, 2, 3, 4, 5, 6],
+                    sides: Sides::One,
                 })
             );
         }

@@ -1,5 +1,5 @@
 [package]
-name = "bve"
+name = "bve-derive"
 version = "0.0.0-Placeholder"
 description = "Remaking OpenBVE using a modern architecture, using Unity and Rust."
 license = "MPL-2.0"
@@ -11,16 +11,13 @@ readme = "README.md"
 categories = ["games", "parsing", "rendering::data-formats", "simulation"]
 keywords = ["bve", "serialization", "simulation"]
 
+[lib]
+proc-macro = true
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bve-derive = { version = "0.0.0-Placeholder", path = "../bve-derive" }
-cgmath = { version = "0.17", features = ["serde"] }
-csv = { version = "1.1" }
-indexmap = "1.2"
 itertools = "0.8"
-serde = { version = "1.0", features = ["derive"] }
-serde_plain = "0.3"
-
-[dev-dependencies]
-maplit = "1"
+proc-macro2 = "1"
+quote = "1"
+syn = "1"
