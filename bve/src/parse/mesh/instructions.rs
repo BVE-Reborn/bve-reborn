@@ -1,4 +1,4 @@
-use crate::parse::mesh::{Error, FileType, Span};
+use crate::parse::mesh::{Error, FileType, Span, ErrorKind};
 use crate::{ColorU8RGB, ColorU8RGBA};
 use cgmath::{Vector2, Vector3};
 use csv::{ReaderBuilder, StringRecord, Trim};
@@ -39,6 +39,9 @@ pub enum InstructionType {
     AddFace2,
     Cube,
     Cylinder,
+    GenerateNormals, // Ignored instruction
+    #[serde(alias = "[texture]")]
+    Texture, // Ignored instruction
     Translate,
     TranslateAll,
     Scale,
@@ -142,6 +145,7 @@ pub struct Scale {
 #[bve_derive::serde_vector_proxy]
 pub struct Rotate {
     pub value: Vector3<f32>,
+    pub angle: f32,
     #[serde(skip)]
     pub application: ApplyTo,
 }
@@ -150,15 +154,33 @@ pub struct Rotate {
 pub struct Sheer {
     pub direction: Vector3<f32>,
     pub sheer: Vector3<f32>,
+    pub ratio: f32,
     #[serde(skip)]
     pub application: ApplyTo,
 }
 
-#[bve_derive::serde_vector_proxy]
+#[derive(Deserialize)]
+struct MirrorSerdeProxy {
+    directions_x: u8,
+    directions_y: u8,
+    directions_z: u8,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(from = "MirrorSerdeProxy")]
 pub struct Mirror {
     pub directions: Vector3<bool>,
     #[serde(skip)]
     pub application: ApplyTo,
+}
+
+impl From<MirrorSerdeProxy> for Mirror {
+    fn from(o: MirrorSerdeProxy) -> Self {
+        Mirror {
+            directions: Vector3::new(o.directions_x != 0, o.directions_y != 0, o.directions_z != 0),
+            application: ApplyTo::Unset,
+        }
+    }
 }
 
 #[bve_derive::serde_vector_proxy]
@@ -280,6 +302,22 @@ fn deserialize_instruction(
         InstructionType::Cylinder => {
             let parsed: Cylinder = record.deserialize(None)?;
             InstructionData::Cylinder(parsed)
+        }
+        InstructionType::GenerateNormals => {
+            return Err(Error{
+                kind: ErrorKind::DeprecatedInstruction {
+                    name: String::from("GenerateNormals")
+                },
+                span
+            })
+        }
+        InstructionType::Texture => {
+            return Err(Error{
+                kind: ErrorKind::DeprecatedInstruction {
+                    name: String::from("[texture]]")
+                },
+                span
+            })
         }
         InstructionType::Translate => {
             let mut parsed: Translate = record.deserialize(None)?;
@@ -446,7 +484,28 @@ mod test {
     mod create_instructions {
         use crate::parse::mesh::instructions::*;
         use crate::parse::mesh::{FileType, Span};
-        use cgmath::Vector3;
+        use cgmath::{Vector3, Vector4};
+
+        macro_rules! single_line_no_instruction_assert {
+            ( $inputB3D:literal, $inputCSV:literal, $args:literal ) => {
+                let result_a = create(concat!($inputB3D, " ", $args).into(), FileType::B3D);
+                if result_a.errors.is_empty() {
+                    panic!("Missing Errors: {:#?}", result_a)
+                }
+                assert_eq!(
+                    result_a.instructions.len(),
+                    0
+                );
+                let result_b = create(concat!($inputCSV, ",", $args).into(), FileType::CSV);
+                if result_b.errors.is_empty() {
+                    panic!("Missing Errors: {:#?}", result_b)
+                }
+                assert_eq!(
+                    result_b.instructions.len(),
+                    0
+                );
+            };
+        }
 
         macro_rules! single_line_instruction_assert {
             ( $inputB3D:literal, $inputCSV:literal, $args:literal, $data:expr ) => {
@@ -466,7 +525,7 @@ mod test {
                     panic!("ERRORS!! {:#?}", result_b)
                 }
                 assert_eq!(
-                    *result_a.instructions.get(0).unwrap(),
+                    *result_b.instructions.get(0).unwrap(),
                     Instruction {
                         data: $data,
                         span: Span { line: Some(1) }
@@ -553,15 +612,154 @@ mod test {
 
         #[test]
         fn generate_normals() {
+            single_line_no_instruction_assert!(
+                "GenerateNormals",
+                "GenerateNormals",
+                ""
+            );
+        }
+
+        #[test]
+        fn texture() {
+            single_line_no_instruction_assert!(
+                "[texture]",
+                "Texture",
+                ""
+            );
+        }
+
+        #[test]
+        fn translate() {
             single_line_instruction_assert!(
-                "GenerateNormals",
-                "GenerateNormals",
-                "",
-                InstructionData::Cylinder(Cylinder {
-                    sides: 1,
-                    upper_radius: 2.0,
-                    lower_radius: 3.0,
-                    height: 4.0,
+                "Translate",
+                "Translate",
+                "1, 2, 3",
+                InstructionData::Translate(Translate {
+                    value: Vector3::new(1.0, 2.0, 3.0),
+                    application: ApplyTo::SingleMesh,
+                })
+            );
+        }
+
+        #[test]
+        fn translate_all() {
+            single_line_instruction_assert!(
+                "TranslateAll",
+                "TranslateAll",
+                "1, 2, 3",
+                InstructionData::Translate(Translate {
+                    value: Vector3::new(1.0, 2.0, 3.0),
+                    application: ApplyTo::AllMeshes,
+                })
+            );
+        }
+
+        #[test]
+        fn scale() {
+            single_line_instruction_assert!(
+                "Scale",
+                "Scale",
+                "1, 2, 3",
+                InstructionData::Scale(Scale {
+                    value: Vector3::new(1.0, 2.0, 3.0),
+                    application: ApplyTo::SingleMesh,
+                })
+            );
+        }
+
+        #[test]
+        fn scale_all() {
+            single_line_instruction_assert!(
+                "ScaleAll",
+                "ScaleAll",
+                "1, 2, 3",
+                InstructionData::Scale(Scale {
+                    value: Vector3::new(1.0, 2.0, 3.0),
+                    application: ApplyTo::AllMeshes,
+                })
+            );
+        }
+
+        #[test]
+        fn rotate() {
+            single_line_instruction_assert!(
+                "Rotate",
+                "Rotate",
+                "1, 2, 3, 4",
+                InstructionData::Rotate(Rotate {
+                    value: Vector3::new(1.0, 2.0, 3.0),
+                    angle: 4.0,
+                    application: ApplyTo::SingleMesh,
+                })
+            );
+        }
+
+        #[test]
+        fn rotate_all() {
+            single_line_instruction_assert!(
+                "RotateAll",
+                "RotateAll",
+                "1, 2, 3, 4",
+                InstructionData::Rotate(Rotate {
+                    value: Vector3::new(1.0, 2.0, 3.0),
+                    angle: 4.0,
+                    application: ApplyTo::AllMeshes,
+                })
+            );
+        }
+
+        #[test]
+        fn sheer() {
+            single_line_instruction_assert!(
+                "Sheer",
+                "Sheer",
+                "1, 2, 3, 4, 5, 6, 7",
+                InstructionData::Sheer(Sheer {
+                    direction: Vector3::new(1.0, 2.0, 3.0),
+                    sheer: Vector3::new(4.0, 5.0, 6.0),
+                    ratio: 7.0,
+                    application: ApplyTo::SingleMesh,
+                })
+            );
+        }
+
+        #[test]
+        fn sheer_all() {
+            single_line_instruction_assert!(
+                "SheerAll",
+                "SheerAll",
+                "1, 2, 3, 4, 5, 6, 7",
+                InstructionData::Sheer(Sheer {
+                    direction: Vector3::new(1.0, 2.0, 3.0),
+                    sheer: Vector3::new(4.0, 5.0, 6.0),
+                    ratio: 7.0,
+                    application: ApplyTo::AllMeshes,
+                })
+            );
+        }
+
+        #[test]
+        fn mirror() {
+            single_line_instruction_assert!(
+                "Mirror",
+                "Mirror",
+                "0, 1, 0",
+                InstructionData::Mirror(Mirror {
+                    directions: Vector3::new(false, true, false),
+                    application: ApplyTo::SingleMesh,
+                })
+            );
+        }
+
+        #[test]
+        fn mirror_all() {
+            single_line_instruction_assert!(
+                "MirrorAll",
+                "MirrorAll",
+                "0, 1, 0",
+                InstructionData::Mirror(Mirror {
+                    directions: Vector3::new(false, true, false),
+                    application: ApplyTo::AllMeshes,
                 })
             );
         }

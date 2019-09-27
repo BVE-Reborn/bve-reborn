@@ -19,6 +19,8 @@ pub struct Error {
 #[derive(Debug, Clone, PartialEq)]
 pub enum ErrorKind {
     UTF8 { column: Option<u64> },
+    DeprecatedInstruction { name: String },
+    UnknownInstruction { name: String },
     GenericCSV { msg: String },
     UnknownCSV,
 }
