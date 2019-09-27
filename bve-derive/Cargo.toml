@@ -20,4 +20,4 @@ proc-macro = true
 itertools = "0.8"
 proc-macro2 = "1"
 quote = "1"
-syn = "1"
+syn = { version = "1", features = ["extra-traits", "full"] }
