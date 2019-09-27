@@ -119,8 +119,9 @@ pub struct Cube {
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct Cylinder {
-    pub upper_rad: f32,
-    pub lower_rad: f32,
+    pub sides: u32,
+    pub upper_radius: f32,
+    pub lower_radius: f32,
     pub height: f32,
 }
 
@@ -443,7 +444,7 @@ mod test {
     }
 
     mod create_instructions {
-        use crate::parse::mesh::instructions::{create, AddFace, AddVertex, Instruction, InstructionData, Sides};
+        use crate::parse::mesh::instructions::*;
         use crate::parse::mesh::{FileType, Span};
         use cgmath::Vector3;
 
@@ -506,6 +507,61 @@ mod test {
                 InstructionData::AddFace(AddFace {
                     indexes: vec![1, 2, 3, 4, 5, 6],
                     sides: Sides::One,
+                })
+            );
+        }
+
+        #[test]
+        fn add_face2() {
+            single_line_instruction_assert!(
+                "Face2",
+                "AddFace2",
+                "1, 2, 3, 4, 5, 6",
+                InstructionData::AddFace(AddFace {
+                    indexes: vec![1, 2, 3, 4, 5, 6],
+                    sides: Sides::Two,
+                })
+            );
+        }
+
+        #[test]
+        fn cube() {
+            single_line_instruction_assert!(
+                "Cube",
+                "Cube",
+                "1, 2, 3",
+                InstructionData::Cube(Cube {
+                    half_dim: Vector3::new(1.0, 2.0, 3.0)
+                })
+            );
+        }
+
+        #[test]
+        fn cylinder() {
+            single_line_instruction_assert!(
+                "Cylinder",
+                "Cylinder",
+                "1, 2, 3, 4",
+                InstructionData::Cylinder(Cylinder {
+                    sides: 1,
+                    upper_radius: 2.0,
+                    lower_radius: 3.0,
+                    height: 4.0,
+                })
+            );
+        }
+
+        #[test]
+        fn generate_normals() {
+            single_line_instruction_assert!(
+                "GenerateNormals",
+                "GenerateNormals",
+                "",
+                InstructionData::Cylinder(Cylinder {
+                    sides: 1,
+                    upper_radius: 2.0,
+                    lower_radius: 3.0,
+                    height: 4.0,
                 })
             );
         }
