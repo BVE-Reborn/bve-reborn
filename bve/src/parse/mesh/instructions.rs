@@ -160,15 +160,13 @@ pub struct Mirror {
     pub application: ApplyTo,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[bve_derive::serde_vector_proxy]
 pub struct SetColor {
-    #[serde(flatten)]
     pub color: ColorU8RGBA,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[bve_derive::serde_vector_proxy]
 pub struct SetEmissiveColor {
-    #[serde(flatten)]
     pub color: ColorU8RGB,
 }
 
@@ -185,16 +183,14 @@ pub struct LoadTexture {
     pub nighttime: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[bve_derive::serde_vector_proxy]
 pub struct SetDecalTransparentColor {
-    #[serde(flatten)]
     pub color: ColorU8RGB,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[bve_derive::serde_vector_proxy]
 pub struct SetTextureCoordinates {
     pub index: usize,
-    #[serde(flatten)]
     pub coords: Vector2<f32>,
 }
 
