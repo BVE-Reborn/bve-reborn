@@ -20,12 +20,14 @@
 #![allow(clippy::float_arithmetic)]
 #![allow(clippy::float_cmp_const)]
 #![allow(clippy::implicit_return)]
+#![allow(clippy::indexing_slicing)] // Proc macros are error prone
 #![allow(clippy::integer_arithmetic)]
 #![allow(clippy::integer_division)]
 #![allow(clippy::missing_docs_in_private_items)]
 #![allow(clippy::missing_inline_in_public_items)]
 #![allow(clippy::shadow_reuse)]
 #![allow(clippy::shadow_same)]
+#![allow(clippy::too_many_lines)]
 #![allow(clippy::wildcard_enum_match_arm)]
 
 extern crate proc_macro;
@@ -48,24 +50,22 @@ struct Field {
 fn combine_token_streams<I: IntoIterator<Item = TokenStream2>>(streams: I) -> TokenStream2 {
     streams
         .into_iter()
-        .fold1(|l, r| {
-            let mut lc = l.clone();
-            lc.extend(r);
-            lc
+        .fold1(|mut l, r| {
+            l.extend(r);
+            l
         })
-        .unwrap_or_else(|| TokenStream2::new())
+        .unwrap_or_else(TokenStream2::new)
 }
 
 fn combine_attributes(attributes: &[Attribute]) -> TokenStream2 {
     attributes
         .iter()
-        .map(|a| a.to_token_stream())
-        .fold1(|l, r| {
-            let mut lc = l.clone();
-            lc.extend(r);
-            lc
+        .map(Attribute::to_token_stream)
+        .fold1(|mut l, r| {
+            l.extend(r);
+            l
         })
-        .unwrap_or_else(|| TokenStream2::new())
+        .unwrap_or_else(TokenStream2::new)
 }
 
 fn get_first_generic_argument(path: &TypePath) -> &Type {
@@ -78,11 +78,11 @@ fn get_first_generic_argument(path: &TypePath) -> &Type {
     }
 }
 
-fn generate_proxy_object(name: Ident, fields: &[Field]) -> TokenStream2 {
+fn generate_proxy_object(name: &Ident, fields: &[Field]) -> TokenStream2 {
     let new_data = fields
         .iter()
         .map(|field| match &field.ty.0 {
-            vec if vec.last().map(|x| x.as_str()) == Some("Vector1") => {
+            vec if vec.last().map(String::as_str) == Some("Vector1") => {
                 let original_name = &field.name;
                 let inner_type = get_first_generic_argument(&field.ty.1);
                 let x_new = format_ident!("{}_x", original_name);
@@ -96,7 +96,7 @@ fn generate_proxy_object(name: Ident, fields: &[Field]) -> TokenStream2 {
                 };
                 (proxy_fields, from_fields)
             }
-            vec if vec.last().map(|x| x.as_str()) == Some("Vector2") => {
+            vec if vec.last().map(String::as_str) == Some("Vector2") => {
                 let inner_type = get_first_generic_argument(&field.ty.1);
                 let original_name = &field.name;
                 let x_new = format_ident!("{}_x", original_name);
@@ -113,7 +113,7 @@ fn generate_proxy_object(name: Ident, fields: &[Field]) -> TokenStream2 {
                 };
                 (proxy_fields, from_fields)
             }
-            vec if vec.last().map(|x| x.as_str()) == Some("Vector3") => {
+            vec if vec.last().map(String::as_str) == Some("Vector3") => {
                 let original_name = &field.name;
                 let inner_type = get_first_generic_argument(&field.ty.1);
                 let x_new = format_ident!("{}_x", original_name);
@@ -133,7 +133,7 @@ fn generate_proxy_object(name: Ident, fields: &[Field]) -> TokenStream2 {
                 };
                 (proxy_fields, from_fields)
             }
-            vec if vec.last().map(|x| x.as_str()) == Some("Vector4") => {
+            vec if vec.last().map(String::as_str) == Some("Vector4") => {
                 let original_name = &field.name;
                 let inner_type = get_first_generic_argument(&field.ty.1);
                 let x_new = format_ident!("{}_x", original_name);
@@ -221,7 +221,7 @@ pub fn serde_vector_proxy(_attr: TokenStream, item: TokenStream) -> TokenStream 
         })
     }
 
-    let proxy = generate_proxy_object(parsed.ident.clone(), &fields);
+    let proxy = generate_proxy_object(&parsed.ident, &fields);
     let proxy_name = format!("{}SerdeProxy", &parsed.ident);
 
     let current = quote!(
