@@ -24,6 +24,7 @@
 #![allow(clippy::integer_division)]
 #![allow(clippy::missing_docs_in_private_items)]
 #![allow(clippy::missing_inline_in_public_items)]
+#![allow(clippy::result_unwrap_used)] // Doesn't play nice with structopt
 #![allow(clippy::shadow_reuse)]
 #![allow(clippy::shadow_same)]
 #![allow(clippy::wildcard_enum_match_arm)]

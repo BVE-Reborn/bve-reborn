@@ -1,4 +1,4 @@
-use crate::parse::mesh::{Error, FileType, Span, ErrorKind};
+use crate::parse::mesh::{Error, ErrorKind, FileType, Span};
 use crate::{ColorU8RGB, ColorU8RGBA};
 use cgmath::{Vector2, Vector3};
 use csv::{ReaderBuilder, StringRecord, Trim};
@@ -176,7 +176,7 @@ pub struct Mirror {
 
 impl From<MirrorSerdeProxy> for Mirror {
     fn from(o: MirrorSerdeProxy) -> Self {
-        Mirror {
+        Self {
             directions: Vector3::new(o.directions_x != 0, o.directions_y != 0, o.directions_z != 0),
             application: ApplyTo::Unset,
         }
@@ -197,7 +197,7 @@ pub struct SetEmissiveColor {
 pub struct SetBlendMode {
     pub blend_mode: BlendMode,
     pub glow_half_distance: u16,
-    pub glow_mode: GlowAttenuationMode,
+    pub glow_attenutation_mode: GlowAttenuationMode,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
@@ -304,20 +304,20 @@ fn deserialize_instruction(
             InstructionData::Cylinder(parsed)
         }
         InstructionType::GenerateNormals => {
-            return Err(Error{
+            return Err(Error {
                 kind: ErrorKind::DeprecatedInstruction {
-                    name: String::from("GenerateNormals")
+                    name: String::from("GenerateNormals"),
                 },
-                span
-            })
+                span,
+            });
         }
         InstructionType::Texture => {
-            return Err(Error{
+            return Err(Error {
                 kind: ErrorKind::DeprecatedInstruction {
-                    name: String::from("[texture]]")
+                    name: String::from("[texture]]"),
                 },
-                span
-            })
+                span,
+            });
         }
         InstructionType::Translate => {
             let mut parsed: Translate = record.deserialize(None)?;
@@ -444,7 +444,7 @@ pub fn create(input: &str, file_type: FileType) -> InstructionList {
                     Err(e) => instructions.errors.push(e),
                 }
             }
-            Err(e) => {}
+            Err(_e) => {}
         }
     }
 
@@ -484,7 +484,8 @@ mod test {
     mod create_instructions {
         use crate::parse::mesh::instructions::*;
         use crate::parse::mesh::{FileType, Span};
-        use cgmath::{Vector3, Vector4};
+        use crate::{ColorU8RGB, ColorU8RGBA};
+        use cgmath::{Vector2, Vector3};
 
         macro_rules! single_line_no_instruction_assert {
             ( $inputB3D:literal, $inputCSV:literal, $args:literal ) => {
@@ -492,18 +493,12 @@ mod test {
                 if result_a.errors.is_empty() {
                     panic!("Missing Errors: {:#?}", result_a)
                 }
-                assert_eq!(
-                    result_a.instructions.len(),
-                    0
-                );
+                assert_eq!(result_a.instructions.len(), 0);
                 let result_b = create(concat!($inputCSV, ",", $args).into(), FileType::CSV);
                 if result_b.errors.is_empty() {
                     panic!("Missing Errors: {:#?}", result_b)
                 }
-                assert_eq!(
-                    result_b.instructions.len(),
-                    0
-                );
+                assert_eq!(result_b.instructions.len(), 0);
             };
         }
 
@@ -612,20 +607,12 @@ mod test {
 
         #[test]
         fn generate_normals() {
-            single_line_no_instruction_assert!(
-                "GenerateNormals",
-                "GenerateNormals",
-                ""
-            );
+            single_line_no_instruction_assert!("GenerateNormals", "GenerateNormals", "");
         }
 
         #[test]
         fn texture() {
-            single_line_no_instruction_assert!(
-                "[texture]",
-                "Texture",
-                ""
-            );
+            single_line_no_instruction_assert!("[texture]", "Texture", "");
         }
 
         #[test]
@@ -760,6 +747,112 @@ mod test {
                 InstructionData::Mirror(Mirror {
                     directions: Vector3::new(false, true, false),
                     application: ApplyTo::AllMeshes,
+                })
+            );
+        }
+
+        #[test]
+        fn color() {
+            single_line_instruction_assert!(
+                "Color",
+                "SetColor",
+                "1, 2, 3, 4",
+                InstructionData::SetColor(SetColor {
+                    color: ColorU8RGBA::new(1, 2, 3, 4),
+                })
+            );
+        }
+
+        #[test]
+        fn emmisive_color() {
+            single_line_instruction_assert!(
+                "EmissiveColor",
+                "SetEmissiveColor",
+                "1, 2, 3",
+                InstructionData::SetEmissiveColor(SetEmissiveColor {
+                    color: ColorU8RGB::new(1, 2, 3),
+                })
+            );
+        }
+
+        #[test]
+        fn blend_mode() {
+            single_line_instruction_assert!(
+                "BlendMode",
+                "SetBlendMode",
+                "Additive, 2, DivideExponent2",
+                InstructionData::SetBlendMode(SetBlendMode {
+                    blend_mode: BlendMode::Additive,
+                    glow_half_distance: 2,
+                    glow_attenutation_mode: GlowAttenuationMode::DivideExponent2,
+                })
+            );
+            single_line_instruction_assert!(
+                "BlendMode",
+                "SetBlendMode",
+                "Additive, 3, DivideExponent4",
+                InstructionData::SetBlendMode(SetBlendMode {
+                    blend_mode: BlendMode::Additive,
+                    glow_half_distance: 3,
+                    glow_attenutation_mode: GlowAttenuationMode::DivideExponent4,
+                })
+            );
+            single_line_instruction_assert!(
+                "BlendMode",
+                "SetBlendMode",
+                "Normal, 2, DivideExponent2",
+                InstructionData::SetBlendMode(SetBlendMode {
+                    blend_mode: BlendMode::Normal,
+                    glow_half_distance: 2,
+                    glow_attenutation_mode: GlowAttenuationMode::DivideExponent2,
+                })
+            );
+            single_line_instruction_assert!(
+                "BlendMode",
+                "SetBlendMode",
+                "Normal, 3, DivideExponent4",
+                InstructionData::SetBlendMode(SetBlendMode {
+                    blend_mode: BlendMode::Normal,
+                    glow_half_distance: 3,
+                    glow_attenutation_mode: GlowAttenuationMode::DivideExponent4,
+                })
+            );
+        }
+
+        #[test]
+        fn load_texture() {
+            single_line_instruction_assert!(
+                "Load",
+                "LoadTexture",
+                "path/day.png, path/night.png",
+                InstructionData::LoadTexture(LoadTexture {
+                    daytime: "path/day.png".into(),
+                    nighttime: "path/night.png".into(),
+                })
+            );
+        }
+
+        #[test]
+        fn decal_transparent_color() {
+            single_line_instruction_assert!(
+                "Transparent",
+                "SetDecalTransparentColor",
+                "1, 2, 3",
+                InstructionData::SetDecalTransparentColor(SetDecalTransparentColor {
+                    color: ColorU8RGB::new(1, 2, 3),
+                })
+            );
+        }
+
+        #[test]
+        fn texture_coordinates() {
+            single_line_instruction_assert!(
+                "Coordinates",
+                "SetTextureCoordinates",
+                "1, 2, 3",
+                InstructionData::SetTextureCoordinates(SetTextureCoordinates {
+                    index: 1,
+                    coords: Vector2::new(2.0, 3.0),
                 })
             );
         }
