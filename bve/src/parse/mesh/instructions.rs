@@ -86,11 +86,6 @@ pub enum InstructionData {
     SetTextureCoordinates(SetTextureCoordinates),
 }
 
-pub struct AddVertexMacro {
-    pub location: cgmath::Vector3<f32>,
-    pub normal: Vector3<f32>,
-}
-
 #[bve_derive::serde_vector_proxy]
 pub struct AddVertex {
     pub location: Vector3<f32>,
