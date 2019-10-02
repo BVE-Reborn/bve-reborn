@@ -482,7 +482,7 @@ mod test {
         use crate::{ColorU8RGB, ColorU8RGBA};
         use cgmath::{Vector2, Vector3};
 
-        macro_rules! single_line_no_instruction_assert {
+        macro_rules! no_instruction_assert {
             ( $inputB3D:literal, $inputCSV:literal, $args:literal ) => {
                 let result_a = create(concat!($inputB3D, " ", $args).into(), FileType::B3D);
                 if result_a.errors.is_empty() {
@@ -497,7 +497,7 @@ mod test {
             };
         }
 
-        macro_rules! single_line_instruction_assert {
+        macro_rules! instruction_assert {
             ( $inputB3D:literal, $inputCSV:literal, $args:literal, $data:expr ) => {
                 let result_a = create(concat!($inputB3D, " ", $args).into(), FileType::B3D);
                 if !result_a.errors.is_empty() {
@@ -524,9 +524,16 @@ mod test {
             };
         }
 
+        macro_rules! instruction_assert_default {
+            ( $inputB3D:literal, $inputCSV:literal, $args:literal, $data:expr, $default_args:literal, $default_data:expr ) => {
+                instruction_assert!($inputB3D, $inputCSV, $args, $data);
+                instruction_assert!($inputB3D, $inputCSV, $default_args, $default_data);
+            };
+        }
+
         #[test]
         fn mesh_builder() {
-            single_line_instruction_assert!(
+            instruction_assert!(
                 "[meshbuilder]",
                 "CreateMeshBuilder",
                 "",
@@ -536,7 +543,7 @@ mod test {
 
         #[test]
         fn add_vertex() {
-            single_line_instruction_assert!(
+            instruction_assert!(
                 "Vertex",
                 "AddVertex",
                 "1, 2, 3, 4, 5, 6",
@@ -549,7 +556,7 @@ mod test {
 
         #[test]
         fn add_face() {
-            single_line_instruction_assert!(
+            instruction_assert!(
                 "Face",
                 "AddFace",
                 "1, 2, 3, 4, 5, 6",
@@ -562,7 +569,7 @@ mod test {
 
         #[test]
         fn add_face2() {
-            single_line_instruction_assert!(
+            instruction_assert!(
                 "Face2",
                 "AddFace2",
                 "1, 2, 3, 4, 5, 6",
@@ -575,7 +582,7 @@ mod test {
 
         #[test]
         fn cube() {
-            single_line_instruction_assert!(
+            instruction_assert!(
                 "Cube",
                 "Cube",
                 "1, 2, 3",
@@ -587,7 +594,7 @@ mod test {
 
         #[test]
         fn cylinder() {
-            single_line_instruction_assert!(
+            instruction_assert!(
                 "Cylinder",
                 "Cylinder",
                 "1, 2, 3, 4",
@@ -602,17 +609,17 @@ mod test {
 
         #[test]
         fn generate_normals() {
-            single_line_no_instruction_assert!("GenerateNormals", "GenerateNormals", "");
+            no_instruction_assert!("GenerateNormals", "GenerateNormals", "");
         }
 
         #[test]
         fn texture() {
-            single_line_no_instruction_assert!("[texture]", "Texture", "");
+            no_instruction_assert!("[texture]", "Texture", "");
         }
 
         #[test]
         fn translate() {
-            single_line_instruction_assert!(
+            instruction_assert!(
                 "Translate",
                 "Translate",
                 "1, 2, 3",
@@ -625,7 +632,7 @@ mod test {
 
         #[test]
         fn translate_all() {
-            single_line_instruction_assert!(
+            instruction_assert!(
                 "TranslateAll",
                 "TranslateAll",
                 "1, 2, 3",
@@ -638,7 +645,7 @@ mod test {
 
         #[test]
         fn scale() {
-            single_line_instruction_assert!(
+            instruction_assert!(
                 "Scale",
                 "Scale",
                 "1, 2, 3",
@@ -651,7 +658,7 @@ mod test {
 
         #[test]
         fn scale_all() {
-            single_line_instruction_assert!(
+            instruction_assert!(
                 "ScaleAll",
                 "ScaleAll",
                 "1, 2, 3",
@@ -664,7 +671,7 @@ mod test {
 
         #[test]
         fn rotate() {
-            single_line_instruction_assert!(
+            instruction_assert!(
                 "Rotate",
                 "Rotate",
                 "1, 2, 3, 4",
@@ -678,7 +685,7 @@ mod test {
 
         #[test]
         fn rotate_all() {
-            single_line_instruction_assert!(
+            instruction_assert!(
                 "RotateAll",
                 "RotateAll",
                 "1, 2, 3, 4",
@@ -692,7 +699,7 @@ mod test {
 
         #[test]
         fn sheer() {
-            single_line_instruction_assert!(
+            instruction_assert!(
                 "Sheer",
                 "Sheer",
                 "1, 2, 3, 4, 5, 6, 7",
@@ -707,7 +714,7 @@ mod test {
 
         #[test]
         fn sheer_all() {
-            single_line_instruction_assert!(
+            instruction_assert!(
                 "SheerAll",
                 "SheerAll",
                 "1, 2, 3, 4, 5, 6, 7",
@@ -722,7 +729,7 @@ mod test {
 
         #[test]
         fn mirror() {
-            single_line_instruction_assert!(
+            instruction_assert!(
                 "Mirror",
                 "Mirror",
                 "0, 1, 0",
@@ -735,7 +742,7 @@ mod test {
 
         #[test]
         fn mirror_all() {
-            single_line_instruction_assert!(
+            instruction_assert!(
                 "MirrorAll",
                 "MirrorAll",
                 "0, 1, 0",
@@ -748,7 +755,7 @@ mod test {
 
         #[test]
         fn color() {
-            single_line_instruction_assert!(
+            instruction_assert!(
                 "Color",
                 "SetColor",
                 "1, 2, 3, 4",
@@ -760,7 +767,7 @@ mod test {
 
         #[test]
         fn emmisive_color() {
-            single_line_instruction_assert!(
+            instruction_assert!(
                 "EmissiveColor",
                 "SetEmissiveColor",
                 "1, 2, 3",
@@ -772,7 +779,7 @@ mod test {
 
         #[test]
         fn blend_mode() {
-            single_line_instruction_assert!(
+            instruction_assert!(
                 "BlendMode",
                 "SetBlendMode",
                 "Additive, 2, DivideExponent2",
@@ -782,7 +789,7 @@ mod test {
                     glow_attenutation_mode: GlowAttenuationMode::DivideExponent2,
                 })
             );
-            single_line_instruction_assert!(
+            instruction_assert!(
                 "BlendMode",
                 "SetBlendMode",
                 "Additive, 3, DivideExponent4",
@@ -792,7 +799,7 @@ mod test {
                     glow_attenutation_mode: GlowAttenuationMode::DivideExponent4,
                 })
             );
-            single_line_instruction_assert!(
+            instruction_assert!(
                 "BlendMode",
                 "SetBlendMode",
                 "Normal, 2, DivideExponent2",
@@ -802,7 +809,7 @@ mod test {
                     glow_attenutation_mode: GlowAttenuationMode::DivideExponent2,
                 })
             );
-            single_line_instruction_assert!(
+            instruction_assert!(
                 "BlendMode",
                 "SetBlendMode",
                 "Normal, 3, DivideExponent4",
@@ -816,7 +823,7 @@ mod test {
 
         #[test]
         fn load_texture() {
-            single_line_instruction_assert!(
+            instruction_assert!(
                 "Load",
                 "LoadTexture",
                 "path/day.png, path/night.png",
@@ -829,7 +836,7 @@ mod test {
 
         #[test]
         fn decal_transparent_color() {
-            single_line_instruction_assert!(
+            instruction_assert!(
                 "Transparent",
                 "SetDecalTransparentColor",
                 "1, 2, 3",
@@ -841,7 +848,7 @@ mod test {
 
         #[test]
         fn texture_coordinates() {
-            single_line_instruction_assert!(
+            instruction_assert!(
                 "Coordinates",
                 "SetTextureCoordinates",
                 "1, 2, 3",
