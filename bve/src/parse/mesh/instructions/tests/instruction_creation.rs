@@ -5,12 +5,12 @@ use cgmath::{Vector2, Vector3};
 
 macro_rules! no_instruction_assert {
     ( $inputB3D:literal, $inputCSV:literal, $args:literal ) => {
-        let result_a = create(concat!($inputB3D, " ", $args).into(), FileType::B3D);
+        let result_a = create_instructions(concat!($inputB3D, " ", $args).into(), FileType::B3D);
         if result_a.errors.is_empty() {
             panic!("Missing Errors: {:#?}", result_a)
         }
         assert_eq!(result_a.instructions.len(), 0);
-        let result_b = create(concat!($inputCSV, ",", $args).into(), FileType::CSV);
+        let result_b = create_instructions(concat!($inputCSV, ",", $args).into(), FileType::CSV);
         if result_b.errors.is_empty() {
             panic!("Missing Errors: {:#?}", result_b)
         }
@@ -20,7 +20,7 @@ macro_rules! no_instruction_assert {
 
 macro_rules! instruction_assert {
     ( $inputB3D:literal, $inputCSV:literal, $args:literal, $data:expr ) => {
-        let result_a = create(concat!($inputB3D, " ", $args).into(), FileType::B3D);
+        let result_a = create_instructions(concat!($inputB3D, " ", $args).into(), FileType::B3D);
         if !result_a.errors.is_empty() {
             panic!("ERRORS!! {:#?}", result_a)
         }
@@ -31,7 +31,7 @@ macro_rules! instruction_assert {
                 span: Span { line: Some(1) }
             }
         );
-        let result_b = create(concat!($inputCSV, ",", $args).into(), FileType::CSV);
+        let result_b = create_instructions(concat!($inputCSV, ",", $args).into(), FileType::CSV);
         if !result_b.errors.is_empty() {
             panic!("ERRORS!! {:#?}", result_b)
         }
@@ -50,6 +50,42 @@ macro_rules! instruction_assert_default {
         instruction_assert!($inputB3D, $inputCSV, $args, $data);
         instruction_assert!($inputB3D, $inputCSV, $default_args, $default_data);
     };
+}
+
+#[test]
+fn empty_line() {
+    let result_a = create_instructions("", FileType::B3D);
+    assert_eq!(result_a.instructions.len(), 0);
+    assert_eq!(result_a.errors.len(), 0);
+    let result_b = create_instructions("", FileType::CSV);
+    assert_eq!(result_b.instructions.len(), 0);
+    assert_eq!(result_b.errors.len(), 0);
+}
+
+#[test]
+fn no_arguments() {
+    instruction_assert!(
+        "Vertex",
+        "AddVertex",
+        "",
+        InstructionData::AddVertex(AddVertex {
+            location: Vector3::new(0.0, 0.0, 0.0),
+            normal: Vector3::new(0.0, 0.0, 0.0),
+        })
+    );
+}
+
+#[test]
+fn too_many_arguments() {
+    instruction_assert!(
+        "Vertex",
+        "AddVertex",
+        ",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,",
+        InstructionData::AddVertex(AddVertex {
+            location: Vector3::new(0.0, 0.0, 0.0),
+            normal: Vector3::new(0.0, 0.0, 0.0),
+        })
+    );
 }
 
 #[test]

@@ -1,3 +1,5 @@
+//! Random functions needed for various parts of the parser
+
 pub(in crate::parse) const fn some_zero_u8() -> Option<u8> {
     Some(0)
 }

@@ -1,4 +1,4 @@
-use crate::parse::mesh::{Error, ErrorKind, FileType, Span};
+use crate::parse::mesh::{Error, ErrorKind, FileType, Span, BlendMode, GlowAttenuationMode};
 use crate::parse::util;
 use crate::{ColorU8RGB, ColorU8RGBA};
 use cgmath::{Vector2, Vector3};
@@ -241,20 +241,6 @@ pub struct SetTextureCoordinates {
     pub coords: Vector2<f32>,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum BlendMode {
-    Normal,
-    Additive,
-}
-
-#[derive(Debug, Clone, PartialEq, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum GlowAttenuationMode {
-    DivideExponent2,
-    DivideExponent4,
-}
-
 #[derive(Debug, Clone, PartialEq)]
 pub enum Sides {
     Unset,
@@ -421,7 +407,7 @@ fn deserialize_instruction(
     Ok(Instruction { data, span })
 }
 
-pub fn create(input: &str, file_type: FileType) -> InstructionList {
+pub fn create_instructions(input: &str, file_type: FileType) -> InstructionList {
     // Make entire setup lowercase to make it easy to match.
     let processed = if file_type == FileType::B3D {
         b3d_to_csv_syntax(input)

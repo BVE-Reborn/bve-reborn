@@ -1,6 +1,9 @@
+//! B3D/CSV Static Meshes
+
 use crate::{ColorU8RGB, ColorU8RGBA};
 use cgmath::{Vector2, Vector3};
 use indexmap::IndexSet;
+use serde::Deserialize;
 
 pub mod instructions;
 
@@ -192,6 +195,7 @@ pub struct FaceData {
     pub emission_color: ColorU8RGB,
 }
 
+#[repr(C)]
 #[derive(Debug, Clone, PartialEq)]
 pub struct Glow {
     pub attenuation_mode: GlowAttenuationMode,
@@ -199,14 +203,16 @@ pub struct Glow {
 }
 
 #[repr(C)]
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum BlendMode {
     Normal,
     Additive,
 }
 
 #[repr(C)]
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum GlowAttenuationMode {
     DivideExponent2,
     DivideExponent4,
