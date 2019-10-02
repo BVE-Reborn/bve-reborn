@@ -34,14 +34,15 @@ extern crate proc_macro;
 
 use itertools::Itertools;
 use proc_macro::TokenStream;
-use proc_macro2::Ident;
+use proc_macro2::{Group, Ident, Literal};
 use quote::{format_ident, quote};
 use syn::export::{ToTokens, TokenStream2};
-use syn::{Attribute, GenericArgument, PathArguments, Type, TypePath, Visibility};
+use syn::{Attribute, ExprPath, GenericArgument, PathArguments, Type, TypePath, Visibility};
 
 #[derive(Debug)]
 struct Field {
     attributes: Vec<Attribute>,
+    rename: Option<Literal>,
     visibility: Visibility,
     name: Ident,
     ty: (Vec<String>, TypePath),
@@ -68,33 +69,49 @@ fn combine_attributes(attributes: &[Attribute]) -> TokenStream2 {
         .unwrap_or_else(TokenStream2::new)
 }
 
-fn get_first_generic_argument(name_vec: &Vec<String>, path: &TypePath) -> TokenStream2 {
+fn get_first_generic_argument(name_vec: &[String], path: &TypePath) -> TokenStream2 {
     let valid = name_vec.len() >= 2;
     let second_name = if valid { name_vec.get(name_vec.len() - 2) } else { None };
     match second_name.map(String::as_str) {
-        Some("ColorU8R") => quote!(u8),
-        Some("ColorU8RG") => quote!(u8),
-        Some("ColorU8RGB") => quote!(u8),
-        Some("ColorU8RGBA") => quote!(u8),
-        Some("ColorU16R") => quote!(u16),
-        Some("ColorU16RG") => quote!(u16),
-        Some("ColorU16RGB") => quote!(u16),
-        Some("ColorU16RGBA") => quote!(u16),
-        Some("ColorF32R") => quote!(f32),
-        Some("ColorF32RG") => quote!(f32),
-        Some("ColorF32RGB") => quote!(f32),
-        Some("ColorF32RGBA") => quote!(f32),
-        _ => {
-            match &path.path.segments.last().expect("Type path must exist.").arguments {
-                PathArguments::AngleBracketed(arg) => match &arg.args[0] {
-                    GenericArgument::Type(t) => quote!(#t),
-                    _ => panic!("Vector1 generic argument must be a type"),
-                },
-                _ => panic!("Vector1 must have generic arguments"),
-            }
+        Some("ColorU8R") | Some("ColorU8RG") | Some("ColorU8RGB") | Some("ColorU8RGBA") => quote!(u8),
+        Some("ColorU16R") | Some("ColorU16RG") | Some("ColorU16RGB") | Some("ColorU16RGBA") => quote!(u16),
+        Some("ColorF32R") | Some("ColorF32RG") | Some("ColorF32RGB") | Some("ColorF32RGBA") => quote!(f32),
+        _ => match &path.path.segments.last().expect("Type path must exist.").arguments {
+            PathArguments::AngleBracketed(arg) => match &arg.args[0] {
+                GenericArgument::Type(t) => quote!(#t),
+                _ => panic!("Vector1 generic argument must be a type"),
+            },
+            _ => panic!("Vector1 must have generic arguments"),
+        },
+    }
+}
+
+fn process_rename(
+    new_name: &Ident,
+    inner_type: &TokenStream2,
+    rename: &Option<Literal>,
+) -> (TokenStream2, TokenStream2, TokenStream2) {
+    match rename {
+        Some(s) => {
+            let l_parsed =
+                syn::parse2::<syn::LitStr>(s.to_token_stream()).expect("Argument to rename must be string literal.");
+            let default_call: ExprPath = l_parsed.parse().expect("Argument to rename must be a valid ExprPath.");
+
+            let new_type = quote!(Option<#inner_type>);
+            let conversion = quote!(match proxy.#new_name {
+                Some(v) => v,
+                None => #default_call().unwrap(),
+            });
+            let attribute = quote!(#[serde(default = #s)]);
+            (new_type, conversion, attribute)
+        }
+        None => {
+            let new_type = quote!(#inner_type);
+            let conversion = quote!(proxy.#new_name);
+            let attribute = TokenStream2::new();
+            (new_type, conversion, attribute)
         }
     }
-
 }
 
 fn generate_proxy_object(name: &Ident, fields: &[Field]) -> TokenStream2 {
@@ -103,32 +120,39 @@ fn generate_proxy_object(name: &Ident, fields: &[Field]) -> TokenStream2 {
         .map(|field| match &field.ty.0 {
             vec if vec.last().map(String::as_str) == Some("Vector1") => {
                 let original_name = &field.name;
-                let inner_type = get_first_generic_argument(vec,&field.ty.1);
+                let inner_type = get_first_generic_argument(vec, &field.ty.1);
                 let x_new = format_ident!("{}_x", original_name);
                 let attributes = combine_attributes(&field.attributes);
+                let (x_inner, x_conversion, x_attribute) = process_rename(&x_new, &inner_type, &field.rename);
                 let proxy_fields = quote! {
                     #attributes
-                    #x_new: #inner_type,
+                    #x_attribute
+                    #x_new: #x_inner,
                 };
                 let from_fields = quote! {
-                    #original_name: ::cgmath::Vector1::new(proxy.#x_new),
+                    #original_name: ::cgmath::Vector1::new(#x_conversion),
                 };
                 (proxy_fields, from_fields)
             }
             vec if vec.last().map(String::as_str) == Some("Vector2") => {
-                let inner_type = get_first_generic_argument(vec,&field.ty.1);
+                let inner_type = get_first_generic_argument(vec, &field.ty.1);
                 let original_name = &field.name;
                 let x_new = format_ident!("{}_x", original_name);
                 let y_new = format_ident!("{}_y", original_name);
                 let attributes = combine_attributes(&field.attributes);
+                let (x_inner, x_conversion, x_attribute) = process_rename(&x_new, &inner_type.clone(), &field.rename);
+                let (y_inner, y_conversion, y_attribute) = process_rename(&y_new, &inner_type, &field.rename);
                 let proxy_fields = quote! {
                     #attributes
-                    #x_new: #inner_type,
+                    #x_attribute
+                    #x_new: #x_inner,
+
                     #attributes
-                    #y_new: #inner_type,
+                    #y_attribute
+                    #y_new: #y_inner,
                 };
                 let from_fields = quote! {
-                    #original_name: ::cgmath::Vector2::new(proxy.#x_new, proxy.#y_new),
+                    #original_name: ::cgmath::Vector2::new(#x_conversion, #y_conversion),
                 };
                 (proxy_fields, from_fields)
             }
@@ -139,16 +163,24 @@ fn generate_proxy_object(name: &Ident, fields: &[Field]) -> TokenStream2 {
                 let y_new = format_ident!("{}_y", original_name);
                 let z_new = format_ident!("{}_z", original_name);
                 let attributes = combine_attributes(&field.attributes);
+                let (x_inner, x_conversion, x_attribute) = process_rename(&x_new, &inner_type.clone(), &field.rename);
+                let (y_inner, y_conversion, y_attribute) = process_rename(&y_new, &inner_type.clone(), &field.rename);
+                let (z_inner, z_conversion, z_attribute) = process_rename(&z_new, &inner_type, &field.rename);
                 let proxy_fields = quote! {
                     #attributes
-                    #x_new: #inner_type,
+                    #x_attribute
+                    #x_new: #x_inner,
+
                     #attributes
-                    #y_new: #inner_type,
+                    #y_attribute
+                    #y_new: #y_inner,
+
                     #attributes
-                    #z_new: #inner_type,
+                    #z_attribute
+                    #z_new: #z_inner,
                 };
                 let from_fields = quote! {
-                    #original_name: ::cgmath::Vector3::new(proxy.#x_new, proxy.#y_new, proxy.#z_new),
+                    #original_name: ::cgmath::Vector3::new(#x_conversion, #y_conversion, #z_conversion),
                 };
                 (proxy_fields, from_fields)
             }
@@ -160,18 +192,29 @@ fn generate_proxy_object(name: &Ident, fields: &[Field]) -> TokenStream2 {
                 let z_new = format_ident!("{}_z", original_name);
                 let w_new = format_ident!("{}_w", original_name);
                 let attributes = combine_attributes(&field.attributes);
+                let (x_inner, x_conversion, x_attribute) = process_rename(&x_new, &inner_type.clone(), &field.rename);
+                let (y_inner, y_conversion, y_attribute) = process_rename(&y_new, &inner_type.clone(), &field.rename);
+                let (z_inner, z_conversion, z_attribute) = process_rename(&z_new, &inner_type.clone(), &field.rename);
+                let (w_inner, w_conversion, w_attribute) = process_rename(&w_new, &inner_type, &field.rename);
                 let proxy_fields = quote! {
                     #attributes
-                    #x_new: #inner_type,
+                    #x_attribute
+                    #x_new: #x_inner,
+
                     #attributes
-                    #y_new: #inner_type,
+                    #y_attribute
+                    #y_new: #y_inner,
+
                     #attributes
-                    #z_new: #inner_type,
+                    #z_attribute
+                    #z_new: #z_inner,
+
                     #attributes
-                    #w_new: #inner_type,
+                    #w_attribute
+                    #w_new: #w_inner,
                 };
                 let from_fields = quote! {
-                    #original_name: ::cgmath::Vector4::new(proxy.#x_new, proxy.#y_new, proxy.#z_new, proxy.#w_new),
+                    #original_name: ::cgmath::Vector4::new(#x_conversion, #y_conversion, #z_conversion, #w_conversion),
                 };
                 (proxy_fields, from_fields)
             }
@@ -179,12 +222,15 @@ fn generate_proxy_object(name: &Ident, fields: &[Field]) -> TokenStream2 {
                 let original_name = &field.name;
                 let attributes = combine_attributes(&field.attributes);
                 let ty = &field.ty.1;
+                let (inner, conversion, attribute) =
+                    process_rename(original_name, &ty.to_token_stream(), &field.rename);
                 let proxy_fields = quote! {
                     #attributes
-                    #original_name: #ty,
+                    #attribute
+                    #original_name: #inner,
                 };
                 let from_fields = quote! {
-                    #original_name: proxy.#original_name,
+                    #original_name: #conversion,
                 };
                 (proxy_fields, from_fields)
             }
@@ -213,14 +259,44 @@ fn generate_proxy_object(name: &Ident, fields: &[Field]) -> TokenStream2 {
     )
 }
 
+fn find_default_attribute(mut attributes: Vec<Attribute>) -> (Option<Literal>, Vec<Attribute>) {
+    let mut rename = None;
+    let mut rename_buffer = Vec::new();
+    for attr in attributes.drain(0..) {
+        match attr
+            .path
+            .segments
+            .first()
+            .map(|s| s.ident.to_string())
+            .as_ref()
+            .map(String::as_str)
+        {
+            Some("default") => {
+                rename = Some(
+                    syn::parse2::<Literal>(
+                        syn::parse2::<Group>(attr.tokens)
+                            .expect("expected group in default")
+                            .stream(),
+                    )
+                    .expect("expected string in default"),
+                )
+            }
+            _ => rename_buffer.push(attr),
+        }
+    }
+    (rename, rename_buffer)
+}
+
 #[proc_macro_attribute]
 pub fn serde_vector_proxy(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    let parsed = syn::parse_macro_input!(item as syn::ItemStruct);
+    let mut parsed = syn::parse_macro_input!(item as syn::ItemStruct);
 
     let mut fields = Vec::new();
 
-    for field in &parsed.fields {
+    for field in &mut parsed.fields {
         let attributes = field.attrs.clone();
+        let (rename, attributes) = find_default_attribute(attributes);
+        field.attrs = attributes.clone();
         let viability = field.vis.clone();
         let name = field.ident.clone().expect("Shits gotta have a name.");
         let ty: (Vec<String>, TypePath) = if let Type::Path(p) = &field.ty {
@@ -229,18 +305,10 @@ pub fn serde_vector_proxy(_attr: TokenStream, item: TokenStream) -> TokenStream 
                 type_segment_name.push(segment.ident.to_string());
             }
             match type_segment_name.last().map(String::as_str) {
-                Some("ColorU8R") => type_segment_name.push("Vector1".into()),
-                Some("ColorU8RG") => type_segment_name.push("Vector2".into()),
-                Some("ColorU8RGB") => type_segment_name.push("Vector3".into()),
-                Some("ColorU8RGBA") => type_segment_name.push("Vector4".into()),
-                Some("ColorU16R") => type_segment_name.push("Vector1".into()),
-                Some("ColorU16RG") => type_segment_name.push("Vector2".into()),
-                Some("ColorU16RGB") => type_segment_name.push("Vector3".into()),
-                Some("ColorU16RGBA") => type_segment_name.push("Vector4".into()),
-                Some("ColorF32R") => type_segment_name.push("Vector1".into()),
-                Some("ColorF32RG") => type_segment_name.push("Vector2".into()),
-                Some("ColorF32RGB") => type_segment_name.push("Vector3".into()),
-                Some("ColorF32RGBA") => type_segment_name.push("Vector4".into()),
+                Some("ColorU8R") | Some("ColorU16R") | Some("ColorF32R") => type_segment_name.push("Vector1".into()),
+                Some("ColorU8RG") | Some("ColorU16RG") | Some("ColorF32RG") => type_segment_name.push("Vector2".into()),
+                Some("ColorU8RGB") | Some("ColorU16RGB") | Some("ColorF32RGB") => type_segment_name.push("Vector3".into()),
+                Some("ColorU8RGBA") | Some("ColorU16RGBA") | Some("ColorF32RGBA") => type_segment_name.push("Vector4".into()),
                 _ => {}
             }
             (type_segment_name, (*p).clone())
@@ -249,6 +317,7 @@ pub fn serde_vector_proxy(_attr: TokenStream, item: TokenStream) -> TokenStream 
         };
         fields.push(Field {
             attributes,
+            rename,
             visibility: viability,
             name,
             ty,
