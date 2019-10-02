@@ -1,4 +1,5 @@
 use crate::parse::mesh::{Error, ErrorKind, FileType, Span};
+use crate::parse::util;
 use crate::{ColorU8RGB, ColorU8RGBA};
 use cgmath::{Vector2, Vector3};
 use csv::{ReaderBuilder, StringRecord, Trim};
@@ -88,16 +89,16 @@ pub enum InstructionData {
 
 #[bve_derive::serde_vector_proxy]
 pub struct AddVertex {
+    #[default("util::some_zero_f32")]
     pub location: Vector3<f32>,
+    #[default("util::some_zero_f32")]
     pub normal: Vector3<f32>,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(from = "Vec<usize>")]
 pub struct AddFace {
-    #[serde(flatten)]
     pub indexes: Vec<usize>,
-    #[serde(skip)]
     pub sides: Sides,
 }
 
@@ -125,6 +126,7 @@ pub struct Cylinder {
 
 #[bve_derive::serde_vector_proxy]
 pub struct Translate {
+    #[default("util::some_zero_f32")]
     pub value: Vector3<f32>,
     #[serde(skip)]
     pub application: ApplyTo,
@@ -132,6 +134,7 @@ pub struct Translate {
 
 #[bve_derive::serde_vector_proxy]
 pub struct Scale {
+    #[default("util::some_one_f32")]
     pub value: Vector3<f32>,
     #[serde(skip)]
     pub application: ApplyTo,
@@ -139,7 +142,9 @@ pub struct Scale {
 
 #[bve_derive::serde_vector_proxy]
 pub struct Rotate {
+    #[default("util::some_zero_f32")]
     pub value: Vector3<f32>,
+    #[default("util::some_zero_f32")]
     pub angle: f32,
     #[serde(skip)]
     pub application: ApplyTo,
@@ -147,18 +152,25 @@ pub struct Rotate {
 
 #[bve_derive::serde_vector_proxy]
 pub struct Sheer {
+    #[default("util::some_zero_f32")]
     pub direction: Vector3<f32>,
+    #[default("util::some_zero_f32")]
     pub sheer: Vector3<f32>,
+    #[default("util::some_zero_f32")]
     pub ratio: f32,
     #[serde(skip)]
     pub application: ApplyTo,
 }
 
+// TODO: Integrate bool deserialization into macro
 #[derive(Deserialize)]
 struct MirrorSerdeProxy {
-    directions_x: u8,
-    directions_y: u8,
-    directions_z: u8,
+    #[serde(default = "util::some_zero_u8")]
+    directions_x: Option<u8>,
+    #[serde(default = "util::some_zero_u8")]
+    directions_y: Option<u8>,
+    #[serde(default = "util::some_zero_u8")]
+    directions_z: Option<u8>,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
@@ -172,7 +184,7 @@ pub struct Mirror {
 impl From<MirrorSerdeProxy> for Mirror {
     fn from(o: MirrorSerdeProxy) -> Self {
         Self {
-            directions: Vector3::new(o.directions_x != 0, o.directions_y != 0, o.directions_z != 0),
+            directions: Vector3::new(o.directions_x.map_or(false, |v| v != 0), o.directions_y.map_or(false, |v| v != 0), o.directions_z.map_or(false, |v| v != 0)),
             application: ApplyTo::Unset,
         }
     }
@@ -180,29 +192,46 @@ impl From<MirrorSerdeProxy> for Mirror {
 
 #[bve_derive::serde_vector_proxy]
 pub struct SetColor {
+    #[default("util::some_u8_max")]
     pub color: ColorU8RGBA,
 }
 
 #[bve_derive::serde_vector_proxy]
 pub struct SetEmissiveColor {
+    #[default("util::some_zero_u8")]
     pub color: ColorU8RGB,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[bve_derive::serde_vector_proxy]
 pub struct SetBlendMode {
+    #[default("SetBlendMode::default_blend_mode")]
     pub blend_mode: BlendMode,
+    #[default("util::some_zero_u16")]
     pub glow_half_distance: u16,
-    pub glow_attenutation_mode: GlowAttenuationMode,
+    #[default("SetBlendMode::default_glow_attenuation_mode")]
+    pub glow_attenuation_mode: GlowAttenuationMode,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+impl SetBlendMode {
+    fn default_blend_mode() -> Option<BlendMode> {
+        Some(BlendMode::Normal)
+    }
+    fn default_glow_attenuation_mode() -> Option<GlowAttenuationMode> {
+        Some(GlowAttenuationMode::DivideExponent4)
+    }
+}
+
+#[bve_derive::serde_vector_proxy]
 pub struct LoadTexture {
+    #[default("util::some_string")]
     pub daytime: String,
+    #[default("util::some_string")]
     pub nighttime: String,
 }
 
 #[bve_derive::serde_vector_proxy]
 pub struct SetDecalTransparentColor {
+    #[default("util::some_zero_u8")]
     pub color: ColorU8RGB,
 }
 
@@ -543,13 +572,18 @@ mod test {
 
         #[test]
         fn add_vertex() {
-            instruction_assert!(
+            instruction_assert_default!(
                 "Vertex",
                 "AddVertex",
                 "1, 2, 3, 4, 5, 6",
                 InstructionData::AddVertex(AddVertex {
                     location: Vector3::new(1.0, 2.0, 3.0),
                     normal: Vector3::new(4.0, 5.0, 6.0),
+                }),
+                ",,,,,",
+                InstructionData::AddVertex(AddVertex {
+                    location: Vector3::new(0.0, 0.0, 0.0),
+                    normal: Vector3::new(0.0, 0.0, 0.0),
                 })
             );
         }
@@ -619,12 +653,17 @@ mod test {
 
         #[test]
         fn translate() {
-            instruction_assert!(
+            instruction_assert_default!(
                 "Translate",
                 "Translate",
                 "1, 2, 3",
                 InstructionData::Translate(Translate {
                     value: Vector3::new(1.0, 2.0, 3.0),
+                    application: ApplyTo::SingleMesh,
+                }),
+                ",,",
+                InstructionData::Translate(Translate {
+                    value: Vector3::new(0.0, 0.0, 0.0),
                     application: ApplyTo::SingleMesh,
                 })
             );
@@ -632,12 +671,17 @@ mod test {
 
         #[test]
         fn translate_all() {
-            instruction_assert!(
+            instruction_assert_default!(
                 "TranslateAll",
                 "TranslateAll",
                 "1, 2, 3",
                 InstructionData::Translate(Translate {
                     value: Vector3::new(1.0, 2.0, 3.0),
+                    application: ApplyTo::AllMeshes,
+                }),
+                ",,",
+                InstructionData::Translate(Translate {
+                    value: Vector3::new(0.0, 0.0, 0.0),
                     application: ApplyTo::AllMeshes,
                 })
             );
@@ -645,12 +689,17 @@ mod test {
 
         #[test]
         fn scale() {
-            instruction_assert!(
+            instruction_assert_default!(
                 "Scale",
                 "Scale",
                 "1, 2, 3",
                 InstructionData::Scale(Scale {
                     value: Vector3::new(1.0, 2.0, 3.0),
+                    application: ApplyTo::SingleMesh,
+                }),
+                ",,",
+                InstructionData::Scale(Scale {
+                    value: Vector3::new(1.0, 1.0, 1.0),
                     application: ApplyTo::SingleMesh,
                 })
             );
@@ -658,12 +707,17 @@ mod test {
 
         #[test]
         fn scale_all() {
-            instruction_assert!(
+            instruction_assert_default!(
                 "ScaleAll",
                 "ScaleAll",
                 "1, 2, 3",
                 InstructionData::Scale(Scale {
                     value: Vector3::new(1.0, 2.0, 3.0),
+                    application: ApplyTo::AllMeshes,
+                }),
+                ",,",
+                InstructionData::Scale(Scale {
+                    value: Vector3::new(1.0, 1.0, 1.0),
                     application: ApplyTo::AllMeshes,
                 })
             );
@@ -671,13 +725,19 @@ mod test {
 
         #[test]
         fn rotate() {
-            instruction_assert!(
+            instruction_assert_default!(
                 "Rotate",
                 "Rotate",
                 "1, 2, 3, 4",
                 InstructionData::Rotate(Rotate {
                     value: Vector3::new(1.0, 2.0, 3.0),
                     angle: 4.0,
+                    application: ApplyTo::SingleMesh,
+                }),
+                ",,,",
+                InstructionData::Rotate(Rotate {
+                    value: Vector3::new(0.0, 0.0, 0.0),
+                    angle: 0.0,
                     application: ApplyTo::SingleMesh,
                 })
             );
@@ -685,7 +745,7 @@ mod test {
 
         #[test]
         fn rotate_all() {
-            instruction_assert!(
+            instruction_assert_default!(
                 "RotateAll",
                 "RotateAll",
                 "1, 2, 3, 4",
@@ -693,13 +753,19 @@ mod test {
                     value: Vector3::new(1.0, 2.0, 3.0),
                     angle: 4.0,
                     application: ApplyTo::AllMeshes,
+                }),
+                ",,,",
+                InstructionData::Rotate(Rotate {
+                    value: Vector3::new(0.0, 0.0, 0.0),
+                    angle: 0.0,
+                    application: ApplyTo::AllMeshes,
                 })
             );
         }
 
         #[test]
         fn sheer() {
-            instruction_assert!(
+            instruction_assert_default!(
                 "Sheer",
                 "Sheer",
                 "1, 2, 3, 4, 5, 6, 7",
@@ -707,6 +773,13 @@ mod test {
                     direction: Vector3::new(1.0, 2.0, 3.0),
                     sheer: Vector3::new(4.0, 5.0, 6.0),
                     ratio: 7.0,
+                    application: ApplyTo::SingleMesh,
+                }),
+                ",,,,,,",
+                InstructionData::Sheer(Sheer {
+                    direction: Vector3::new(0.0, 0.0, 0.0),
+                    sheer: Vector3::new(0.0, 0.0, 0.0),
+                    ratio: 0.0,
                     application: ApplyTo::SingleMesh,
                 })
             );
@@ -714,7 +787,7 @@ mod test {
 
         #[test]
         fn sheer_all() {
-            instruction_assert!(
+            instruction_assert_default!(
                 "SheerAll",
                 "SheerAll",
                 "1, 2, 3, 4, 5, 6, 7",
@@ -723,18 +796,30 @@ mod test {
                     sheer: Vector3::new(4.0, 5.0, 6.0),
                     ratio: 7.0,
                     application: ApplyTo::AllMeshes,
+                }),
+                ",,,,,,",
+                InstructionData::Sheer(Sheer {
+                    direction: Vector3::new(0.0, 0.0, 0.0),
+                    sheer: Vector3::new(0.0, 0.0, 0.0),
+                    ratio: 0.0,
+                    application: ApplyTo::AllMeshes,
                 })
             );
         }
 
         #[test]
         fn mirror() {
-            instruction_assert!(
+            instruction_assert_default!(
                 "Mirror",
                 "Mirror",
                 "0, 1, 0",
                 InstructionData::Mirror(Mirror {
                     directions: Vector3::new(false, true, false),
+                    application: ApplyTo::SingleMesh,
+                }),
+                ",,",
+                InstructionData::Mirror(Mirror {
+                    directions: Vector3::new(false, false, false),
                     application: ApplyTo::SingleMesh,
                 })
             );
@@ -742,12 +827,17 @@ mod test {
 
         #[test]
         fn mirror_all() {
-            instruction_assert!(
+            instruction_assert_default!(
                 "MirrorAll",
                 "MirrorAll",
                 "0, 1, 0",
                 InstructionData::Mirror(Mirror {
                     directions: Vector3::new(false, true, false),
+                    application: ApplyTo::AllMeshes,
+                }),
+                ",,",
+                InstructionData::Mirror(Mirror {
+                    directions: Vector3::new(false, false, false),
                     application: ApplyTo::AllMeshes,
                 })
             );
@@ -755,38 +845,52 @@ mod test {
 
         #[test]
         fn color() {
-            instruction_assert!(
+            instruction_assert_default!(
                 "Color",
                 "SetColor",
                 "1, 2, 3, 4",
                 InstructionData::SetColor(SetColor {
                     color: ColorU8RGBA::new(1, 2, 3, 4),
+                }),
+                ",,,",
+                InstructionData::SetColor(SetColor {
+                    color: ColorU8RGBA::new(255, 255, 255, 255),
                 })
             );
         }
 
         #[test]
         fn emmisive_color() {
-            instruction_assert!(
+            instruction_assert_default!(
                 "EmissiveColor",
                 "SetEmissiveColor",
                 "1, 2, 3",
                 InstructionData::SetEmissiveColor(SetEmissiveColor {
                     color: ColorU8RGB::new(1, 2, 3),
+                }),
+                ",,",
+                InstructionData::SetEmissiveColor(SetEmissiveColor {
+                    color: ColorU8RGB::new(0, 0, 0),
                 })
             );
         }
 
         #[test]
         fn blend_mode() {
-            instruction_assert!(
+            instruction_assert_default!(
                 "BlendMode",
                 "SetBlendMode",
                 "Additive, 2, DivideExponent2",
                 InstructionData::SetBlendMode(SetBlendMode {
                     blend_mode: BlendMode::Additive,
                     glow_half_distance: 2,
-                    glow_attenutation_mode: GlowAttenuationMode::DivideExponent2,
+                    glow_attenuation_mode: GlowAttenuationMode::DivideExponent2,
+                }),
+                ",,",
+                InstructionData::SetBlendMode(SetBlendMode {
+                    blend_mode: BlendMode::Normal,
+                    glow_half_distance: 0,
+                    glow_attenuation_mode: GlowAttenuationMode::DivideExponent4,
                 })
             );
             instruction_assert!(
@@ -796,7 +900,7 @@ mod test {
                 InstructionData::SetBlendMode(SetBlendMode {
                     blend_mode: BlendMode::Additive,
                     glow_half_distance: 3,
-                    glow_attenutation_mode: GlowAttenuationMode::DivideExponent4,
+                    glow_attenuation_mode: GlowAttenuationMode::DivideExponent4,
                 })
             );
             instruction_assert!(
@@ -806,7 +910,7 @@ mod test {
                 InstructionData::SetBlendMode(SetBlendMode {
                     blend_mode: BlendMode::Normal,
                     glow_half_distance: 2,
-                    glow_attenutation_mode: GlowAttenuationMode::DivideExponent2,
+                    glow_attenuation_mode: GlowAttenuationMode::DivideExponent2,
                 })
             );
             instruction_assert!(
@@ -816,32 +920,41 @@ mod test {
                 InstructionData::SetBlendMode(SetBlendMode {
                     blend_mode: BlendMode::Normal,
                     glow_half_distance: 3,
-                    glow_attenutation_mode: GlowAttenuationMode::DivideExponent4,
+                    glow_attenuation_mode: GlowAttenuationMode::DivideExponent4,
                 })
             );
         }
 
         #[test]
         fn load_texture() {
-            instruction_assert!(
+            instruction_assert_default!(
                 "Load",
                 "LoadTexture",
                 "path/day.png, path/night.png",
                 InstructionData::LoadTexture(LoadTexture {
                     daytime: "path/day.png".into(),
                     nighttime: "path/night.png".into(),
+                }),
+                ",",
+                InstructionData::LoadTexture(LoadTexture {
+                    daytime: String::new(),
+                    nighttime: String::new(),
                 })
             );
         }
 
         #[test]
-        fn decal_transparent_color() {
-            instruction_assert!(
+        fn instruction_assert_default() {
+            instruction_assert_default!(
                 "Transparent",
                 "SetDecalTransparentColor",
                 "1, 2, 3",
                 InstructionData::SetDecalTransparentColor(SetDecalTransparentColor {
                     color: ColorU8RGB::new(1, 2, 3),
+                }),
+                ",,",
+                InstructionData::SetDecalTransparentColor(SetDecalTransparentColor {
+                    color: ColorU8RGB::new(0, 0, 0),
                 })
             );
         }
