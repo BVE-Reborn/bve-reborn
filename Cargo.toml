@@ -7,4 +7,3 @@ cgmath = { git = "https://github.com/rustgd/cgmath.git", branch = "master" }
 failure = { git = "https://github.com/infinity0/failure.git", branch = "master" }
 failure_derive = { git = "https://github.com/infinity0/failure.git", branch = "master" }
 fluent = { git = "https://github.com/projectfluent/fluent-rs", branch = "master" }
-rental = { git = "https://github.com/BVE-Reborn/rental.git", branch = "update-deps" }
