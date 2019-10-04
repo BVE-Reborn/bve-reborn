@@ -307,8 +307,12 @@ pub fn serde_vector_proxy(_attr: TokenStream, item: TokenStream) -> TokenStream 
             match type_segment_name.last().map(String::as_str) {
                 Some("ColorU8R") | Some("ColorU16R") | Some("ColorF32R") => type_segment_name.push("Vector1".into()),
                 Some("ColorU8RG") | Some("ColorU16RG") | Some("ColorF32RG") => type_segment_name.push("Vector2".into()),
-                Some("ColorU8RGB") | Some("ColorU16RGB") | Some("ColorF32RGB") => type_segment_name.push("Vector3".into()),
-                Some("ColorU8RGBA") | Some("ColorU16RGBA") | Some("ColorF32RGBA") => type_segment_name.push("Vector4".into()),
+                Some("ColorU8RGB") | Some("ColorU16RGB") | Some("ColorF32RGB") => {
+                    type_segment_name.push("Vector3".into())
+                }
+                Some("ColorU8RGBA") | Some("ColorU16RGBA") | Some("ColorF32RGBA") => {
+                    type_segment_name.push("Vector4".into())
+                }
                 _ => {}
             }
             (type_segment_name, (*p).clone())

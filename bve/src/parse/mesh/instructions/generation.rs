@@ -1,6 +1,6 @@
 use crate::parse::mesh::instructions::*;
-use csv::{StringRecord, ReaderBuilder, Trim};
-use crate::parse::mesh::{Span, Error, ErrorKind, FileType};
+use crate::parse::mesh::{FileType, MeshError, MeshErrorKind, Span};
+use csv::{ReaderBuilder, StringRecord, Trim};
 use std::iter::FromIterator;
 
 /// Adds a comma after the first space on each line. Forces newline on last line. Lowercases string.
@@ -24,7 +24,7 @@ fn deserialize_instruction(
     inst_type: InstructionType,
     record: &StringRecord,
     span: Span,
-) -> Result<Instruction, Error> {
+) -> Result<Instruction, MeshError> {
     let data = match inst_type {
         InstructionType::CreateMeshBuilder => InstructionData::CreateMeshBuilder,
         InstructionType::AddVertex => {
@@ -50,16 +50,16 @@ fn deserialize_instruction(
             InstructionData::Cylinder(parsed)
         }
         InstructionType::GenerateNormals => {
-            return Err(Error {
-                kind: ErrorKind::DeprecatedInstruction {
+            return Err(MeshError {
+                kind: MeshErrorKind::DeprecatedInstruction {
                     name: String::from("GenerateNormals"),
                 },
                 span,
             });
         }
         InstructionType::Texture => {
-            return Err(Error {
-                kind: ErrorKind::DeprecatedInstruction {
+            return Err(MeshError {
+                kind: MeshErrorKind::DeprecatedInstruction {
                     name: String::from("[texture]"),
                 },
                 span,

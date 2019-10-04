@@ -1,10 +1,12 @@
-use crate::parse::mesh::{Error, Span, BlendMode, GlowAttenuationMode};
+use crate::parse::mesh::{BlendMode, GlowAttenuationMode, MeshError, Span};
 use crate::parse::util;
 use crate::{ColorU8RGB, ColorU8RGBA};
-pub use generation::*;
 use cgmath::{Vector2, Vector3};
+pub use execution::*;
+pub use generation::*;
 use serde::Deserialize;
 
+mod execution;
 mod generation;
 #[cfg(test)]
 mod tests;
@@ -12,7 +14,7 @@ mod tests;
 #[derive(Debug, Clone, PartialEq)]
 pub struct InstructionList {
     pub instructions: Vec<Instruction>,
-    pub errors: Vec<Error>,
+    pub errors: Vec<MeshError>,
 }
 
 impl InstructionList {
@@ -187,7 +189,11 @@ pub struct Mirror {
 impl From<MirrorSerdeProxy> for Mirror {
     fn from(o: MirrorSerdeProxy) -> Self {
         Self {
-            directions: Vector3::new(o.directions_x.map_or(false, |v| v != 0), o.directions_y.map_or(false, |v| v != 0), o.directions_z.map_or(false, |v| v != 0)),
+            directions: Vector3::new(
+                o.directions_x.map_or(false, |v| v != 0),
+                o.directions_y.map_or(false, |v| v != 0),
+                o.directions_z.map_or(false, |v| v != 0),
+            ),
             application: ApplyTo::Unset,
         }
     }
