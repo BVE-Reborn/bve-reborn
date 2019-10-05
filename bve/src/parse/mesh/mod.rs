@@ -1,7 +1,7 @@
 //! B3D/CSV Static Meshes
 
 use crate::{ColorU8RGB, ColorU8RGBA};
-use cgmath::{Vector2, Vector3};
+use cgmath::{Array, Vector2, Vector3};
 pub use errors::*;
 use indexmap::IndexSet;
 use serde::Deserialize;
@@ -80,10 +80,35 @@ pub struct Vertex {
     pub coord: Vector2<f32>,
 }
 
+impl Vertex {
+    fn from_position_normal(position: Vector3<f32>, normal: Vector3<f32>) -> Self {
+        Self {
+            position,
+            normal,
+            coord: Vector2::from_value(0.0),
+        }
+    }
+    fn from_position(position: Vector3<f32>) -> Self {
+        Self {
+            position,
+            normal: Vector3::from_value(0.0),
+            coord: Vector2::from_value(0.0),
+        }
+    }
+}
+
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq)]
 pub struct FaceData {
     pub emission_color: ColorU8RGB,
+}
+
+impl Default for FaceData {
+    fn default() -> Self {
+        Self {
+            emission_color: ColorU8RGB::from_value(0),
+        }
+    }
 }
 
 #[repr(C)]

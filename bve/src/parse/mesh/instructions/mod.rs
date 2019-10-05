@@ -5,6 +5,7 @@ use cgmath::{Vector2, Vector3};
 pub use execution::*;
 pub use generation::*;
 use serde::Deserialize;
+use smallvec::SmallVec;
 
 mod execution;
 mod generation;
@@ -32,7 +33,7 @@ pub struct Instruction {
     pub data: InstructionData,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum InstructionType {
     #[serde(alias = "[meshbuilder]")]
@@ -98,20 +99,20 @@ pub struct CreateMeshBuilder;
 #[bve_derive::serde_vector_proxy]
 pub struct AddVertex {
     #[default("util::some_zero_f32")]
-    pub location: Vector3<f32>,
+    pub position: Vector3<f32>,
     #[default("util::some_zero_f32")]
     pub normal: Vector3<f32>,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
-#[serde(from = "Vec<usize>")]
+#[serde(from = "SmallVec<[usize; 8]>")]
 pub struct AddFace {
-    pub indexes: Vec<usize>,
+    pub indexes: SmallVec<[usize; 8]>,
     pub sides: Sides,
 }
 
-impl From<Vec<usize>> for AddFace {
-    fn from(v: Vec<usize>) -> Self {
+impl From<SmallVec<[usize; 8]>> for AddFace {
+    fn from(v: SmallVec<[usize; 8]>) -> Self {
         Self {
             indexes: v,
             sides: Sides::Unset,
@@ -253,7 +254,7 @@ pub struct SetTextureCoordinates {
     pub coords: Vector2<f32>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Sides {
     Unset,
     One,
@@ -266,7 +267,7 @@ impl Default for Sides {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum ApplyTo {
     Unset,
     SingleMesh,

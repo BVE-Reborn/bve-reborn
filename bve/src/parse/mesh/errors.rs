@@ -7,6 +7,7 @@ pub struct MeshError {
 #[derive(Debug, Clone, PartialEq)]
 pub enum MeshErrorKind {
     UTF8 { column: Option<u64> },
+    OutOfBounds { idx: usize },
     DeprecatedInstruction { name: String },
     UnknownInstruction { name: String },
     GenericCSV { msg: String },
@@ -92,7 +93,7 @@ impl From<csv::Error> for MeshError {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Span {
     pub line: Option<u64>,
 }

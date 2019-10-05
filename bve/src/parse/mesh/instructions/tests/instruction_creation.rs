@@ -2,6 +2,7 @@ use crate::parse::mesh::instructions::*;
 use crate::parse::mesh::{FileType, Span};
 use crate::{ColorU8RGB, ColorU8RGBA};
 use cgmath::{Vector2, Vector3};
+use smallvec::smallvec;
 
 macro_rules! no_instruction_assert {
     ( $inputB3D:literal, $inputCSV:literal, $args:literal ) => {
@@ -69,7 +70,7 @@ fn no_arguments() {
         "AddVertex",
         "",
         InstructionData::AddVertex(AddVertex {
-            location: Vector3::new(0.0, 0.0, 0.0),
+            position: Vector3::new(0.0, 0.0, 0.0),
             normal: Vector3::new(0.0, 0.0, 0.0),
         })
     );
@@ -82,7 +83,7 @@ fn too_many_arguments() {
         "AddVertex",
         ",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,",
         InstructionData::AddVertex(AddVertex {
-            location: Vector3::new(0.0, 0.0, 0.0),
+            position: Vector3::new(0.0, 0.0, 0.0),
             normal: Vector3::new(0.0, 0.0, 0.0),
         })
     );
@@ -105,12 +106,12 @@ fn add_vertex() {
         "AddVertex",
         "1, 2, 3, 4, 5, 6",
         InstructionData::AddVertex(AddVertex {
-            location: Vector3::new(1.0, 2.0, 3.0),
+            position: Vector3::new(1.0, 2.0, 3.0),
             normal: Vector3::new(4.0, 5.0, 6.0),
         }),
         ",,,,,",
         InstructionData::AddVertex(AddVertex {
-            location: Vector3::new(0.0, 0.0, 0.0),
+            position: Vector3::new(0.0, 0.0, 0.0),
             normal: Vector3::new(0.0, 0.0, 0.0),
         })
     );
@@ -123,7 +124,7 @@ fn add_face() {
         "AddFace",
         "1, 2, 3, 4, 5, 6",
         InstructionData::AddFace(AddFace {
-            indexes: vec![1, 2, 3, 4, 5, 6],
+            indexes: smallvec![1, 2, 3, 4, 5, 6],
             sides: Sides::One,
         })
     );
@@ -136,7 +137,7 @@ fn add_face2() {
         "AddFace2",
         "1, 2, 3, 4, 5, 6",
         InstructionData::AddFace(AddFace {
-            indexes: vec![1, 2, 3, 4, 5, 6],
+            indexes: smallvec![1, 2, 3, 4, 5, 6],
             sides: Sides::Two,
         })
     );
