@@ -74,7 +74,7 @@ pub enum InstructionType {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum InstructionData {
-    CreateMeshBuilder,
+    CreateMeshBuilder(CreateMeshBuilder),
     AddVertex(AddVertex),
     AddFace(AddFace),
     Cube(Cube),
@@ -91,6 +91,9 @@ pub enum InstructionData {
     SetDecalTransparentColor(SetDecalTransparentColor),
     SetTextureCoordinates(SetTextureCoordinates),
 }
+
+#[bve_derive::serde_vector_proxy]
+pub struct CreateMeshBuilder;
 
 #[bve_derive::serde_vector_proxy]
 pub struct AddVertex {

@@ -26,7 +26,7 @@ fn deserialize_instruction(
     span: Span,
 ) -> Result<Instruction, MeshError> {
     let data = match inst_type {
-        InstructionType::CreateMeshBuilder => InstructionData::CreateMeshBuilder,
+        InstructionType::CreateMeshBuilder => InstructionData::CreateMeshBuilder(CreateMeshBuilder),
         InstructionType::AddVertex => {
             let parsed: AddVertex = record.deserialize(None)?;
             InstructionData::AddVertex(parsed)

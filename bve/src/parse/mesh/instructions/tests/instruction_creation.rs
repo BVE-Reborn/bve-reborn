@@ -94,7 +94,7 @@ fn mesh_builder() {
         "[meshbuilder]",
         "CreateMeshBuilder",
         "",
-        InstructionData::CreateMeshBuilder
+        InstructionData::CreateMeshBuilder(CreateMeshBuilder)
     );
 }
 
