@@ -152,7 +152,7 @@ pub struct Scale {
 #[bve_derive::serde_vector_proxy]
 pub struct Rotate {
     #[default("util::some_zero_f32")]
-    pub value: Vector3<f32>,
+    pub axis: Vector3<f32>,
     #[default("util::some_zero_f32")]
     pub angle: f32,
     #[serde(skip)]

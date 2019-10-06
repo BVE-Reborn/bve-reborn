@@ -259,13 +259,13 @@ fn rotate() {
         "Rotate",
         "1, 2, 3, 4",
         InstructionData::Rotate(Rotate {
-            value: Vector3::new(1.0, 2.0, 3.0),
+            axis: Vector3::new(1.0, 2.0, 3.0),
             angle: 4.0,
             application: ApplyTo::SingleMesh,
         }),
         ",,,",
         InstructionData::Rotate(Rotate {
-            value: Vector3::new(0.0, 0.0, 0.0),
+            axis: Vector3::new(0.0, 0.0, 0.0),
             angle: 0.0,
             application: ApplyTo::SingleMesh,
         })
@@ -279,13 +279,13 @@ fn rotate_all() {
         "RotateAll",
         "1, 2, 3, 4",
         InstructionData::Rotate(Rotate {
-            value: Vector3::new(1.0, 2.0, 3.0),
+            axis: Vector3::new(1.0, 2.0, 3.0),
             angle: 4.0,
             application: ApplyTo::AllMeshes,
         }),
         ",,,",
         InstructionData::Rotate(Rotate {
-            value: Vector3::new(0.0, 0.0, 0.0),
+            axis: Vector3::new(0.0, 0.0, 0.0),
             angle: 0.0,
             application: ApplyTo::AllMeshes,
         })
