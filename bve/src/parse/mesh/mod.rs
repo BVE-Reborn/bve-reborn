@@ -40,8 +40,8 @@ impl TextureFileSet {
         }
     }
 
-    pub fn add(&mut self, value: String) -> usize {
-        self.filenames.insert_full(value).0
+    pub fn add(&mut self, value: &str) -> usize {
+        self.filenames.insert_full(value.into()).0
     }
 
     pub fn lookup(&self, idx: usize) -> Option<&str> {
@@ -112,14 +112,14 @@ impl Default for FaceData {
 }
 
 #[repr(C)]
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Glow {
     pub attenuation_mode: GlowAttenuationMode,
     pub half_distance: u16,
 }
 
 #[repr(C)]
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum BlendMode {
     Normal,
@@ -127,7 +127,7 @@ pub enum BlendMode {
 }
 
 #[repr(C)]
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum GlowAttenuationMode {
     DivideExponent2,

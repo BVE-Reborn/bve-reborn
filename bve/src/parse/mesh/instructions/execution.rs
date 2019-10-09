@@ -1,7 +1,7 @@
 use crate::parse::mesh::instructions::*;
 use crate::parse::mesh::*;
 use crate::{ColorU8RGB, ColorU8RGBA};
-use cgmath::{Array, Basis3, Deg, ElementWise, InnerSpace, Rad, Rotation, Rotation3, Vector3, Zero};
+use cgmath::{Array, Basis3, ElementWise, InnerSpace, Rad, Rotation, Rotation3, Vector3, Zero};
 use smallvec::SmallVec;
 use std::f32::consts::PI;
 
@@ -72,12 +72,15 @@ impl Instruction {
 
 impl Executable for CreateMeshBuilder {
     fn execute(&self, span: Span, ctx: &mut MeshBuildContext) {
-        unimplemented!()
+        ctx.polygons.deref().sort_unstable_by_key(|v| {
+            let e = &v.face_data;
+            (e.texture_id, e.decal_transparent_color, e.blend_mode, e.glow, e.color)
+        })
     }
 }
 
 impl Executable for AddVertex {
-    fn execute(&self, span: Span, ctx: &mut MeshBuildContext) {
+    fn execute(&self, _span: Span, ctx: &mut MeshBuildContext) {
         ctx.vertices
             .push(Vertex::from_position_normal(self.position, self.normal))
     }
@@ -85,8 +88,8 @@ impl Executable for AddVertex {
 
 impl Executable for AddFace {
     fn execute(&self, span: Span, ctx: &mut MeshBuildContext) {
-        // Validate all indexes inbounds
-        for idx in self.indexes {
+        // Validate all indexes are in bounds
+        for &idx in &self.indexes {
             if idx >= ctx.vertices.len() {
                 ctx.pso.errors.push(MeshError {
                     span,
@@ -103,7 +106,7 @@ impl Executable for AddFace {
 }
 
 impl Executable for Cube {
-    fn execute(&self, span: Span, ctx: &mut MeshBuildContext) {
+    fn execute(&self, _span: Span, ctx: &mut MeshBuildContext) {
         // http://openbve-project.net/documentation/HTML/object_cubecylinder.html
 
         use smallvec::smallvec; // Workaround for https://github.com/intellij-rust/intellij-rust/issues/4500, move to top level when fixed.
@@ -127,38 +130,37 @@ impl Executable for Cube {
 
         ctx.polygons.reserve(6);
 
-        let face_data = ExpandedFaceData::with_defaults(Sides::One);
         let vo = vertex_offset;
 
         ctx.polygons.push(PolygonFace {
-            face_data,
+            face_data: ExpandedFaceData::with_defaults(Sides::One),
             indices: smallvec![vo + 0, vo + 1, vo + 2, vo + 3],
         });
         ctx.polygons.push(PolygonFace {
-            face_data,
+            face_data: ExpandedFaceData::with_defaults(Sides::One),
             indices: smallvec![vo + 0, vo + 4, vo + 5, vo + 1],
         });
         ctx.polygons.push(PolygonFace {
-            face_data,
+            face_data: ExpandedFaceData::with_defaults(Sides::One),
             indices: smallvec![vo + 0, vo + 3, vo + 7, vo + 4],
         });
         ctx.polygons.push(PolygonFace {
-            face_data,
+            face_data: ExpandedFaceData::with_defaults(Sides::One),
             indices: smallvec![vo + 6, vo + 5, vo + 4, vo + 7],
         });
         ctx.polygons.push(PolygonFace {
-            face_data,
+            face_data: ExpandedFaceData::with_defaults(Sides::One),
             indices: smallvec![vo + 6, vo + 7, vo + 3, vo + 2],
         });
         ctx.polygons.push(PolygonFace {
-            face_data,
+            face_data: ExpandedFaceData::with_defaults(Sides::One),
             indices: smallvec![vo + 6, vo + 2, vo + 1, vo + 5],
         });
     }
 }
 
 impl Executable for Cylinder {
-    fn execute(&self, span: Span, ctx: &mut MeshBuildContext) {
+    fn execute(&self, _span: Span, ctx: &mut MeshBuildContext) {
         // http://openbve-project.net/documentation/HTML/object_cubecylinder.html
 
         use smallvec::smallvec; // Workaround for https://github.com/intellij-rust/intellij-rust/issues/4500, move to top level when fixed.
@@ -190,68 +192,60 @@ impl Executable for Cylinder {
         ctx.polygons.reserve(n as usize);
 
         let v = vertex_offset;
-        let face_data = ExpandedFaceData::with_defaults(Sides::One);
 
         let split = (n - 1).max(0) as usize;
         for i in 0..split {
             ctx.polygons.push(PolygonFace {
-                face_data,
+                face_data: ExpandedFaceData::with_defaults(Sides::One),
                 indices: smallvec![v + (2 * i + 2), v + (2 * i + 3), v + (2 * i + 1), v + (2 * i + 0)],
             });
             ctx.polygons.push(PolygonFace {
-                face_data,
+                face_data: ExpandedFaceData::with_defaults(Sides::One),
                 indices: smallvec![v + 0, v + 1, v + (2 * i + 1), v + (2 * i + 0)],
             });
         }
     }
 }
 
-impl Executable for Translate {
-    fn execute(&self, span: Span, ctx: &mut MeshBuildContext) {
-        // Handle current mesh
-        for v in &mut ctx.vertices {
-            v.position += self.value;
-        }
+/// Preform a per-vertex transform on all meshes in the MeshBuildContext depending on ApplyTo
+fn apply_transform<F>(application: ApplyTo, ctx: &mut MeshBuildContext, mut func: F)
+where
+    F: FnMut(&mut Vertex) -> (),
+{
+    for v in &mut ctx.vertices {
+        func(v);
+    }
 
-        // Handle other meshes
-        match self.application {
-            ApplyTo::SingleMesh => {}
-            ApplyTo::AllMeshes => {
-                for m in &mut ctx.pso.meshes {
-                    for v in &mut m.vertices {
-                        v.position += self.value
-                    }
+    // Handle other meshes
+    match application {
+        ApplyTo::SingleMesh => {}
+        ApplyTo::AllMeshes => {
+            for m in &mut ctx.pso.meshes {
+                for v in &mut m.vertices {
+                    func(v);
                 }
             }
-            _ => unreachable!(),
         }
+        _ => unreachable!(),
+    }
+}
+
+impl Executable for Translate {
+    fn execute(&self, _span: Span, ctx: &mut MeshBuildContext) {
+        apply_transform(self.application, ctx, |v| v.position += self.value);
     }
 }
 
 impl Executable for Scale {
-    fn execute(&self, span: Span, ctx: &mut MeshBuildContext) {
-        // Handle current mesh
-        for v in &mut ctx.vertices {
-            v.position = v.position.mul_element_wise(self.value);
-        }
-
-        // Handle other meshes
-        match self.application {
-            ApplyTo::SingleMesh => {}
-            ApplyTo::AllMeshes => {
-                for m in &mut ctx.pso.meshes {
-                    for v in &mut m.vertices {
-                        v.position = v.position.mul_element_wise(self.value);
-                    }
-                }
-            }
-            _ => unreachable!(),
-        }
+    fn execute(&self, _span: Span, ctx: &mut MeshBuildContext) {
+        apply_transform(self.application, ctx, |v| {
+            v.position.mul_assign_element_wise(self.value)
+        });
     }
 }
 
 impl Executable for Rotate {
-    fn execute(&self, span: Span, ctx: &mut MeshBuildContext) {
+    fn execute(&self, _span: Span, ctx: &mut MeshBuildContext) {
         let axis = if self.axis.is_zero() {
             Vector3::new(1.0, 0.0, 0.0)
         } else {
@@ -260,22 +254,91 @@ impl Executable for Rotate {
 
         let rotation = Basis3::from_axis_angle(axis, Rad(self.angle.to_radians()));
 
-        // Handle current mesh
-        for v in &mut ctx.vertices {
+        apply_transform(self.application, ctx, |v| {
             v.position = rotation.rotate_vector(v.position);
+        });
+    }
+}
+
+impl Executable for Sheer {
+    fn execute(&self, _span: Span, ctx: &mut MeshBuildContext) {
+        apply_transform(self.application, ctx, |v| {
+            let scale = self.ratio * (self.direction.mul_element_wise(v.position)).sum();
+            v.position += self.sheer * scale;
+        });
+    }
+}
+
+impl Executable for Mirror {
+    fn execute(&self, _span: Span, ctx: &mut MeshBuildContext) {
+        let factor = self.directions.map(|b| if b { -1.0f32 } else { 1.0f32 });
+
+        apply_transform(self.application, ctx, |v| {
+            v.position.mul_assign_element_wise(factor);
+        });
+    }
+}
+
+fn edit_face_data<F>(ctx: &mut MeshBuildContext, mut func: F)
+where
+    F: FnMut(&mut TextureFileSet, &mut ExpandedFaceData) -> (),
+{
+    for f in &mut ctx.polygons {
+        // CLion fails at type deduction here, help it out
+        let face_data: &mut ExpandedFaceData = &mut f.face_data;
+        func(&mut ctx.pso.textures, face_data)
+    }
+}
+
+impl Executable for SetColor {
+    fn execute(&self, _span: Span, ctx: &mut MeshBuildContext) {
+        edit_face_data(ctx, |_, f| f.color = self.color);
+    }
+}
+
+impl Executable for SetEmissiveColor {
+    fn execute(&self, _span: Span, ctx: &mut MeshBuildContext) {
+        edit_face_data(ctx, |_, f| f.face_data.emission_color = self.color);
+    }
+}
+
+impl Executable for SetBlendMode {
+    fn execute(&self, _span: Span, ctx: &mut MeshBuildContext) {
+        edit_face_data(ctx, |_, f| {
+            f.blend_mode = self.blend_mode;
+            f.glow = Glow {
+                attenuation_mode: self.glow_attenuation_mode,
+                half_distance: self.glow_half_distance,
+            };
+        });
+    }
+}
+
+impl Executable for LoadTexture {
+    fn execute(&self, _span: Span, ctx: &mut MeshBuildContext) {
+        edit_face_data(ctx, |textures, f| f.texture_id = Some(textures.add(&self.daytime)))
+    }
+}
+
+impl Executable for SetDecalTransparentColor {
+    fn execute(&self, _span: Span, ctx: &mut MeshBuildContext) {
+        edit_face_data(ctx, |_, f| {
+            f.decal_transparent_color = Some(self.color);
+        })
+    }
+}
+
+impl Executable for SetTextureCoordinates {
+    fn execute(&self, span: Span, ctx: &mut MeshBuildContext) {
+        // Validate index are in bounds
+        if self.index >= ctx.vertices.len() {
+            ctx.pso.errors.push(MeshError {
+                span,
+                kind: MeshErrorKind::OutOfBounds { idx: self.index },
+            });
+            return;
         }
 
-        // Handle other meshes
-        match self.application {
-            ApplyTo::SingleMesh => {}
-            ApplyTo::AllMeshes => {
-                for m in &mut ctx.pso.meshes {
-                    for v in &mut m.vertices {
-                        v.position = rotation.rotate_vector(v.position);
-                    }
-                }
-            }
-            _ => unreachable!(),
-        }
+        ctx.vertices[self.index].coord = self.coords;
     }
 }
