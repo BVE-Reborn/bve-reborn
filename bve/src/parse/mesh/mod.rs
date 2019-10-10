@@ -57,7 +57,7 @@ impl Default for TextureFileSet {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Texture {
-    pub texture_file: usize,
+    pub texture_id: Option<usize>,
     pub decal_transparent_color: Option<ColorU8RGB>,
 }
 
@@ -112,14 +112,14 @@ impl Default for FaceData {
 }
 
 #[repr(C)]
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Glow {
     pub attenuation_mode: GlowAttenuationMode,
     pub half_distance: u16,
 }
 
 #[repr(C)]
-#[derive(Copy, Clone, Debug, PartialEq, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum BlendMode {
     Normal,
@@ -127,7 +127,7 @@ pub enum BlendMode {
 }
 
 #[repr(C)]
-#[derive(Copy, Clone, Debug, PartialEq, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum GlowAttenuationMode {
     DivideExponent2,

@@ -254,7 +254,7 @@ pub struct SetTextureCoordinates {
     pub coords: Vector2<f32>,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Sides {
     Unset,
     One,
@@ -267,7 +267,7 @@ impl Default for Sides {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ApplyTo {
     Unset,
     SingleMesh,

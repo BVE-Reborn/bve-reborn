@@ -2,6 +2,7 @@ use crate::parse::mesh::instructions::*;
 use crate::parse::mesh::*;
 use crate::{ColorU8RGB, ColorU8RGBA};
 use cgmath::{Array, Basis3, ElementWise, InnerSpace, Rad, Rotation, Rotation3, Vector3, Zero};
+use itertools::Itertools;
 use smallvec::SmallVec;
 use std::f32::consts::PI;
 
@@ -17,10 +18,10 @@ struct MeshBuildContext {
 
 struct PolygonFace {
     indices: SmallVec<[usize; 8]>,
-    face_data: ExpandedFaceData,
+    face_data: ExtendedFaceData,
 }
 
-struct ExpandedFaceData {
+struct ExtendedFaceData {
     face_data: FaceData,
     texture_id: Option<usize>,
     color: ColorU8RGBA,
@@ -30,7 +31,7 @@ struct ExpandedFaceData {
     sides: Sides,
 }
 
-impl ExpandedFaceData {
+impl ExtendedFaceData {
     fn with_defaults(sides: Sides) -> Self {
         Self {
             face_data: FaceData::default(),
@@ -72,10 +73,46 @@ impl Instruction {
 
 impl Executable for CreateMeshBuilder {
     fn execute(&self, span: Span, ctx: &mut MeshBuildContext) {
-        ctx.polygons.deref().sort_unstable_by_key(|v| {
+        let key_f = |v: &PolygonFace| {
+            // sort to keep faces with identical traits together
             let e = &v.face_data;
-            (e.texture_id, e.decal_transparent_color, e.blend_mode, e.glow, e.color)
-        })
+            (
+                e.texture_id,
+                e.decal_transparent_color.map(ColorU8RGB::sum),
+                e.blend_mode,
+                e.glow,
+                e.color.sum(),
+                e.sides,
+            )
+        };
+
+        ctx.polygons.sort_unstable_by_key(key_f);
+
+        if ctx.polygons.is_empty() {
+            return;
+        }
+
+        for (_key, group) in &ctx.polygons.iter().group_by(|&v| key_f(v)) {
+            // Type hint
+            let group: itertools::Group<'_, _, _, _> = group;
+            let mut peek = group.peekable();
+
+            let first: &PolygonFace = peek.peek().expect("Groups must not be empty");
+            let face_data: &ExtendedFaceData = &first.face_data;
+
+            let mesh = Mesh {
+                texture: Texture {
+                    texture_id: face_data.texture_id,
+                    decal_transparent_color: face_data.decal_transparent_color,
+                },
+                color: face_data.color,
+                blend_mode: face_data.blend_mode,
+                glow: face_data.glow,
+                face_data: vec![],
+                vertices: vec![],
+                indices: vec![],
+            };
+        }
     }
 }
 
@@ -99,7 +136,7 @@ impl Executable for AddFace {
             }
         }
         ctx.polygons.push(PolygonFace {
-            face_data: ExpandedFaceData::with_defaults(self.sides),
+            face_data: ExtendedFaceData::with_defaults(self.sides),
             indices: self.indexes.clone(),
         });
     }
@@ -133,27 +170,27 @@ impl Executable for Cube {
         let vo = vertex_offset;
 
         ctx.polygons.push(PolygonFace {
-            face_data: ExpandedFaceData::with_defaults(Sides::One),
+            face_data: ExtendedFaceData::with_defaults(Sides::One),
             indices: smallvec![vo + 0, vo + 1, vo + 2, vo + 3],
         });
         ctx.polygons.push(PolygonFace {
-            face_data: ExpandedFaceData::with_defaults(Sides::One),
+            face_data: ExtendedFaceData::with_defaults(Sides::One),
             indices: smallvec![vo + 0, vo + 4, vo + 5, vo + 1],
         });
         ctx.polygons.push(PolygonFace {
-            face_data: ExpandedFaceData::with_defaults(Sides::One),
+            face_data: ExtendedFaceData::with_defaults(Sides::One),
             indices: smallvec![vo + 0, vo + 3, vo + 7, vo + 4],
         });
         ctx.polygons.push(PolygonFace {
-            face_data: ExpandedFaceData::with_defaults(Sides::One),
+            face_data: ExtendedFaceData::with_defaults(Sides::One),
             indices: smallvec![vo + 6, vo + 5, vo + 4, vo + 7],
         });
         ctx.polygons.push(PolygonFace {
-            face_data: ExpandedFaceData::with_defaults(Sides::One),
+            face_data: ExtendedFaceData::with_defaults(Sides::One),
             indices: smallvec![vo + 6, vo + 7, vo + 3, vo + 2],
         });
         ctx.polygons.push(PolygonFace {
-            face_data: ExpandedFaceData::with_defaults(Sides::One),
+            face_data: ExtendedFaceData::with_defaults(Sides::One),
             indices: smallvec![vo + 6, vo + 2, vo + 1, vo + 5],
         });
     }
@@ -196,11 +233,11 @@ impl Executable for Cylinder {
         let split = (n - 1).max(0) as usize;
         for i in 0..split {
             ctx.polygons.push(PolygonFace {
-                face_data: ExpandedFaceData::with_defaults(Sides::One),
+                face_data: ExtendedFaceData::with_defaults(Sides::One),
                 indices: smallvec![v + (2 * i + 2), v + (2 * i + 3), v + (2 * i + 1), v + (2 * i + 0)],
             });
             ctx.polygons.push(PolygonFace {
-                face_data: ExpandedFaceData::with_defaults(Sides::One),
+                face_data: ExtendedFaceData::with_defaults(Sides::One),
                 indices: smallvec![v + 0, v + 1, v + (2 * i + 1), v + (2 * i + 0)],
             });
         }
@@ -281,11 +318,11 @@ impl Executable for Mirror {
 
 fn edit_face_data<F>(ctx: &mut MeshBuildContext, mut func: F)
 where
-    F: FnMut(&mut TextureFileSet, &mut ExpandedFaceData) -> (),
+    F: FnMut(&mut TextureFileSet, &mut ExtendedFaceData) -> (),
 {
     for f in &mut ctx.polygons {
         // CLion fails at type deduction here, help it out
-        let face_data: &mut ExpandedFaceData = &mut f.face_data;
+        let face_data: &mut ExtendedFaceData = &mut f.face_data;
         func(&mut ctx.pso.textures, face_data)
     }
 }
