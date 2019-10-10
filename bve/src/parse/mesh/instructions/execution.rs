@@ -98,16 +98,16 @@ impl Executable for CreateMeshBuilder {
             let mut peek = group.peekable();
 
             let first: &PolygonFace = peek.peek().expect("Groups must not be empty");
-            let face_data: &ExtendedFaceData = &first.face_data;
+            let first_face_data: &ExtendedFaceData = &first.face_data;
 
             let mesh = Mesh {
                 texture: Texture {
-                    texture_id: face_data.texture_id,
-                    decal_transparent_color: face_data.decal_transparent_color,
+                    texture_id: first_face_data.texture_id,
+                    decal_transparent_color: first_face_data.decal_transparent_color,
                 },
-                color: face_data.color,
-                blend_mode: face_data.blend_mode,
-                glow: face_data.glow,
+                color: first_face_data.color,
+                blend_mode: first_face_data.blend_mode,
+                glow: first_face_data.glow,
                 face_data: vec![],
                 vertices: vec![],
                 indices: vec![],
