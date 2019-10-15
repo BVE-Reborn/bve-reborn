@@ -7,3 +7,7 @@ cgmath = { git = "https://github.com/rustgd/cgmath.git", branch = "master" }
 failure = { git = "https://github.com/infinity0/failure.git", branch = "master" }
 failure_derive = { git = "https://github.com/infinity0/failure.git", branch = "master" }
 fluent = { git = "https://github.com/projectfluent/fluent-rs", branch = "master" }
+
+[profile.release]
+overflow-checks = true
+debug-assertions = true
