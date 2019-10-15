@@ -1,7 +1,5 @@
 //! Implementation of the high performance runtime logic for the game BVE-Reborn.
 
-// Features
-#![feature(const_vec_new)]
 // Rust warnings
 #![warn(unused)]
 #![deny(future_incompatible)]
