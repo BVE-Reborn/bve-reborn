@@ -167,12 +167,20 @@ pub fn create_instructions(input: &str, file_type: FileType) -> InstructionList 
     'l: for line in csv_reader.into_records() {
         match line {
             Ok(record) => {
+                // Get the line number
+                let span = record.position().into();
                 // Parse the instruction name
                 let instruction: InstructionType = match record.get(0) {
                     Some(name) => match serde_plain::from_str(name) {
                         Ok(v) => v,
                         // Parsing fails
-                        Err(_) => continue 'l,
+                        Err(_) => {
+                            instructions.errors.push(MeshError {
+                                span,
+                                kind: MeshErrorKind::UnknownInstruction { name: name.to_owned() },
+                            });
+                            continue 'l;
+                        }
                     },
                     // Nothing in line
                     None => continue 'l,
@@ -180,14 +188,15 @@ pub fn create_instructions(input: &str, file_type: FileType) -> InstructionList 
 
                 // Remove the already parsed instruction name
                 let arguments = StringRecord::from_iter(record.iter().skip(1));
-                // Get the line number
-                let span = record.position().into();
 
                 let inst = deserialize_instruction(instruction, &arguments, span);
 
                 match inst {
                     Ok(i) => instructions.instructions.push(i),
-                    Err(e) => instructions.errors.push(e),
+                    Err(mut e) => {
+                        e.span = span;
+                        instructions.errors.push(e)
+                    }
                 }
             }
             Err(_e) => {}
