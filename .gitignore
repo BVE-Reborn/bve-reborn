@@ -1,4 +1,6 @@
 .idea/
+/hfuzz_workspace
+/hfuzz_target
 /target
 **/*.rs.bk
 Cargo.lock
