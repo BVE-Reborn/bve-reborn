@@ -6,9 +6,9 @@ use std::fmt::Formatter;
 use std::str::FromStr;
 
 #[derive(Debug, Copy, Clone, PartialOrd, PartialEq, Default)]
-pub struct LooseFloat<T>(pub T);
+pub struct LooseNumber<T>(pub T);
 
-impl<'de, T> Deserialize<'de> for LooseFloat<T>
+impl<'de, T> Deserialize<'de> for LooseNumber<T>
 where
     T: FromStr,
 {
@@ -31,7 +31,7 @@ impl<'de, T> Visitor<'de> for LooseFloatVisitor<T>
 where
     T: FromStr,
 {
-    type Value = LooseFloat<T>;
+    type Value = LooseNumber<T>;
 
     fn expecting<'a>(&self, formatter: &mut Formatter<'a>) -> fmt::Result {
         write!(formatter, "Expected loose float.")
@@ -46,7 +46,7 @@ where
         while !filtered.is_empty() {
             let parsed: Result<T, _> = filtered.parse();
             match parsed {
-                Ok(v) => return Ok(LooseFloat(v)),
+                Ok(v) => return Ok(LooseNumber(v)),
                 Err(e) => filtered.pop(),
             };
         }

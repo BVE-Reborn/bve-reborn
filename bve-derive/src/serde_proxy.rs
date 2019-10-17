@@ -3,7 +3,6 @@ use proc_macro::TokenStream;
 use proc_macro2::{Group, Ident, Literal};
 use quote::{format_ident, quote};
 use syn::export::{ToTokens, TokenStream2};
-use syn::parse::Parser;
 use syn::{Attribute, ExprPath, GenericArgument, PathArguments, Type, TypePath, Visibility};
 
 #[derive(Debug)]
@@ -37,24 +36,36 @@ fn combine_attributes(attributes: &[Attribute]) -> TokenStream2 {
 }
 
 /// Replace paths like `f32` with their proxy like `LooseFloat<f32>`
-fn process_explicit_type_proxy_path(t: TypePath) -> TokenStream2 {
+fn process_explicit_type_proxy_path(t: &TypePath) -> TokenStream2 {
     let t = t.path.segments.last().expect("Type path must exist");
     match t.ident.to_string().as_str() {
-        "f32" => quote!(crate::parse::util::LooseFloat<f32>),
-        "f64" => quote!(crate::parse::util::LooseFloat<f64>),
+        "bool" => quote!(crate::parse::util::NumericBool),
+        "f32" => quote!(crate::parse::util::LooseNumber<f32>),
+        "f64" => quote!(crate::parse::util::LooseNumber<f64>),
+        "i8" => quote!(crate::parse::util::LooseNumber<i8>),
+        "i16" => quote!(crate::parse::util::LooseNumber<i16>),
+        "i32" => quote!(crate::parse::util::LooseNumber<i32>),
+        "i64" => quote!(crate::parse::util::LooseNumber<i64>),
+        "u8" => quote!(crate::parse::util::LooseNumber<u8>),
+        "u16" => quote!(crate::parse::util::LooseNumber<u16>),
+        "u32" => quote!(crate::parse::util::LooseNumber<u32>),
+        "u64" => quote!(crate::parse::util::LooseNumber<u64>),
+        "isize" => quote!(crate::parse::util::LooseNumber<isize>),
+        "usize" => quote!(crate::parse::util::LooseNumber<usize>),
         _ => quote!(#t),
     }
 }
 
 /// Replace paths like `f32` with their proxy like `LooseFloat<f32>`
 fn process_explicit_type_proxy(t: Type) -> TokenStream2 {
-    match t {
-        Type::Path(path) => process_explicit_type_proxy_path(path),
-        _ => quote!(#t),
+    if let Type::Path(path) = t {
+        process_explicit_type_proxy_path(&path)
+    } else {
+        quote!(#t)
     }
 }
 
-/// Returns the first generic argument of the provided type, name_vec provides already stringified type names
+/// Returns the first generic argument of the provided type, `name_vec` provides already stringified type names
 fn get_first_generic_argument(name_vec: &[String], path: &TypePath) -> TokenStream2 {
     let valid = name_vec.len() >= 2;
     let second_name = if valid { name_vec.get(name_vec.len() - 2) } else { None };
@@ -74,7 +85,7 @@ fn get_first_generic_argument(name_vec: &[String], path: &TypePath) -> TokenStre
 
 /// Given a type, find the conversion to reverse the proxying. From `LooseFloat` -> `f32` for example
 fn process_type_proxy_conversion(inner_type: TokenStream2) -> TokenStream2 {
-    let parsed = syn::parse2::<syn::TypePath>(inner_type.clone()).expect("Expected a type, found some other crap");
+    let parsed = syn::parse2::<syn::TypePath>(inner_type).expect("Expected a type, found some other crap");
     let ident = parsed
         .path
         .segments
@@ -84,7 +95,7 @@ fn process_type_proxy_conversion(inner_type: TokenStream2) -> TokenStream2 {
         .to_string();
     println!("{}", ident);
     match ident.as_str() {
-        "LooseFloat" => quote!(.0),
+        "LooseNumber" | "NumericBool" => quote!(.0),
         _ => quote!(),
     }
 }
@@ -230,7 +241,7 @@ fn generate_proxy_object(name: &Ident, fields: &[Field]) -> TokenStream2 {
                 let original_name = &field.name;
                 let attributes = combine_attributes(&field.attributes);
                 let ty = &field.ty.1;
-                let ty = process_explicit_type_proxy_path((*ty).clone());
+                let ty = process_explicit_type_proxy_path(ty);
                 let (inner, conversion, attribute) = process_default(original_name, &ty, &field.default);
                 let proxy_fields = quote! {
                     #attributes

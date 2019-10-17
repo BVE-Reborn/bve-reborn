@@ -125,7 +125,7 @@ pub struct Cube {
     pub half_dim: Vector3<f32>,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[bve_derive::serde_vector_proxy]
 pub struct Cylinder {
     pub sides: u32,
     pub upper_radius: f32,
@@ -171,36 +171,12 @@ pub struct Sheer {
     pub application: ApplyTo,
 }
 
-// TODO: Integrate bool deserialization into macro
-#[derive(Deserialize)]
-struct MirrorSerdeProxy {
-    #[serde(default = "util::some_zero_u8")]
-    directions_x: Option<u8>,
-    #[serde(default = "util::some_zero_u8")]
-    directions_y: Option<u8>,
-    #[serde(default = "util::some_zero_u8")]
-    directions_z: Option<u8>,
-}
-
-#[derive(Debug, Clone, PartialEq, Deserialize)]
-#[serde(from = "MirrorSerdeProxy")]
+#[bve_derive::serde_vector_proxy]
 pub struct Mirror {
+    #[default("util::some_false")]
     pub directions: Vector3<bool>,
     #[serde(skip)]
     pub application: ApplyTo,
-}
-
-impl From<MirrorSerdeProxy> for Mirror {
-    fn from(o: MirrorSerdeProxy) -> Self {
-        Self {
-            directions: Vector3::new(
-                o.directions_x.map_or(false, |v| v != 0),
-                o.directions_y.map_or(false, |v| v != 0),
-                o.directions_z.map_or(false, |v| v != 0),
-            ),
-            application: ApplyTo::Unset,
-        }
-    }
 }
 
 #[bve_derive::serde_vector_proxy]
