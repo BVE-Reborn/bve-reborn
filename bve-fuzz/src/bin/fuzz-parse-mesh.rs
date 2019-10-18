@@ -1,3 +1,5 @@
+#![cfg(target_os = "linux")]
+
 fn main() {
     loop {
         let closure = |data: &[u8]| {

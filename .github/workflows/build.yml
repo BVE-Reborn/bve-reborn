@@ -1,0 +1,57 @@
+name: build
+on: [push, pull_request]
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        rust: [nightly-2019-10-15]
+        os: [windows-2019, macOS-10.14, ubuntu-18.04]
+        include:
+          - rust: nightly-2019-10-15
+            os: windows-2019
+            name: windows-nightly-2019-10-15
+
+          - rust: nightly-2019-10-15
+            os: macOS-10.14
+            name: mac-nightly-2019-10-15
+
+          - rust: nightly-2019-10-15
+            os: ubuntu-18.04
+            name: linux-nightly-2019-10-15
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Install Rustup
+        run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain none --profile minimal -y
+        if: matrix.os == 'macOS-10.14' || matrix.os == 'windows-2019'
+        shell: bash
+
+      - name: Update Rustup
+        run: |
+          export PATH=$PATH:$HOME/.cargo/bin
+          rustup self update
+          rustup set profile minimal
+        shell: bash
+
+      - name: Install Rust ${{ matrix.rust }}
+        run: |
+          export PATH=$PATH:$HOME/.cargo/bin
+          rustup toolchain install ${{ matrix.rust }}
+        shell: bash
+
+      - uses: actions/checkout@v1
+
+      - name: Build
+        run: |
+          export PATH=$PATH:$HOME/.cargo/bin
+          cargo build --all --tests
+        shell: bash
+
+      - name: Run tests
+        run: |
+          export PATH=$PATH:$HOME/.cargo/bin
+          cargo test --all
+        shell: bash
