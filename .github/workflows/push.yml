@@ -4,6 +4,7 @@ on: [push, pull_request]
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
         rust: [nightly, nightly-2019-10-15]
         os: [windows-2019, macOS-10.14, ubuntu-18.04]
@@ -15,6 +16,11 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
+      - name: Install Rustup
+        run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain none -y
+        if: matrix.os == 'macOS-10.14'
+        shell: bash
+
       - name: Update Rustup
         run: rustup self update
 
