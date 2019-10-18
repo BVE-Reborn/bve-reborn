@@ -49,21 +49,21 @@ jobs:
       - uses: actions/checkout@v1
 
       - name: Run Clippy
-          if: matrix.tool == 'clippy'
+        if: matrix.tool == 'clippy'
         run: |
           export PATH=$PATH:$HOME/.cargo/bin
           cargo clippy --all --tests -- -D warnings
         shell: bash
 
       - name: Run Rustfmt
-          if: matrix.tool == 'rustfmt'
+        if: matrix.tool == 'rustfmt'
         run: |
           export PATH=$PATH:$HOME/.cargo/bin
           cargo fmt --all -- --check
         shell: bash
 
       - name: Run Cargo Audit
-          if: matrix.tool == 'audit'
+        if: matrix.tool == 'audit'
         run: |
           export PATH=$PATH:$HOME/.cargo/bin
           cargo audit
