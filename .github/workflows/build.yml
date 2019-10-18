@@ -3,7 +3,7 @@ on: [push, pull_request]
 
 jobs:
   build:
-    name: build-${{ matrix.name }}
+    name: ${{ matrix.name }}
     strategy:
       fail-fast: false
       matrix:
