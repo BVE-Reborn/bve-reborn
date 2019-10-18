@@ -1,0 +1,30 @@
+name: push
+on: [push, pull_request]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        rust: [nightly, nightly-2019-10-15]
+        os: [windows-2019, macOS-10.14, ubuntu-18.04]
+        exclude:
+          - rust: nightly
+            os: windows-2019
+          - rust: nightly
+            os: macOS-10.14
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Update Rustup
+        run: rustup self update
+
+      - name: Install Rust ${{ matrix.rust }}
+        run: rustup toolchain install ${{ matrix.rust }}
+
+      - uses: actions/checkout@v1
+
+      - name: Build
+        run: cargo build --all --tests
+
+      - name: Run tests
+        run: cargo test --all
