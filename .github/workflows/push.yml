@@ -3,11 +3,28 @@ on: [push, pull_request]
 
 jobs:
   build:
+    name: build-${{ matrix.name }}
     strategy:
       fail-fast: false
       matrix:
         rust: [nightly, nightly-2019-10-15]
         os: [windows-2019, macOS-10.14, ubuntu-18.04]
+        include:
+          - rust: nightly-2019-10-15
+            os: windows-2019
+            name: windows-nightly-2019-10-15
+
+          - rust: nightly-2019-10-15
+            os: macOS-10.14
+            name: mac-nightly-2019-10-15
+
+          - rust: nightly-2019-10-15
+            os: ubuntu-18.04
+            name: linux-nightly-2019-10-15
+
+          - rust: nightly
+            os: ubuntu-18.04
+            name: linux-nightly
         exclude:
           - rust: nightly
             os: windows-2019
@@ -17,12 +34,14 @@ jobs:
 
     steps:
       - name: Install Rustup
-        run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain none -y
+        run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain none --profile minimal -y
         if: matrix.os == 'macOS-10.14'
         shell: bash
 
       - name: Update Rustup
-        run: rustup self update
+        run: |
+          rustup self update
+          rustup set profile minimal
 
       - name: Install Rust ${{ matrix.rust }}
         run: rustup toolchain install ${{ matrix.rust }}
