@@ -6,12 +6,12 @@ impl<I, T1> CollectBy1<T1> for I
 where
     I: Iterator<Item = (T1,)>,
 {
-    fn collect1(mut self) -> (Vec<T1>,) {
+    fn collect1(self) -> (Vec<T1>,) {
         let mut a1 = Vec::new();
 
         a1.reserve(self.size_hint().0);
 
-        while let Some((v1,)) = self.next() {
+        for (v1,) in self {
             a1.push(v1);
         }
 
@@ -27,7 +27,7 @@ impl<I, T1, T2> CollectBy2<T1, T2> for I
 where
     I: Iterator<Item = (T1, T2)>,
 {
-    fn collect2(mut self) -> (Vec<T1>, Vec<T2>) {
+    fn collect2(self) -> (Vec<T1>, Vec<T2>) {
         let mut a1 = Vec::new();
         let mut a2 = Vec::new();
 
@@ -35,7 +35,7 @@ where
         a1.reserve(size);
         a2.reserve(size);
 
-        while let Some((v1, v2)) = self.next() {
+        for (v1, v2) in self {
             a1.push(v1);
             a2.push(v2);
         }
@@ -52,7 +52,7 @@ impl<I, T1, T2, T3> CollectBy3<T1, T2, T3> for I
 where
     I: Iterator<Item = (T1, T2, T3)>,
 {
-    fn collect3(mut self) -> (Vec<T1>, Vec<T2>, Vec<T3>) {
+    fn collect3(self) -> (Vec<T1>, Vec<T2>, Vec<T3>) {
         let mut a1 = Vec::new();
         let mut a2 = Vec::new();
         let mut a3 = Vec::new();
@@ -62,7 +62,7 @@ where
         a2.reserve(size);
         a3.reserve(size);
 
-        while let Some((v1, v2, v3)) = self.next() {
+        for (v1, v2, v3) in self {
             a1.push(v1);
             a2.push(v2);
             a3.push(v3);
@@ -80,7 +80,7 @@ impl<I, T1, T2, T3, T4> CollectBy4<T1, T2, T3, T4> for I
 where
     I: Iterator<Item = (T1, T2, T3, T4)>,
 {
-    fn collect4(mut self) -> (Vec<T1>, Vec<T2>, Vec<T3>, Vec<T4>) {
+    fn collect4(self) -> (Vec<T1>, Vec<T2>, Vec<T3>, Vec<T4>) {
         let mut a1 = Vec::new();
         let mut a2 = Vec::new();
         let mut a3 = Vec::new();
@@ -92,7 +92,7 @@ where
         a3.reserve(size);
         a4.reserve(size);
 
-        while let Some((v1, v2, v3, v4)) = self.next() {
+        for (v1, v2, v3, v4) in self {
             a1.push(v1);
             a2.push(v2);
             a3.push(v3);

@@ -10,10 +10,11 @@
 #![warn(clippy::pedantic)]
 #![warn(clippy::restriction)]
 // Annoying regular clippy warnings
-#![allow(clippy::cast_sign_loss)] // Annoying
-#![allow(clippy::cast_precision_loss)] // Annoying
 #![allow(clippy::cast_possible_truncation)] // Annoying
+#![allow(clippy::cast_precision_loss)] // Annoying
+#![allow(clippy::cast_sign_loss)] // Annoying
 #![allow(clippy::cognitive_complexity)] // This is dumb
+#![allow(clippy::single_match_else)] // Future expansion
 // Annoying/irrelevant clippy Restrictions
 #![allow(clippy::decimal_literal_representation)]
 #![allow(clippy::else_if_without_else)]
@@ -38,5 +39,5 @@ mod serde_proxy;
 
 #[proc_macro_attribute]
 pub fn serde_proxy(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    serde_proxy::serde_proxy(_attr, item)
+    serde_proxy::serde_proxy(item)
 }

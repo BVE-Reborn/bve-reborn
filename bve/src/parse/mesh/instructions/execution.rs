@@ -143,6 +143,7 @@ impl Executable for AddFace {
 }
 
 impl Executable for Cube {
+    #[allow(clippy::identity_op)] // Some +0 due to formatting/clarity
     fn execute(&self, _span: Span, ctx: &mut MeshBuildContext) {
         // http://openbve-project.net/documentation/HTML/object_cubecylinder.html
 
@@ -197,6 +198,7 @@ impl Executable for Cube {
 }
 
 impl Executable for Cylinder {
+    #[allow(clippy::identity_op)] // Some +0 due to formatting/clarity
     fn execute(&self, _span: Span, ctx: &mut MeshBuildContext) {
         // http://openbve-project.net/documentation/HTML/object_cubecylinder.html
 
@@ -244,7 +246,7 @@ impl Executable for Cylinder {
     }
 }
 
-/// Preform a per-vertex transform on all meshes in the MeshBuildContext depending on ApplyTo
+/// Preform a per-vertex transform on all meshes in the [`MeshBuildContext`] depending on [`ApplyTo`]
 fn apply_transform<F>(application: ApplyTo, ctx: &mut MeshBuildContext, mut func: F)
 where
     F: FnMut(&mut Vertex) -> (),
@@ -308,7 +310,7 @@ impl Executable for Sheer {
 
 impl Executable for Mirror {
     fn execute(&self, _span: Span, ctx: &mut MeshBuildContext) {
-        let factor = self.directions.map(|b| if b { -1.0f32 } else { 1.0f32 });
+        let factor = self.directions.map(|b| if b { -1.0_f32 } else { 1.0_f32 });
 
         apply_transform(self.application, ctx, |v| {
             v.position.mul_assign_element_wise(factor);
@@ -367,15 +369,13 @@ impl Executable for SetDecalTransparentColor {
 
 impl Executable for SetTextureCoordinates {
     fn execute(&self, span: Span, ctx: &mut MeshBuildContext) {
-        // Validate index are in bounds
-        if self.index >= ctx.vertices.len() {
+        if let Some(v) = ctx.vertices.get_mut(self.index) {
+            v.coord = self.coords;
+        } else {
             ctx.pso.errors.push(MeshError {
                 span,
                 kind: MeshErrorKind::OutOfBounds { idx: self.index },
             });
-            return;
         }
-
-        ctx.vertices[self.index].coord = self.coords;
     }
 }

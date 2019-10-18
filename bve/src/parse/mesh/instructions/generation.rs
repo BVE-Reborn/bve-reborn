@@ -171,17 +171,17 @@ pub fn create_instructions(input: &str, file_type: FileType) -> InstructionList 
                 let span = record.position().into();
                 // Parse the instruction name
                 let instruction: InstructionType = match record.get(0) {
-                    Some(name) => match serde_plain::from_str(name) {
-                        Ok(v) => v,
-                        // Parsing fails
-                        Err(_) => {
+                    Some(name) => {
+                        if let Ok(v) = serde_plain::from_str(name) {
+                            v
+                        } else {
                             instructions.errors.push(MeshError {
                                 span,
                                 kind: MeshErrorKind::UnknownInstruction { name: name.to_owned() },
                             });
                             continue 'l;
                         }
-                    },
+                    }
                     // Nothing in line
                     None => continue 'l,
                 };

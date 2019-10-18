@@ -102,7 +102,7 @@ fn process_type_proxy_conversion(inner_type: TokenStream2) -> TokenStream2 {
             _ => quote!(),
         },
         PathArguments::AngleBracketed(b) => {
-            let generic = b.args.first().unwrap();
+            let generic = b.args.first().expect("Must have generic type");
             let inner = if let GenericArgument::Type(t) = generic {
                 if let Type::Path(p) = t {
                     process_type_proxy_conversion(p.into_token_stream())
@@ -328,7 +328,7 @@ fn find_default_attribute(mut attributes: Vec<Attribute>) -> (Option<Literal>, V
     (default, default_buffer)
 }
 
-pub fn serde_proxy(_attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn serde_proxy(item: TokenStream) -> TokenStream {
     let mut parsed = syn::parse_macro_input!(item as syn::ItemStruct);
 
     let mut fields = Vec::new();

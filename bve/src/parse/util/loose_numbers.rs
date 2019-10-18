@@ -47,7 +47,7 @@ where
             let parsed: Result<T, _> = filtered.parse();
             match parsed {
                 Ok(v) => return Ok(LooseNumber(v)),
-                Err(e) => filtered.pop(),
+                Err(_) => filtered.pop(),
             };
         }
         Err(serde::de::Error::custom(format!("Error parsing the loose float {}", v)))
