@@ -17,7 +17,6 @@ keywords = ["bve", "serialization", "simulation"]
 bve-derive = { version = "0.0.0-Placeholder", path = "../bve-derive" }
 cgmath = { version = "0.17", features = ["serde"] }
 csv = { version = "1.1" }
-fluent = "0.7"
 indexmap = "1.2"
 itertools = "0.8"
 serde = { version = "1.0", features = ["derive"] }
