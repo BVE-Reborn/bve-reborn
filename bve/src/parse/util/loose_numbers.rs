@@ -53,3 +53,47 @@ where
         Err(serde::de::Error::custom(format!("Error parsing the loose float {}", v)))
     }
 }
+
+#[cfg(test)]
+mod test {
+    use crate::parse::util::LooseNumber;
+    use serde_test::{assert_de_tokens, Token};
+
+    #[test]
+    fn loose_number_f32() {
+        let l = LooseNumber::<f32>(1.2);
+        assert_de_tokens(&l, &[Token::Str("1.2")]);
+        assert_de_tokens(&l, &[Token::Str("1.2000000000000")]);
+        assert_de_tokens(&l, &[Token::Str("1.2x8")]);
+        assert_de_tokens(&l, &[Token::Str("1    .    2")]);
+        assert_de_tokens(&l, &[Token::Str("1    .    2 oh yeah!")]);
+        let l = LooseNumber::<f32>(1.6E12);
+        assert_de_tokens(&l, &[Token::Str("1.6E12")]);
+        assert_de_tokens(&l, &[Token::Str("1.6000000000000E12")]);
+        assert_de_tokens(&l, &[Token::Str("1.6E12x8")]);
+        assert_de_tokens(&l, &[Token::Str("1    .    6         E        12")]);
+        assert_de_tokens(&l, &[Token::Str("1    .    6         E        12 oh yeah!")]);
+        let l = LooseNumber::<f32>(1.0);
+        assert_de_tokens(&l, &[Token::Str("1")]);
+        assert_de_tokens(&l, &[Token::Str("1 . ")]);
+        assert_de_tokens(&l, &[Token::Str("1 . 0")]);
+        assert_de_tokens(&l, &[Token::Str("1 . 0  E  0")]);
+        assert_de_tokens(&l, &[Token::Str("1 . 0  E  0 oh yeah!")]);
+    }
+
+    #[test]
+    fn loose_number_i64() {
+        let l = LooseNumber::<i64>(12);
+        assert_de_tokens(&l, &[Token::Str("12")]);
+        assert_de_tokens(&l, &[Token::Str("1 2")]);
+        assert_de_tokens(&l, &[Token::Str("  1  2   ")]);
+        assert_de_tokens(&l, &[Token::Str("  +  1  2   ")]);
+        assert_de_tokens(&l, &[Token::Str("12 YEAH")]);
+        assert_de_tokens(&l, &[Token::Str("12x222222222222")]);
+        let l = LooseNumber::<i64>(-2);
+        assert_de_tokens(&l, &[Token::Str("-2")]);
+        assert_de_tokens(&l, &[Token::Str("-  2 + ")]);
+        assert_de_tokens(&l, &[Token::Str("- 2 - ")]);
+        assert_de_tokens(&l, &[Token::Str("-2   FUC ")]);
+    }
+}

@@ -6,8 +6,8 @@ pub use numeric_bool::*;
 mod loose_numbers;
 mod numeric_bool;
 
-pub(in crate::parse) const fn some_false() -> Option<NumericBool> {
-    Some(NumericBool(false))
+pub(in crate::parse) const fn some_false() -> Option<LooseNumericBool> {
+    Some(LooseNumericBool(false))
 }
 
 pub(in crate::parse) const fn some_zero_u8() -> Option<LooseNumber<u8>> {

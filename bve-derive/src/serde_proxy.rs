@@ -39,7 +39,7 @@ fn combine_attributes(attributes: &[Attribute]) -> TokenStream2 {
 fn process_explicit_type_proxy_path(t: &TypePath) -> TokenStream2 {
     let t = t.path.segments.last().expect("Type path must exist");
     match t.ident.to_string().as_str() {
-        "bool" => quote!(crate::parse::util::NumericBool),
+        "bool" => quote!(crate::parse::util::LooseNumericBool),
         "f32" => quote!(crate::parse::util::LooseNumber<f32>),
         "f64" => quote!(crate::parse::util::LooseNumber<f64>),
         "i8" => quote!(crate::parse::util::LooseNumber<i8>),
@@ -98,7 +98,7 @@ fn process_type_proxy_conversion(inner_type: TokenStream2) -> TokenStream2 {
 
     match nested {
         PathArguments::None => match ident.as_str() {
-            "NumericBool" => quote!(.0),
+            "LooseNumericBool" => quote!(.0),
             _ => quote!(),
         },
         PathArguments::AngleBracketed(b) => {
