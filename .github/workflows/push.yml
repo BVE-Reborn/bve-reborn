@@ -1,9 +1,6 @@
 name: push
 on: [push, pull_request]
 
-env:
-  PATH: '$HOME/.cargo/bin'
-
 jobs:
   build:
     name: build-${{ matrix.name }}
@@ -43,16 +40,27 @@ jobs:
 
       - name: Update Rustup
         run: |
+          export PATH=$PATH:$HOME/.cargo/bin
           rustup self update
           rustup set profile minimal
+        shell: bash
 
       - name: Install Rust ${{ matrix.rust }}
-        run: rustup toolchain install ${{ matrix.rust }}
+        run: |
+          export PATH=$PATH:$HOME/.cargo/bin
+          rustup toolchain install ${{ matrix.rust }}
+        shell: bash
 
       - uses: actions/checkout@v1
 
       - name: Build
-        run: cargo build --all --tests
+        run: |
+          export PATH=$PATH:$HOME/.cargo/bin
+          cargo build --all --tests
+        shell: bash
 
       - name: Run tests
-        run: cargo test --all
+        run: |
+          export PATH=$PATH:$HOME/.cargo/bin
+          cargo test --all
+        shell: bash
