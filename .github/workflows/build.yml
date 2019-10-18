@@ -7,7 +7,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        rust: [nightly, nightly-2019-10-15]
+        rust: [nightly-2019-10-15]
         os: [windows-2019, macOS-10.14, ubuntu-18.04]
         include:
           - rust: nightly-2019-10-15
@@ -21,15 +21,6 @@ jobs:
           - rust: nightly-2019-10-15
             os: ubuntu-18.04
             name: linux-nightly-2019-10-15
-
-          - rust: nightly
-            os: ubuntu-18.04
-            name: linux-nightly
-        exclude:
-          - rust: nightly
-            os: windows-2019
-          - rust: nightly
-            os: macOS-10.14
     runs-on: ${{ matrix.os }}
 
     steps:
