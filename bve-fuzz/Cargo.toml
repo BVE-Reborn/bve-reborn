@@ -16,5 +16,5 @@ keywords = ["bve", "serialization", "simulation"]
 [dependencies]
 bve = { version = "0.0.0-Placeholder", path = "../bve" }
 
-[target.'cfg(target-os = "linux")'.dependencies]
+[target.'cfg(target_os = "linux")'.dependencies]
 honggfuzz = "0.5.45"

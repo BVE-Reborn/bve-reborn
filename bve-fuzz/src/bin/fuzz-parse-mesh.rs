@@ -1,4 +1,4 @@
-#![cfg(target-os = "linux")]
+#![cfg(target_os = "linux")]
 
 fn main() {
     loop {
