@@ -1,6 +1,9 @@
 name: push
 on: [push, pull_request]
 
+env:
+  PATH: '$HOME/.cargo/bin'
+
 jobs:
   build:
     name: build-${{ matrix.name }}
@@ -35,7 +38,7 @@ jobs:
     steps:
       - name: Install Rustup
         run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain none --profile minimal -y
-        if: matrix.os == 'macOS-10.14'
+        if: matrix.os == 'macOS-10.14' || matrix.os == 'windows-2019'
         shell: bash
 
       - name: Update Rustup
