@@ -93,10 +93,10 @@ pub enum InstructionData {
     SetTextureCoordinates(SetTextureCoordinates),
 }
 
-#[bve_derive::serde_vector_proxy]
+#[bve_derive::serde_proxy]
 pub struct CreateMeshBuilder;
 
-#[bve_derive::serde_vector_proxy]
+#[bve_derive::serde_proxy]
 pub struct AddVertex {
     #[default("util::some_zero_f32")]
     pub position: Vector3<f32>,
@@ -120,12 +120,12 @@ impl From<SmallVec<[usize; 8]>> for AddFace {
     }
 }
 
-#[bve_derive::serde_vector_proxy]
+#[bve_derive::serde_proxy]
 pub struct Cube {
     pub half_dim: Vector3<f32>,
 }
 
-#[bve_derive::serde_vector_proxy]
+#[bve_derive::serde_proxy]
 pub struct Cylinder {
     pub sides: u32,
     pub upper_radius: f32,
@@ -133,7 +133,7 @@ pub struct Cylinder {
     pub height: f32,
 }
 
-#[bve_derive::serde_vector_proxy]
+#[bve_derive::serde_proxy]
 pub struct Translate {
     #[default("util::some_zero_f32")]
     pub value: Vector3<f32>,
@@ -141,7 +141,7 @@ pub struct Translate {
     pub application: ApplyTo,
 }
 
-#[bve_derive::serde_vector_proxy]
+#[bve_derive::serde_proxy]
 pub struct Scale {
     #[default("util::some_one_f32")]
     pub value: Vector3<f32>,
@@ -149,7 +149,7 @@ pub struct Scale {
     pub application: ApplyTo,
 }
 
-#[bve_derive::serde_vector_proxy]
+#[bve_derive::serde_proxy]
 pub struct Rotate {
     #[default("util::some_zero_f32")]
     pub axis: Vector3<f32>,
@@ -159,7 +159,7 @@ pub struct Rotate {
     pub application: ApplyTo,
 }
 
-#[bve_derive::serde_vector_proxy]
+#[bve_derive::serde_proxy]
 pub struct Sheer {
     #[default("util::some_zero_f32")]
     pub direction: Vector3<f32>,
@@ -171,7 +171,7 @@ pub struct Sheer {
     pub application: ApplyTo,
 }
 
-#[bve_derive::serde_vector_proxy]
+#[bve_derive::serde_proxy]
 pub struct Mirror {
     #[default("util::some_false")]
     pub directions: Vector3<bool>,
@@ -179,19 +179,19 @@ pub struct Mirror {
     pub application: ApplyTo,
 }
 
-#[bve_derive::serde_vector_proxy]
+#[bve_derive::serde_proxy]
 pub struct SetColor {
     #[default("util::some_u8_max")]
     pub color: ColorU8RGBA,
 }
 
-#[bve_derive::serde_vector_proxy]
+#[bve_derive::serde_proxy]
 pub struct SetEmissiveColor {
     #[default("util::some_zero_u8")]
     pub color: ColorU8RGB,
 }
 
-#[bve_derive::serde_vector_proxy]
+#[bve_derive::serde_proxy]
 pub struct SetBlendMode {
     #[default("SetBlendMode::default_blend_mode")]
     pub blend_mode: BlendMode,
@@ -210,7 +210,7 @@ impl SetBlendMode {
     }
 }
 
-#[bve_derive::serde_vector_proxy]
+#[bve_derive::serde_proxy]
 pub struct LoadTexture {
     #[default("util::some_string")]
     pub daytime: String,
@@ -218,13 +218,13 @@ pub struct LoadTexture {
     pub nighttime: String,
 }
 
-#[bve_derive::serde_vector_proxy]
+#[bve_derive::serde_proxy]
 pub struct SetDecalTransparentColor {
     #[default("util::some_zero_u8")]
     pub color: ColorU8RGB,
 }
 
-#[bve_derive::serde_vector_proxy]
+#[bve_derive::serde_proxy]
 pub struct SetTextureCoordinates {
     pub index: usize,
     pub coords: Vector2<f32>,

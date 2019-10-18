@@ -70,9 +70,15 @@ fn get_first_generic_argument(name_vec: &[String], path: &TypePath) -> TokenStre
     let valid = name_vec.len() >= 2;
     let second_name = if valid { name_vec.get(name_vec.len() - 2) } else { None };
     match second_name.map(String::as_str) {
-        Some("ColorU8R") | Some("ColorU8RG") | Some("ColorU8RGB") | Some("ColorU8RGBA") => quote!(u8),
-        Some("ColorU16R") | Some("ColorU16RG") | Some("ColorU16RGB") | Some("ColorU16RGBA") => quote!(u16),
-        Some("ColorF32R") | Some("ColorF32RG") | Some("ColorF32RGB") | Some("ColorF32RGBA") => quote!(f32),
+        Some("ColorU8R") | Some("ColorU8RG") | Some("ColorU8RGB") | Some("ColorU8RGBA") => {
+            quote!(crate::parse::util::LooseNumber<u8>)
+        }
+        Some("ColorU16R") | Some("ColorU16RG") | Some("ColorU16RGB") | Some("ColorU16RGBA") => {
+            quote!(crate::parse::util::LooseNumber<u16>)
+        }
+        Some("ColorF32R") | Some("ColorF32RG") | Some("ColorF32RGB") | Some("ColorF32RGBA") => {
+            quote!(crate::parse::util::LooseNumber<f32>)
+        }
         _ => match &path.path.segments.last().expect("Type path must exist.").arguments {
             PathArguments::AngleBracketed(arg) => match &arg.args[0] {
                 GenericArgument::Type(t) => process_explicit_type_proxy((*t).clone()),
@@ -86,17 +92,33 @@ fn get_first_generic_argument(name_vec: &[String], path: &TypePath) -> TokenStre
 /// Given a type, find the conversion to reverse the proxying. From `LooseFloat` -> `f32` for example
 fn process_type_proxy_conversion(inner_type: TokenStream2) -> TokenStream2 {
     let parsed = syn::parse2::<syn::TypePath>(inner_type).expect("Expected a type, found some other crap");
-    let ident = parsed
-        .path
-        .segments
-        .last()
-        .expect("Type must have segments")
-        .ident
-        .to_string();
-    println!("{}", ident);
-    match ident.as_str() {
-        "LooseNumber" | "NumericBool" => quote!(.0),
-        _ => quote!(),
+    let t = parsed.path.segments.last().expect("Type must have segments");
+    let ident = t.ident.to_string();
+    let nested = &t.arguments;
+
+    match nested {
+        PathArguments::None => match ident.as_str() {
+            "NumericBool" => quote!(.0),
+            _ => quote!(),
+        },
+        PathArguments::AngleBracketed(b) => {
+            let generic = b.args.first().unwrap();
+            let inner = if let GenericArgument::Type(t) = generic {
+                if let Type::Path(p) = t {
+                    process_type_proxy_conversion(p.into_token_stream())
+                } else {
+                    panic!("Expected type path");
+                }
+            } else {
+                panic!("Expected type path");
+            };
+
+            match ident.as_str() {
+                "LooseNumber" => quote!(.0 #inner),
+                _ => quote!(),
+            }
+        }
+        _ => panic!("Unexpected PathArguments"),
     }
 }
 
@@ -306,7 +328,7 @@ fn find_default_attribute(mut attributes: Vec<Attribute>) -> (Option<Literal>, V
     (default, default_buffer)
 }
 
-pub fn serde_vector_proxy(_attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn serde_proxy(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut parsed = syn::parse_macro_input!(item as syn::ItemStruct);
 
     let mut fields = Vec::new();
