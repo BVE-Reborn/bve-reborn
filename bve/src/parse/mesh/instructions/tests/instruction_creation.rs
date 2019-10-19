@@ -2,7 +2,6 @@ use crate::parse::mesh::instructions::*;
 use crate::parse::mesh::{FileType, Span};
 use crate::{ColorU8RGB, ColorU8RGBA};
 use cgmath::{Vector2, Vector3};
-use smallvec::smallvec;
 
 macro_rules! no_instruction_assert {
     ( $inputB3D:literal, $inputCSV:literal, $args:literal ) => {
@@ -124,7 +123,7 @@ fn add_face() {
         "AddFace",
         "1, 2, 3, 4, 5, 6",
         InstructionData::AddFace(AddFace {
-            indexes: smallvec![1, 2, 3, 4, 5, 6],
+            indexes: vec![1, 2, 3, 4, 5, 6],
             sides: Sides::One,
         })
     );
@@ -137,7 +136,7 @@ fn add_face2() {
         "AddFace2",
         "1, 2, 3, 4, 5, 6",
         InstructionData::AddFace(AddFace {
-            indexes: smallvec![1, 2, 3, 4, 5, 6],
+            indexes: vec![1, 2, 3, 4, 5, 6],
             sides: Sides::Two,
         })
     );

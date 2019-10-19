@@ -41,3 +41,8 @@ mod serde_proxy;
 pub fn serde_proxy(_attr: TokenStream, item: TokenStream) -> TokenStream {
     serde_proxy::serde_proxy(item)
 }
+
+#[proc_macro_attribute]
+pub fn serde_vector_proxy(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    serde_proxy::serde_vector_proxy(item)
+}

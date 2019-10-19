@@ -5,7 +5,6 @@ use cgmath::{Vector2, Vector3};
 pub use execution::*;
 pub use generation::*;
 use serde::Deserialize;
-use smallvec::SmallVec;
 
 mod execution;
 mod generation;
@@ -104,20 +103,11 @@ pub struct AddVertex {
     pub normal: Vector3<f32>,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
-#[serde(from = "SmallVec<[usize; 8]>")]
+#[bve_derive::serde_vector_proxy]
 pub struct AddFace {
-    pub indexes: SmallVec<[usize; 8]>,
+    #[primary]
+    pub indexes: Vec<usize>,
     pub sides: Sides,
-}
-
-impl From<SmallVec<[usize; 8]>> for AddFace {
-    fn from(v: SmallVec<[usize; 8]>) -> Self {
-        Self {
-            indexes: v,
-            sides: Sides::Unset,
-        }
-    }
 }
 
 #[bve_derive::serde_proxy]

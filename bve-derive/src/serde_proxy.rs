@@ -38,21 +38,40 @@ fn combine_attributes(attributes: &[Attribute]) -> TokenStream2 {
 /// Replace paths like `f32` with their proxy like `LooseFloat<f32>`
 fn process_explicit_type_proxy_path(t: &TypePath) -> TokenStream2 {
     let t = t.path.segments.last().expect("Type path must exist");
-    match t.ident.to_string().as_str() {
-        "bool" => quote!(crate::parse::util::LooseNumericBool),
-        "f32" => quote!(crate::parse::util::LooseNumber<f32>),
-        "f64" => quote!(crate::parse::util::LooseNumber<f64>),
-        "i8" => quote!(crate::parse::util::LooseNumber<i8>),
-        "i16" => quote!(crate::parse::util::LooseNumber<i16>),
-        "i32" => quote!(crate::parse::util::LooseNumber<i32>),
-        "i64" => quote!(crate::parse::util::LooseNumber<i64>),
-        "u8" => quote!(crate::parse::util::LooseNumber<u8>),
-        "u16" => quote!(crate::parse::util::LooseNumber<u16>),
-        "u32" => quote!(crate::parse::util::LooseNumber<u32>),
-        "u64" => quote!(crate::parse::util::LooseNumber<u64>),
-        "isize" => quote!(crate::parse::util::LooseNumber<isize>),
-        "usize" => quote!(crate::parse::util::LooseNumber<usize>),
-        _ => quote!(#t),
+    let ident = &t.ident;
+    let nested = &t.arguments;
+    match nested {
+        PathArguments::None => match t.ident.to_string().as_str() {
+            "bool" => quote!(crate::parse::util::LooseNumericBool),
+            "f32" => quote!(crate::parse::util::LooseNumber<f32>),
+            "f64" => quote!(crate::parse::util::LooseNumber<f64>),
+            "i8" => quote!(crate::parse::util::LooseNumber<i8>),
+            "i16" => quote!(crate::parse::util::LooseNumber<i16>),
+            "i32" => quote!(crate::parse::util::LooseNumber<i32>),
+            "i64" => quote!(crate::parse::util::LooseNumber<i64>),
+            "u8" => quote!(crate::parse::util::LooseNumber<u8>),
+            "u16" => quote!(crate::parse::util::LooseNumber<u16>),
+            "u32" => quote!(crate::parse::util::LooseNumber<u32>),
+            "u64" => quote!(crate::parse::util::LooseNumber<u64>),
+            "isize" => quote!(crate::parse::util::LooseNumber<isize>),
+            "usize" => quote!(crate::parse::util::LooseNumber<usize>),
+            _ => quote!(#t),
+        },
+        PathArguments::AngleBracketed(b) => {
+            let generic = b.args.first().expect("Must have generic type");
+            let inner = if let GenericArgument::Type(t) = generic {
+                if let Type::Path(p) = t {
+                    process_explicit_type_proxy_path(p)
+                } else {
+                    panic!("Expected type path");
+                }
+            } else {
+                panic!("Expected type path");
+            };
+
+            quote!(#ident<#inner>)
+        }
+        _ => panic!("Unexpected PathArguments"),
     }
 }
 
@@ -115,6 +134,7 @@ fn process_type_proxy_conversion(inner_type: TokenStream2) -> TokenStream2 {
 
             match ident.as_str() {
                 "LooseNumber" => quote!(.0 #inner),
+                "Vec" => quote!(.into_iter().map(|v| v #inner).collect()),
                 _ => quote!(),
             }
         }
@@ -328,6 +348,25 @@ fn find_default_attribute(mut attributes: Vec<Attribute>) -> (Option<Literal>, V
     (default, default_buffer)
 }
 
+fn find_primary_attribute(mut attributes: Vec<Attribute>) -> (bool, Vec<Attribute>) {
+    let mut found = false;
+    let mut attr_buffer = Vec::new();
+    for attr in attributes.drain(0..) {
+        match attr
+            .path
+            .segments
+            .first()
+            .map(|s| s.ident.to_string())
+            .as_ref()
+            .map(String::as_str)
+        {
+            Some("primary") => found = true,
+            _ => attr_buffer.push(attr),
+        }
+    }
+    (found, attr_buffer)
+}
+
 pub fn serde_proxy(item: TokenStream) -> TokenStream {
     let mut parsed = syn::parse_macro_input!(item as syn::ItemStruct);
 
@@ -380,4 +419,82 @@ pub fn serde_proxy(item: TokenStream) -> TokenStream {
     );
 
     current.into()
+}
+
+struct VectorProxyField {
+    name: Ident,
+    ty: TokenStream2,
+    conversion: TokenStream2,
+}
+
+pub fn serde_vector_proxy(item: TokenStream) -> TokenStream {
+    let mut parsed = syn::parse_macro_input!(item as syn::ItemStruct);
+
+    let name = &parsed.ident;
+
+    let mut primary_type = None;
+    let mut parsed_fields = Vec::new();
+
+    for field in &mut parsed.fields {
+        let (primary, attributes) = find_primary_attribute(field.attrs.clone());
+        let (default, attributes) = find_default_attribute(attributes);
+        field.attrs = attributes;
+
+        let name = field.ident.as_ref().expect("Must have ident").clone();
+
+        parsed_fields.push(if primary {
+            let proxy_type = process_explicit_type_proxy(field.ty.clone());
+            primary_type = Some(proxy_type.clone());
+
+            let conversion = process_type_proxy_conversion(proxy_type.clone());
+
+            VectorProxyField {
+                name: name.clone(),
+                ty: proxy_type,
+                conversion: quote!(proxy #conversion),
+            }
+        } else if let Some(d) = default {
+            VectorProxyField {
+                name,
+                ty: field.ty.to_token_stream(),
+                conversion: quote!(#d ()),
+            }
+        } else {
+            VectorProxyField {
+                name,
+                ty: field.ty.to_token_stream(),
+                conversion: quote!(std::default::Default::default()),
+            }
+        });
+    }
+
+    let from_fields = combine_token_streams(parsed_fields.iter().map(|f| {
+        let VectorProxyField {
+            name,
+            ty: _,
+            conversion,
+        } = f;
+
+        quote!(#name: #conversion,)
+    }));
+
+    let primary_type = primary_type.expect("Must be a type with the primary attribute");
+    let primary_type_str = primary_type.to_string();
+
+    let result = quote! {
+        #[derive(Debug, Clone, PartialEq, Deserialize)]
+        #[serde(from = #primary_type_str)]
+        #parsed
+
+        impl ::std::convert::From<#primary_type> for #name {
+            #[allow(clippy::default_trait_access)]
+            fn from(proxy: #primary_type) -> Self {
+                Self {
+                    #from_fields
+                }
+            }
+        }
+    };
+
+    result.into()
 }

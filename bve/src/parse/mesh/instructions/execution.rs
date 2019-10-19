@@ -17,7 +17,7 @@ struct MeshBuildContext {
 }
 
 struct PolygonFace {
-    indices: SmallVec<[usize; 8]>,
+    indices: Vec<usize>,
     face_data: ExtendedFaceData,
 }
 
@@ -147,8 +147,6 @@ impl Executable for Cube {
     fn execute(&self, _span: Span, ctx: &mut MeshBuildContext) {
         // http://openbve-project.net/documentation/HTML/object_cubecylinder.html
 
-        use smallvec::smallvec; // Workaround for https://github.com/intellij-rust/intellij-rust/issues/4500, move to top level when fixed.
-
         let vertex_offset = ctx.vertices.len();
 
         let x = self.half_dim.x;
@@ -172,27 +170,27 @@ impl Executable for Cube {
 
         ctx.polygons.push(PolygonFace {
             face_data: ExtendedFaceData::with_defaults(Sides::One),
-            indices: smallvec![vo + 0, vo + 1, vo + 2, vo + 3],
+            indices: vec![vo + 0, vo + 1, vo + 2, vo + 3],
         });
         ctx.polygons.push(PolygonFace {
             face_data: ExtendedFaceData::with_defaults(Sides::One),
-            indices: smallvec![vo + 0, vo + 4, vo + 5, vo + 1],
+            indices: vec![vo + 0, vo + 4, vo + 5, vo + 1],
         });
         ctx.polygons.push(PolygonFace {
             face_data: ExtendedFaceData::with_defaults(Sides::One),
-            indices: smallvec![vo + 0, vo + 3, vo + 7, vo + 4],
+            indices: vec![vo + 0, vo + 3, vo + 7, vo + 4],
         });
         ctx.polygons.push(PolygonFace {
             face_data: ExtendedFaceData::with_defaults(Sides::One),
-            indices: smallvec![vo + 6, vo + 5, vo + 4, vo + 7],
+            indices: vec![vo + 6, vo + 5, vo + 4, vo + 7],
         });
         ctx.polygons.push(PolygonFace {
             face_data: ExtendedFaceData::with_defaults(Sides::One),
-            indices: smallvec![vo + 6, vo + 7, vo + 3, vo + 2],
+            indices: vec![vo + 6, vo + 7, vo + 3, vo + 2],
         });
         ctx.polygons.push(PolygonFace {
             face_data: ExtendedFaceData::with_defaults(Sides::One),
-            indices: smallvec![vo + 6, vo + 2, vo + 1, vo + 5],
+            indices: vec![vo + 6, vo + 2, vo + 1, vo + 5],
         });
     }
 }
@@ -201,8 +199,6 @@ impl Executable for Cylinder {
     #[allow(clippy::identity_op)] // Some +0 due to formatting/clarity
     fn execute(&self, _span: Span, ctx: &mut MeshBuildContext) {
         // http://openbve-project.net/documentation/HTML/object_cubecylinder.html
-
-        use smallvec::smallvec; // Workaround for https://github.com/intellij-rust/intellij-rust/issues/4500, move to top level when fixed.
 
         let vertex_offset = ctx.vertices.len();
 
@@ -236,11 +232,11 @@ impl Executable for Cylinder {
         for i in 0..split {
             ctx.polygons.push(PolygonFace {
                 face_data: ExtendedFaceData::with_defaults(Sides::One),
-                indices: smallvec![v + (2 * i + 2), v + (2 * i + 3), v + (2 * i + 1), v + (2 * i + 0)],
+                indices: vec![v + (2 * i + 2), v + (2 * i + 3), v + (2 * i + 1), v + (2 * i + 0)],
             });
             ctx.polygons.push(PolygonFace {
                 face_data: ExtendedFaceData::with_defaults(Sides::One),
-                indices: smallvec![v + 0, v + 1, v + (2 * i + 1), v + (2 * i + 0)],
+                indices: vec![v + 0, v + 1, v + (2 * i + 1), v + (2 * i + 0)],
             });
         }
     }
