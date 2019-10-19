@@ -19,6 +19,12 @@ jobs:
           rustup set profile minimal
         shell: bash
 
+      - name: Install Rust ${{ matrix.rust }}
+        run: |
+          export PATH=$PATH:$HOME/.cargo/bin
+          rustup toolchain install ${{ matrix.rust }}
+        shell: bash
+
       - name: Install Cargo Tarpaulin
         if: matrix.tool == 'tarpaulin'
         run: |

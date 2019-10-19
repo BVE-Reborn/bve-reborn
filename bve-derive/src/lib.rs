@@ -35,14 +35,18 @@ extern crate proc_macro;
 
 use proc_macro::TokenStream;
 
+// Code coverage is silly on these derive
+#[cfg_attr(tarpaulin, skip)]
 mod serde_proxy;
 
 #[proc_macro_attribute]
+#[cfg_attr(tarpaulin, skip)]
 pub fn serde_proxy(_attr: TokenStream, item: TokenStream) -> TokenStream {
     serde_proxy::serde_proxy(item)
 }
 
 #[proc_macro_attribute]
+#[cfg_attr(tarpaulin, skip)]
 pub fn serde_vector_proxy(_attr: TokenStream, item: TokenStream) -> TokenStream {
     serde_proxy::serde_vector_proxy(item)
 }
