@@ -1,0 +1,43 @@
+name: coverage
+on: [push, pull_request]
+
+jobs:
+  build:
+    name: ${{ matrix.tool }}
+    strategy:
+      fail-fast: false
+      matrix:
+        rust: [nightly-2019-10-15]
+        tool: [tarpaulin]
+    runs-on: ubuntu-18.04
+
+    steps:
+      - name: Update Rustup
+        run: |
+          export PATH=$PATH:$HOME/.cargo/bin
+          rustup self update
+          rustup set profile minimal
+        shell: bash
+
+      - name: Install Cargo Tarpaulin
+        if: matrix.tool == 'tarpaulin'
+        run: |
+          export PATH=$PATH:$HOME/.cargo/bin
+          cargo install cargo-tarpaulin
+        shell: bash
+
+      - uses: actions/checkout@v1
+
+      - name: Run Cargo Tarpaulin
+        if: matrix.tool == 'tarpaulin'
+        run: |
+          export PATH=$PATH:$HOME/.cargo/bin
+          cargo tarpaulin --all --out Xml
+        shell: bash
+
+      - name: Upload to CodeCov
+        if: matrix.tool == 'tarpaulin'
+        run: |
+          export PATH=$PATH:$HOME/.cargo/bin
+          bash <(curl -s https://codecov.io/bash) -t ${{ secrets.CODE_COV_TOKEN }}
+        shell: bash
