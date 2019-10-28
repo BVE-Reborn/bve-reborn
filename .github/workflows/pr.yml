@@ -1,5 +1,9 @@
 name: pr
-on: [pull_request]
+on: 
+  - pull_request
+  push:
+    branches:
+      - master
 
 jobs:
   build:
@@ -8,7 +12,7 @@ jobs:
       fail-fast: false
       matrix:
         rust: [nightly-2019-10-15]
-        tool: [clippy, rustfmt, audit]
+        tool: [clippy, rustfmt, audit, deny]
     runs-on: ubuntu-18.04
 
     steps:
@@ -46,6 +50,13 @@ jobs:
           cargo install cargo-audit
         shell: bash
 
+      - name: Install Cargo Deny
+        if: matrix.tool == 'deny'
+        run: |
+          export PATH=$PATH:$HOME/.cargo/bin
+          cargo install cargo-deny
+        shell: bash
+
       - uses: actions/checkout@v1
 
       - name: Run Clippy
@@ -67,4 +78,11 @@ jobs:
         run: |
           export PATH=$PATH:$HOME/.cargo/bin
           cargo audit
+        shell: bash
+
+      - name: Run Cargo Deny
+        if: matrix.tool == 'deny'
+        run: |
+          export PATH=$PATH:$HOME/.cargo/bin
+          cargo deny check
         shell: bash
