@@ -22,7 +22,7 @@ struct PolygonFace {
 }
 
 struct ExtendedFaceData {
-    face_data: FaceData,
+    emission_color: ColorU8RGB,
     texture_id: Option<usize>,
     color: ColorU8RGBA,
     decal_transparent_color: Option<ColorU8RGB>,
@@ -34,7 +34,7 @@ struct ExtendedFaceData {
 impl ExtendedFaceData {
     fn with_defaults(sides: Sides) -> Self {
         Self {
-            face_data: FaceData::default(),
+            emission_color: ColorU8RGB::from_value(0),
             texture_id: None,
             color: ColorU8RGBA::from_value(255),
             decal_transparent_color: None,
@@ -71,6 +71,39 @@ impl Instruction {
     }
 }
 
+fn triangulate_faces(output_list: &mut Vec<usize>, input_face: &[usize]) {
+    if input_face.len() < 3 {
+        return;
+    }
+
+    let face_count = input_face.len() - 2;
+    let index_count = face_count * 3;
+
+    output_list.reserve(index_count);
+
+    for i in 2..input_face.len() {
+        output_list.push(input_face[0]);
+        output_list.push(input_face[i - 1]);
+        output_list.push(input_face[i - 0]);
+    }
+}
+
+fn flat_shading(verts: &[Vertex], indices: &[usize]) -> (Vec<Vertex>, Vec<usize>) {
+    let mut new_verts = Vec::with_capacity(indices.len());
+    let mut new_indices = Vec::with_capacity(indices.len());
+
+    for (i, (&idx1, &idx2, &idx3)) in indices.iter().tuples().enumerate() {
+        new_verts.push(verts[idx1]);
+        new_verts.push(verts[idx2]);
+        new_verts.push(verts[idx3]);
+        new_indices.push(3 * i + 0);
+        new_indices.push(3 * i + 1);
+        new_indices.push(3 * i + 2);
+    }
+
+    (new_verts, new_indices)
+}
+
 impl Executable for CreateMeshBuilder {
     fn execute(&self, span: Span, ctx: &mut MeshBuildContext) {
         let key_f = |v: &PolygonFace| {
@@ -80,6 +113,7 @@ impl Executable for CreateMeshBuilder {
                 e.texture_id,
                 e.decal_transparent_color.map(ColorU8RGB::sum),
                 e.blend_mode,
+                e.emission_color.sum(),
                 e.glow,
                 e.color.sum(),
                 e.sides,
@@ -95,23 +129,33 @@ impl Executable for CreateMeshBuilder {
         for (_key, group) in &ctx.polygons.iter().group_by(|&v| key_f(v)) {
             // Type hint
             let group: itertools::Group<'_, _, _, _> = group;
-            let mut peek = group.peekable();
+            let mut group = group.peekable();
 
-            let first: &PolygonFace = peek.peek().expect("Groups must not be empty");
+            let first: &PolygonFace = group.peek().expect("Groups must not be empty");
+            // All of these attributes are the same, so we can just grab them from the first one.
             let first_face_data: &ExtendedFaceData = &first.face_data;
 
-            let mesh = Mesh {
+            let mut mesh = Mesh {
                 texture: Texture {
                     texture_id: first_face_data.texture_id,
                     decal_transparent_color: first_face_data.decal_transparent_color,
+                    emission_color: first_face_data.emission_color,
                 },
                 color: first_face_data.color,
                 blend_mode: first_face_data.blend_mode,
                 glow: first_face_data.glow,
-                face_data: vec![],
                 vertices: vec![],
                 indices: vec![],
             };
+
+            // THe entire group has all the same properties, so they can be combined into a single mesh.
+            group.for_each(|face| {
+                triangulate_faces(&mut mesh.indices, &face.indices);
+            });
+
+            let (verts, indices) = flat_shading(&mesh.vertices, &mesh.indices);
+            mesh.vertices = verts;
+            mesh.indices = indices;
         }
     }
 }
@@ -333,7 +377,7 @@ impl Executable for SetColor {
 
 impl Executable for SetEmissiveColor {
     fn execute(&self, _span: Span, ctx: &mut MeshBuildContext) {
-        edit_face_data(ctx, |_, f| f.face_data.emission_color = self.color);
+        edit_face_data(ctx, |_, f| f.emission_color = self.color);
     }
 }
 

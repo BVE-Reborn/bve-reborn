@@ -59,13 +59,13 @@ impl Default for TextureFileSet {
 pub struct Texture {
     pub texture_id: Option<usize>,
     pub decal_transparent_color: Option<ColorU8RGB>,
+    pub emission_color: ColorU8RGB,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Mesh {
     pub vertices: Vec<Vertex>,
-    pub indices: Vec<u64>,
-    pub face_data: Vec<FaceData>,
+    pub indices: Vec<usize>,
     pub texture: Texture,
     pub color: ColorU8RGBA,
     pub blend_mode: BlendMode,
@@ -73,7 +73,7 @@ pub struct Mesh {
 }
 
 #[repr(C)]
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Vertex {
     pub position: Vector3<f32>,
     pub normal: Vector3<f32>,
@@ -93,20 +93,6 @@ impl Vertex {
             position,
             normal: Vector3::from_value(0.0),
             coord: Vector2::from_value(0.0),
-        }
-    }
-}
-
-#[repr(C)]
-#[derive(Debug, Clone, PartialEq)]
-pub struct FaceData {
-    pub emission_color: ColorU8RGB,
-}
-
-impl Default for FaceData {
-    fn default() -> Self {
-        Self {
-            emission_color: ColorU8RGB::from_value(0),
         }
     }
 }

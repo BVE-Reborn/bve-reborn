@@ -423,7 +423,6 @@ pub fn serde_proxy(item: TokenStream) -> TokenStream {
 
 struct VectorProxyField {
     name: Ident,
-    ty: TokenStream2,
     conversion: TokenStream2,
 }
 
@@ -450,30 +449,23 @@ pub fn serde_vector_proxy(item: TokenStream) -> TokenStream {
 
             VectorProxyField {
                 name: name.clone(),
-                ty: proxy_type,
                 conversion: quote!(proxy #conversion),
             }
         } else if let Some(d) = default {
             VectorProxyField {
                 name,
-                ty: field.ty.to_token_stream(),
                 conversion: quote!(#d ()),
             }
         } else {
             VectorProxyField {
                 name,
-                ty: field.ty.to_token_stream(),
                 conversion: quote!(std::default::Default::default()),
             }
         });
     }
 
     let from_fields = combine_token_streams(parsed_fields.iter().map(|f| {
-        let VectorProxyField {
-            name,
-            ty: _,
-            conversion,
-        } = f;
+        let VectorProxyField { name, conversion } = f;
 
         quote!(#name: #conversion,)
     }));
