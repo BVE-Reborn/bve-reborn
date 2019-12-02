@@ -29,6 +29,7 @@
 #![allow(clippy::shadow_same)]
 #![allow(clippy::wildcard_enum_match_arm)]
 
+use cbindgen::Language;
 use std::process::Command;
 use structopt::StructOpt;
 
@@ -50,7 +51,30 @@ fn main() {
         .expect("Unable to spawn cargo.");
     assert!(child.wait().expect("Unable to wait for cargo.").success());
 
-    cbindgen::generate("bve-native")
-        .unwrap()
-        .write_to_file("bve-native/include/bve.h");
+    let config = cbindgen::Config::from_file("bve-native/cbindgen.toml").unwrap();
+
+    {
+        // C
+        let mut config = config.clone();
+        config.language = Language::C;
+        *config.header.as_mut().unwrap() += "/* C API for BVE-Reborn high performance libraries. */";
+        cbindgen::Builder::new()
+            .with_crate("bve-native")
+            .with_config(config)
+            .generate()
+            .unwrap()
+            .write_to_file("bve-native/include/bve.h");
+    }
+    {
+        // C++
+        let mut config = config.clone();
+        config.language = Language::Cxx;
+        *config.header.as_mut().unwrap() += "/* C++ API for BVE-Reborn high performance libraries. */";
+        cbindgen::Builder::new()
+            .with_crate("bve-native")
+            .with_config(config)
+            .generate()
+            .unwrap()
+            .write_to_file("bve-native/include/bve.hpp");
+    }
 }
