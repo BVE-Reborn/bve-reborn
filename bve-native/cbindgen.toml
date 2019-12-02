@@ -1,0 +1,4 @@
+[parse]
+parse_deps = true
+include = ["bve", "cgmath"]
+extra_bindings = ["bve"]

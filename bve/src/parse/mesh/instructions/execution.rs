@@ -92,10 +92,10 @@ fn flat_shading(verts: &[Vertex], indices: &[usize]) -> (Vec<Vertex>, Vec<usize>
     let mut new_verts = Vec::with_capacity(indices.len());
     let mut new_indices = Vec::with_capacity(indices.len());
 
-    for (i, (&idx1, &idx2, &idx3)) in indices.iter().tuples().enumerate() {
-        new_verts.push(verts[idx1]);
-        new_verts.push(verts[idx2]);
-        new_verts.push(verts[idx3]);
+    for (i, (vert1, vert2, vert3)) in indices.iter().map(|&idx| verts[idx]).tuples().enumerate() {
+        new_verts.push(vert1);
+        new_verts.push(vert2);
+        new_verts.push(vert3);
         new_indices.push(3 * i + 0);
         new_indices.push(3 * i + 1);
         new_indices.push(3 * i + 2);
@@ -103,6 +103,8 @@ fn flat_shading(verts: &[Vertex], indices: &[usize]) -> (Vec<Vertex>, Vec<usize>
 
     (new_verts, new_indices)
 }
+
+fn calculate_normals(mesh: &mut Mesh) {}
 
 impl Executable for CreateMeshBuilder {
     fn execute(&self, span: Span, ctx: &mut MeshBuildContext) {

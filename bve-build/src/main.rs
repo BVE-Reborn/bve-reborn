@@ -49,4 +49,8 @@ fn main() {
         .spawn()
         .expect("Unable to spawn cargo.");
     assert!(child.wait().expect("Unable to wait for cargo.").success());
+
+    cbindgen::generate("bve-native")
+        .unwrap()
+        .write_to_file("bve-native/include/bve.h");
 }
