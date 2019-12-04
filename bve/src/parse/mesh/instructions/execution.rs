@@ -10,6 +10,7 @@ trait Executable {
     fn execute(&self, span: Span, ctx: &mut MeshBuildContext);
 }
 
+#[derive(Default)]
 struct MeshBuildContext {
     pso: ParsedStaticObject,
     vertices: Vec<Vertex>,
@@ -84,18 +85,20 @@ fn triangulate_faces(output_list: &mut Vec<usize>, input_face: &[usize]) {
     for i in 2..input_face.len() {
         output_list.push(input_face[0]);
         output_list.push(input_face[i - 1]);
-        output_list.push(input_face[i - 0]);
+        output_list.push(input_face[i]);
     }
 }
 
+#[allow(clippy::identity_op)]
 fn flat_shading(verts: &[Vertex], indices: &[usize]) -> (Vec<Vertex>, Vec<usize>) {
     let mut new_verts = Vec::with_capacity(indices.len());
     let mut new_indices = Vec::with_capacity(indices.len());
 
-    for (i, (vert1, vert2, vert3)) in indices.iter().map(|&idx| verts[idx]).tuples().enumerate() {
-        new_verts.push(vert1);
-        new_verts.push(vert2);
-        new_verts.push(vert3);
+    for (i, (&i1, &i2, &i3)) in indices.iter().tuples().enumerate() {
+        new_verts.push(verts[i1]);
+        new_verts.push(verts[i2]);
+        new_verts.push(verts[i3]);
+
         new_indices.push(3 * i + 0);
         new_indices.push(3 * i + 1);
         new_indices.push(3 * i + 2);
@@ -104,10 +107,28 @@ fn flat_shading(verts: &[Vertex], indices: &[usize]) -> (Vec<Vertex>, Vec<usize>
     (new_verts, new_indices)
 }
 
-fn calculate_normals(mesh: &mut Mesh) {}
+fn calculate_normals(mesh: &mut Mesh) {
+    mesh.vertices
+        .iter_mut()
+        .for_each(|v| v.normal = Vector3::from_value(0.0));
+
+    for (&i1, &i2, &i3) in mesh.indices.iter().tuples() {
+        let a_vert: &Vertex = &mesh.vertices[i1];
+        let b_vert: &Vertex = &mesh.vertices[i2];
+        let c_vert: &Vertex = &mesh.vertices[i3];
+
+        let normal = (b_vert.position - a_vert.position).cross(c_vert.position - a_vert.position);
+
+        mesh.vertices[i1].normal += normal;
+        mesh.vertices[i2].normal += normal;
+        mesh.vertices[i3].normal += normal;
+    }
+
+    mesh.vertices.iter_mut().for_each(|v| v.normal = v.normal.normalize())
+}
 
 impl Executable for CreateMeshBuilder {
-    fn execute(&self, span: Span, ctx: &mut MeshBuildContext) {
+    fn execute(&self, _span: Span, ctx: &mut MeshBuildContext) {
         let key_f = |v: &PolygonFace| {
             // sort to keep faces with identical traits together
             let e = &v.face_data;
@@ -158,6 +179,8 @@ impl Executable for CreateMeshBuilder {
             let (verts, indices) = flat_shading(&mesh.vertices, &mesh.indices);
             mesh.vertices = verts;
             mesh.indices = indices;
+
+            calculate_normals(&mut mesh);
 
             ctx.pso.meshes.push(mesh);
         }
@@ -425,4 +448,12 @@ impl Executable for SetTextureCoordinates {
             });
         }
     }
+}
+
+pub fn generate_meshes(instructions: InstructionList) -> ParsedStaticObject {
+    let mut mbc = MeshBuildContext::default();
+    for instr in instructions.instructions {
+        instr.execute(&mut mbc);
+    }
+    mbc.pso
 }

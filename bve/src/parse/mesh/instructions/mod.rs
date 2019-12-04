@@ -2,12 +2,12 @@ use crate::parse::mesh::{BlendMode, GlowAttenuationMode, MeshError, Span};
 use crate::parse::util;
 use crate::{ColorU8RGB, ColorU8RGBA};
 use cgmath::{Vector2, Vector3};
+pub use creation::*;
 pub use execution::*;
-pub use generation::*;
 use serde::Deserialize;
 
+mod creation;
 mod execution;
-mod generation;
 #[cfg(test)]
 mod tests;
 

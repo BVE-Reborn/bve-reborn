@@ -15,7 +15,7 @@ pub enum FileType {
     CSV,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct ParsedStaticObject {
     pub meshes: Vec<Mesh>,
     pub textures: TextureFileSet,
