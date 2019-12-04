@@ -30,6 +30,7 @@
 #![allow(clippy::wildcard_enum_match_arm)]
 
 use cbindgen::Language;
+use std::fs::read_to_string;
 use std::process::Command;
 use structopt::StructOpt;
 
@@ -70,6 +71,7 @@ fn main() {
         let mut config = config.clone();
         config.language = Language::Cxx;
         *config.header.as_mut().unwrap() += "/* C++ API for BVE-Reborn high performance libraries. */";
+        config.trailer = Some(read_to_string("bve-native/include/bve_cpp.hpp").unwrap());
         cbindgen::Builder::new()
             .with_crate("bve-native")
             .with_config(config)
