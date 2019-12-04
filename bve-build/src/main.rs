@@ -58,7 +58,8 @@ fn main() {
         // C
         let mut config = config.clone();
         config.language = Language::C;
-        *config.header.as_mut().unwrap() += "/* C API for BVE-Reborn high performance libraries. */";
+        *config.header.as_mut().expect("bve-native/cbindgen.toml needs a header") +=
+            "/* C API for BVE-Reborn high performance libraries. */";
         cbindgen::Builder::new()
             .with_crate("bve-native")
             .with_config(config)
@@ -68,9 +69,10 @@ fn main() {
     }
     {
         // C++
-        let mut config = config.clone();
+        let mut config = config;
         config.language = Language::Cxx;
-        *config.header.as_mut().unwrap() += "/* C++ API for BVE-Reborn high performance libraries. */";
+        *config.header.as_mut().expect("bve-native/cbindgen.toml needs a header") +=
+            "/* C++ API for BVE-Reborn high performance libraries. */";
         config.trailer = Some(read_to_string("bve-native/include/bve_cpp.hpp").unwrap());
         cbindgen::Builder::new()
             .with_crate("bve-native")
