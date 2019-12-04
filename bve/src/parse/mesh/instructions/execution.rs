@@ -158,7 +158,12 @@ impl Executable for CreateMeshBuilder {
             let (verts, indices) = flat_shading(&mesh.vertices, &mesh.indices);
             mesh.vertices = verts;
             mesh.indices = indices;
+
+            ctx.pso.meshes.push(mesh);
         }
+
+        ctx.vertices.clear();
+        ctx.polygons.clear();
     }
 }
 
