@@ -9,6 +9,7 @@ use serde::Deserialize;
 mod errors;
 pub mod instructions;
 
+#[repr(C)]
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum FileType {
     B3D,
@@ -118,4 +119,9 @@ pub enum BlendMode {
 pub enum GlowAttenuationMode {
     DivideExponent2,
     DivideExponent4,
+}
+
+pub fn create_mesh_from_str(input: &str, file_type: FileType) -> ParsedStaticObject {
+    let instructions = instructions::create_instructions(input, file_type);
+    instructions::generate_meshes(instructions)
 }

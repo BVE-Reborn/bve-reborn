@@ -127,66 +127,71 @@ fn calculate_normals(mesh: &mut Mesh) {
     mesh.vertices.iter_mut().for_each(|v| v.normal = v.normal.normalize())
 }
 
-impl Executable for CreateMeshBuilder {
-    fn execute(&self, _span: Span, ctx: &mut MeshBuildContext) {
-        let key_f = |v: &PolygonFace| {
-            // sort to keep faces with identical traits together
-            let e = &v.face_data;
-            (
-                e.texture_id,
-                e.decal_transparent_color.map(ColorU8RGB::sum),
-                e.blend_mode,
-                e.emission_color.sum(),
-                e.glow,
-                e.color.sum(),
-                e.sides,
-            )
+fn run_create_mesh_builder(ctx: &mut MeshBuildContext) {
+    let key_f = |v: &PolygonFace| {
+        // sort to keep faces with identical traits together
+        let e = &v.face_data;
+        // TODO: This breaks due to overflow, check how to turn a Vector color into a large int.
+        (
+            e.texture_id,
+            e.decal_transparent_color.map(ColorU8RGB::sum),
+            e.blend_mode,
+            e.emission_color.sum(),
+            e.glow,
+            e.color.sum(),
+            e.sides,
+        )
+    };
+
+    ctx.polygons.sort_unstable_by_key(key_f);
+
+    if ctx.polygons.is_empty() {
+        return;
+    }
+
+    for (_key, group) in &ctx.polygons.iter().group_by(|&v| key_f(v)) {
+        // Type hint
+        let group: itertools::Group<'_, _, _, _> = group;
+        let mut group = group.peekable();
+
+        let first: &PolygonFace = group.peek().expect("Groups must not be empty");
+        // All of these attributes are the same, so we can just grab them from the first one.
+        let first_face_data: &ExtendedFaceData = &first.face_data;
+
+        let mut mesh = Mesh {
+            texture: Texture {
+                texture_id: first_face_data.texture_id,
+                decal_transparent_color: first_face_data.decal_transparent_color,
+                emission_color: first_face_data.emission_color,
+            },
+            color: first_face_data.color,
+            blend_mode: first_face_data.blend_mode,
+            glow: first_face_data.glow,
+            vertices: vec![],
+            indices: vec![],
         };
 
-        ctx.polygons.sort_unstable_by_key(key_f);
+        // THe entire group has all the same properties, so they can be combined into a single mesh.
+        group.for_each(|face| {
+            triangulate_faces(&mut mesh.indices, &face.indices);
+        });
 
-        if ctx.polygons.is_empty() {
-            return;
-        }
+        let (verts, indices) = flat_shading(&mesh.vertices, &mesh.indices);
+        mesh.vertices = verts;
+        mesh.indices = indices;
 
-        for (_key, group) in &ctx.polygons.iter().group_by(|&v| key_f(v)) {
-            // Type hint
-            let group: itertools::Group<'_, _, _, _> = group;
-            let mut group = group.peekable();
+        calculate_normals(&mut mesh);
 
-            let first: &PolygonFace = group.peek().expect("Groups must not be empty");
-            // All of these attributes are the same, so we can just grab them from the first one.
-            let first_face_data: &ExtendedFaceData = &first.face_data;
+        ctx.pso.meshes.push(mesh);
+    }
 
-            let mut mesh = Mesh {
-                texture: Texture {
-                    texture_id: first_face_data.texture_id,
-                    decal_transparent_color: first_face_data.decal_transparent_color,
-                    emission_color: first_face_data.emission_color,
-                },
-                color: first_face_data.color,
-                blend_mode: first_face_data.blend_mode,
-                glow: first_face_data.glow,
-                vertices: vec![],
-                indices: vec![],
-            };
+    ctx.vertices.clear();
+    ctx.polygons.clear();
+}
 
-            // THe entire group has all the same properties, so they can be combined into a single mesh.
-            group.for_each(|face| {
-                triangulate_faces(&mut mesh.indices, &face.indices);
-            });
-
-            let (verts, indices) = flat_shading(&mesh.vertices, &mesh.indices);
-            mesh.vertices = verts;
-            mesh.indices = indices;
-
-            calculate_normals(&mut mesh);
-
-            ctx.pso.meshes.push(mesh);
-        }
-
-        ctx.vertices.clear();
-        ctx.polygons.clear();
+impl Executable for CreateMeshBuilder {
+    fn execute(&self, _span: Span, ctx: &mut MeshBuildContext) {
+        run_create_mesh_builder(ctx);
     }
 }
 
@@ -455,5 +460,7 @@ pub fn generate_meshes(instructions: InstructionList) -> ParsedStaticObject {
     for instr in instructions.instructions {
         instr.execute(&mut mbc);
     }
+    run_create_mesh_builder(&mut mbc);
+    mbc.pso.errors = instructions.errors;
     mbc.pso
 }
