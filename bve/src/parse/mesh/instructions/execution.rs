@@ -1,5 +1,6 @@
 use crate::parse::mesh::instructions::*;
 use crate::parse::mesh::*;
+use crate::Asu32;
 use crate::{ColorU8RGB, ColorU8RGBA};
 use cgmath::{Array, Basis3, ElementWise, InnerSpace, Rad, Rotation, Rotation3, Vector3, Zero};
 use itertools::Itertools;
@@ -10,18 +11,20 @@ trait Executable {
     fn execute(&self, span: Span, ctx: &mut MeshBuildContext);
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 struct MeshBuildContext {
     pso: ParsedStaticObject,
     vertices: Vec<Vertex>,
     polygons: SmallVec<[PolygonFace; 16]>,
 }
 
+#[derive(Debug)]
 struct PolygonFace {
     indices: Vec<usize>,
     face_data: ExtendedFaceData,
 }
 
+#[derive(Debug)]
 struct ExtendedFaceData {
     emission_color: ColorU8RGB,
     texture_id: Option<usize>,
@@ -127,6 +130,33 @@ fn calculate_normals(mesh: &mut Mesh) {
     mesh.vertices.iter_mut().for_each(|v| v.normal = v.normal.normalize())
 }
 
+fn shrink_vertex_list(vertices: &[Vertex], indices: &mut [usize]) -> Vec<Vertex> {
+    let mut translation = vec![0; vertices.len()];
+    let mut vertex_used = vec![false; vertices.len()];
+
+    for &mut index in indices.iter_mut() {
+        vertex_used[index] = true;
+    }
+
+    let mut new_vertices = Vec::new();
+
+    let mut new_index = 0_usize;
+    for i in 0..(vertices.len()) {
+        if !vertex_used[i] {
+            continue;
+        }
+        new_vertices.push(vertices[i]);
+        translation[i] = new_index;
+        new_index += 1;
+    }
+
+    for index in indices.iter_mut() {
+        *index = translation[*index];
+    }
+
+    new_vertices
+}
+
 fn run_create_mesh_builder(ctx: &mut MeshBuildContext) {
     let key_f = |v: &PolygonFace| {
         // sort to keep faces with identical traits together
@@ -134,11 +164,11 @@ fn run_create_mesh_builder(ctx: &mut MeshBuildContext) {
         // TODO: This breaks due to overflow, check how to turn a Vector color into a large int.
         (
             e.texture_id,
-            e.decal_transparent_color.map(ColorU8RGB::sum),
+            e.decal_transparent_color.map(ColorU8RGB::as_u32),
             e.blend_mode,
-            e.emission_color.sum(),
+            e.emission_color.as_u32(),
             e.glow,
-            e.color.sum(),
+            e.color.as_u32(),
             e.sides,
         )
     };
@@ -175,6 +205,8 @@ fn run_create_mesh_builder(ctx: &mut MeshBuildContext) {
         group.for_each(|face| {
             triangulate_faces(&mut mesh.indices, &face.indices);
         });
+
+        mesh.vertices = shrink_vertex_list(&ctx.vertices, &mut mesh.indices);
 
         let (verts, indices) = flat_shading(&mesh.vertices, &mesh.indices);
         mesh.vertices = verts;
@@ -430,7 +462,7 @@ impl Executable for SetBlendMode {
 
 impl Executable for LoadTexture {
     fn execute(&self, _span: Span, ctx: &mut MeshBuildContext) {
-        edit_face_data(ctx, |textures, f| f.texture_id = Some(textures.add(&self.daytime)))
+        edit_face_data(ctx, |textures, f| f.texture_id = Some(textures.add(&self.daytime)));
     }
 }
 
