@@ -161,7 +161,6 @@ fn run_create_mesh_builder(ctx: &mut MeshBuildContext) {
     let key_f = |v: &PolygonFace| {
         // sort to keep faces with identical traits together
         let e = &v.face_data;
-        // TODO: This breaks due to overflow, check how to turn a Vector color into a large int.
         (
             e.texture_id,
             e.decal_transparent_color.map(ColorU8RGB::as_u32),
