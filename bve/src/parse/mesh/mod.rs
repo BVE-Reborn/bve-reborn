@@ -41,6 +41,10 @@ impl TextureFileSet {
         }
     }
 
+    pub fn len(&self) -> usize {
+        self.filenames.len()
+    }
+
     pub fn add(&mut self, value: &str) -> usize {
         self.filenames.insert_full(value.into()).0
     }
