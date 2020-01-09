@@ -7,7 +7,7 @@ pub fn post_process(mut instructions: InstructionList) -> InstructionList {
     let mut output = Vec::new();
     let meshes = instructions
         .instructions
-        .split(|&i| i.data == InstructionData::CreateMeshBuilder(CreateMeshBuilder));
+        .split(|i| i.data == InstructionData::CreateMeshBuilder(CreateMeshBuilder));
     for mesh in meshes {
         let mesh = process_compound(mesh);
         let mesh = merge_texture_coords(&mesh, &mut instructions.errors);
@@ -17,6 +17,8 @@ pub fn post_process(mut instructions: InstructionList) -> InstructionList {
         });
         output.extend(mesh);
     }
+
+    instructions.instructions = output;
 
     instructions
 }
@@ -50,7 +52,7 @@ fn process_compound(mesh: &[Instruction]) -> Vec<Instruction> {
 
     // Need to keep track of the current vertex index so cubes and cylinders can use the correct indices
     let mut vertex_index = 0;
-    for &instruction in mesh {
+    for instruction in mesh {
         match &instruction.data {
             InstructionData::AddVertex(..) => {
                 result.push(instruction.clone());
@@ -133,7 +135,7 @@ fn merge_texture_coords(mesh: &[Instruction], errors: &mut Vec<MeshError>) -> Ve
     // The instruction where the vertex index n is created is at result[vertex_indices[n]]
     let mut vertex_indices = Vec::new();
 
-    for &instruction in mesh {
+    for instruction in mesh {
         match &instruction.data {
             InstructionData::AddVertex(..) => {
                 // Add the index for this vertex so it can be found again

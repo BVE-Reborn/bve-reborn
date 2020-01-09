@@ -27,14 +27,17 @@ fn single_mesh() {
         1: AddVertex {
             position: Vector3::new(0.0, 0.0, 0.0),
             normal: Vector3::from_value(0.0),
+            texture_coord: Vector2::new(0.0, 0.0),
         },
         2: AddVertex {
             position: Vector3::new(-0.866025, 0.0, 0.5),
             normal: Vector3::from_value(0.0),
+            texture_coord: Vector2::new(0.0, 0.0),
         },
         3: AddVertex {
             position: Vector3::new(0.866025, 0.0, 0.5),
             normal: Vector3::from_value(0.0),
+            texture_coord: Vector2::new(0.0, 0.0),
         },
         4: AddFace {
             indexes: vec![0, 1, 2],
@@ -46,7 +49,7 @@ fn single_mesh() {
         }
     );
 
-    let result = execution::generate_meshes(v);
+    let result = execution::generate_meshes(post_process(v));
     assert_eq!(result.meshes.len(), 1);
     let mesh = &result.meshes[0];
     assert_eq!(mesh.vertices[0].position, Vector3::new(0.0, 0.0, 0.0));
@@ -82,14 +85,17 @@ fn double_mesh() {
         1: AddVertex {
             position: Vector3::new(0.0, 0.0, 0.0),
             normal: Vector3::from_value(0.0),
+            texture_coord: Vector2::new(0.0, 0.0),
         },
         2: AddVertex {
             position: Vector3::new(-0.866025, 0.0, 0.5),
             normal: Vector3::from_value(0.0),
+            texture_coord: Vector2::new(0.0, 0.0),
         },
         3: AddVertex {
             position: Vector3::new(0.866025, 0.0, 0.5),
             normal: Vector3::from_value(0.0),
+            texture_coord: Vector2::new(0.0, 0.0),
         },
         4: AddFace {
             indexes: vec![0, 1, 2],
@@ -117,14 +123,17 @@ fn double_mesh() {
         11: AddVertex {
             position: Vector3::new(0.0, 0.0, 0.0),
             normal: Vector3::from_value(0.0),
+            texture_coord: Vector2::new(0.0, 0.0),
         },
         12: AddVertex {
             position: Vector3::new(-0.866025, 0.0, 0.5),
             normal: Vector3::from_value(0.0),
+            texture_coord: Vector2::new(0.0, 0.0),
         },
         13: AddVertex {
             position: Vector3::new(0.866025, 0.0, 0.5),
             normal: Vector3::from_value(0.0),
+            texture_coord: Vector2::new(0.0, 0.0),
         },
         14: AddFace {
             indexes: vec![0, 1, 2],
@@ -136,7 +145,7 @@ fn double_mesh() {
         }
     );
 
-    let result = execution::generate_meshes(v);
+    let result = execution::generate_meshes(post_process(v));
     assert_eq!(result.meshes.len(), 2);
 
     // First Mesh
@@ -199,14 +208,17 @@ fn texture_coords() {
         1: AddVertex {
             position: Vector3::new(0.0, 0.0, 0.0),
             normal: Vector3::from_value(0.0),
+            texture_coord: Vector2::new(0.0, 0.0),
         },
         2: AddVertex {
             position: Vector3::new(-0.866025, 0.0, 0.5),
             normal: Vector3::from_value(0.0),
+            texture_coord: Vector2::new(0.0, 0.0),
         },
         3: AddVertex {
             position: Vector3::new(0.866025, 0.0, 0.5),
             normal: Vector3::from_value(0.0),
+            texture_coord: Vector2::new(0.0, 0.0),
         },
         4: AddFace {
             indexes: vec![0, 1, 2],
@@ -230,7 +242,7 @@ fn texture_coords() {
         }
     );
 
-    let result = execution::generate_meshes(v);
+    let result = execution::generate_meshes(post_process(v));
     assert_eq!(result.meshes.len(), 1);
     let mesh = &result.meshes[0];
     assert_eq!(mesh.vertices.len(), 3);
@@ -265,34 +277,42 @@ fn cube() {
         1: AddVertex {
             position: Vector3::new(1.000000, 1.000000, -1.000000),
             normal: Vector3::from_value(0.0),
+            texture_coord: Vector2::new(0.0, 0.0),
         },
         2: AddVertex {
             position: Vector3::new(1.000000, -1.000000, -1.000000),
             normal: Vector3::from_value(0.0),
+            texture_coord: Vector2::new(0.0, 0.0),
         },
         3: AddVertex {
             position: Vector3::new(1.000000, 1.000000, 1.000000),
             normal: Vector3::from_value(0.0),
+            texture_coord: Vector2::new(0.0, 0.0),
         },
         4: AddVertex {
             position: Vector3::new(1.000000, -1.000000, 1.000000),
             normal: Vector3::from_value(0.0),
+            texture_coord: Vector2::new(0.0, 0.0),
         },
         5: AddVertex {
             position: Vector3::new(-1.000000, 1.000000, -1.000000),
             normal: Vector3::from_value(0.0),
+            texture_coord: Vector2::new(0.0, 0.0),
         },
         6: AddVertex {
             position: Vector3::new(-1.000000, -1.000000, -1.000000),
             normal: Vector3::from_value(0.0),
+            texture_coord: Vector2::new(0.0, 0.0),
         },
         7: AddVertex {
             position: Vector3::new(-1.000000, 1.000000, 1.000000),
             normal: Vector3::from_value(0.0),
+            texture_coord: Vector2::new(0.0, 0.0),
         },
         8: AddVertex {
             position: Vector3::new(-1.000000, -1.000000, 1.000000),
             normal: Vector3::from_value(0.0),
+            texture_coord: Vector2::new(0.0, 0.0),
         },
         9: AddFace {
             indexes: vec![0, 4, 6, 2],
@@ -324,7 +344,7 @@ fn cube() {
         }
     );
 
-    let result = execution::generate_meshes(v);
+    let result = execution::generate_meshes(post_process(v));
     assert_eq!(result.meshes.len(), 1);
     let mesh = &result.meshes[0];
     assert_eq!(mesh.vertices.len(), 24);

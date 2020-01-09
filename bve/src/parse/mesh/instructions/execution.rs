@@ -1,35 +1,45 @@
 use crate::parse::mesh::instructions::*;
 use crate::parse::mesh::*;
-use crate::Asu32;
 use crate::{ColorU8RGB, ColorU8RGBA};
 use cgmath::{Array, Basis3, ElementWise, InnerSpace, Rad, Rotation, Rotation3, Vector3, Zero};
 use itertools::Itertools;
-use smallvec::SmallVec;
-use std::f32::consts::PI;
 
 trait Executable {
     fn execute(&self, span: Span, ctx: &mut MeshBuildContext);
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 struct MeshBuildContext {
     parsed: ParsedStaticObject,
     vertices: Vec<Vertex>,
     current_mesh: Mesh,
 }
 
-fn with_defaults(sides: Sides) -> Self {
-    Self {
-        emission_color: ColorU8RGB::from_value(0),
-        texture_id: None,
+impl Default for MeshBuildContext {
+    fn default() -> Self {
+        MeshBuildContext {
+            parsed: ParsedStaticObject::default(),
+            vertices: Vec::default(),
+            current_mesh: default_mesh(),
+        }
+    }
+}
+
+fn default_mesh() -> Mesh {
+    Mesh {
+        vertices: vec![],
+        indices: vec![],
+        texture: Texture {
+            texture_id: None,
+            emission_color: ColorU8RGB::from_value(0),
+            decal_transparent_color: None,
+        },
         color: ColorU8RGBA::from_value(255),
-        decal_transparent_color: None,
         blend_mode: BlendMode::Normal,
         glow: Glow {
             attenuation_mode: GlowAttenuationMode::DivideExponent4,
             half_distance: 0,
         },
-        sides,
     }
 }
 
@@ -39,8 +49,8 @@ impl Instruction {
             InstructionData::CreateMeshBuilder(data) => data.execute(self.span, ctx),
             InstructionData::AddVertex(data) => data.execute(self.span, ctx),
             InstructionData::AddFace(data) => data.execute(self.span, ctx),
-            InstructionData::Cube(data) => panic!("Cube instruction cannot be executed, must be postprocessed away"),
-            InstructionData::Cylinder(data) => {
+            InstructionData::Cube(_data) => panic!("Cube instruction cannot be executed, must be postprocessed away"),
+            InstructionData::Cylinder(_data) => {
                 panic!("Cylinder instruction cannot be executed, must be postprocessed away")
             }
             InstructionData::Translate(data) => data.execute(self.span, ctx),
@@ -53,7 +63,7 @@ impl Instruction {
             InstructionData::SetBlendMode(data) => data.execute(self.span, ctx),
             InstructionData::LoadTexture(data) => data.execute(self.span, ctx),
             InstructionData::SetDecalTransparentColor(data) => data.execute(self.span, ctx),
-            InstructionData::SetTextureCoordinates(data) => {
+            InstructionData::SetTextureCoordinates(_data) => {
                 panic!("SetTextureCoordinates instruction cannot be executed, must be postprocessed away")
             }
         }
@@ -149,69 +159,13 @@ fn shrink_vertex_list(vertices: &[Vertex], indices: &[usize]) -> (Vec<Vertex>, V
 }
 
 fn run_create_mesh_builder(ctx: &mut MeshBuildContext) {
-    let key_f = |v: &PolygonFace| {
-        // sort to keep faces with identical traits together
-        let e = &v.face_data;
-        (
-            e.texture_id,
-            e.decal_transparent_color.map(ColorU8RGB::as_u32),
-            e.blend_mode,
-            e.emission_color.as_u32(),
-            e.glow,
-            e.color.as_u32(),
-            e.sides,
-        )
-    };
-
-    ctx.polygons.sort_unstable_by_key(key_f);
-
-    if ctx.polygons.is_empty() {
-        return;
+    if ctx.current_mesh.vertices.len() != 0 && ctx.current_mesh.indices.len() != 0 {
+        calculate_normals(&mut ctx.current_mesh);
+        ctx.parsed
+            .meshes
+            .push(std::mem::replace(&mut ctx.current_mesh, default_mesh()));
     }
-
-    for (_key, group) in &ctx.polygons.iter().group_by(|&v| key_f(v)) {
-        // Type hint
-        let group: itertools::Group<'_, _, _, _> = group;
-        let mut group = group.peekable();
-
-        let first: &PolygonFace = group.peek().expect("Groups must not be empty");
-        // All of these attributes are the same, so we can just grab them from the first one.
-        let first_face_data: &ExtendedFaceData = &first.face_data;
-
-        let mut mesh = Mesh {
-            texture: Texture {
-                texture_id: first_face_data.texture_id,
-                decal_transparent_color: first_face_data.decal_transparent_color,
-                emission_color: first_face_data.emission_color,
-            },
-            color: first_face_data.color,
-            blend_mode: first_face_data.blend_mode,
-            glow: first_face_data.glow,
-            vertices: vec![],
-            indices: vec![],
-        };
-
-        // THe entire group has all the same properties, so they can be combined into a single mesh.
-        group.for_each(|face| {
-            // This is a direct indices -> indices translation
-            let indices = flat_shading(&ctx.vertices, &face.indices);
-            let triangle_indexes = triangulate_faces(&face.indices);
-            mesh.indices.extend(triangle_indexes);
-        });
-
-        mesh.vertices = shrink_vertex_list(&ctx.vertices, &mut mesh.indices);
-
-        let (verts, indices) = flat_shading(&mesh.vertices, &mesh.indices);
-        mesh.vertices = verts;
-        mesh.indices = indices;
-
-        calculate_normals(&mut mesh);
-
-        ctx.parsed.meshes.push(mesh);
-    }
-
     ctx.vertices.clear();
-    ctx.polygons.clear();
 }
 
 impl Executable for CreateMeshBuilder {
@@ -222,14 +176,17 @@ impl Executable for CreateMeshBuilder {
 
 impl Executable for AddVertex {
     fn execute(&self, _span: Span, ctx: &mut MeshBuildContext) {
-        ctx.vertices
-            .push(Vertex::from_position_normal(self.position, self.normal))
+        ctx.vertices.push(Vertex::from_position_normal_coord(
+            self.position,
+            self.normal,
+            self.texture_coord,
+        ))
     }
 }
 
 fn add_face(ctx: &mut MeshBuildContext, span: Span, sides: Sides, indices: &[usize]) {
     // Validate all indexes are in bounds
-    for &idx in &indices {
+    for &idx in indices {
         if idx >= ctx.vertices.len() {
             ctx.parsed.errors.push(MeshError {
                 span,
@@ -240,7 +197,7 @@ fn add_face(ctx: &mut MeshBuildContext, span: Span, sides: Sides, indices: &[usi
     }
 
     // Use my indexes to find all vertices that are only mine
-    let (verts, indices) = shrink_vertex_list(&ctx.vertices, &indexes);
+    let (verts, indices) = shrink_vertex_list(&ctx.vertices, &indices);
 
     // Enable flat shading, make sure each vert is unique per face
     let (mut verts, indices) = flat_shading(&verts, &indices);
@@ -255,9 +212,7 @@ fn add_face(ctx: &mut MeshBuildContext, span: Span, sides: Sides, indices: &[usi
 
     // I am going to add this to an existing list of vertices and indices, so I need to add an offset to my indices
     // so it still works
-    indices
-        .iter_mut()
-        .for_each(|mut i| i += ctx.current_mesh.vertices.len());
+    indices.iter_mut().for_each(|i| *i += ctx.current_mesh.vertices.len());
 
     ctx.current_mesh.vertices.extend_from_slice(&verts);
     ctx.current_mesh.indices.extend_from_slice(&indices);
@@ -341,17 +296,6 @@ impl Executable for Mirror {
     }
 }
 
-fn edit_face_data<F>(ctx: &mut MeshBuildContext, mut func: F)
-where
-    F: FnMut(&mut TextureFileSet, &mut ExtendedFaceData) -> (),
-{
-    for f in &mut ctx.polygons {
-        // CLion fails at type deduction here, help it out
-        let face_data: &mut ExtendedFaceData = &mut f.face_data;
-        func(&mut ctx.parsed.textures, face_data)
-    }
-}
-
 impl Executable for SetColor {
     fn execute(&self, _span: Span, ctx: &mut MeshBuildContext) {
         ctx.current_mesh.color = self.color;
@@ -383,19 +327,6 @@ impl Executable for LoadTexture {
 impl Executable for SetDecalTransparentColor {
     fn execute(&self, _span: Span, ctx: &mut MeshBuildContext) {
         ctx.current_mesh.texture.decal_transparent_color = Some(self.color);
-    }
-}
-
-impl Executable for SetTextureCoordinates {
-    fn execute(&self, span: Span, ctx: &mut MeshBuildContext) {
-        if let Some(v) = ctx.vertices.get_mut(self.index) {
-            v.coord = self.coords;
-        } else {
-            ctx.parsed.errors.push(MeshError {
-                span,
-                kind: MeshErrorKind::OutOfBounds { idx: self.index },
-            });
-        }
     }
 }
 

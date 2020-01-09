@@ -71,6 +71,7 @@ fn no_arguments() {
         InstructionData::AddVertex(AddVertex {
             position: Vector3::new(0.0, 0.0, 0.0),
             normal: Vector3::new(0.0, 0.0, 0.0),
+            texture_coord: Vector2::new(0.0, 0.0),
         })
     );
 }
@@ -84,6 +85,7 @@ fn too_many_arguments() {
         InstructionData::AddVertex(AddVertex {
             position: Vector3::new(0.0, 0.0, 0.0),
             normal: Vector3::new(0.0, 0.0, 0.0),
+            texture_coord: Vector2::new(0.0, 0.0),
         })
     );
 }
@@ -107,11 +109,13 @@ fn add_vertex() {
         InstructionData::AddVertex(AddVertex {
             position: Vector3::new(1.0, 2.0, 3.0),
             normal: Vector3::new(4.0, 5.0, 6.0),
+            texture_coord: Vector2::new(0.0, 0.0),
         }),
         ",,,,,",
         InstructionData::AddVertex(AddVertex {
             position: Vector3::new(0.0, 0.0, 0.0),
             normal: Vector3::new(0.0, 0.0, 0.0),
+            texture_coord: Vector2::new(0.0, 0.0),
         })
     );
 }
