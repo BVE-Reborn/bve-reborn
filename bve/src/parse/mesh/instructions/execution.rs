@@ -204,6 +204,7 @@ fn run_create_mesh_builder(ctx: &mut MeshBuildContext) {
         /// they aren't.
         // THe entire group has all the same properties, so they can be combined into a single mesh.
         group.for_each(|face| {
+            // This is a direct indices -> indices translation
             triangulate_faces(&mut mesh.indices, &face.indices);
         });
 
