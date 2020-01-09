@@ -4,10 +4,12 @@ use crate::{ColorU8RGB, ColorU8RGBA};
 use cgmath::{Vector2, Vector3};
 pub use creation::*;
 pub use execution::*;
+pub use post_processing::*;
 use serde::Deserialize;
 
 mod creation;
 mod execution;
+mod post_processing;
 #[cfg(test)]
 mod tests;
 
@@ -101,6 +103,8 @@ pub struct AddVertex {
     pub position: Vector3<f32>,
     #[default("util::some_zero_f32")]
     pub normal: Vector3<f32>,
+    #[serde(skip)]
+    pub texture_coord: Vector2<f32>,
 }
 
 #[bve_derive::serde_vector_proxy]

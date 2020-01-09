@@ -39,8 +39,10 @@ impl Instruction {
             InstructionData::CreateMeshBuilder(data) => data.execute(self.span, ctx),
             InstructionData::AddVertex(data) => data.execute(self.span, ctx),
             InstructionData::AddFace(data) => data.execute(self.span, ctx),
-            InstructionData::Cube(data) => data.execute(self.span, ctx),
-            InstructionData::Cylinder(data) => data.execute(self.span, ctx),
+            InstructionData::Cube(data) => panic!("Cube instruction cannot be executed, must be postprocessed away"),
+            InstructionData::Cylinder(data) => {
+                panic!("Cylinder instruction cannot be executed, must be postprocessed away")
+            }
             InstructionData::Translate(data) => data.execute(self.span, ctx),
             InstructionData::Scale(data) => data.execute(self.span, ctx),
             InstructionData::Rotate(data) => data.execute(self.span, ctx),
@@ -51,7 +53,9 @@ impl Instruction {
             InstructionData::SetBlendMode(data) => data.execute(self.span, ctx),
             InstructionData::LoadTexture(data) => data.execute(self.span, ctx),
             InstructionData::SetDecalTransparentColor(data) => data.execute(self.span, ctx),
-            InstructionData::SetTextureCoordinates(data) => data.execute(self.span, ctx),
+            InstructionData::SetTextureCoordinates(data) => {
+                panic!("SetTextureCoordinates instruction cannot be executed, must be postprocessed away")
+            }
         }
     }
 }
@@ -262,91 +266,6 @@ fn add_face(ctx: &mut MeshBuildContext, span: Span, sides: Sides, indices: &[usi
 impl Executable for AddFace {
     fn execute(&self, span: Span, ctx: &mut MeshBuildContext) {
         add_face(ctx, span, self.sides, &self.indexes);
-    }
-}
-
-impl Executable for Cube {
-    #[allow(clippy::identity_op)] // Some +0 due to formatting/clarity
-    fn execute(&self, _span: Span, ctx: &mut MeshBuildContext) {
-        // http://openbve-project.net/documentation/HTML/object_cubecylinder.html
-
-        let vertex_offset = ctx.vertices.len();
-
-        let x = self.half_dim.x;
-        let y = self.half_dim.y;
-        let z = self.half_dim.z;
-
-        ctx.vertices.reserve(8);
-
-        ctx.vertices.push(Vertex::from_position(Vector3::new(x, y, -z)));
-        ctx.vertices.push(Vertex::from_position(Vector3::new(x, -y, -z)));
-        ctx.vertices.push(Vertex::from_position(Vector3::new(-x, -y, -z)));
-        ctx.vertices.push(Vertex::from_position(Vector3::new(-x, y, -z)));
-        ctx.vertices.push(Vertex::from_position(Vector3::new(x, y, z)));
-        ctx.vertices.push(Vertex::from_position(Vector3::new(x, -y, z)));
-        ctx.vertices.push(Vertex::from_position(Vector3::new(-x, -y, z)));
-        ctx.vertices.push(Vertex::from_position(Vector3::new(-x, y, z)));
-
-        ctx.polygons.reserve(6);
-
-        let vo = vertex_offset;
-
-        add_face(ctx, span, Sides::One, &vec![vo + 0, vo + 1, vo + 2, vo + 3]);
-        add_face(ctx, span, Sides::One, &vec![vo + 0, vo + 4, vo + 5, vo + 1]);
-        add_face(ctx, span, Sides::One, &vec![vo + 0, vo + 3, vo + 7, vo + 4]);
-        add_face(ctx, span, Sides::One, &vec![vo + 6, vo + 5, vo + 4, vo + 7]);
-        add_face(ctx, span, Sides::One, &vec![vo + 6, vo + 7, vo + 3, vo + 2]);
-        add_face(ctx, span, Sides::One, &vec![vo + 6, vo + 2, vo + 1, vo + 5]);
-    }
-}
-
-impl Executable for Cylinder {
-    #[allow(clippy::identity_op)] // Some +0 due to formatting/clarity
-    fn execute(&self, _span: Span, ctx: &mut MeshBuildContext) {
-        // http://openbve-project.net/documentation/HTML/object_cubecylinder.html
-
-        let vertex_offset = ctx.vertices.len();
-
-        // Convert args to format used in above documentation
-        let n = self.sides;
-        let n_f32 = n as f32;
-        let r1 = self.upper_radius;
-        let r2 = self.lower_radius;
-        let h = self.height;
-
-        // Vertices
-
-        ctx.vertices.reserve(2 * (n as usize));
-        for i in (0..n).map(|i| i as f32) {
-            let trig_arg = (2.0 * PI * i) / n_f32;
-            let cos = trig_arg.cos();
-            let sin = trig_arg.sin();
-            ctx.vertices
-                .push(Vertex::from_position(Vector3::new(cos * r1, h / 2.0, sin * r1)));
-            ctx.vertices
-                .push(Vertex::from_position(Vector3::new(cos * r2, -h / 2.0, sin * r2)));
-        }
-
-        // Faces
-        ctx.polygons.reserve(n as usize);
-
-        let v = vertex_offset;
-
-        let split = (n - 1).max(0) as usize;
-        for i in 0..split {
-            add_face(
-                ctx,
-                span,
-                Sides::One,
-                &vec![v + (2 * i + 2), v + (2 * i + 3), v + (2 * i + 1), v + (2 * i + 0)],
-            );
-            add_face(
-                ctx,
-                span,
-                Sides::One,
-                &vec![v + 0, v + 1, v + (2 * i + 1), v + (2 * i + 0)],
-            );
-        }
     }
 }
 
