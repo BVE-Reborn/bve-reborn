@@ -15,40 +15,21 @@ trait Executable {
 struct MeshBuildContext {
     parsed: ParsedStaticObject,
     vertices: Vec<Vertex>,
-    polygons: SmallVec<[PolygonFace; 16]>,
+    current_mesh: Mesh,
 }
 
-#[derive(Debug)]
-struct PolygonFace {
-    indices: Vec<usize>,
-    face_data: ExtendedFaceData,
-}
-
-#[derive(Debug)]
-struct ExtendedFaceData {
-    emission_color: ColorU8RGB,
-    texture_id: Option<usize>,
-    color: ColorU8RGBA,
-    decal_transparent_color: Option<ColorU8RGB>,
-    blend_mode: BlendMode,
-    glow: Glow,
-    sides: Sides,
-}
-
-impl ExtendedFaceData {
-    fn with_defaults(sides: Sides) -> Self {
-        Self {
-            emission_color: ColorU8RGB::from_value(0),
-            texture_id: None,
-            color: ColorU8RGBA::from_value(255),
-            decal_transparent_color: None,
-            blend_mode: BlendMode::Normal,
-            glow: Glow {
-                attenuation_mode: GlowAttenuationMode::DivideExponent4,
-                half_distance: 0,
-            },
-            sides,
-        }
+fn with_defaults(sides: Sides) -> Self {
+    Self {
+        emission_color: ColorU8RGB::from_value(0),
+        texture_id: None,
+        color: ColorU8RGBA::from_value(255),
+        decal_transparent_color: None,
+        blend_mode: BlendMode::Normal,
+        glow: Glow {
+            attenuation_mode: GlowAttenuationMode::DivideExponent4,
+            half_distance: 0,
+        },
+        sides,
     }
 }
 
@@ -134,11 +115,13 @@ fn calculate_normals(mesh: &mut Mesh) {
     mesh.vertices.iter_mut().for_each(|v| v.normal = v.normal.normalize())
 }
 
-fn shrink_vertex_list(vertices: &[Vertex], indices: &mut [usize]) -> Vec<Vertex> {
+fn shrink_vertex_list(vertices: &[Vertex], indices: &[usize]) -> (Vec<Vertex>, Vec<usize>) {
     let mut translation = vec![0; vertices.len()];
     let mut vertex_used = vec![false; vertices.len()];
 
-    for &mut index in indices.iter_mut() {
+    let mut new_indices = indices.to_vec();
+
+    for &mut index in new_indices.iter_mut() {
         vertex_used[index] = true;
     }
 
@@ -154,11 +137,11 @@ fn shrink_vertex_list(vertices: &[Vertex], indices: &mut [usize]) -> Vec<Vertex>
         new_index += 1;
     }
 
-    for index in indices.iter_mut() {
+    for index in new_indices.iter_mut() {
         *index = translation[*index];
     }
 
-    new_vertices
+    (new_vertices, new_indices)
 }
 
 fn run_create_mesh_builder(ctx: &mut MeshBuildContext) {
@@ -204,11 +187,10 @@ fn run_create_mesh_builder(ctx: &mut MeshBuildContext) {
             indices: vec![],
         };
 
-        // TODO: Flat shading should happen first, there's no reason to pretend like each triangle it's own face when
-        // they aren't.
         // THe entire group has all the same properties, so they can be combined into a single mesh.
         group.for_each(|face| {
             // This is a direct indices -> indices translation
+            let indices = flat_shading(&ctx.vertices, &face.indices);
             let triangle_indexes = triangulate_faces(&face.indices);
             mesh.indices.extend(triangle_indexes);
         });
@@ -241,22 +223,45 @@ impl Executable for AddVertex {
     }
 }
 
+fn add_face(ctx: &mut MeshBuildContext, span: Span, sides: Sides, indices: &[usize]) {
+    // Validate all indexes are in bounds
+    for &idx in &indices {
+        if idx >= ctx.vertices.len() {
+            ctx.parsed.errors.push(MeshError {
+                span,
+                kind: MeshErrorKind::OutOfBounds { idx },
+            });
+            return;
+        }
+    }
+
+    // Use my indexes to find all vertices that are only mine
+    let (verts, indices) = shrink_vertex_list(&ctx.vertices, &indexes);
+
+    // Enable flat shading, make sure each vert is unique per face
+    let (mut verts, indices) = flat_shading(&verts, &indices);
+
+    // Triangulate the faces to make modern game engines not shit themselves
+    let mut indices = triangulate_faces(&indices);
+
+    // Enable the double sided flag on my vertices if I am a double sided face.
+    if sides == Sides::Two {
+        verts.iter_mut().for_each(|v| v.double_sided = true);
+    }
+
+    // I am going to add this to an existing list of vertices and indices, so I need to add an offset to my indices
+    // so it still works
+    indices
+        .iter_mut()
+        .for_each(|mut i| i += ctx.current_mesh.vertices.len());
+
+    ctx.current_mesh.vertices.extend_from_slice(&verts);
+    ctx.current_mesh.indices.extend_from_slice(&indices);
+}
+
 impl Executable for AddFace {
     fn execute(&self, span: Span, ctx: &mut MeshBuildContext) {
-        // Validate all indexes are in bounds
-        for &idx in &self.indexes {
-            if idx >= ctx.vertices.len() {
-                ctx.parsed.errors.push(MeshError {
-                    span,
-                    kind: MeshErrorKind::OutOfBounds { idx },
-                });
-                return;
-            }
-        }
-        ctx.polygons.push(PolygonFace {
-            face_data: ExtendedFaceData::with_defaults(self.sides),
-            indices: self.indexes.clone(),
-        });
+        add_face(ctx, span, self.sides, &self.indexes);
     }
 }
 
@@ -286,30 +291,12 @@ impl Executable for Cube {
 
         let vo = vertex_offset;
 
-        ctx.polygons.push(PolygonFace {
-            face_data: ExtendedFaceData::with_defaults(Sides::One),
-            indices: vec![vo + 0, vo + 1, vo + 2, vo + 3],
-        });
-        ctx.polygons.push(PolygonFace {
-            face_data: ExtendedFaceData::with_defaults(Sides::One),
-            indices: vec![vo + 0, vo + 4, vo + 5, vo + 1],
-        });
-        ctx.polygons.push(PolygonFace {
-            face_data: ExtendedFaceData::with_defaults(Sides::One),
-            indices: vec![vo + 0, vo + 3, vo + 7, vo + 4],
-        });
-        ctx.polygons.push(PolygonFace {
-            face_data: ExtendedFaceData::with_defaults(Sides::One),
-            indices: vec![vo + 6, vo + 5, vo + 4, vo + 7],
-        });
-        ctx.polygons.push(PolygonFace {
-            face_data: ExtendedFaceData::with_defaults(Sides::One),
-            indices: vec![vo + 6, vo + 7, vo + 3, vo + 2],
-        });
-        ctx.polygons.push(PolygonFace {
-            face_data: ExtendedFaceData::with_defaults(Sides::One),
-            indices: vec![vo + 6, vo + 2, vo + 1, vo + 5],
-        });
+        add_face(ctx, span, Sides::One, &vec![vo + 0, vo + 1, vo + 2, vo + 3]);
+        add_face(ctx, span, Sides::One, &vec![vo + 0, vo + 4, vo + 5, vo + 1]);
+        add_face(ctx, span, Sides::One, &vec![vo + 0, vo + 3, vo + 7, vo + 4]);
+        add_face(ctx, span, Sides::One, &vec![vo + 6, vo + 5, vo + 4, vo + 7]);
+        add_face(ctx, span, Sides::One, &vec![vo + 6, vo + 7, vo + 3, vo + 2]);
+        add_face(ctx, span, Sides::One, &vec![vo + 6, vo + 2, vo + 1, vo + 5]);
     }
 }
 
@@ -341,21 +328,24 @@ impl Executable for Cylinder {
         }
 
         // Faces
-
         ctx.polygons.reserve(n as usize);
 
         let v = vertex_offset;
 
         let split = (n - 1).max(0) as usize;
         for i in 0..split {
-            ctx.polygons.push(PolygonFace {
-                face_data: ExtendedFaceData::with_defaults(Sides::One),
-                indices: vec![v + (2 * i + 2), v + (2 * i + 3), v + (2 * i + 1), v + (2 * i + 0)],
-            });
-            ctx.polygons.push(PolygonFace {
-                face_data: ExtendedFaceData::with_defaults(Sides::One),
-                indices: vec![v + 0, v + 1, v + (2 * i + 1), v + (2 * i + 0)],
-            });
+            add_face(
+                ctx,
+                span,
+                Sides::One,
+                &vec![v + (2 * i + 2), v + (2 * i + 3), v + (2 * i + 1), v + (2 * i + 0)],
+            );
+            add_face(
+                ctx,
+                span,
+                Sides::One,
+                &vec![v + 0, v + 1, v + (2 * i + 1), v + (2 * i + 0)],
+            );
         }
     }
 }
@@ -445,39 +435,35 @@ where
 
 impl Executable for SetColor {
     fn execute(&self, _span: Span, ctx: &mut MeshBuildContext) {
-        edit_face_data(ctx, |_, f| f.color = self.color);
+        ctx.current_mesh.color = self.color;
     }
 }
 
 impl Executable for SetEmissiveColor {
     fn execute(&self, _span: Span, ctx: &mut MeshBuildContext) {
-        edit_face_data(ctx, |_, f| f.emission_color = self.color);
+        ctx.current_mesh.texture.emission_color = self.color;
     }
 }
 
 impl Executable for SetBlendMode {
     fn execute(&self, _span: Span, ctx: &mut MeshBuildContext) {
-        edit_face_data(ctx, |_, f| {
-            f.blend_mode = self.blend_mode;
-            f.glow = Glow {
-                attenuation_mode: self.glow_attenuation_mode,
-                half_distance: self.glow_half_distance,
-            };
-        });
+        ctx.current_mesh.blend_mode = self.blend_mode;
+        ctx.current_mesh.glow = Glow {
+            attenuation_mode: self.glow_attenuation_mode,
+            half_distance: self.glow_half_distance,
+        };
     }
 }
 
 impl Executable for LoadTexture {
     fn execute(&self, _span: Span, ctx: &mut MeshBuildContext) {
-        edit_face_data(ctx, |textures, f| f.texture_id = Some(textures.add(&self.daytime)));
+        ctx.current_mesh.texture.texture_id = Some(ctx.parsed.textures.add(&self.daytime));
     }
 }
 
 impl Executable for SetDecalTransparentColor {
     fn execute(&self, _span: Span, ctx: &mut MeshBuildContext) {
-        edit_face_data(ctx, |_, f| {
-            f.decal_transparent_color = Some(self.color);
-        })
+        ctx.current_mesh.texture.decal_transparent_color = Some(self.color);
     }
 }
 

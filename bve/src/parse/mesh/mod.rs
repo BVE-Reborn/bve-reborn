@@ -83,6 +83,7 @@ pub struct Vertex {
     pub position: Vector3<f32>,
     pub normal: Vector3<f32>,
     pub coord: Vector2<f32>,
+    pub double_sided: bool,
 }
 
 impl Vertex {
@@ -91,6 +92,7 @@ impl Vertex {
             position,
             normal,
             coord: Vector2::from_value(0.0),
+            double_sided: false,
         }
     }
     fn from_position(position: Vector3<f32>) -> Self {
@@ -98,6 +100,7 @@ impl Vertex {
             position,
             normal: Vector3::from_value(0.0),
             coord: Vector2::from_value(0.0),
+            double_sided: false,
         }
     }
 }

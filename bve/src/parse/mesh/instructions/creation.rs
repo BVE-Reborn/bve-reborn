@@ -203,5 +203,7 @@ pub fn create_instructions(input: &str, file_type: FileType) -> InstructionList 
         }
     }
 
+    // TODO: Postprocess the instructions to be in the right order so SetTextureCoordinates can actually work correctly
+
     instructions
 }
