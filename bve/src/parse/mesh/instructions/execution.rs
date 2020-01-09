@@ -51,7 +51,8 @@ impl ExtendedFaceData {
 
 impl Instruction {
     fn execute(&self, ctx: &mut MeshBuildContext) {
-        match &self.data {
+        // Consider using a virtual method so you don't have 15 loc that call the same method with the same arguments
+        match &self.data {  
             InstructionData::CreateMeshBuilder(data) => data.execute(self.span, ctx),
             InstructionData::AddVertex(data) => data.execute(self.span, ctx),
             InstructionData::AddFace(data) => data.execute(self.span, ctx),
@@ -72,6 +73,7 @@ impl Instruction {
     }
 }
 
+// Weird that this function has an output argument while `flat_shading` returns its output. Should be consistent
 fn triangulate_faces(output_list: &mut Vec<usize>, input_face: &[usize]) {
     if input_face.len() < 3 {
         return;
@@ -156,6 +158,7 @@ impl Executable for CreateMeshBuilder {
 
             let first: &PolygonFace = group.peek().expect("Groups must not be empty");
             // All of these attributes are the same, so we can just grab them from the first one.
+            // Yay duplicate data
             let first_face_data: &ExtendedFaceData = &first.face_data;
 
             let mut mesh = Mesh {
@@ -182,7 +185,7 @@ impl Executable for CreateMeshBuilder {
 
             calculate_normals(&mut mesh);
 
-            ctx.pso.meshes.push(mesh);
+            ctx.pso.meshes.push(mesh);  // I keep thinking that PSO means Pipeline State Object
         }
 
         ctx.vertices.clear();
@@ -369,7 +372,7 @@ impl Executable for Rotate {
     }
 }
 
-impl Executable for Sheer {
+impl Executable for Sheer { // Do you mean shear?
     fn execute(&self, _span: Span, ctx: &mut MeshBuildContext) {
         apply_transform(self.application, ctx, |v| {
             let scale = self.ratio * (self.direction.mul_element_wise(v.position)).sum();
