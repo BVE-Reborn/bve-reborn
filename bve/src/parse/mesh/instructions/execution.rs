@@ -63,7 +63,7 @@ impl Instruction {
             InstructionData::Translate(data) => data.execute(self.span, ctx),
             InstructionData::Scale(data) => data.execute(self.span, ctx),
             InstructionData::Rotate(data) => data.execute(self.span, ctx),
-            InstructionData::Sheer(data) => data.execute(self.span, ctx),
+            InstructionData::Shear(data) => data.execute(self.span, ctx),
             InstructionData::Mirror(data) => data.execute(self.span, ctx),
             InstructionData::SetColor(data) => data.execute(self.span, ctx),
             InstructionData::SetEmissiveColor(data) => data.execute(self.span, ctx),
@@ -413,11 +413,11 @@ impl Executable for Rotate {
     }
 }
 
-impl Executable for Sheer {
+impl Executable for Shear {
     fn execute(&self, _span: Span, ctx: &mut MeshBuildContext) {
         apply_transform(self.application, ctx, |v| {
             let scale = self.ratio * (self.direction.mul_element_wise(v.position)).sum();
-            v.position += self.sheer * scale;
+            v.position += self.shear * scale;
         });
     }
 }

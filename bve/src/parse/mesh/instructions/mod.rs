@@ -54,8 +54,8 @@ pub enum InstructionType {
     ScaleAll,
     Rotate,
     RotateAll,
-    Sheer,
-    SheerAll,
+    Shear,
+    ShearAll,
     Mirror,
     MirrorAll,
     #[serde(alias = "color")]
@@ -82,7 +82,7 @@ pub enum InstructionData {
     Translate(Translate),
     Scale(Scale),
     Rotate(Rotate),
-    Sheer(Sheer),
+    Shear(Shear),
     Mirror(Mirror),
     SetColor(SetColor),
     SetEmissiveColor(SetEmissiveColor),
@@ -150,11 +150,11 @@ pub struct Rotate {
 }
 
 #[bve_derive::serde_proxy]
-pub struct Sheer {
+pub struct Shear {
     #[default("util::some_zero_f32")]
     pub direction: Vector3<f32>,
     #[default("util::some_zero_f32")]
-    pub sheer: Vector3<f32>,
+    pub shear: Vector3<f32>,
     #[default("util::some_zero_f32")]
     pub ratio: f32,
     #[serde(skip)]

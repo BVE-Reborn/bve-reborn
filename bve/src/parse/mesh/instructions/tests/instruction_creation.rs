@@ -292,21 +292,21 @@ fn rotate_all() {
 }
 
 #[test]
-fn sheer() {
+fn shear() {
     instruction_assert_default!(
-        "Sheer",
-        "Sheer",
+        "Shear",
+        "Shear",
         "1, 2, 3, 4, 5, 6, 7",
-        InstructionData::Sheer(Sheer {
+        InstructionData::Shear(Shear {
             direction: Vector3::new(1.0, 2.0, 3.0),
-            sheer: Vector3::new(4.0, 5.0, 6.0),
+            shear: Vector3::new(4.0, 5.0, 6.0),
             ratio: 7.0,
             application: ApplyTo::SingleMesh,
         }),
         ",,,,,,",
-        InstructionData::Sheer(Sheer {
+        InstructionData::Shear(Shear {
             direction: Vector3::new(0.0, 0.0, 0.0),
-            sheer: Vector3::new(0.0, 0.0, 0.0),
+            shear: Vector3::new(0.0, 0.0, 0.0),
             ratio: 0.0,
             application: ApplyTo::SingleMesh,
         })
@@ -314,21 +314,21 @@ fn sheer() {
 }
 
 #[test]
-fn sheer_all() {
+fn shear_all() {
     instruction_assert_default!(
-        "SheerAll",
-        "SheerAll",
+        "ShearAll",
+        "ShearAll",
         "1, 2, 3, 4, 5, 6, 7",
-        InstructionData::Sheer(Sheer {
+        InstructionData::Shear(Shear {
             direction: Vector3::new(1.0, 2.0, 3.0),
-            sheer: Vector3::new(4.0, 5.0, 6.0),
+            shear: Vector3::new(4.0, 5.0, 6.0),
             ratio: 7.0,
             application: ApplyTo::AllMeshes,
         }),
         ",,,,,,",
-        InstructionData::Sheer(Sheer {
+        InstructionData::Shear(Shear {
             direction: Vector3::new(0.0, 0.0, 0.0),
-            sheer: Vector3::new(0.0, 0.0, 0.0),
+            shear: Vector3::new(0.0, 0.0, 0.0),
             ratio: 0.0,
             application: ApplyTo::AllMeshes,
         })
