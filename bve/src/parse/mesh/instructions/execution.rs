@@ -75,13 +75,15 @@ impl Instruction {
     }
 }
 
-fn triangulate_faces(output_list: &mut Vec<usize>, input_face: &[usize]) {
+fn triangulate_faces(input_face: &[usize]) -> Vec<usize> {
     if input_face.len() < 3 {
         return;
     }
 
     let face_count = input_face.len() - 2;
     let index_count = face_count * 3;
+
+    let mut output_list = Vec::new();
 
     output_list.reserve(index_count);
 
@@ -90,6 +92,8 @@ fn triangulate_faces(output_list: &mut Vec<usize>, input_face: &[usize]) {
         output_list.push(input_face[i - 1]);
         output_list.push(input_face[i]);
     }
+
+    output_list
 }
 
 #[allow(clippy::identity_op)]
@@ -200,12 +204,13 @@ fn run_create_mesh_builder(ctx: &mut MeshBuildContext) {
             indices: vec![],
         };
 
-        /// TODO: Flat shading should happen first, there's no reason to pretend like each triangle it's own face when
-        /// they aren't.
+        // TODO: Flat shading should happen first, there's no reason to pretend like each triangle it's own face when
+        // they aren't.
         // THe entire group has all the same properties, so they can be combined into a single mesh.
         group.for_each(|face| {
             // This is a direct indices -> indices translation
-            triangulate_faces(&mut mesh.indices, &face.indices);
+            let triangle_indexes = triangulate_faces(&face.indices);
+            mesh.indices.extend(triangle_indexes);
         });
 
         mesh.vertices = shrink_vertex_list(&ctx.vertices, &mut mesh.indices);
