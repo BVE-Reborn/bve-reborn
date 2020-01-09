@@ -13,7 +13,7 @@ trait Executable {
 
 #[derive(Debug, Default)]
 struct MeshBuildContext {
-    pso: ParsedStaticObject,
+    parsed: ParsedStaticObject,
     vertices: Vec<Vertex>,
     polygons: SmallVec<[PolygonFace; 16]>,
 }
@@ -221,7 +221,7 @@ fn run_create_mesh_builder(ctx: &mut MeshBuildContext) {
 
         calculate_normals(&mut mesh);
 
-        ctx.pso.meshes.push(mesh);
+        ctx.parsed.meshes.push(mesh);
     }
 
     ctx.vertices.clear();
@@ -246,7 +246,7 @@ impl Executable for AddFace {
         // Validate all indexes are in bounds
         for &idx in &self.indexes {
             if idx >= ctx.vertices.len() {
-                ctx.pso.errors.push(MeshError {
+                ctx.parsed.errors.push(MeshError {
                     span,
                     kind: MeshErrorKind::OutOfBounds { idx },
                 });
@@ -373,7 +373,7 @@ where
     match application {
         ApplyTo::SingleMesh => {}
         ApplyTo::AllMeshes => {
-            for m in &mut ctx.pso.meshes {
+            for m in &mut ctx.parsed.meshes {
                 for v in &mut m.vertices {
                     func(v);
                 }
@@ -439,7 +439,7 @@ where
     for f in &mut ctx.polygons {
         // CLion fails at type deduction here, help it out
         let face_data: &mut ExtendedFaceData = &mut f.face_data;
-        func(&mut ctx.pso.textures, face_data)
+        func(&mut ctx.parsed.textures, face_data)
     }
 }
 
@@ -486,7 +486,7 @@ impl Executable for SetTextureCoordinates {
         if let Some(v) = ctx.vertices.get_mut(self.index) {
             v.coord = self.coords;
         } else {
-            ctx.pso.errors.push(MeshError {
+            ctx.parsed.errors.push(MeshError {
                 span,
                 kind: MeshErrorKind::OutOfBounds { idx: self.index },
             });
@@ -500,6 +500,6 @@ pub fn generate_meshes(instructions: InstructionList) -> ParsedStaticObject {
         instr.execute(&mut mbc);
     }
     run_create_mesh_builder(&mut mbc);
-    mbc.pso.errors = instructions.errors;
-    mbc.pso
+    mbc.parsed.errors = instructions.errors;
+    mbc.parsed
 }
