@@ -77,7 +77,7 @@ impl Instruction {
 
 fn triangulate_faces(input_face: &[usize]) -> Vec<usize> {
     if input_face.len() < 3 {
-        return;
+        return vec![];
     }
 
     let face_count = input_face.len() - 2;
