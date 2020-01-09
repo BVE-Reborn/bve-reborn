@@ -200,6 +200,8 @@ fn run_create_mesh_builder(ctx: &mut MeshBuildContext) {
             indices: vec![],
         };
 
+        /// TODO: Flat shading should happen first, there's no reason to pretend like each triangle it's own face when
+        /// they aren't.
         // THe entire group has all the same properties, so they can be combined into a single mesh.
         group.for_each(|face| {
             triangulate_faces(&mut mesh.indices, &face.indices);
