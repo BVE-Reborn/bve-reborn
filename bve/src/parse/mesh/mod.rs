@@ -87,6 +87,15 @@ pub struct Vertex {
 }
 
 impl Vertex {
+    fn print_positions(vertices: &[Vertex], indices: &[usize]) {
+        println!("Vertices: [");
+        for (i, v) in vertices.iter().enumerate() {
+            println!("\t{}: [{}, {}, {}],", i, v.position.x, v.position.y, v.position.z);
+        }
+        println!("]");
+        println!("{:?}", indices);
+    }
+
     pub fn from_position_normal_coord(position: Vector3<f32>, normal: Vector3<f32>, coord: Vector2<f32>) -> Self {
         Self {
             position,

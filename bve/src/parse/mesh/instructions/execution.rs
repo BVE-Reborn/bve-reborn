@@ -91,24 +91,6 @@ fn triangulate_faces(input_face: &[usize]) -> Vec<usize> {
     output_list
 }
 
-#[allow(clippy::identity_op)]
-fn flat_shading(verts: &[Vertex], indices: &[usize]) -> (Vec<Vertex>, Vec<usize>) {
-    let mut new_verts = Vec::with_capacity(indices.len());
-    let mut new_indices = Vec::with_capacity(indices.len());
-
-    for (i, (&i1, &i2, &i3)) in indices.iter().tuples().enumerate() {
-        new_verts.push(verts[i1]);
-        new_verts.push(verts[i2]);
-        new_verts.push(verts[i3]);
-
-        new_indices.push(3 * i + 0);
-        new_indices.push(3 * i + 1);
-        new_indices.push(3 * i + 2);
-    }
-
-    (new_verts, new_indices)
-}
-
 fn calculate_normals(mesh: &mut Mesh) {
     mesh.vertices
         .iter_mut()
@@ -196,14 +178,18 @@ fn add_face(ctx: &mut MeshBuildContext, span: Span, sides: Sides, indices: &[usi
         }
     }
 
-    // Use my indexes to find all vertices that are only mine
-    let (verts, indices) = shrink_vertex_list(&ctx.vertices, &indices);
+    println!("-------BEFORE--------");
+    Vertex::print_positions(&ctx.vertices, &indices);
 
-    // Enable flat shading, make sure each vert is unique per face
-    let (mut verts, indices) = flat_shading(&verts, &indices);
+    // Use my indexes to find all vertices that are only mine
+    let (mut verts, indices) = shrink_vertex_list(&ctx.vertices, &indices);
+    println!("Shrinked");
+    Vertex::print_positions(&verts, &indices);
 
     // Triangulate the faces to make modern game engines not shit themselves
     let mut indices = triangulate_faces(&indices);
+    println!("Triangled");
+    Vertex::print_positions(&verts, &indices);
 
     // Enable the double sided flag on my vertices if I am a double sided face.
     if sides == Sides::Two {
@@ -213,6 +199,8 @@ fn add_face(ctx: &mut MeshBuildContext, span: Span, sides: Sides, indices: &[usi
     // I am going to add this to an existing list of vertices and indices, so I need to add an offset to my indices
     // so it still works
     indices.iter_mut().for_each(|i| *i += ctx.current_mesh.vertices.len());
+    println!("Modified");
+    Vertex::print_positions(&verts, &indices);
 
     ctx.current_mesh.vertices.extend_from_slice(&verts);
     ctx.current_mesh.indices.extend_from_slice(&indices);
