@@ -39,111 +39,89 @@
 #![allow(clippy::unreachable)]
 #![allow(clippy::wildcard_enum_match_arm)]
 
-use crate::parse::mesh::{Mesh, Mesh_Error};
 use bve::parse::mesh::Vertex;
-use bve::ColorU8RGB;
 use std::borrow::Cow;
 use std::ffi::{CStr, CString};
 use std::os::raw::*;
 use std::ptr::null_mut;
 
-macro_rules! bve_option {
-    ($name:ident, $t:ty) => {
-        #[repr(C)]
-        pub struct $name {
-            /// Actual value inside the option. Reading this is undefined behavior if exists is false.
-            value: $t,
-            /// Flag if the value exists or not.
-            exists: bool,
-        }
-
-        impl<T> From<Option<T>> for $name
-        where
-            T: Into<$t>,
-        {
-            #[inline]
-            #[must_use]
-            fn from(other: Option<T>) -> Self {
-                match other {
-                    Some(v) => Self {
-                        value: v.into(),
-                        exists: true,
-                    },
-                    None => Self {
-                        value: unsafe { std::mem::zeroed() },
-                        exists: false,
-                    },
-                }
-            }
-        }
-
-        impl Into<Option<$t>> for $name {
-            #[inline]
-            #[must_use]
-            fn into(self) -> Option<$t> {
-                match self.exists {
-                    true => Some(self.value),
-                    false => None,
-                }
-            }
-        }
-    };
+#[repr(C)]
+pub struct COption<T> {
+    /// Actual value inside the option. Reading this is undefined behavior if exists is false.
+    value: T,
+    /// Flag if the value exists or not.
+    exists: bool,
 }
 
-macro_rules! bve_vector {
-    ($name:ident, $t:ty) => {
-        #[repr(C)]
-        pub struct $name {
-            /// Ptr to the array of elements
-            ptr: *mut $t,
-            /// Count of elements, do not run beyond this amount
-            count: libc::size_t,
-            /// Capacity of the underlying buffer
-            capacity: libc::size_t,
+impl<T, U> From<Option<U>> for COption<T>
+where
+    U: Into<T>,
+{
+    #[inline]
+    #[must_use]
+    fn from(other: Option<U>) -> Self {
+        match other {
+            Some(v) => Self {
+                value: v.into(),
+                exists: true,
+            },
+            None => Self {
+                value: unsafe { std::mem::zeroed() },
+                exists: false,
+            },
         }
-
-        impl<T> From<Vec<T>> for $name
-        where
-            T: Into<$t>,
-        {
-            #[inline]
-            #[must_use]
-            fn from(other: Vec<T>) -> Self {
-                let mut converted: Vec<$t> = other.into_iter().map(|v| v.into()).collect();
-                let ret = Self {
-                    ptr: converted.as_mut_ptr(),
-                    count: converted.len(),
-                    capacity: converted.capacity(),
-                };
-                std::mem::forget(converted);
-                ret
-            }
+    }
+}
+impl<T> Into<Option<T>> for COption<T> {
+    #[inline]
+    #[must_use]
+    fn into(self) -> Option<T> {
+        match self.exists {
+            true => Some(self.value),
+            false => None,
         }
-
-        impl<T> Into<Vec<T>> for $name
-        where
-            $t: Into<T>,
-        {
-            #[inline]
-            #[must_use]
-            fn into(self) -> Vec<T> {
-                let converted: Vec<$t> = unsafe { Vec::from_raw_parts(self.ptr, self.count, self.capacity) };
-                let other: Vec<T> = converted.into_iter().map(|v| v.into()).collect();
-                other
-            }
-        }
-    };
+    }
 }
 
-bve_option!(Option_unsigned_long_long, c_ulonglong);
-bve_option!(Option_size_t, libc::size_t);
-bve_option!(Option_ColorU8RGB, ColorU8RGB);
+#[repr(C)]
+pub struct CVector<T> {
+    /// Ptr to the array of elements
+    ptr: *mut T,
+    /// Count of elements, do not run beyond this amount
+    count: libc::size_t,
+    /// Capacity of the underlying buffer
+    capacity: libc::size_t,
+}
 
-bve_vector!(Vector_size_t, libc::size_t);
-bve_vector!(Vector_Mesh, Mesh);
-
-bve_vector!(Vector_Mesh_Error, Mesh_Error);
-bve_vector!(Vector_Vertex, Vertex);
+impl<T, U> From<Vec<U>> for CVector<T>
+where
+    U: Into<T>,
+{
+    #[inline]
+    #[must_use]
+    fn from(other: Vec<U>) -> Self {
+        let mut converted: Vec<T> = other.into_iter().map(|v| v.into()).collect();
+        let ret = Self {
+            ptr: converted.as_mut_ptr(),
+            count: converted.len(),
+            capacity: converted.capacity(),
+        };
+        std::mem::forget(converted);
+        ret
+    }
+}
+impl<T, U> Into<Vec<U>> for CVector<T>
+where
+    T: Into<U>,
+{
+    #[inline]
+    #[must_use]
+    fn into(self) -> Vec<U> {
+        let converted: Vec<T> = unsafe { Vec::from_raw_parts(self.ptr, self.count, self.capacity) };
+        let other: Vec<U> = converted.into_iter().map(|v| v.into()).collect();
+        other
+    }
+}
 
 fn string_to_owned_ptr(input: &str) -> *mut c_char {
     CString::new(input).map(|v| v.into_raw()).unwrap_or(null_mut())

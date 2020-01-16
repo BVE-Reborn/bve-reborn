@@ -1,14 +1,14 @@
 use crate::*;
-use bve::parse::mesh::*;
+use bve::parse::mesh;
 use bve::{ColorU8RGB, ColorU8RGBA};
 use std::ffi::CStr;
 use std::ptr::null;
 
 #[repr(C)]
 pub struct Parsed_Static_Object {
-    pub meshes: Vector_Mesh,
+    pub meshes: CVector<Mesh>,
     pub textures: *mut Texture_Set,
-    pub errors: Vector_Mesh_Error,
+    pub errors: CVector<Mesh_Error>,
 }
 
 impl From<mesh::ParsedStaticObject> for Parsed_Static_Object {
@@ -77,8 +77,8 @@ pub unsafe extern "C" fn BVE_Texture_Set_lookup(ptr: *const Texture_Set, idx: li
 
 #[repr(C)]
 pub struct Mesh_Texture {
-    pub texture_id: Option_size_t,
-    pub decal_transparent_color: Option_ColorU8RGB,
+    pub texture_id: COption<usize>,
+    pub decal_transparent_color: COption<ColorU8RGB>,
     pub emission_color: ColorU8RGB,
 }
 
@@ -104,8 +104,8 @@ impl Into<mesh::Texture> for Mesh_Texture {
 
 #[repr(C)]
 pub struct Mesh {
-    pub vertices: Vector_Vertex,
-    pub indices: Vector_size_t,
+    pub vertices: CVector<Vertex>,
+    pub indices: CVector<libc::size_t>,
     pub texture: Mesh_Texture,
     pub color: ColorU8RGBA,
     pub blend_mode: mesh::BlendMode,
@@ -165,7 +165,7 @@ impl Into<mesh::MeshError> for Mesh_Error {
 #[repr(C, u8)]
 pub enum Mesh_Error_Kind {
     UTF8 {
-        column: Option_unsigned_long_long,
+        column: COption<u64>,
     },
     OutOfBounds {
         idx: usize,
@@ -225,7 +225,7 @@ impl Into<mesh::MeshErrorKind> for Mesh_Error_Kind {
 
 #[repr(C)]
 pub struct Span {
-    pub line: Option_unsigned_long_long,
+    pub line: COption<u64>,
 }
 
 impl From<mesh::Span> for Span {
