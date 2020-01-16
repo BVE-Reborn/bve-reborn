@@ -39,26 +39,51 @@
 #![allow(clippy::unreachable)]
 #![allow(clippy::wildcard_enum_match_arm)]
 
+use crate::parse::mesh::{BVE_Mesh, BVE_Mesh_Error};
+use bve::parse::mesh::Vertex;
+use bve::ColorU8RGB;
+use std::borrow::Cow;
+use std::ffi::{CStr, CString};
+use std::os::raw::*;
+use std::ptr::null_mut;
+
 macro_rules! bve_option {
     ($name:ident, $t:ty) => {
         #[repr(C)]
         pub struct $name {
             /// Actual value inside the option. Reading this is undefined behavior if exists is false.
-            value: std::mem::MaybeUninit<$t>,
+            value: $t,
             /// Flag if the value exists or not.
             exists: bool,
         }
-        impl From<Option<$t>> for $name {
-            fn from(other: Option<$t>) -> Self {
+
+        impl<T> From<Option<T>> for $name
+        where
+            T: Into<$t>,
+        {
+            #[inline]
+            #[must_use]
+            fn from(other: Option<T>) -> Self {
                 match other {
                     Some(v) => Self {
-                        value: std::mem::MaybeUninit::new(v),
+                        value: v.into(),
                         exists: true,
                     },
                     None => Self {
-                        value: std::mem::MaybeUninit::uninit(),
+                        value: unsafe { std::mem::zeroed() },
                         exists: false,
                     },
+                }
+            }
+        }
+
+        impl Into<Option<$t>> for $name {
+            #[inline]
+            #[must_use]
+            fn into(self) -> Option<$t> {
+                match self.exists {
+                    true => Some(self.value),
+                    false => None,
                 }
             }
         }
@@ -76,18 +101,68 @@ macro_rules! bve_vector {
             /// Capacity of the underlying buffer
             capacity: libc::size_t,
         }
-        impl From<Vec<$t>> for $name {
-            fn from(mut other: Vec<$t>) -> Self {
+
+        impl<T> From<Vec<T>> for $name
+        where
+            T: Into<$t>,
+        {
+            #[inline]
+            #[must_use]
+            fn from(other: Vec<T>) -> Self {
+                let mut converted: Vec<$t> = other.into_iter().map(|v| v.into()).collect();
                 let ret = Self {
-                    ptr: other.as_mut_ptr(),
-                    count: other.len(),
-                    capacity: other.capacity(),
+                    ptr: converted.as_mut_ptr(),
+                    count: converted.len(),
+                    capacity: converted.capacity(),
                 };
-                std::mem::forget(other);
+                std::mem::forget(converted);
                 ret
             }
         }
+
+        impl<T> Into<Vec<T>> for $name
+        where
+            $t: Into<T>,
+        {
+            #[inline]
+            #[must_use]
+            fn into(self) -> Vec<T> {
+                let converted: Vec<$t> = unsafe { Vec::from_raw_parts(self.ptr, self.count, self.capacity) };
+                let other: Vec<T> = converted.into_iter().map(|v| v.into()).collect();
+                other
+            }
+        }
     };
+}
+
+bve_option!(BVE_Option_unsigned_long_long, c_ulonglong);
+bve_option!(BVE_Option_size_t, libc::size_t);
+bve_option!(BVE_Option_ColorU8RGB, ColorU8RGB);
+
+bve_vector!(BVE_Vector_size_t, libc::size_t);
+bve_vector!(BVE_Vector_Mesh, BVE_Mesh);
+
+bve_vector!(BVE_Vector_Mesh_Error, BVE_Mesh_Error);
+bve_vector!(BVE_Vector_Vertex, Vertex);
+
+fn string_to_owned_ptr(input: &str) -> *mut c_char {
+    CString::new(input).map(|v| v.into_raw()).unwrap_or(null_mut())
+}
+
+/// Consumes the given owning pointer and converts it to a rust string.
+unsafe fn owned_ptr_to_string(input: *const c_char) -> String {
+    // This cast is valid as the underlying data will never be changed
+    // Either way we own it and it's being destroyed.
+    CString::from_raw(input as *mut c_char).to_string_lossy().into()
+}
+
+unsafe fn unowned_ptr_to_str(input: *const c_char) -> Cow<'static, str> {
+    CStr::from_ptr(input).to_string_lossy()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn bve_delete_string(ptr: *mut c_char) {
+    CString::from_raw(ptr);
 }
 
 pub mod parse;
