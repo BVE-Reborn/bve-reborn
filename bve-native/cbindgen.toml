@@ -13,6 +13,26 @@ bitflags = true
 
 [export]
 prefix = "BVE_"
+include = [
+    "ColorU8R",
+    "ColorU8RG",
+    "ColorU8RGB",
+    "ColorU8RGBA",
+    "ColorU16R",
+    "ColorU16RG",
+    "ColorU16RGB",
+    "ColorU16RGBA",
+    "ColorF32R",
+    "ColorF32RG",
+    "ColorF32RGB",
+    "ColorF32RGBA",
+]
+
+[export.rename]
+"BlendMode" = "Mesh_Blend_Mode"
+"FileType" = "Mesh_File_Type"
+"Glow" = "Mesh_Glow"
+"GlowAttenuationMode" = "Mesh_Glow_Attenuation_Mode"
 
 [parse]
 parse_deps = true
