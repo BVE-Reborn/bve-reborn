@@ -15,6 +15,7 @@ pub enum MeshErrorKind {
 }
 
 impl From<csv::Error> for MeshError {
+    #[must_use]
     fn from(e: csv::Error) -> Self {
         match e.kind() {
             csv::ErrorKind::Deserialize {
@@ -99,6 +100,7 @@ pub struct Span {
 }
 
 impl<'a> From<Option<&'a csv::Position>> for Span {
+    #[must_use]
     fn from(p: Option<&'a csv::Position>) -> Self {
         Self {
             line: p.map(csv::Position::line),

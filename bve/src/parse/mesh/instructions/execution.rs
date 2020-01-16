@@ -290,6 +290,7 @@ impl Executable for SetDecalTransparentColor {
     }
 }
 
+#[must_use]
 pub fn generate_meshes(instructions: InstructionList) -> ParsedStaticObject {
     let mut mbc = MeshBuildContext::default();
     for instr in instructions.instructions {

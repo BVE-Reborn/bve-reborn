@@ -26,9 +26,14 @@
 #![allow(clippy::integer_division)]
 #![allow(clippy::missing_docs_in_private_items)]
 #![allow(clippy::missing_inline_in_public_items)]
+#![allow(clippy::module_name_repetitions)]
+#![allow(clippy::option_expect_used)]
+#![allow(clippy::panic)]
+#![allow(clippy::result_expect_used)]
 #![allow(clippy::shadow_reuse)]
 #![allow(clippy::shadow_same)]
 #![allow(clippy::too_many_lines)]
+#![allow(clippy::unreachable)]
 #![allow(clippy::wildcard_enum_match_arm)]
 
 extern crate proc_macro;

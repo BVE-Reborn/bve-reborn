@@ -29,22 +29,26 @@ pub struct TextureFileSet {
 }
 
 impl TextureFileSet {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             filenames: IndexSet::new(),
         }
     }
 
+    #[must_use]
     pub fn with_capacity(size: usize) -> Self {
         Self {
             filenames: IndexSet::with_capacity(size),
         }
     }
 
+    #[must_use]
     pub fn len(&self) -> usize {
         self.filenames.len()
     }
 
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.filenames.is_empty()
     }
@@ -59,6 +63,7 @@ impl TextureFileSet {
 }
 
 impl Default for TextureFileSet {
+    #[must_use]
     fn default() -> Self {
         Self::new()
     }
@@ -120,6 +125,7 @@ impl Vertex {
         println!("{:?}", indices);
     }
 
+    #[must_use]
     pub const fn from_position_normal_coord(position: Vector3<f32>, normal: Vector3<f32>, coord: Vector2<f32>) -> Self {
         Self {
             position,
@@ -128,6 +134,8 @@ impl Vertex {
             double_sided: false,
         }
     }
+
+    #[must_use]
     pub fn from_position_normal(position: Vector3<f32>, normal: Vector3<f32>) -> Self {
         Self {
             position,
@@ -136,6 +144,8 @@ impl Vertex {
             double_sided: false,
         }
     }
+
+    #[must_use]
     pub fn from_position(position: Vector3<f32>) -> Self {
         Self {
             position,
@@ -169,6 +179,7 @@ pub enum GlowAttenuationMode {
     DivideExponent4,
 }
 
+#[must_use]
 pub fn create_mesh_from_str(input: &str, file_type: FileType) -> ParsedStaticObject {
     let instructions = instructions::create_instructions(input, file_type);
     instructions::generate_meshes(instructions)

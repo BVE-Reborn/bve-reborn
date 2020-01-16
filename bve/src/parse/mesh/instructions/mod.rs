@@ -232,6 +232,7 @@ pub enum Sides {
 }
 
 impl Default for Sides {
+    #[must_use]
     fn default() -> Self {
         Self::Unset
     }
@@ -245,6 +246,7 @@ pub enum ApplyTo {
 }
 
 impl Default for ApplyTo {
+    #[must_use]
     fn default() -> Self {
         Self::Unset
     }
