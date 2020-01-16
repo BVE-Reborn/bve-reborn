@@ -9,6 +9,7 @@ use serde::Deserialize;
 mod errors;
 pub mod instructions;
 
+#[repr(C)]
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum FileType {
     B3D,
@@ -38,6 +39,14 @@ impl TextureFileSet {
         Self {
             filenames: IndexSet::with_capacity(size),
         }
+    }
+
+    pub fn len(&self) -> usize {
+        self.filenames.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.filenames.is_empty()
     }
 
     pub fn add(&mut self, value: &str) -> usize {
@@ -72,27 +81,67 @@ pub struct Mesh {
     pub glow: Glow,
 }
 
+fn default_mesh() -> Mesh {
+    Mesh {
+        vertices: vec![],
+        indices: vec![],
+        texture: Texture {
+            texture_id: None,
+            emission_color: ColorU8RGB::from_value(0),
+            decal_transparent_color: None,
+        },
+        color: ColorU8RGBA::from_value(255),
+        blend_mode: BlendMode::Normal,
+        glow: Glow {
+            attenuation_mode: GlowAttenuationMode::DivideExponent4,
+            half_distance: 0,
+        },
+    }
+}
+
 #[repr(C)]
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Vertex {
     pub position: Vector3<f32>,
     pub normal: Vector3<f32>,
     pub coord: Vector2<f32>,
+    pub double_sided: bool,
 }
 
 impl Vertex {
-    fn from_position_normal(position: Vector3<f32>, normal: Vector3<f32>) -> Self {
+    /// Debugging code that can fuck off in other situations
+    #[allow(dead_code, clippy::use_debug, clippy::print_stdout)]
+    fn print_positions(vertices: &[Self], indices: &[usize]) {
+        println!("Vertices: [");
+        for (i, v) in vertices.iter().enumerate() {
+            println!("\t{}: [{}, {}, {}],", i, v.position.x, v.position.y, v.position.z);
+        }
+        println!("]");
+        println!("{:?}", indices);
+    }
+
+    pub const fn from_position_normal_coord(position: Vector3<f32>, normal: Vector3<f32>, coord: Vector2<f32>) -> Self {
+        Self {
+            position,
+            normal,
+            coord,
+            double_sided: false,
+        }
+    }
+    pub fn from_position_normal(position: Vector3<f32>, normal: Vector3<f32>) -> Self {
         Self {
             position,
             normal,
             coord: Vector2::from_value(0.0),
+            double_sided: false,
         }
     }
-    fn from_position(position: Vector3<f32>) -> Self {
+    pub fn from_position(position: Vector3<f32>) -> Self {
         Self {
             position,
             normal: Vector3::from_value(0.0),
             coord: Vector2::from_value(0.0),
+            double_sided: false,
         }
     }
 }
@@ -118,4 +167,9 @@ pub enum BlendMode {
 pub enum GlowAttenuationMode {
     DivideExponent2,
     DivideExponent4,
+}
+
+pub fn create_mesh_from_str(input: &str, file_type: FileType) -> ParsedStaticObject {
+    let instructions = instructions::create_instructions(input, file_type);
+    instructions::generate_meshes(instructions)
 }

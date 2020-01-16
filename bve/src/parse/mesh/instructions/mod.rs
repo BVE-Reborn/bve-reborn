@@ -4,10 +4,12 @@ use crate::{ColorU8RGB, ColorU8RGBA};
 use cgmath::{Vector2, Vector3};
 pub use creation::*;
 pub use execution::*;
+pub use post_processing::*;
 use serde::Deserialize;
 
 mod creation;
 mod execution;
+mod post_processing;
 #[cfg(test)]
 mod tests;
 
@@ -54,8 +56,8 @@ pub enum InstructionType {
     ScaleAll,
     Rotate,
     RotateAll,
-    Sheer,
-    SheerAll,
+    Shear,
+    ShearAll,
     Mirror,
     MirrorAll,
     #[serde(alias = "color")]
@@ -82,7 +84,7 @@ pub enum InstructionData {
     Translate(Translate),
     Scale(Scale),
     Rotate(Rotate),
-    Sheer(Sheer),
+    Shear(Shear),
     Mirror(Mirror),
     SetColor(SetColor),
     SetEmissiveColor(SetEmissiveColor),
@@ -101,6 +103,8 @@ pub struct AddVertex {
     pub position: Vector3<f32>,
     #[default("util::some_zero_f32")]
     pub normal: Vector3<f32>,
+    #[serde(skip)]
+    pub texture_coord: Vector2<f32>,
 }
 
 #[bve_derive::serde_vector_proxy]
@@ -150,11 +154,11 @@ pub struct Rotate {
 }
 
 #[bve_derive::serde_proxy]
-pub struct Sheer {
+pub struct Shear {
     #[default("util::some_zero_f32")]
     pub direction: Vector3<f32>,
     #[default("util::some_zero_f32")]
-    pub sheer: Vector3<f32>,
+    pub shear: Vector3<f32>,
     #[default("util::some_zero_f32")]
     pub ratio: f32,
     #[serde(skip)]

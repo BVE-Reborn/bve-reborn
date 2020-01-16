@@ -95,15 +95,15 @@ fn deserialize_instruction(
             parsed.application = ApplyTo::AllMeshes;
             InstructionData::Rotate(parsed)
         }
-        InstructionType::Sheer => {
-            let mut parsed: Sheer = record.deserialize(None)?;
+        InstructionType::Shear => {
+            let mut parsed: Shear = record.deserialize(None)?;
             parsed.application = ApplyTo::SingleMesh;
-            InstructionData::Sheer(parsed)
+            InstructionData::Shear(parsed)
         }
-        InstructionType::SheerAll => {
-            let mut parsed: Sheer = record.deserialize(None)?;
+        InstructionType::ShearAll => {
+            let mut parsed: Shear = record.deserialize(None)?;
             parsed.application = ApplyTo::AllMeshes;
-            InstructionData::Sheer(parsed)
+            InstructionData::Shear(parsed)
         }
         InstructionType::Mirror => {
             let mut parsed: Mirror = record.deserialize(None)?;

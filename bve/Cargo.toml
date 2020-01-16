@@ -26,4 +26,5 @@ unic-langid = { version = "0.5", features = ["macros"] }
 
 [dev-dependencies]
 maplit = "1"
+obj = "0.9.1"
 serde_test = "1.0"
