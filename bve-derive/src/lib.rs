@@ -36,8 +36,6 @@
 #![allow(clippy::unreachable)]
 #![allow(clippy::wildcard_enum_match_arm)]
 
-extern crate proc_macro;
-
 use proc_macro::TokenStream;
 
 // Code coverage is silly on these derive
