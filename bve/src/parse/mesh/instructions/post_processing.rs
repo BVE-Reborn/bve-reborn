@@ -3,6 +3,7 @@ use crate::parse::mesh::{MeshError, MeshErrorKind, Span};
 use cgmath::{Array, Vector2, Vector3};
 use std::f32::consts::PI;
 
+#[must_use]
 pub fn post_process(mut instructions: InstructionList) -> InstructionList {
     let mut output = Vec::new();
     let meshes = instructions

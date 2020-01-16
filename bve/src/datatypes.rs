@@ -1,6 +1,7 @@
 use cgmath::{Vector1, Vector2, Vector3, Vector4};
 
 pub trait Asu32 {
+    #[must_use]
     fn as_u32(self) -> u32;
 }
 
@@ -10,24 +11,28 @@ pub type ColorU8RGB = Vector3<u8>;
 pub type ColorU8RGBA = Vector4<u8>;
 
 impl Asu32 for ColorU8R {
+    #[must_use]
     fn as_u32(self) -> u32 {
         u32::from(self.x)
     }
 }
 
 impl Asu32 for ColorU8RG {
+    #[must_use]
     fn as_u32(self) -> u32 {
         u32::from(self.y) << 8 | u32::from(self.x)
     }
 }
 
 impl Asu32 for ColorU8RGB {
+    #[must_use]
     fn as_u32(self) -> u32 {
         u32::from(self.z) << 16 | u32::from(self.y) << 8 | u32::from(self.x)
     }
 }
 
 impl Asu32 for ColorU8RGBA {
+    #[must_use]
     fn as_u32(self) -> u32 {
         u32::from(self.w) << 24 | u32::from(self.z) << 16 | u32::from(self.y) << 8 | u32::from(self.x)
     }

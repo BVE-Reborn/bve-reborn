@@ -111,7 +111,7 @@ mod test {
     #[test]
     fn collect1() {
         let in_vec: Vec<(i32,)> = vec![(0,), (1,), (2,)];
-        let (vec1,): (Vec<(i32)>,) = in_vec.clone().into_iter().collect1();
+        let (vec1,): (Vec<i32>,) = in_vec.clone().into_iter().collect1();
         in_vec.iter().zip(vec1.iter()).for_each(|(&(a,), &b)| {
             assert_eq!(a, b);
         })

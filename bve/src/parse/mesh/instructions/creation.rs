@@ -143,6 +143,7 @@ fn deserialize_instruction(
     Ok(Instruction { data, span })
 }
 
+#[must_use]
 pub fn create_instructions(input: &str, file_type: FileType) -> InstructionList {
     // Make entire setup lowercase to make it easy to match.
     let processed = if file_type == FileType::B3D {
