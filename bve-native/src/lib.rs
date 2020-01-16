@@ -39,10 +39,14 @@
 #![allow(clippy::unreachable)]
 #![allow(clippy::wildcard_enum_match_arm)]
 
+pub mod panic;
+
+use crate::panic::{default_panic_handler, set_panic_handler};
 use bve::parse::mesh::Vertex;
 use std::borrow::Cow;
 use std::ffi::{CStr, CString};
 use std::os::raw::*;
+use std::process::abort;
 use std::ptr::null_mut;
 
 #[repr(C)]
@@ -121,6 +125,10 @@ where
         let other: Vec<U> = converted.into_iter().map(|v| v.into()).collect();
         other
     }
+}
+
+pub extern "C" fn init() {
+    panic::init_panic_handler();
 }
 
 fn string_to_owned_ptr(input: &str) -> *mut c_char {
