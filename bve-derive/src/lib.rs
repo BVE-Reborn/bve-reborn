@@ -38,12 +38,16 @@
 
 use proc_macro::TokenStream;
 
-// Code coverage is silly on these derive
+// Code coverage is silly on these derives
 #[cfg_attr(tarpaulin, skip)]
 mod serde_proxy;
 
 #[cfg_attr(tarpaulin, skip)]
 mod c_interface;
+
+#[cfg_attr(tarpaulin, skip)]
+mod helpers;
+
 #[proc_macro_attribute]
 #[cfg_attr(tarpaulin, skip)]
 pub fn serde_proxy(_attr: TokenStream, item: TokenStream) -> TokenStream {
@@ -54,4 +58,10 @@ pub fn serde_proxy(_attr: TokenStream, item: TokenStream) -> TokenStream {
 #[cfg_attr(tarpaulin, skip)]
 pub fn serde_vector_proxy(_attr: TokenStream, item: TokenStream) -> TokenStream {
     serde_proxy::serde_vector_proxy(item)
+}
+
+#[proc_macro_attribute]
+#[cfg_attr(tarpaulin, skip)]
+pub fn c_interface(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    c_interface::c_interface(item)
 }

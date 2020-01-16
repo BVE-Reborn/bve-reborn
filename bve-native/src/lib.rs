@@ -138,7 +138,7 @@ unsafe fn unowned_ptr_to_str(input: &*const c_char) -> Cow<'_, str> {
     CStr::from_ptr(*input).to_string_lossy()
 }
 
-#[no_mangle]
+#[bve_derive::c_interface]
 pub unsafe extern "C" fn bve_delete_string(ptr: *mut c_char) {
     CString::from_raw(ptr);
 }
