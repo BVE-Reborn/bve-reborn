@@ -32,12 +32,12 @@ fn single_mesh() {
             texture_coord: Vector2::new(0.0, 0.0),
         },
         2: AddVertex {
-            position: Vector3::new(-0.866025, 0.0, 0.5),
+            position: Vector3::new(-0.866_025, 0.0, 0.5),
             normal: Vector3::from_value(0.0),
             texture_coord: Vector2::new(0.0, 0.0),
         },
         3: AddVertex {
-            position: Vector3::new(0.866025, 0.0, 0.5),
+            position: Vector3::new(0.866_025, 0.0, 0.5),
             normal: Vector3::from_value(0.0),
             texture_coord: Vector2::new(0.0, 0.0),
         },
@@ -55,8 +55,8 @@ fn single_mesh() {
     assert_eq!(result.meshes.len(), 1);
     let mesh = &result.meshes[0];
     assert_eq!(mesh.vertices[0].position, Vector3::new(0.0, 0.0, 0.0));
-    assert_eq!(mesh.vertices[1].position, Vector3::new(-0.866025, 0.0, 0.5));
-    assert_eq!(mesh.vertices[2].position, Vector3::new(0.866025, 0.0, 0.5));
+    assert_eq!(mesh.vertices[1].position, Vector3::new(-0.866_025, 0.0, 0.5));
+    assert_eq!(mesh.vertices[2].position, Vector3::new(0.866_025, 0.0, 0.5));
     for v in &mesh.vertices {
         assert_eq!(v.normal, Vector3::new(0.0, 1.0, 0.0));
     }
@@ -90,12 +90,12 @@ fn double_mesh() {
             texture_coord: Vector2::new(0.0, 0.0),
         },
         2: AddVertex {
-            position: Vector3::new(-0.866025, 0.0, 0.5),
+            position: Vector3::new(-0.866_025, 0.0, 0.5),
             normal: Vector3::from_value(0.0),
             texture_coord: Vector2::new(0.0, 0.0),
         },
         3: AddVertex {
-            position: Vector3::new(0.866025, 0.0, 0.5),
+            position: Vector3::new(0.866_025, 0.0, 0.5),
             normal: Vector3::from_value(0.0),
             texture_coord: Vector2::new(0.0, 0.0),
         },
@@ -109,7 +109,7 @@ fn double_mesh() {
         },
         6: SetBlendMode {
             blend_mode: BlendMode::Additive,
-            glow_half_distance: 12u16,
+            glow_half_distance: 12_u16,
             glow_attenuation_mode: GlowAttenuationMode::DivideExponent2,
         },
         7: SetEmissiveColor {
@@ -128,12 +128,12 @@ fn double_mesh() {
             texture_coord: Vector2::new(0.0, 0.0),
         },
         12: AddVertex {
-            position: Vector3::new(-0.866025, 0.0, 0.5),
+            position: Vector3::new(-0.866_025, 0.0, 0.5),
             normal: Vector3::from_value(0.0),
             texture_coord: Vector2::new(0.0, 0.0),
         },
         13: AddVertex {
-            position: Vector3::new(0.866025, 0.0, 0.5),
+            position: Vector3::new(0.866_025, 0.0, 0.5),
             normal: Vector3::from_value(0.0),
             texture_coord: Vector2::new(0.0, 0.0),
         },
@@ -154,8 +154,8 @@ fn double_mesh() {
     let mesh = &result.meshes[0];
     assert_eq!(mesh.vertices.len(), 3);
     assert_eq!(mesh.vertices[0].position, Vector3::new(0.0, 0.0, 0.0));
-    assert_eq!(mesh.vertices[1].position, Vector3::new(-0.866025, 0.0, 0.5));
-    assert_eq!(mesh.vertices[2].position, Vector3::new(0.866025, 0.0, 0.5));
+    assert_eq!(mesh.vertices[1].position, Vector3::new(-0.866_025, 0.0, 0.5));
+    assert_eq!(mesh.vertices[2].position, Vector3::new(0.866_025, 0.0, 0.5));
     for v in &mesh.vertices {
         assert_eq!(v.normal, Vector3::new(0.0, 1.0, 0.0));
     }
@@ -179,8 +179,8 @@ fn double_mesh() {
     let mesh = &result.meshes[1];
     assert_eq!(mesh.vertices.len(), 3);
     assert_eq!(mesh.vertices[0].position, Vector3::new(0.0, 0.0, 0.0));
-    assert_eq!(mesh.vertices[1].position, Vector3::new(-0.866025, 0.0, 0.5));
-    assert_eq!(mesh.vertices[2].position, Vector3::new(0.866025, 0.0, 0.5));
+    assert_eq!(mesh.vertices[1].position, Vector3::new(-0.866_025, 0.0, 0.5));
+    assert_eq!(mesh.vertices[2].position, Vector3::new(0.866_025, 0.0, 0.5));
     for v in &mesh.vertices {
         assert_eq!(v.normal, Vector3::new(0.0, 1.0, 0.0));
     }
@@ -213,12 +213,12 @@ fn texture_coords() {
             texture_coord: Vector2::new(0.0, 0.0),
         },
         2: AddVertex {
-            position: Vector3::new(-0.866025, 0.0, 0.5),
+            position: Vector3::new(-0.866_025, 0.0, 0.5),
             normal: Vector3::from_value(0.0),
             texture_coord: Vector2::new(0.0, 0.0),
         },
         3: AddVertex {
-            position: Vector3::new(0.866025, 0.0, 0.5),
+            position: Vector3::new(0.866_025, 0.0, 0.5),
             normal: Vector3::from_value(0.0),
             texture_coord: Vector2::new(0.0, 0.0),
         },
@@ -249,8 +249,8 @@ fn texture_coords() {
     let mesh = &result.meshes[0];
     assert_eq!(mesh.vertices.len(), 3);
     assert_eq!(mesh.vertices[0].position, Vector3::new(0.0, 0.0, 0.0));
-    assert_eq!(mesh.vertices[1].position, Vector3::new(-0.866025, 0.0, 0.5));
-    assert_eq!(mesh.vertices[2].position, Vector3::new(0.866025, 0.0, 0.5));
+    assert_eq!(mesh.vertices[1].position, Vector3::new(-0.866_025, 0.0, 0.5));
+    assert_eq!(mesh.vertices[2].position, Vector3::new(0.866_025, 0.0, 0.5));
     for v in &mesh.vertices {
         assert_eq!(v.normal, Vector3::new(0.0, 1.0, 0.0));
     }

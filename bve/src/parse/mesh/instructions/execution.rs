@@ -1,6 +1,5 @@
 use crate::parse::mesh::instructions::*;
 use crate::parse::mesh::*;
-use crate::{ColorU8RGB, ColorU8RGBA};
 use cgmath::{Array, Basis3, ElementWise, InnerSpace, Rad, Rotation, Rotation3, Vector3, Zero};
 use itertools::Itertools;
 
@@ -17,7 +16,7 @@ struct MeshBuildContext {
 
 impl Default for MeshBuildContext {
     fn default() -> Self {
-        MeshBuildContext {
+        Self {
             parsed: ParsedStaticObject::default(),
             vertices: Vec::default(),
             current_mesh: default_mesh(),
@@ -99,7 +98,7 @@ fn shrink_vertex_list(vertices: &[Vertex], indices: &[usize]) -> (Vec<Vertex>, V
 
     let mut new_indices = indices.to_vec();
 
-    for &mut index in new_indices.iter_mut() {
+    for &mut index in &mut new_indices {
         vertex_used[index] = true;
     }
 
@@ -115,7 +114,7 @@ fn shrink_vertex_list(vertices: &[Vertex], indices: &[usize]) -> (Vec<Vertex>, V
         new_index += 1;
     }
 
-    for index in new_indices.iter_mut() {
+    for index in &mut new_indices {
         *index = translation[*index];
     }
 
@@ -123,7 +122,7 @@ fn shrink_vertex_list(vertices: &[Vertex], indices: &[usize]) -> (Vec<Vertex>, V
 }
 
 fn run_create_mesh_builder(ctx: &mut MeshBuildContext) {
-    if ctx.current_mesh.vertices.len() != 0 && ctx.current_mesh.indices.len() != 0 {
+    if !ctx.current_mesh.vertices.is_empty() && !ctx.current_mesh.indices.is_empty() {
         calculate_normals(&mut ctx.current_mesh);
         ctx.parsed
             .meshes
@@ -160,18 +159,11 @@ fn add_face(ctx: &mut MeshBuildContext, span: Span, sides: Sides, indices: &[usi
         }
     }
 
-    println!("-------BEFORE--------");
-    Vertex::print_positions(&ctx.vertices, &indices);
-
     // Use my indexes to find all vertices that are only mine
-    let (mut verts, indices) = shrink_vertex_list(&ctx.vertices, &indices);
-    println!("Shrinked");
-    Vertex::print_positions(&verts, &indices);
+    let (mut verts, indices) = shrink_vertex_list(&ctx.vertices, indices);
 
     // Triangulate the faces to make modern game engines not shit themselves
     let mut indices = triangulate_faces(&indices);
-    println!("Triangled");
-    Vertex::print_positions(&verts, &indices);
 
     // Enable the double sided flag on my vertices if I am a double sided face.
     if sides == Sides::Two {
@@ -181,8 +173,6 @@ fn add_face(ctx: &mut MeshBuildContext, span: Span, sides: Sides, indices: &[usi
     // I am going to add this to an existing list of vertices and indices, so I need to add an offset to my indices
     // so it still works
     indices.iter_mut().for_each(|i| *i += ctx.current_mesh.vertices.len());
-    println!("Modified");
-    Vertex::print_positions(&verts, &indices);
 
     ctx.current_mesh.vertices.extend_from_slice(&verts);
     ctx.current_mesh.indices.extend_from_slice(&indices);

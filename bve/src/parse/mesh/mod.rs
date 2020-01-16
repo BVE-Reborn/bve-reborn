@@ -45,6 +45,10 @@ impl TextureFileSet {
         self.filenames.len()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.filenames.is_empty()
+    }
+
     pub fn add(&mut self, value: &str) -> usize {
         self.filenames.insert_full(value.into()).0
     }
@@ -105,7 +109,9 @@ pub struct Vertex {
 }
 
 impl Vertex {
-    fn print_positions(vertices: &[Vertex], indices: &[usize]) {
+    /// Debugging code that can fuck off in other situations
+    #[allow(dead_code, clippy::use_debug, clippy::print_stdout)]
+    fn print_positions(vertices: &[Self], indices: &[usize]) {
         println!("Vertices: [");
         for (i, v) in vertices.iter().enumerate() {
             println!("\t{}: [{}, {}, {}],", i, v.position.x, v.position.y, v.position.z);
@@ -114,7 +120,7 @@ impl Vertex {
         println!("{:?}", indices);
     }
 
-    pub fn from_position_normal_coord(position: Vector3<f32>, normal: Vector3<f32>, coord: Vector2<f32>) -> Self {
+    pub const fn from_position_normal_coord(position: Vector3<f32>, normal: Vector3<f32>, coord: Vector2<f32>) -> Self {
         Self {
             position,
             normal,

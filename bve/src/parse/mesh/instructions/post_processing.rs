@@ -23,7 +23,7 @@ pub fn post_process(mut instructions: InstructionList) -> InstructionList {
     instructions
 }
 
-/// Creates a AddVertex instruction from a position.
+/// Creates a `AddVertex` instruction from a position.
 fn create_vertex(original: &Instruction, position: Vector3<f32>) -> Instruction {
     Instruction {
         span: original.span,
@@ -35,7 +35,7 @@ fn create_vertex(original: &Instruction, position: Vector3<f32>) -> Instruction 
     }
 }
 
-/// Creates AddFace instruction from an index list.
+/// Creates `AddFace` instruction from an index list.
 fn create_face(original: &Instruction, indexes: Vec<usize>) -> Instruction {
     Instruction {
         span: original.span,
@@ -46,7 +46,9 @@ fn create_face(original: &Instruction, indexes: Vec<usize>) -> Instruction {
     }
 }
 
-/// For each the mesh given, replaces Cube and Cylinder commands with the appropriate AddVertex and AddFace commands.
+/// For each the mesh given, replaces `Cube` and `Cylinder` commands with the appropriate `AddVertex` and `AddFace`
+/// commands.
+#[allow(clippy::identity_op)]
 fn process_compound(mesh: &[Instruction]) -> Vec<Instruction> {
     let mut result = Vec::new();
 
@@ -65,23 +67,23 @@ fn process_compound(mesh: &[Instruction]) -> Vec<Instruction> {
                 let y = cube.half_dim.y;
                 let z = cube.half_dim.z;
 
-                result.push(create_vertex(&instruction, Vector3::new(x, y, -z)));
-                result.push(create_vertex(&instruction, Vector3::new(x, -y, -z)));
-                result.push(create_vertex(&instruction, Vector3::new(-x, -y, -z)));
-                result.push(create_vertex(&instruction, Vector3::new(-x, y, -z)));
-                result.push(create_vertex(&instruction, Vector3::new(x, y, z)));
-                result.push(create_vertex(&instruction, Vector3::new(x, -y, z)));
-                result.push(create_vertex(&instruction, Vector3::new(-x, -y, z)));
-                result.push(create_vertex(&instruction, Vector3::new(-x, y, z)));
+                result.push(create_vertex(instruction, Vector3::new(x, y, -z)));
+                result.push(create_vertex(instruction, Vector3::new(x, -y, -z)));
+                result.push(create_vertex(instruction, Vector3::new(-x, -y, -z)));
+                result.push(create_vertex(instruction, Vector3::new(-x, y, -z)));
+                result.push(create_vertex(instruction, Vector3::new(x, y, z)));
+                result.push(create_vertex(instruction, Vector3::new(x, -y, z)));
+                result.push(create_vertex(instruction, Vector3::new(-x, -y, z)));
+                result.push(create_vertex(instruction, Vector3::new(-x, y, z)));
 
                 let vi = vertex_index;
 
-                result.push(create_face(&instruction, vec![vi + 0, vi + 1, vi + 2, vi + 3]));
-                result.push(create_face(&instruction, vec![vi + 0, vi + 4, vi + 5, vi + 1]));
-                result.push(create_face(&instruction, vec![vi + 0, vi + 3, vi + 7, vi + 4]));
-                result.push(create_face(&instruction, vec![vi + 6, vi + 5, vi + 4, vi + 7]));
-                result.push(create_face(&instruction, vec![vi + 6, vi + 7, vi + 3, vi + 2]));
-                result.push(create_face(&instruction, vec![vi + 6, vi + 2, vi + 1, vi + 5]));
+                result.push(create_face(instruction, vec![vi + 0, vi + 1, vi + 2, vi + 3]));
+                result.push(create_face(instruction, vec![vi + 0, vi + 4, vi + 5, vi + 1]));
+                result.push(create_face(instruction, vec![vi + 0, vi + 3, vi + 7, vi + 4]));
+                result.push(create_face(instruction, vec![vi + 6, vi + 5, vi + 4, vi + 7]));
+                result.push(create_face(instruction, vec![vi + 6, vi + 7, vi + 3, vi + 2]));
+                result.push(create_face(instruction, vec![vi + 6, vi + 2, vi + 1, vi + 5]));
 
                 vertex_index += 8;
             }
@@ -100,8 +102,8 @@ fn process_compound(mesh: &[Instruction]) -> Vec<Instruction> {
                     let trig_arg = (2.0 * PI * i) / n_f32;
                     let cos = trig_arg.cos();
                     let sin = trig_arg.sin();
-                    result.push(create_vertex(&instruction, Vector3::new(cos * r1, h / 2.0, sin * r1)));
-                    result.push(create_vertex(&instruction, Vector3::new(cos * r2, -h / 2.0, sin * r2)));
+                    result.push(create_vertex(instruction, Vector3::new(cos * r1, h / 2.0, sin * r1)));
+                    result.push(create_vertex(instruction, Vector3::new(cos * r2, -h / 2.0, sin * r2)));
                 }
 
                 // Faces
@@ -110,11 +112,11 @@ fn process_compound(mesh: &[Instruction]) -> Vec<Instruction> {
                 let split = (n - 1).max(0) as usize;
                 for i in 0..split {
                     result.push(create_face(
-                        &instruction,
+                        instruction,
                         vec![vi + (2 * i + 2), vi + (2 * i + 3), vi + (2 * i + 1), vi + (2 * i + 0)],
                     ));
                     result.push(create_face(
-                        &instruction,
+                        instruction,
                         vec![vi + 0, vi + 1, vi + (2 * i + 1), vi + (2 * i + 0)],
                     ));
                 }
@@ -129,7 +131,7 @@ fn process_compound(mesh: &[Instruction]) -> Vec<Instruction> {
     result
 }
 
-/// For each mesh give, fold the SetTextureCoordinates into the AddVertex commands
+/// For each mesh give, fold the `SetTextureCoordinates` into the `AddVertex` commands
 fn merge_texture_coords(mesh: &[Instruction], errors: &mut Vec<MeshError>) -> Vec<Instruction> {
     let mut result = Vec::new();
     // The instruction where the vertex index n is created is at result[vertex_indices[n]]
