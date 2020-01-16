@@ -11,9 +11,9 @@ pub struct Parsed_Static_Object {
     pub errors: Vector_Mesh_Error,
 }
 
-impl From<ParsedStaticObject> for Parsed_Static_Object {
+impl From<mesh::ParsedStaticObject> for Parsed_Static_Object {
     #[inline]
-    fn from(other: ParsedStaticObject) -> Self {
+    fn from(other: mesh::ParsedStaticObject) -> Self {
         Self {
             meshes: other.meshes.into(),
             textures: Box::into_raw(Box::new(other.textures.into())),
@@ -22,10 +22,10 @@ impl From<ParsedStaticObject> for Parsed_Static_Object {
     }
 }
 
-impl Into<ParsedStaticObject> for Parsed_Static_Object {
+impl Into<mesh::ParsedStaticObject> for Parsed_Static_Object {
     #[inline]
-    fn into(self) -> ParsedStaticObject {
-        ParsedStaticObject {
+    fn into(self) -> mesh::ParsedStaticObject {
+        mesh::ParsedStaticObject {
             meshes: self.meshes.into(),
             textures: unsafe { *Box::from_raw(self.textures) }.into(),
             errors: self.errors.into(),
@@ -35,31 +35,31 @@ impl Into<ParsedStaticObject> for Parsed_Static_Object {
 
 // Opaque
 pub struct Texture_Set {
-    pub inner: TextureSet,
+    pub inner: mesh::TextureSet,
 }
 
-impl From<TextureSet> for Texture_Set {
+impl From<mesh::TextureSet> for Texture_Set {
     #[inline]
-    fn from(other: TextureSet) -> Self {
+    fn from(other: mesh::TextureSet) -> Self {
         Texture_Set { inner: other }
     }
 }
 
-impl Into<TextureSet> for Texture_Set {
+impl Into<mesh::TextureSet> for Texture_Set {
     #[inline]
-    fn into(self) -> TextureSet {
+    fn into(self) -> mesh::TextureSet {
         self.inner
     }
 }
 
 #[must_use]
 #[no_mangle]
-pub unsafe extern "C" fn Texture_Set_len(ptr: *const Texture_Set) -> libc::size_t {
+pub unsafe extern "C" fn BVE_Texture_Set_len(ptr: *const Texture_Set) -> libc::size_t {
     (*ptr).inner.len()
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn Texture_Set_add(ptr: *mut Texture_Set, value: *const c_char) -> libc::size_t {
+pub unsafe extern "C" fn BVE_Texture_Set_add(ptr: *mut Texture_Set, value: *const c_char) -> libc::size_t {
     (*ptr).inner.add(&CStr::from_ptr(value).to_string_lossy())
 }
 
@@ -67,7 +67,7 @@ pub unsafe extern "C" fn Texture_Set_add(ptr: *mut Texture_Set, value: *const c_
 #[no_mangle]
 /// C Interface for [`bve::parse::mesh::TextureSet::lookup`]. Pointer returned points to an owned copy of the texture
 /// name. Must be deleted by [`bve_native::bve_delete_string`] If the lookup fails, output is null.
-pub unsafe extern "C" fn Texture_Set_lookup(ptr: *const Texture_Set, idx: libc::size_t) -> *const c_char {
+pub unsafe extern "C" fn BVE_Texture_Set_lookup(ptr: *const Texture_Set, idx: libc::size_t) -> *const c_char {
     let result = (*ptr).inner.lookup(idx);
     match result {
         Some(s) => string_to_owned_ptr(s),
@@ -82,8 +82,8 @@ pub struct Mesh_Texture {
     pub emission_color: ColorU8RGB,
 }
 
-impl From<Texture> for Mesh_Texture {
-    fn from(other: Texture) -> Self {
+impl From<mesh::Texture> for Mesh_Texture {
+    fn from(other: mesh::Texture) -> Self {
         Self {
             texture_id: other.texture_id.into(),
             decal_transparent_color: other.decal_transparent_color.into(),
@@ -92,9 +92,9 @@ impl From<Texture> for Mesh_Texture {
     }
 }
 
-impl Into<Texture> for Mesh_Texture {
-    fn into(self) -> Texture {
-        Texture {
+impl Into<mesh::Texture> for Mesh_Texture {
+    fn into(self) -> mesh::Texture {
+        mesh::Texture {
             texture_id: self.texture_id.into(),
             decal_transparent_color: self.decal_transparent_color.into(),
             emission_color: self.emission_color.into(),
@@ -108,12 +108,12 @@ pub struct Mesh {
     pub indices: Vector_size_t,
     pub texture: Mesh_Texture,
     pub color: ColorU8RGBA,
-    pub blend_mode: BlendMode,
-    pub glow: Glow,
+    pub blend_mode: mesh::BlendMode,
+    pub glow: mesh::Glow,
 }
 
-impl From<Mesh> for Mesh {
-    fn from(other: Mesh) -> Self {
+impl From<mesh::Mesh> for Mesh {
+    fn from(other: mesh::Mesh) -> Self {
         Self {
             vertices: other.vertices.into(),
             indices: other.indices.into(),
@@ -125,9 +125,9 @@ impl From<Mesh> for Mesh {
     }
 }
 
-impl Into<Mesh> for Mesh {
-    fn into(self) -> Mesh {
-        Mesh {
+impl Into<mesh::Mesh> for Mesh {
+    fn into(self) -> mesh::Mesh {
+        mesh::Mesh {
             vertices: self.vertices.into(),
             indices: self.indices.into(),
             texture: self.texture.into(),
@@ -144,8 +144,8 @@ pub struct Mesh_Error {
     pub kind: Mesh_Error_Kind,
 }
 
-impl From<MeshError> for Mesh_Error {
-    fn from(other: MeshError) -> Self {
+impl From<mesh::MeshError> for Mesh_Error {
+    fn from(other: mesh::MeshError) -> Self {
         Self {
             span: other.span.into(),
             kind: other.kind.into(),
@@ -153,9 +153,9 @@ impl From<MeshError> for Mesh_Error {
     }
 }
 
-impl Into<MeshError> for Mesh_Error {
-    fn into(self) -> MeshError {
-        MeshError {
+impl Into<mesh::MeshError> for Mesh_Error {
+    fn into(self) -> mesh::MeshError {
+        mesh::MeshError {
             span: self.span.into(),
             kind: self.kind.into(),
         }
@@ -185,40 +185,40 @@ pub enum Mesh_Error_Kind {
     UnknownCSV,
 }
 
-impl From<MeshErrorKind> for Mesh_Error_Kind {
-    fn from(other: MeshErrorKind) -> Self {
+impl From<mesh::MeshErrorKind> for Mesh_Error_Kind {
+    fn from(other: mesh::MeshErrorKind) -> Self {
         match other {
-            MeshErrorKind::UTF8 { column } => Mesh_Error_Kind::UTF8 { column: column.into() },
-            MeshErrorKind::OutOfBounds { idx } => Mesh_Error_Kind::OutOfBounds { idx },
-            MeshErrorKind::DeprecatedInstruction { name } => Mesh_Error_Kind::DeprecatedInstruction {
+            mesh::MeshErrorKind::UTF8 { column } => Mesh_Error_Kind::UTF8 { column: column.into() },
+            mesh::MeshErrorKind::OutOfBounds { idx } => Mesh_Error_Kind::OutOfBounds { idx },
+            mesh::MeshErrorKind::DeprecatedInstruction { name } => Mesh_Error_Kind::DeprecatedInstruction {
                 name: string_to_owned_ptr(&name),
             },
-            MeshErrorKind::UnknownInstruction { name } => Mesh_Error_Kind::UnknownInstruction {
+            mesh::MeshErrorKind::UnknownInstruction { name } => Mesh_Error_Kind::UnknownInstruction {
                 name: string_to_owned_ptr(&name),
             },
-            MeshErrorKind::GenericCSV { msg } => Mesh_Error_Kind::GenericCSV {
+            mesh::MeshErrorKind::GenericCSV { msg } => Mesh_Error_Kind::GenericCSV {
                 msg: string_to_owned_ptr(&msg),
             },
-            MeshErrorKind::UnknownCSV => Mesh_Error_Kind::UnknownCSV,
+            mesh::MeshErrorKind::UnknownCSV => Mesh_Error_Kind::UnknownCSV,
         }
     }
 }
 
-impl Into<MeshErrorKind> for Mesh_Error_Kind {
-    fn into(self) -> MeshErrorKind {
+impl Into<mesh::MeshErrorKind> for Mesh_Error_Kind {
+    fn into(self) -> mesh::MeshErrorKind {
         match self {
-            Mesh_Error_Kind::UTF8 { column } => MeshErrorKind::UTF8 { column: column.into() },
-            Mesh_Error_Kind::OutOfBounds { idx } => MeshErrorKind::OutOfBounds { idx },
-            Mesh_Error_Kind::DeprecatedInstruction { name } => MeshErrorKind::DeprecatedInstruction {
+            Mesh_Error_Kind::UTF8 { column } => mesh::MeshErrorKind::UTF8 { column: column.into() },
+            Mesh_Error_Kind::OutOfBounds { idx } => mesh::MeshErrorKind::OutOfBounds { idx },
+            Mesh_Error_Kind::DeprecatedInstruction { name } => mesh::MeshErrorKind::DeprecatedInstruction {
                 name: unsafe { owned_ptr_to_string(name as *mut c_char) },
             },
-            Mesh_Error_Kind::UnknownInstruction { name } => MeshErrorKind::UnknownInstruction {
+            Mesh_Error_Kind::UnknownInstruction { name } => mesh::MeshErrorKind::UnknownInstruction {
                 name: unsafe { owned_ptr_to_string(name as *mut c_char) },
             },
-            Mesh_Error_Kind::GenericCSV { msg } => MeshErrorKind::GenericCSV {
+            Mesh_Error_Kind::GenericCSV { msg } => mesh::MeshErrorKind::GenericCSV {
                 msg: unsafe { owned_ptr_to_string(msg as *mut c_char) },
             },
-            Mesh_Error_Kind::UnknownCSV => MeshErrorKind::UnknownCSV,
+            Mesh_Error_Kind::UnknownCSV => mesh::MeshErrorKind::UnknownCSV,
         }
     }
 }
@@ -228,25 +228,25 @@ pub struct Span {
     pub line: Option_unsigned_long_long,
 }
 
-impl From<Span> for Span {
-    fn from(other: Span) -> Self {
+impl From<mesh::Span> for Span {
+    fn from(other: mesh::Span) -> Self {
         Self {
             line: other.line.into(),
         }
     }
 }
 
-impl Into<Span> for Span {
-    fn into(self) -> Span {
-        Span { line: self.line.into() }
+impl Into<mesh::Span> for Span {
+    fn into(self) -> mesh::Span {
+        mesh::Span { line: self.line.into() }
     }
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn bve_parse_mesh_from_string(
     string: *const c_char,
-    file_type: FileType,
+    file_type: mesh::FileType,
 ) -> Parsed_Static_Object {
-    let result = mesh_from_str(&unowned_ptr_to_str(string), file_type);
+    let result = mesh::mesh_from_str(&unowned_ptr_to_str(string), file_type);
     result.into()
 }
