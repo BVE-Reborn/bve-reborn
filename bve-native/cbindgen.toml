@@ -8,11 +8,6 @@ documentation_style = "doxy"
 [fn]
 must_use = "BVE_NO_DISCARD"
 
-[struct]
-derive_constructor = true
-derive_eq = true
-derive_neq = true
-
 [macro_expansion]
 bitflags = true
 
@@ -20,3 +15,6 @@ bitflags = true
 parse_deps = true
 include = ["bve", "cgmath"]
 extra_bindings = ["bve"]
+
+[parse.expand]
+crates = ["bve-native"]

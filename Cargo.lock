@@ -101,6 +101,7 @@ name = "bve-native"
 version = "0.0.0-Placeholder"
 dependencies = [
  "bve 0.0.0-Placeholder",
+ "libc 0.2.66 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

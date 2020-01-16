@@ -1,5 +1,6 @@
 //! B3D/CSV Static Meshes
 
+use crate::parse::mesh::instructions::post_process;
 use crate::{ColorU8RGB, ColorU8RGBA};
 use cgmath::{Array, Vector2, Vector3};
 pub use errors::*;
@@ -19,16 +20,16 @@ pub enum FileType {
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct ParsedStaticObject {
     pub meshes: Vec<Mesh>,
-    pub textures: TextureFileSet,
+    pub textures: TextureSet,
     pub errors: Vec<MeshError>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct TextureFileSet {
+pub struct TextureSet {
     filenames: IndexSet<String>,
 }
 
-impl TextureFileSet {
+impl TextureSet {
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -57,12 +58,13 @@ impl TextureFileSet {
         self.filenames.insert_full(value.into()).0
     }
 
+    #[must_use]
     pub fn lookup(&self, idx: usize) -> Option<&str> {
         self.filenames.get_index(idx).map(std::string::String::as_str)
     }
 }
 
-impl Default for TextureFileSet {
+impl Default for TextureSet {
     #[must_use]
     fn default() -> Self {
         Self::new()
@@ -71,6 +73,7 @@ impl Default for TextureFileSet {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Texture {
+    /// Index into the according texture set
     pub texture_id: Option<usize>,
     pub decal_transparent_color: Option<ColorU8RGB>,
     pub emission_color: ColorU8RGB,
@@ -180,7 +183,7 @@ pub enum GlowAttenuationMode {
 }
 
 #[must_use]
-pub fn create_mesh_from_str(input: &str, file_type: FileType) -> ParsedStaticObject {
+pub fn mesh_from_str(input: &str, file_type: FileType) -> ParsedStaticObject {
     let instructions = instructions::create_instructions(input, file_type);
-    instructions::generate_meshes(instructions)
+    instructions::generate_meshes(post_process(instructions))
 }

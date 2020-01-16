@@ -44,47 +44,55 @@ use structopt::StructOpt;
 struct Options {
     #[structopt(short, long)]
     color: Option<String>,
+    #[structopt(long)]
+    no_build: bool,
+    #[structopt(long)]
+    no_bindgen: bool,
 }
 
 fn main() {
     let parsed: Options = Options::from_args();
 
-    let mut args = vec![String::from("build"), String::from("--release")];
-    parsed.color.iter().for_each(|s| args.push(format!("--color={}", s)));
+    if !parsed.no_build {
+        let mut args = vec![String::from("build"), String::from("--release")];
+        parsed.color.iter().for_each(|s| args.push(format!("--color={}", s)));
 
-    let mut child = Command::new("cargo")
-        .args(&args)
-        .spawn()
-        .expect("Unable to spawn cargo.");
-    assert!(child.wait().expect("Unable to wait for cargo.").success());
-
-    let config = cbindgen::Config::from_file("bve-native/cbindgen.toml").unwrap();
-
-    {
-        // C
-        let mut config = config.clone();
-        config.language = Language::C;
-        *config.header.as_mut().expect("bve-native/cbindgen.toml needs a header") +=
-            "/* C API for BVE-Reborn high performance libraries. */";
-        cbindgen::Builder::new()
-            .with_crate("bve-native")
-            .with_config(config)
-            .generate()
-            .unwrap()
-            .write_to_file("bve-native/include/bve.h");
+        let mut child = Command::new("cargo")
+            .args(&args)
+            .spawn()
+            .expect("Unable to spawn cargo.");
+        assert!(child.wait().expect("Unable to wait for cargo.").success());
     }
-    {
-        // C++
-        let mut config = config;
-        config.language = Language::Cxx;
-        *config.header.as_mut().expect("bve-native/cbindgen.toml needs a header") +=
-            "/* C++ API for BVE-Reborn high performance libraries. */";
-        config.trailer = Some(read_to_string("bve-native/include/bve_cpp.hpp").unwrap());
-        cbindgen::Builder::new()
-            .with_crate("bve-native")
-            .with_config(config)
-            .generate()
-            .unwrap()
-            .write_to_file("bve-native/include/bve.hpp");
+
+    if !parsed.no_bindgen {
+        let config = cbindgen::Config::from_file("bve-native/cbindgen.toml").unwrap();
+
+        {
+            // C
+            let mut config = config.clone();
+            config.language = Language::C;
+            *config.header.as_mut().expect("bve-native/cbindgen.toml needs a header") +=
+                "/* C API for BVE-Reborn high performance libraries. */";
+            cbindgen::Builder::new()
+                .with_crate("bve-native")
+                .with_config(config)
+                .generate()
+                .unwrap()
+                .write_to_file("bve-native/include/bve.h");
+        }
+        {
+            // C++
+            let mut config = config;
+            config.language = Language::Cxx;
+            *config.header.as_mut().expect("bve-native/cbindgen.toml needs a header") +=
+                "/* C++ API for BVE-Reborn high performance libraries. */";
+            config.trailer = Some(read_to_string("bve-native/include/bve_cpp.hpp").unwrap());
+            cbindgen::Builder::new()
+                .with_crate("bve-native")
+                .with_config(config)
+                .generate()
+                .unwrap()
+                .write_to_file("bve-native/include/bve.hpp");
+        }
     }
 }

@@ -15,3 +15,4 @@ keywords = ["bve", "serialization", "simulation"]
 
 [dependencies]
 bve = { version = "0.0.0-Placeholder", path = "../bve" }
+libc = "0.2.66"
