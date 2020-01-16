@@ -7,26 +7,26 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        rust: [nightly-2019-10-15]
-        os: [windows-2019, macOS-10.14, ubuntu-18.04]
+        rust: [1.40.0]
+        os: [windows-2019, macOS-10.15, ubuntu-18.04]
         include:
-          - rust: nightly-2019-10-15
+          - rust: 1.40.0
             os: windows-2019
-            name: windows-nightly-2019-10-15
+            name: windows-1.40.0
 
-          - rust: nightly-2019-10-15
-            os: macOS-10.14
-            name: mac-nightly-2019-10-15
+          - rust: 1.40.0
+            os: macOS-10.15
+            name: mac-1.40.0
 
-          - rust: nightly-2019-10-15
+          - rust: 1.40.0
             os: ubuntu-18.04
-            name: linux-nightly-2019-10-15
+            name: linux-1.40.0
     runs-on: ${{ matrix.os }}
 
     steps:
       - name: Install Rustup
         run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain none --profile minimal -y
-        if: matrix.os == 'macOS-10.14' || matrix.os == 'windows-2019'
+        if: matrix.os == 'macOS-10.15' || matrix.os == 'windows-2019'
         shell: bash
 
       - name: Update Rustup
