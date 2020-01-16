@@ -11,6 +11,9 @@ must_use = "BVE_NO_DISCARD"
 [macro_expansion]
 bitflags = true
 
+[export]
+prefix = "BVE_"
+
 [parse]
 parse_deps = true
 include = ["bve", "cgmath"]

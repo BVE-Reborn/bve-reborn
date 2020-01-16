@@ -39,7 +39,7 @@
 #![allow(clippy::unreachable)]
 #![allow(clippy::wildcard_enum_match_arm)]
 
-use crate::parse::mesh::{BVE_Mesh, BVE_Mesh_Error};
+use crate::parse::mesh::{Mesh, Mesh_Error};
 use bve::parse::mesh::Vertex;
 use bve::ColorU8RGB;
 use std::borrow::Cow;
@@ -135,15 +135,15 @@ macro_rules! bve_vector {
     };
 }
 
-bve_option!(BVE_Option_unsigned_long_long, c_ulonglong);
-bve_option!(BVE_Option_size_t, libc::size_t);
-bve_option!(BVE_Option_ColorU8RGB, ColorU8RGB);
+bve_option!(Option_unsigned_long_long, c_ulonglong);
+bve_option!(Option_size_t, libc::size_t);
+bve_option!(Option_ColorU8RGB, ColorU8RGB);
 
-bve_vector!(BVE_Vector_size_t, libc::size_t);
-bve_vector!(BVE_Vector_Mesh, BVE_Mesh);
+bve_vector!(Vector_size_t, libc::size_t);
+bve_vector!(Vector_Mesh, Mesh);
 
-bve_vector!(BVE_Vector_Mesh_Error, BVE_Mesh_Error);
-bve_vector!(BVE_Vector_Vertex, Vertex);
+bve_vector!(Vector_Mesh_Error, Mesh_Error);
+bve_vector!(Vector_Vertex, Vertex);
 
 fn string_to_owned_ptr(input: &str) -> *mut c_char {
     CString::new(input).map(|v| v.into_raw()).unwrap_or(null_mut())
