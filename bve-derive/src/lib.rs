@@ -42,6 +42,8 @@ use proc_macro::TokenStream;
 #[cfg_attr(tarpaulin, skip)]
 mod serde_proxy;
 
+#[cfg_attr(tarpaulin, skip)]
+mod c_interface;
 #[proc_macro_attribute]
 #[cfg_attr(tarpaulin, skip)]
 pub fn serde_proxy(_attr: TokenStream, item: TokenStream) -> TokenStream {

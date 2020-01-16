@@ -1,3 +1,4 @@
+use crate::helpers::combine_token_streams;
 use itertools::Itertools;
 use proc_macro::TokenStream;
 use proc_macro2::{Group, Ident, Literal};
@@ -12,16 +13,6 @@ struct Field {
     visibility: Visibility,
     name: Ident,
     ty: (Vec<String>, TypePath),
-}
-
-fn combine_token_streams<I: IntoIterator<Item = TokenStream2>>(streams: I) -> TokenStream2 {
-    streams
-        .into_iter()
-        .fold1(|mut l, r| {
-            l.extend(r);
-            l
-        })
-        .unwrap_or_else(TokenStream2::new)
 }
 
 fn combine_attributes(attributes: &[Attribute]) -> TokenStream2 {
