@@ -3,5 +3,4 @@
 /hfuzz_target
 /target
 **/*.rs.bk
-Cargo.lock
 cargo-timing*.html
