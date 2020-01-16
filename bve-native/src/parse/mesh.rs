@@ -247,6 +247,6 @@ pub unsafe extern "C" fn bve_parse_mesh_from_string(
     string: *const c_char,
     file_type: mesh::FileType,
 ) -> Parsed_Static_Object {
-    let result = mesh::mesh_from_str(&unowned_ptr_to_str(string), file_type);
+    let result = mesh::mesh_from_str(&unowned_ptr_to_str(&string), file_type);
     result.into()
 }

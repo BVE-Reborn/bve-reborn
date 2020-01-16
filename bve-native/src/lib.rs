@@ -134,8 +134,8 @@ unsafe fn owned_ptr_to_string(input: *const c_char) -> String {
     CString::from_raw(input as *mut c_char).to_string_lossy().into()
 }
 
-unsafe fn unowned_ptr_to_str(input: *const c_char) -> Cow<'static, str> {
-    CStr::from_ptr(input).to_string_lossy()
+unsafe fn unowned_ptr_to_str(input: &*const c_char) -> Cow<'_, str> {
+    CStr::from_ptr(*input).to_string_lossy()
 }
 
 #[no_mangle]
