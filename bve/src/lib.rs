@@ -18,6 +18,7 @@
 #![allow(clippy::cognitive_complexity)] // This is dumb
 #![allow(clippy::too_many_lines)]
 // Annoying/irrelevant clippy Restrictions
+#![allow(clippy::as_conversions)]
 #![allow(clippy::decimal_literal_representation)]
 #![allow(clippy::else_if_without_else)]
 #![allow(clippy::float_arithmetic)]
@@ -26,6 +27,8 @@
 #![allow(clippy::indexing_slicing)]
 #![allow(clippy::integer_arithmetic)]
 #![allow(clippy::integer_division)]
+#![allow(clippy::let_underscore_must_use)]
+#![allow(clippy::match_bool)] // prettier
 #![allow(clippy::missing_docs_in_private_items)]
 #![allow(clippy::missing_inline_in_public_items)]
 #![allow(clippy::module_name_repetitions)]

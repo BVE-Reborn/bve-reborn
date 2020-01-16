@@ -41,7 +41,7 @@ pub struct Texture_Set {
 impl From<mesh::TextureSet> for Texture_Set {
     #[inline]
     fn from(other: mesh::TextureSet) -> Self {
-        Texture_Set { inner: other }
+        Self { inner: other }
     }
 }
 
@@ -87,7 +87,7 @@ impl From<mesh::Texture> for Mesh_Texture {
         Self {
             texture_id: other.texture_id.into(),
             decal_transparent_color: other.decal_transparent_color.into(),
-            emission_color: other.emission_color.into(),
+            emission_color: other.emission_color,
         }
     }
 }
@@ -97,7 +97,7 @@ impl Into<mesh::Texture> for Mesh_Texture {
         mesh::Texture {
             texture_id: self.texture_id.into(),
             decal_transparent_color: self.decal_transparent_color.into(),
-            emission_color: self.emission_color.into(),
+            emission_color: self.emission_color,
         }
     }
 }
@@ -188,18 +188,18 @@ pub enum Mesh_Error_Kind {
 impl From<mesh::MeshErrorKind> for Mesh_Error_Kind {
     fn from(other: mesh::MeshErrorKind) -> Self {
         match other {
-            mesh::MeshErrorKind::UTF8 { column } => Mesh_Error_Kind::UTF8 { column: column.into() },
-            mesh::MeshErrorKind::OutOfBounds { idx } => Mesh_Error_Kind::OutOfBounds { idx },
-            mesh::MeshErrorKind::DeprecatedInstruction { name } => Mesh_Error_Kind::DeprecatedInstruction {
+            mesh::MeshErrorKind::UTF8 { column } => Self::UTF8 { column: column.into() },
+            mesh::MeshErrorKind::OutOfBounds { idx } => Self::OutOfBounds { idx },
+            mesh::MeshErrorKind::DeprecatedInstruction { name } => Self::DeprecatedInstruction {
                 name: string_to_owned_ptr(&name),
             },
-            mesh::MeshErrorKind::UnknownInstruction { name } => Mesh_Error_Kind::UnknownInstruction {
+            mesh::MeshErrorKind::UnknownInstruction { name } => Self::UnknownInstruction {
                 name: string_to_owned_ptr(&name),
             },
-            mesh::MeshErrorKind::GenericCSV { msg } => Mesh_Error_Kind::GenericCSV {
+            mesh::MeshErrorKind::GenericCSV { msg } => Self::GenericCSV {
                 msg: string_to_owned_ptr(&msg),
             },
-            mesh::MeshErrorKind::UnknownCSV => Mesh_Error_Kind::UnknownCSV,
+            mesh::MeshErrorKind::UnknownCSV => Self::UnknownCSV,
         }
     }
 }
@@ -207,18 +207,18 @@ impl From<mesh::MeshErrorKind> for Mesh_Error_Kind {
 impl Into<mesh::MeshErrorKind> for Mesh_Error_Kind {
     fn into(self) -> mesh::MeshErrorKind {
         match self {
-            Mesh_Error_Kind::UTF8 { column } => mesh::MeshErrorKind::UTF8 { column: column.into() },
-            Mesh_Error_Kind::OutOfBounds { idx } => mesh::MeshErrorKind::OutOfBounds { idx },
-            Mesh_Error_Kind::DeprecatedInstruction { name } => mesh::MeshErrorKind::DeprecatedInstruction {
+            Self::UTF8 { column } => mesh::MeshErrorKind::UTF8 { column: column.into() },
+            Self::OutOfBounds { idx } => mesh::MeshErrorKind::OutOfBounds { idx },
+            Self::DeprecatedInstruction { name } => mesh::MeshErrorKind::DeprecatedInstruction {
                 name: unsafe { owned_ptr_to_string(name as *mut c_char) },
             },
-            Mesh_Error_Kind::UnknownInstruction { name } => mesh::MeshErrorKind::UnknownInstruction {
+            Self::UnknownInstruction { name } => mesh::MeshErrorKind::UnknownInstruction {
                 name: unsafe { owned_ptr_to_string(name as *mut c_char) },
             },
-            Mesh_Error_Kind::GenericCSV { msg } => mesh::MeshErrorKind::GenericCSV {
+            Self::GenericCSV { msg } => mesh::MeshErrorKind::GenericCSV {
                 msg: unsafe { owned_ptr_to_string(msg as *mut c_char) },
             },
-            Mesh_Error_Kind::UnknownCSV => mesh::MeshErrorKind::UnknownCSV,
+            Self::UnknownCSV => mesh::MeshErrorKind::UnknownCSV,
         }
     }
 }

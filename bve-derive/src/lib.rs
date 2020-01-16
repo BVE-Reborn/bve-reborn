@@ -16,14 +16,18 @@
 #![allow(clippy::cognitive_complexity)] // This is dumb
 #![allow(clippy::single_match_else)] // Future expansion
 // Annoying/irrelevant clippy Restrictions
+#![allow(clippy::as_conversions)]
 #![allow(clippy::decimal_literal_representation)]
 #![allow(clippy::else_if_without_else)]
 #![allow(clippy::float_arithmetic)]
 #![allow(clippy::float_cmp_const)]
 #![allow(clippy::implicit_return)]
+#![allow(clippy::indexing_slicing)]
 #![allow(clippy::indexing_slicing)] // Proc macros are error prone
 #![allow(clippy::integer_arithmetic)]
 #![allow(clippy::integer_division)]
+#![allow(clippy::let_underscore_must_use)]
+#![allow(clippy::match_bool)] // prettier
 #![allow(clippy::missing_docs_in_private_items)]
 #![allow(clippy::missing_inline_in_public_items)]
 #![allow(clippy::module_name_repetitions)]

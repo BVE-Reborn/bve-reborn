@@ -19,6 +19,8 @@
 #![allow(clippy::cast_possible_truncation)] // Annoying
 #![allow(clippy::cognitive_complexity)] // This is dumb
 // Annoying/irrelevant clippy Restrictions
+#![allow(clippy::as_conversions)]
+#![allow(clippy::crosspointer_transmute)] // Useful for nasty ffi crap
 #![allow(clippy::decimal_literal_representation)]
 #![allow(clippy::else_if_without_else)]
 #![allow(clippy::float_arithmetic)]
@@ -27,6 +29,8 @@
 #![allow(clippy::indexing_slicing)]
 #![allow(clippy::integer_arithmetic)]
 #![allow(clippy::integer_division)]
+#![allow(clippy::let_underscore_must_use)]
+#![allow(clippy::match_bool)] // prettier
 #![allow(clippy::mem_forget)] // Useful for FFI
 #![allow(clippy::missing_docs_in_private_items)]
 #![allow(clippy::missing_inline_in_public_items)]
@@ -41,12 +45,10 @@
 
 pub mod panic;
 
-use crate::panic::{default_panic_handler, set_panic_handler};
 use bve::parse::mesh::Vertex;
 use std::borrow::Cow;
 use std::ffi::{CStr, CString};
 use std::os::raw::*;
-use std::process::abort;
 use std::ptr::null_mut;
 
 #[repr(C)]
@@ -104,7 +106,7 @@ where
     #[inline]
     #[must_use]
     fn from(other: Vec<U>) -> Self {
-        let mut converted: Vec<T> = other.into_iter().map(|v| v.into()).collect();
+        let mut converted: Vec<T> = other.into_iter().map(std::convert::Into::into).collect();
         let ret = Self {
             ptr: converted.as_mut_ptr(),
             count: converted.len(),
@@ -122,7 +124,7 @@ where
     #[must_use]
     fn into(self) -> Vec<U> {
         let converted: Vec<T> = unsafe { Vec::from_raw_parts(self.ptr, self.count, self.capacity) };
-        let other: Vec<U> = converted.into_iter().map(|v| v.into()).collect();
+        let other: Vec<U> = converted.into_iter().map(std::convert::Into::into).collect();
         other
     }
 }
@@ -132,7 +134,7 @@ pub extern "C" fn init() {
 }
 
 fn string_to_owned_ptr(input: &str) -> *mut c_char {
-    CString::new(input).map(|v| v.into_raw()).unwrap_or(null_mut())
+    CString::new(input).map(CString::into_raw).unwrap_or(null_mut())
 }
 
 /// Consumes the given owning pointer and converts it to a rust string.
