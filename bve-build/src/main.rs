@@ -84,6 +84,7 @@ fn main() {
             // C++
             let mut config = config;
             config.language = Language::Cxx;
+            config.export.prefix = None;
             *config.header.as_mut().expect("bve-native/cbindgen.toml needs a header") +=
                 "/* C++ API for BVE-Reborn high performance libraries. */";
             config.trailer = Some(read_to_string("bve-native/include/bve_cpp.hpp").unwrap());
