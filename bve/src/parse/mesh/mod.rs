@@ -77,6 +77,24 @@ pub struct Mesh {
     pub glow: Glow,
 }
 
+fn default_mesh() -> Mesh {
+    Mesh {
+        vertices: vec![],
+        indices: vec![],
+        texture: Texture {
+            texture_id: None,
+            emission_color: ColorU8RGB::from_value(0),
+            decal_transparent_color: None,
+        },
+        color: ColorU8RGBA::from_value(255),
+        blend_mode: BlendMode::Normal,
+        glow: Glow {
+            attenuation_mode: GlowAttenuationMode::DivideExponent4,
+            half_distance: 0,
+        },
+    }
+}
+
 #[repr(C)]
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Vertex {

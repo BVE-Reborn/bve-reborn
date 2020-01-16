@@ -1,3 +1,5 @@
+use crate::parse::mesh::instructions::tests::generate_instructions_from_obj;
+use crate::parse::mesh::instructions::tests::meshes::*;
 use crate::parse::mesh::instructions::*;
 use crate::parse::mesh::{BlendMode, Glow, GlowAttenuationMode, Span};
 use crate::{ColorU8RGB, ColorU8RGBA};
@@ -272,102 +274,13 @@ fn texture_coords() {
 
 #[test]
 fn cube() {
-    let v = generate_instruction_list!(
-        0: CreateMeshBuilder {},
-        1: AddVertex {
-            position: Vector3::new(1.000000, 1.000000, -1.000000),
-            normal: Vector3::from_value(0.0),
-            texture_coord: Vector2::new(0.0, 0.0),
-        },
-        2: AddVertex {
-            position: Vector3::new(1.000000, -1.000000, -1.000000),
-            normal: Vector3::from_value(0.0),
-            texture_coord: Vector2::new(0.0, 0.0),
-        },
-        3: AddVertex {
-            position: Vector3::new(1.000000, 1.000000, 1.000000),
-            normal: Vector3::from_value(0.0),
-            texture_coord: Vector2::new(0.0, 0.0),
-        },
-        4: AddVertex {
-            position: Vector3::new(1.000000, -1.000000, 1.000000),
-            normal: Vector3::from_value(0.0),
-            texture_coord: Vector2::new(0.0, 0.0),
-        },
-        5: AddVertex {
-            position: Vector3::new(-1.000000, 1.000000, -1.000000),
-            normal: Vector3::from_value(0.0),
-            texture_coord: Vector2::new(0.0, 0.0),
-        },
-        6: AddVertex {
-            position: Vector3::new(-1.000000, -1.000000, -1.000000),
-            normal: Vector3::from_value(0.0),
-            texture_coord: Vector2::new(0.0, 0.0),
-        },
-        7: AddVertex {
-            position: Vector3::new(-1.000000, 1.000000, 1.000000),
-            normal: Vector3::from_value(0.0),
-            texture_coord: Vector2::new(0.0, 0.0),
-        },
-        8: AddVertex {
-            position: Vector3::new(-1.000000, -1.000000, 1.000000),
-            normal: Vector3::from_value(0.0),
-            texture_coord: Vector2::new(0.0, 0.0),
-        },
-        9: AddFace {
-            indexes: vec![0, 4, 6, 2],
-            sides: Sides::One,
-        },
-        10: AddFace {
-            indexes: vec![3, 2, 6, 7],
-            sides: Sides::One,
-        },
-        11: AddFace {
-            indexes: vec![7, 6, 4, 5],
-            sides: Sides::One,
-        },
-        12: AddFace {
-            indexes: vec![5, 1, 3, 7],
-            sides: Sides::One,
-        },
-        13: AddFace {
-            indexes: vec![1, 0, 2, 3],
-            sides: Sides::One,
-        },
-        14: AddFace {
-            indexes: vec![5, 4, 0, 1],
-            sides: Sides::One,
-        },
-        15: LoadTexture {
-            daytime: String::from("day_tex"),
-            nighttime: String::from("night_tex"),
-        }
-    );
+    let v = generate_instructions_from_obj(CUBE_SOURCE);
 
     let result = execution::generate_meshes(post_process(v));
     assert_eq!(result.meshes.len(), 1);
     let mesh = &result.meshes[0];
     assert_eq!(mesh.vertices.len(), 24);
-    assert_eq!(mesh.vertices[0].position, Vector3::new(0.0, 0.0, 0.0));
-    assert_eq!(mesh.vertices[1].position, Vector3::new(-0.866025, 0.0, 0.5));
-    assert_eq!(mesh.vertices[2].position, Vector3::new(0.866025, 0.0, 0.5));
-    for v in &mesh.vertices {
-        assert_eq!(v.normal, Vector3::new(0.0, 1.0, 0.0));
-    }
-    for &v in &mesh.vertices {
-        assert_eq!(v.coord, Vector2::from_value(0.0));
-    }
-    assert_eq!(mesh.indices, vec![0, 1, 2]);
-    assert_eq!(mesh.blend_mode, BlendMode::Normal);
-    assert_eq!(mesh.color, ColorU8RGBA::from_value(255));
-    assert_eq!(
-        mesh.glow,
-        Glow {
-            attenuation_mode: GlowAttenuationMode::DivideExponent4,
-            half_distance: 0,
-        }
-    );
-    assert_eq!(result.textures.len(), 1);
-    assert_eq!(result.textures.lookup(0), Some("day_tex"));
+    assert_eq!(mesh.indices.len(), 36);
+    assert_eq!(result.textures.len(), 0);
     assert_eq!(result.errors.len(), 0);
 }
