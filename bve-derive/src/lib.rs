@@ -4,6 +4,7 @@
 #![deny(nonstandard_style)]
 #![deny(rust_2018_idioms)]
 #![forbid(unsafe_code)]
+#![allow(unused_extern_crates)] // cargo < 1.42 doesn't add `--extern proc_macro`, so allow an duplicate declaration
 // Clippy warnings
 #![warn(clippy::cargo)]
 #![warn(clippy::nursery)]
@@ -16,14 +17,18 @@
 #![allow(clippy::cognitive_complexity)] // This is dumb
 #![allow(clippy::single_match_else)] // Future expansion
 // Annoying/irrelevant clippy Restrictions
+#![allow(clippy::as_conversions)]
 #![allow(clippy::decimal_literal_representation)]
 #![allow(clippy::else_if_without_else)]
 #![allow(clippy::float_arithmetic)]
 #![allow(clippy::float_cmp_const)]
 #![allow(clippy::implicit_return)]
+#![allow(clippy::indexing_slicing)]
 #![allow(clippy::indexing_slicing)] // Proc macros are error prone
 #![allow(clippy::integer_arithmetic)]
 #![allow(clippy::integer_division)]
+#![allow(clippy::let_underscore_must_use)]
+#![allow(clippy::match_bool)] // prettier
 #![allow(clippy::missing_docs_in_private_items)]
 #![allow(clippy::missing_inline_in_public_items)]
 #![allow(clippy::module_name_repetitions)]
@@ -40,9 +45,15 @@ extern crate proc_macro;
 
 use proc_macro::TokenStream;
 
-// Code coverage is silly on these derive
+// Code coverage is silly on these derives
 #[cfg_attr(tarpaulin, skip)]
 mod serde_proxy;
+
+#[cfg_attr(tarpaulin, skip)]
+mod c_interface;
+
+#[cfg_attr(tarpaulin, skip)]
+mod helpers;
 
 #[proc_macro_attribute]
 #[cfg_attr(tarpaulin, skip)]
@@ -54,4 +65,10 @@ pub fn serde_proxy(_attr: TokenStream, item: TokenStream) -> TokenStream {
 #[cfg_attr(tarpaulin, skip)]
 pub fn serde_vector_proxy(_attr: TokenStream, item: TokenStream) -> TokenStream {
     serde_proxy::serde_vector_proxy(item)
+}
+
+#[proc_macro_attribute]
+#[cfg_attr(tarpaulin, skip)]
+pub fn c_interface(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    c_interface::c_interface(item)
 }

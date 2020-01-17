@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        rust: [1.40.0]
+        rust: [nightly-2020-01-16]
         tool: [tarpaulin]
     runs-on: ubuntu-18.04
 

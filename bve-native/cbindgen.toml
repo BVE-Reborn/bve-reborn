@@ -8,15 +8,36 @@ documentation_style = "doxy"
 [fn]
 must_use = "BVE_NO_DISCARD"
 
-[struct]
-derive_constructor = true
-derive_eq = true
-derive_neq = true
-
 [macro_expansion]
 bitflags = true
+
+[export]
+prefix = "BVE_"
+include = [
+    "ColorU8R",
+    "ColorU8RG",
+    "ColorU8RGB",
+    "ColorU8RGBA",
+    "ColorU16R",
+    "ColorU16RG",
+    "ColorU16RGB",
+    "ColorU16RGBA",
+    "ColorF32R",
+    "ColorF32RG",
+    "ColorF32RGB",
+    "ColorF32RGBA",
+]
+
+[export.rename]
+"BlendMode" = "Mesh_Blend_Mode"
+"FileType" = "Mesh_File_Type"
+"Glow" = "Mesh_Glow"
+"GlowAttenuationMode" = "Mesh_Glow_Attenuation_Mode"
 
 [parse]
 parse_deps = true
 include = ["bve", "cgmath"]
 extra_bindings = ["bve"]
+
+[parse.expand]
+crates = ["bve-native"]

@@ -14,4 +14,7 @@ keywords = ["bve", "serialization", "simulation"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+backtrace = "0.3.42"
 bve = { version = "0.0.0-Placeholder", path = "../bve" }
+bve-derive = { version = "0.0.0-Placeholder", path = "../bve-derive" }
+libc = "0.2.66"
