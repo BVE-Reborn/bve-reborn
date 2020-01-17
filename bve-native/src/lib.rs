@@ -1,10 +1,38 @@
-//! C API for BVE-Reborn high performance libraries.
+//! C/C++ API for BVE-Reborn high performance libraries.
+//!
+//! This library isn't made to be used directly from rust and can actually create UB fairly easily if used from Rust.
+//! C/C++ Headers will be generated in `bve-native/include` by `bve-build`.
+//!
+//! Documentation is automatically copied to the C headers, but is missing module documentation. Therefore it is
+//! recommended to use the Rust documentation for this library while writing C/C++. Attempts have been made to make
+//! it as easy as possible to figure out what C/C++ code to write from the Rust documentation.
+//!
+//! While code is separated into modules in the rust documentation, all functions and types are exported to c++ in
+//! global scope with no name mangling.
+//!
+//! The modules correspond 1:1 with the modules in the `bve` crate.  
+//!
+//! # Use Warning
 //!
 //! ***DO NOT CALL ANY OTHER FUNCTION BEFORE YOU CALL INIT***.
 //!
 //! Libraries ***must*** be initialized by calling [`init`] before calling anything else. The library
 //! does not need to be de-initialized. If this is not done, panics may propagate beyond the C -> Rust boundary,
 //! leading to undefined behavior.
+//!
+//! # API Basics
+//!
+//! The API tries to be as consistent and predictable as possible.
+//!
+//! Structs are all prefixed with `BVE_` in C mode to help eliminate conflicts. C++ code is all in the `bve` namespace.
+//! Type names are kept as short as is reasonable, while still having clear connection with the underlying rust code.
+//!
+//! Free functions have their rust path loosely encoded in the name. For example [`bve::parse::mesh::mesh_from_str`] is
+//! [`bve_parse_mesh_from_string`](parse::mesh::bve_parse_mesh_from_string). Duplicate names are removed and idioms are
+//! changed to be comprehensible from the interface language.
+//!
+//! Free functions that are acting like member functions come in the form `BVE_Struct_Name_member_function_name`. They
+//! take their first argument by pointer.
 //!
 //! All pointers are assumed to not take ownership, unless otherwise specified. Non-obvious lifespans will
 //! be noted in documentation.

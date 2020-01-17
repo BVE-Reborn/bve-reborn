@@ -74,7 +74,7 @@ pub unsafe extern "C" fn bve_delete_parsed_static_object(object: Parsed_Static_O
 ///
 /// # Safety
 ///
-/// - Must be destroyed as part of it's parent [`Parsed_Static_Object`].
+/// - Must be destroyed as part of its parent [`Parsed_Static_Object`].
 pub struct Texture_Set {
     pub inner: mesh::TextureSet,
 }
@@ -164,7 +164,7 @@ impl Into<mesh::Texture> for Mesh_Texture {
 ///
 /// # Safety
 ///
-/// - Must be destroyed as part of it's parent [`Parsed_Static_Object`].
+/// - Must be destroyed as part of its parent [`Parsed_Static_Object`].
 #[repr(C)]
 pub struct Mesh {
     pub vertices: CVector<Vertex>,
@@ -205,7 +205,7 @@ impl Into<mesh::Mesh> for Mesh {
 ///
 /// # Safety
 ///
-/// - Must be destroyed as part of it's parent [`Parsed_Static_Object`].
+/// - Must be destroyed as part of its parent [`Parsed_Static_Object`].
 #[repr(C)]
 pub struct Mesh_Error {
     pub span: Span,
@@ -236,7 +236,7 @@ impl Into<mesh::MeshError> for Mesh_Error {
 ///
 /// - Only read the union value that the `tag`/`determinant` says is inside the enum.
 /// - Reading another value results in UB.
-/// - Must be destroyed as part of it's parent [`Parsed_Static_Object`].
+/// - Must be destroyed as part of its parent [`Parsed_Static_Object`].
 #[repr(C, u8)]
 pub enum Mesh_Error_Kind {
     UTF8 { column: COption<u64> },
