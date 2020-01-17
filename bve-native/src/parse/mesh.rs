@@ -9,6 +9,12 @@ use bve_derive::c_interface;
 use std::ffi::CStr;
 use std::ptr::null;
 
+pub use mesh::BlendMode as Blend_Mode;
+pub use mesh::FileType as File_Type;
+pub use mesh::Glow as Mesh_Glow;
+pub use mesh::GlowAttenuationMode as Mesh_Glow_Attenuation_Mode;
+pub use mesh::Vertex;
+
 /// C safe wrapper for [`ParsedStaticObject`](bve::parse::mesh::ParsedStaticObject).
 ///
 /// # Safety
@@ -43,7 +49,7 @@ impl Into<mesh::ParsedStaticObject> for Parsed_Static_Object {
     }
 }
 
-/// Destructor for [`Parsed_Static_Object`].
+/// C Destructor for [`Parsed_Static_Object`].
 ///
 /// # Safety
 ///
@@ -89,7 +95,7 @@ impl Into<mesh::TextureSet> for Texture_Set {
 
 #[must_use]
 #[c_interface]
-/// C Interface for [`TextureSet::len`](bve::parse::mesh::TextureSet::len).
+/// C "member function" for [`TextureSet::len`](bve::parse::mesh::TextureSet::len).
 ///
 /// # Safety
 ///
@@ -99,7 +105,7 @@ pub unsafe extern "C" fn BVE_Texture_Set_len(ptr: *const Texture_Set) -> libc::s
 }
 
 #[c_interface]
-/// C Interface for [`TextureSet::add`](bve::parse::mesh::TextureSet::add).
+/// C "member function" for [`TextureSet::add`](bve::parse::mesh::TextureSet::add).
 ///
 /// # Safety
 ///
@@ -111,7 +117,7 @@ pub unsafe extern "C" fn BVE_Texture_Set_add(ptr: *mut Texture_Set, value: *cons
 
 #[must_use]
 #[c_interface]
-/// C Interface for [`TextureSet::lookup`](bve::parse::mesh::TextureSet::lookup).
+/// C "member function" for [`TextureSet::lookup`](bve::parse::mesh::TextureSet::lookup).
 ///
 /// # Safety
 ///
@@ -126,11 +132,7 @@ pub unsafe extern "C" fn BVE_Texture_Set_lookup(ptr: *const Texture_Set, idx: li
     }
 }
 
-/// C Interface for [`Texture`](bve::parse::mesh::Texture).
-///
-/// # Safety
-///
-/// - Must be destroyed as part of it's parent [`Parsed_Static_Object`].
+/// C safe wrapper for [`Texture`](bve::parse::mesh::Texture).
 #[repr(C)]
 pub struct Mesh_Texture {
     pub texture_id: COption<usize>,
@@ -158,7 +160,7 @@ impl Into<mesh::Texture> for Mesh_Texture {
     }
 }
 
-/// C Interface for [`Mesh`](bve::parse::mesh::Mesh).
+/// C safe wrapper for [`Mesh`](bve::parse::mesh::Mesh).
 ///
 /// # Safety
 ///
@@ -169,12 +171,9 @@ pub struct Mesh {
     pub indices: CVector<libc::size_t>,
     pub texture: Mesh_Texture,
     pub color: ColorU8RGBA,
-    pub blend_mode: mesh::BlendMode,
-    pub glow: mesh::Glow,
+    pub blend_mode: Blend_Mode,
+    pub glow: Mesh_Glow,
 }
-
-pub use mesh::BlendMode;
-pub use mesh::Glow;
 
 impl From<mesh::Mesh> for Mesh {
     fn from(other: mesh::Mesh) -> Self {
@@ -202,7 +201,7 @@ impl Into<mesh::Mesh> for Mesh {
     }
 }
 
-/// C Interface for [`MeshError`](bve::parse::mesh::MeshError).
+/// C safe wrapper for [`MeshError`](bve::parse::mesh::MeshError).
 ///
 /// # Safety
 ///
@@ -231,7 +230,7 @@ impl Into<mesh::MeshError> for Mesh_Error {
     }
 }
 
-/// C Interface for [`MeshErrorKind`](bve::parse::mesh::MeshErrorKind).
+/// C safe wrapper for [`MeshErrorKind`](bve::parse::mesh::MeshErrorKind).
 ///
 /// # Safety
 ///
@@ -286,11 +285,7 @@ impl Into<mesh::MeshErrorKind> for Mesh_Error_Kind {
     }
 }
 
-/// C Interface for [`Span`](bve::parse::mesh::Span).
-///
-/// # Safety
-///
-/// - Must be destroyed as part of it's parent [`Parsed_Static_Object`].
+/// C safe wrapper for [`Span`](bve::parse::mesh::Span).
 #[repr(C)]
 pub struct Span {
     pub line: COption<u64>,
@@ -321,7 +316,7 @@ impl Into<mesh::Span> for Span {
 #[c_interface]
 pub unsafe extern "C" fn bve_parse_mesh_from_string(
     string: *const c_char,
-    file_type: mesh::FileType,
+    file_type: File_Type,
 ) -> Parsed_Static_Object {
     let result = mesh::mesh_from_str(&unowned_ptr_to_str(&string), file_type);
     result.into()

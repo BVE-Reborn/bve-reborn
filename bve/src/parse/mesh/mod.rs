@@ -10,6 +10,10 @@ use serde::Deserialize;
 mod errors;
 pub mod instructions;
 
+/// Which type of file to parse as a mesh.
+///
+/// The differences are only if there is a comma after the instruction name, instructions from both will work as
+/// expected.
 #[repr(C)]
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum FileType {
@@ -107,6 +111,7 @@ fn default_mesh() -> Mesh {
     }
 }
 
+/// All per-vertex data in a BVE mesh
 #[repr(C)]
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Vertex {
@@ -159,6 +164,7 @@ impl Vertex {
     }
 }
 
+/// The glow numbers to use for this mesh. Not sure how exactly this works.
 #[repr(C)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Glow {
@@ -166,6 +172,7 @@ pub struct Glow {
     pub half_distance: u16,
 }
 
+/// The blending mode to use when rendering the mesh
 #[repr(C)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -174,6 +181,7 @@ pub enum BlendMode {
     Additive,
 }
 
+/// No idea what this does, but every mesh has one or the other.
 #[repr(C)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Deserialize)]
 #[serde(rename_all = "lowercase")]

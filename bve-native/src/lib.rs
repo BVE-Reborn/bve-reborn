@@ -54,7 +54,6 @@
 
 pub mod panic;
 
-use bve::parse::mesh::Vertex;
 use std::borrow::Cow;
 use std::ffi::{CStr, CString};
 use std::os::raw::*;
