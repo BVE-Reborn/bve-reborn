@@ -4,6 +4,7 @@
 #![deny(nonstandard_style)]
 #![deny(rust_2018_idioms)]
 #![forbid(unsafe_code)]
+#![allow(unused_extern_crates)] // cargo < 1.42 doesn't add `--extern proc_macro`, so allow an duplicate declaration
 // Clippy warnings
 #![warn(clippy::cargo)]
 #![warn(clippy::nursery)]
@@ -39,6 +40,8 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unreachable)]
 #![allow(clippy::wildcard_enum_match_arm)]
+
+extern crate proc_macro;
 
 use proc_macro::TokenStream;
 
