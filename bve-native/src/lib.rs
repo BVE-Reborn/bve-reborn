@@ -1,4 +1,13 @@
 //! C API for BVE-Reborn high performance libraries.
+//!
+//! ***DO NOT CALL ANY OTHER FUNCTION BEFORE YOU CALL INIT***.
+//!
+//! Libraries ***must*** be initialized by calling [`init`] before calling anything else. The library
+//! does not need to be de-initialized. If this is not done, panics may propagate beyond the C -> Rust boundary,
+//! leading to undefined behavior.
+//!
+//! All pointers are assumed to not take ownership, unless otherwise specified. Non-obvious lifespans will
+//! be noted in documentation.
 
 // Rust warnings
 #![warn(unused)]
@@ -51,12 +60,17 @@ use std::ffi::{CStr, CString};
 use std::os::raw::*;
 use std::ptr::null_mut;
 
+/// C safe wrapper for an [`Option`].
+///
+/// # Safety
+///
+/// Reading from the `value` member is undefined behavior if `exists` is false. In practice it is zeroed.
 #[repr(C)]
 pub struct COption<T> {
     /// Actual value inside the option. Reading this is undefined behavior if exists is false.
-    value: T,
+    pub value: T,
     /// Flag if the value exists or not.
-    exists: bool,
+    pub exists: bool,
 }
 
 impl<T, U> From<Option<U>> for COption<T>
@@ -78,6 +92,7 @@ where
         }
     }
 }
+
 impl<T> Into<Option<T>> for COption<T> {
     #[inline]
     #[must_use]
@@ -89,14 +104,21 @@ impl<T> Into<Option<T>> for COption<T> {
     }
 }
 
+/// C safe wrapper for a [`Vec`].
+///
+/// # Safety
+///
+/// - Modifying the contents in the array is valid.
+/// - Increasing `count` such that `count <= capacity` is valid.
+/// - Do not manually delete/realloc the pointer. Must use the deleter for the container where this vector was found.
 #[repr(C)]
 pub struct CVector<T> {
     /// Ptr to the array of elements
-    ptr: *mut T,
+    pub ptr: *mut T,
     /// Count of elements, do not run beyond this amount
-    count: libc::size_t,
+    pub count: libc::size_t,
     /// Capacity of the underlying buffer
-    capacity: libc::size_t,
+    pub capacity: libc::size_t,
 }
 
 impl<T, U> From<Vec<U>> for CVector<T>
@@ -129,25 +151,49 @@ where
     }
 }
 
+/// Initialize the runtime functionality of BVE. Initializes minimal global state to make the rest
+/// of the API safe to call. ***DO NOT CALL ANY OTHER FUNCTION BEFORE YOU CALL INIT***.
+///
+/// This function is not protected against panics as it must not panic due to the handler not being set up.
+///
+/// May be called multiple times, but all global state will be reset.
+#[no_mangle]
 pub extern "C" fn init() {
     panic::init_panic_handler();
 }
 
+/// Converts a given non-owning slice to a owning C pointer
 fn string_to_owned_ptr(input: &str) -> *mut c_char {
     CString::new(input).map(CString::into_raw).unwrap_or(null_mut())
 }
 
 /// Consumes the given owning pointer and converts it to a rust string.
+///
+/// # Safety
+///
+/// - `input` **ASSUMES OWNERSHIP** must be a valid pointer. It must be zero terminated.
 unsafe fn owned_ptr_to_string(input: *const c_char) -> String {
     // This cast is valid as the underlying data will never be changed
     // Either way we own it and it's being destroyed.
     CString::from_raw(input as *mut c_char).to_string_lossy().into()
 }
 
+/// Translates a non-owning pointer to a rust str. If it is not valid utf8, it is converted to
+/// being owning through [`Cow`].
+///
+/// # Safety
+///
+/// - `input` must be a valid pointer. It must be zero terminated.
 unsafe fn unowned_ptr_to_str(input: &*const c_char) -> Cow<'_, str> {
     CStr::from_ptr(*input).to_string_lossy()
 }
 
+/// Takes an owning pointer to a rust-generated string and deletes it.
+///
+/// # Safety
+///
+/// - `ptr` **ASSUMES OWNERSHIP** must be a valid pointer and the string must have been allocated in Rust. It must be
+///   zero terminated.
 #[bve_derive::c_interface]
 pub unsafe extern "C" fn bve_delete_string(ptr: *mut c_char) {
     CString::from_raw(ptr);

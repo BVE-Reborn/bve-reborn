@@ -1,9 +1,19 @@
+//! C interface for [`bve::parse::mesh`] for parsing b3d/csv files.
+//!
+//! Currently only a single entry point is exposed: [`bve_parse_mesh_from_string`].
+
 use crate::*;
 use bve::parse::mesh;
 use bve::{ColorU8RGB, ColorU8RGBA};
+use bve_derive::c_interface;
 use std::ffi::CStr;
 use std::ptr::null;
 
+/// C safe wrapper for [`ParsedStaticObject`](bve::parse::mesh::ParsedStaticObject).
+///
+/// # Safety
+///
+/// - It and all child objects must be deleted by calling [`bve_delete_parsed_static_object`].
 #[repr(C)]
 pub struct Parsed_Static_Object {
     pub meshes: CVector<Mesh>,
@@ -33,7 +43,32 @@ impl Into<mesh::ParsedStaticObject> for Parsed_Static_Object {
     }
 }
 
-// Opaque
+/// Destructor for [`Parsed_Static_Object`].
+///
+/// # Safety
+///
+/// - Object provided must be able to be reassembled into a rust datastructure before being deleted. This means the
+///   invariants of all of rust's equivalent datastructure must be upheld.
+#[c_interface]
+pub unsafe extern "C" fn bve_delete_parsed_static_object(object: Parsed_Static_Object) {
+    let _reassembled: mesh::ParsedStaticObject = object.into();
+    // Object safely deleted
+}
+
+/// C safe wrapper for [`TextureSet`](bve::parse::mesh::TextureSet).
+///
+/// Opaque structure which wraps a set of texture names.
+///
+/// # Members
+///
+/// Accessible through the "member" functions:
+/// - [`BVE_Texture_Set_len`] for [`TextureSet::len`](bve::parse::mesh::TextureSet::len)
+/// - [`BVE_Texture_Set_add`] for [`TextureSet::add`](bve::parse::mesh::TextureSet::add)
+/// - [`BVE_Texture_Set_lookup`] for [`TextureSet::lookup`](bve::parse::mesh::TextureSet::lookup)
+///
+/// # Safety
+///
+/// - Must be destroyed as part of it's parent [`Parsed_Static_Object`].
 pub struct Texture_Set {
     pub inner: mesh::TextureSet,
 }
@@ -53,20 +88,36 @@ impl Into<mesh::TextureSet> for Texture_Set {
 }
 
 #[must_use]
-#[no_mangle]
+#[c_interface]
+/// C Interface for [`TextureSet::len`](bve::parse::mesh::TextureSet::len).
+///
+/// # Safety
+///
+/// - `ptr` must be non-null.
 pub unsafe extern "C" fn BVE_Texture_Set_len(ptr: *const Texture_Set) -> libc::size_t {
     (*ptr).inner.len()
 }
 
-#[no_mangle]
+#[c_interface]
+/// C Interface for [`TextureSet::add`](bve::parse::mesh::TextureSet::add).
+///
+/// # Safety
+///
+/// - `ptr` must be non-null.
+/// - `value` Must be a valid null-terminated string. Non-utf8 is permitted, though escaped.
 pub unsafe extern "C" fn BVE_Texture_Set_add(ptr: *mut Texture_Set, value: *const c_char) -> libc::size_t {
     (*ptr).inner.add(&CStr::from_ptr(value).to_string_lossy())
 }
 
 #[must_use]
-#[no_mangle]
-/// C Interface for [`bve::parse::mesh::TextureSet::lookup`]. Pointer returned points to an owned copy of the texture
-/// name. Must be deleted by [`bve_native::bve_delete_string`] If the lookup fails, output is null.
+#[c_interface]
+/// C Interface for [`TextureSet::lookup`](bve::parse::mesh::TextureSet::lookup).
+///
+/// # Safety
+///
+/// - Pointer returned points to an owned **copy** of the texture name.
+/// - Returned pointer must be deleted by [`bve_delete_string`].
+/// - If the lookup fails, output is null.
 pub unsafe extern "C" fn BVE_Texture_Set_lookup(ptr: *const Texture_Set, idx: libc::size_t) -> *const c_char {
     let result = (*ptr).inner.lookup(idx);
     match result {
@@ -75,6 +126,11 @@ pub unsafe extern "C" fn BVE_Texture_Set_lookup(ptr: *const Texture_Set, idx: li
     }
 }
 
+/// C Interface for [`Texture`](bve::parse::mesh::Texture).
+///
+/// # Safety
+///
+/// - Must be destroyed as part of it's parent [`Parsed_Static_Object`].
 #[repr(C)]
 pub struct Mesh_Texture {
     pub texture_id: COption<usize>,
@@ -102,6 +158,11 @@ impl Into<mesh::Texture> for Mesh_Texture {
     }
 }
 
+/// C Interface for [`Mesh`](bve::parse::mesh::Mesh).
+///
+/// # Safety
+///
+/// - Must be destroyed as part of it's parent [`Parsed_Static_Object`].
 #[repr(C)]
 pub struct Mesh {
     pub vertices: CVector<Vertex>,
@@ -111,6 +172,9 @@ pub struct Mesh {
     pub blend_mode: mesh::BlendMode,
     pub glow: mesh::Glow,
 }
+
+pub use mesh::BlendMode;
+pub use mesh::Glow;
 
 impl From<mesh::Mesh> for Mesh {
     fn from(other: mesh::Mesh) -> Self {
@@ -138,6 +202,11 @@ impl Into<mesh::Mesh> for Mesh {
     }
 }
 
+/// C Interface for [`MeshError`](bve::parse::mesh::MeshError).
+///
+/// # Safety
+///
+/// - Must be destroyed as part of it's parent [`Parsed_Static_Object`].
 #[repr(C)]
 pub struct Mesh_Error {
     pub span: Span,
@@ -162,26 +231,20 @@ impl Into<mesh::MeshError> for Mesh_Error {
     }
 }
 
+/// C Interface for [`MeshErrorKind`](bve::parse::mesh::MeshErrorKind).
+///
+/// # Safety
+///
+/// - Only read the union value that the `tag`/`determinant` says is inside the enum.
+/// - Reading another value results in UB.
+/// - Must be destroyed as part of it's parent [`Parsed_Static_Object`].
 #[repr(C, u8)]
 pub enum Mesh_Error_Kind {
-    UTF8 {
-        column: COption<u64>,
-    },
-    OutOfBounds {
-        idx: usize,
-    },
-    DeprecatedInstruction {
-        /// Owning. Must be deleted by [`bve_native::bve_delete_string`]
-        name: *const c_char,
-    },
-    UnknownInstruction {
-        /// Owning. Must be deleted by [`bve_native::bve_delete_string`]
-        name: *const c_char,
-    },
-    GenericCSV {
-        /// Owning. Must be deleted by [`bve_native::bve_delete_string`]
-        msg: *const c_char,
-    },
+    UTF8 { column: COption<u64> },
+    OutOfBounds { idx: usize },
+    DeprecatedInstruction { name: *const c_char },
+    UnknownInstruction { name: *const c_char },
+    GenericCSV { msg: *const c_char },
     UnknownCSV,
 }
 
@@ -223,6 +286,11 @@ impl Into<mesh::MeshErrorKind> for Mesh_Error_Kind {
     }
 }
 
+/// C Interface for [`Span`](bve::parse::mesh::Span).
+///
+/// # Safety
+///
+/// - Must be destroyed as part of it's parent [`Parsed_Static_Object`].
 #[repr(C)]
 pub struct Span {
     pub line: COption<u64>,
@@ -242,7 +310,15 @@ impl Into<mesh::Span> for Span {
     }
 }
 
-#[no_mangle]
+/// C Interface for [`mesh_from_str`](bve::parse::mesh::mesh_from_str).
+///
+/// # Safety
+///
+/// - `string` must be non-null and null terminated. May be invalid utf8.
+/// - `file_type` must be a valid enumeration.
+/// - Result must be properly deleted.
+#[must_use]
+#[c_interface]
 pub unsafe extern "C" fn bve_parse_mesh_from_string(
     string: *const c_char,
     file_type: mesh::FileType,
