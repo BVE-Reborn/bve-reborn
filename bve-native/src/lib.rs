@@ -185,7 +185,7 @@ where
 ///
 /// May be called multiple times, but all global state will be reset.
 #[no_mangle]
-pub extern "C" fn init() {
+pub extern "C" fn bve_init() {
     panic::init_panic_handler();
 }
 

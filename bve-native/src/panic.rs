@@ -33,7 +33,7 @@ pub type PanicHandler = unsafe extern "C" fn(*mut c_void, *const c_char) -> ();
 type PanicHandlerProxy = *mut PanicHandler;
 
 // Internal statics for the Panic Handler and its data
-static PANIC_HANDLER: AtomicPtr<PanicHandler> = AtomicPtr::new(default_panic_handler as PanicHandlerProxy);
+static PANIC_HANDLER: AtomicPtr<PanicHandler> = AtomicPtr::new(bve_default_panic_handler as PanicHandlerProxy);
 static PANIC_HANDLER_DATA: AtomicPtr<c_void> = AtomicPtr::new(null_mut());
 
 /// The default panic handler that is automatically installed. Does not touch the data pointer.
@@ -43,7 +43,7 @@ static PANIC_HANDLER_DATA: AtomicPtr<c_void> = AtomicPtr::new(null_mut());
 ///
 /// The string must be non-null per the contract of [`PanicHandler`].
 #[no_mangle]
-pub unsafe extern "C" fn default_panic_handler(_: *mut c_void, string: *const c_char) {
+pub unsafe extern "C" fn bve_default_panic_handler(_: *mut c_void, string: *const c_char) {
     std::io::stderr()
         .lock()
         .write_all(CStr::from_ptr(string).to_bytes())
@@ -57,7 +57,7 @@ pub unsafe extern "C" fn default_panic_handler(_: *mut c_void, string: *const c_
 /// - `handler` must not be null and must point to a valid function of the proper signature.
 /// - The function `handler` points to must uphold the invariants of the contract of [`PanicHandler`]
 #[no_mangle]
-pub unsafe extern "C" fn set_panic_handler(handler: PanicHandler) {
+pub unsafe extern "C" fn bve_set_panic_handler(handler: PanicHandler) {
     let handler_transmute: PanicHandlerProxy = handler as PanicHandlerProxy;
     PANIC_HANDLER.store(handler_transmute, Ordering::SeqCst);
 }
@@ -68,13 +68,13 @@ pub unsafe extern "C" fn set_panic_handler(handler: PanicHandler) {
 ///
 /// - If the installed panic handler touches this data, it must be non-null and point to the data it expects
 #[no_mangle]
-pub unsafe extern "C" fn set_panic_data(data: *mut c_void) {
+pub unsafe extern "C" fn bve_set_panic_data(data: *mut c_void) {
     PANIC_HANDLER_DATA.store(data, Ordering::SeqCst);
 }
 
 /// Returns the currently set panic handler. Non-null.
 #[no_mangle]
-pub extern "C" fn get_panic_handler() -> PanicHandler {
+pub extern "C" fn bve_get_panic_handler() -> PanicHandler {
     let handler_transmute: PanicHandlerProxy = PANIC_HANDLER.load(Ordering::SeqCst);
     let handler: PanicHandler = unsafe { std::mem::transmute(handler_transmute) };
     handler
@@ -82,7 +82,7 @@ pub extern "C" fn get_panic_handler() -> PanicHandler {
 
 /// Returns the currently set data to be passed to the panic handler. May be null.
 #[no_mangle]
-pub extern "C" fn get_panic_data() -> *mut c_void {
+pub extern "C" fn bve_get_panic_data() -> *mut c_void {
     PANIC_HANDLER_DATA.load(Ordering::SeqCst)
 }
 
