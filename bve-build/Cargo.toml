@@ -15,5 +15,5 @@ keywords = ["bve", "building", "serialization", "simulation"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-cbindgen = "0.11"
+cbindgen = "0.12"
 structopt = "0.3"
