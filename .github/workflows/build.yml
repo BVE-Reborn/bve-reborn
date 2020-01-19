@@ -10,15 +10,18 @@ jobs:
         rust: [nightly-2020-01-16]
         os: [windows-2019, macos-latest, ubuntu-18.04]
         include:
-          - rust: nightly-2020-01-16-msvc
+          - rust: nightly-2020-01-16
+            toolchain: nightly-2020-01-16-msvc
             os: windows-2019
             name: windows-nightly-2020-01-16-msvc
 
           - rust: nightly-2020-01-16
+            toolchain: nightly-2020-01-16
             os: macos-latest
             name: mac-nightly-2020-01-16
 
           - rust: nightly-2020-01-16
+            toolchain: nightly-2020-01-16
             os: ubuntu-18.04
             name: linux-nightly-2020-01-16
     runs-on: ${{ matrix.os }}
@@ -39,7 +42,7 @@ jobs:
       - name: Install Rust ${{ matrix.rust }}
         run: |
           export PATH=$PATH:$HOME/.cargo/bin
-          rustup toolchain install ${{ matrix.rust }}
+          rustup toolchain install ${{ matrix.toolchain }}
         shell: bash
 
       - uses: actions/checkout@v1
