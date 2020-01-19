@@ -60,8 +60,10 @@ jobs:
         run: |
           export PATH=$PATH:$HOME/.cargo/bin
           mkdir -p target/capi/debug/
-          cmake -S bve-native/tests/ -B target/capi/debug/
-          cmake --build target/capi/debug
+          cd target/capi/debug/
+          cmake ../../../bve-native/tests/
+          cmake --build .
+          cd -
         shell: bash
 
       - name: Run C API
