@@ -136,12 +136,16 @@ fn generate_c_bindings(options: &Options) {
         *config.header.as_mut().expect("bve-native/cbindgen.toml needs a header") +=
             "/* C++ API for BVE-Reborn high performance libraries. */";
         config.trailer = Some(read_to_string("bve-native/include/bve_cpp.hpp").unwrap());
-        cbindgen::Builder::new()
+        let result = cbindgen::Builder::new()
             .with_crate("bve-native")
             .with_config(config)
-            .generate()
-            .unwrap()
-            .write_to_file("bve-native/include/bve.hpp");
+            .generate();
+        match result {
+            Ok(bindings) => {
+                bindings.write_to_file("bve-native/include/bve.h");
+            }
+            Err(err) => handle_cbindgen_error(err, options),
+        }
     }
 }
 
