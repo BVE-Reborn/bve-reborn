@@ -31,14 +31,16 @@
 #![allow(clippy::module_name_repetitions)]
 #![allow(clippy::option_expect_used)]
 #![allow(clippy::panic)]
+#![allow(clippy::print_stdout)] // This is a build script, not a fancy app
 #![allow(clippy::result_expect_used)]
 #![allow(clippy::result_unwrap_used)] // Doesn't play nice with structopt
 #![allow(clippy::shadow_reuse)]
 #![allow(clippy::shadow_same)]
 #![allow(clippy::unreachable)]
 #![allow(clippy::wildcard_enum_match_arm)]
-#![feature(core_panic)] // CLion is having a fit about panic
-#[allow(unused)] // CLion is having a fit about panic
+// CLion is having a fit about panic not existing
+#![feature(core_panic)]
+#![allow(unused_imports)]
 use core::panicking::panic;
 
 use cbindgen::Language;
@@ -89,21 +91,18 @@ fn build(options: &Options) {
     assert!(child.wait().expect("Unable to wait for cargo.").success());
 }
 
-fn handle_cbindgen_error(err: cbindgen::Error, options: &Options) {
-    match &err {
-        cbindgen::Error::CargoExpand(s, err) => {
-            // Bug in cbindgen/rustc
-            // https://github.com/eqrion/cbindgen/issues/457
-            // https://github.com/rust-lang/rust/issues/68333
-            // Fixed by cleaning the build cache and rerunning
-            if err.to_string().contains("Finished") && s == "bve-native" {
-                println!("Dealing with cbindgen bug; clearing cache and regenerating");
-                clean();
-                generate_c_bindings(options);
-                return;
-            }
+fn handle_cbindgen_error(err: &cbindgen::Error, options: &Options) {
+    if let cbindgen::Error::CargoExpand(s, err) = &err {
+        // Bug in cbindgen/rustc
+        // https://github.com/eqrion/cbindgen/issues/457
+        // https://github.com/rust-lang/rust/issues/68333
+        // Fixed by cleaning the build cache and rerunning
+        if err.to_string().contains("Finished") && s == "bve-native" {
+            println!("Dealing with cbindgen bug; clearing cache and regenerating");
+            clean();
+            generate_c_bindings(options);
+            return;
         }
-        _ => {}
     }
     panic!("cbindgen error: {}", err)
 }
@@ -125,7 +124,7 @@ fn generate_c_bindings(options: &Options) {
             Ok(bindings) => {
                 bindings.write_to_file("bve-native/include/bve.h");
             }
-            Err(err) => handle_cbindgen_error(err, options),
+            Err(err) => handle_cbindgen_error(&err, options),
         }
     }
     {
@@ -144,7 +143,7 @@ fn generate_c_bindings(options: &Options) {
             Ok(bindings) => {
                 bindings.write_to_file("bve-native/include/bve.h");
             }
-            Err(err) => handle_cbindgen_error(err, options),
+            Err(err) => handle_cbindgen_error(&err, options),
         }
     }
 }
