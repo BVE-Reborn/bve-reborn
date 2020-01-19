@@ -42,7 +42,7 @@ jobs:
       - name: Install Rust ${{ matrix.rust }}
         run: |
           export PATH=$PATH:$HOME/.cargo/bin
-          rustup default ${{ matrix.triple }}
+          rustup set default-host ${{ matrix.triple }}
           rustup toolchain install ${{ matrix.rust }}
         shell: bash
 
