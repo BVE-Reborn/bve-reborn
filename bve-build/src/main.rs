@@ -141,7 +141,7 @@ fn generate_c_bindings(options: &Options) {
             .generate();
         match result {
             Ok(bindings) => {
-                bindings.write_to_file("bve-native/include/bve.h");
+                bindings.write_to_file("bve-native/include/bve.hpp");
             }
             Err(err) => handle_cbindgen_error(&err, options),
         }
