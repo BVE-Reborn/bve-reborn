@@ -44,7 +44,7 @@ jobs:
 
       - uses: actions/checkout@v1
 
-      - name: Build on C API
+      - name: Build C API
         run: |
           export PATH=$PATH:$HOME/.cargo/bin
           cargo run --bin bve-build -- --color=always --no-build
@@ -53,7 +53,7 @@ jobs:
       - name: Build
         run: |
           export PATH=$PATH:$HOME/.cargo/bin
-          cargo build --all --tests
+          cargo build --all
         shell: bash
 
       - name: CMake on C API
