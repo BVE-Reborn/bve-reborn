@@ -10,9 +10,9 @@ jobs:
         rust: [nightly-2020-01-16]
         os: [windows-2019, macos-latest, ubuntu-18.04]
         include:
-          - rust: nightly-2020-01-16
+          - rust: nightly-2020-01-16-msvc
             os: windows-2019
-            name: windows-nightly-2020-01-16
+            name: windows-nightly-2020-01-16-msvc
 
           - rust: nightly-2020-01-16
             os: macos-latest
