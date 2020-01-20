@@ -1,5 +1,10 @@
+// CLion is having a fit about panic not existing
+#![allow(unused_imports)]
+use core::panicking::panic;
+
 use crate::parse::mesh::instructions::*;
 use crate::parse::mesh::*;
+use crate::parse::Span;
 use cgmath::{Array, Basis3, ElementWise, InnerSpace, Rad, Rotation, Rotation3, Vector3, Zero};
 use itertools::Itertools;
 
