@@ -45,6 +45,8 @@
 #![allow(non_snake_case)] // Naming in FFI is weird
 #![allow(non_camel_case_types)] // Naming in FFI is weird
 #![allow(unsafe_code)] // We're doing FFI
+// Rustdoc Warnings
+#![deny(intra_doc_link_resolution_failure)]
 // Clippy warnings
 #![warn(clippy::cargo)]
 #![warn(clippy::nursery)]
