@@ -9,6 +9,7 @@ use bve_derive::c_interface;
 use std::ffi::CStr;
 use std::ptr::null;
 
+use crate::parse::Span;
 pub use mesh::BlendMode;
 pub use mesh::FileType;
 pub use mesh::Glow;
@@ -282,26 +283,6 @@ impl Into<mesh::MeshErrorKind> for Mesh_Error_Kind {
             },
             Self::UnknownCSV => mesh::MeshErrorKind::UnknownCSV,
         }
-    }
-}
-
-/// C safe wrapper for [`Span`](bve::parse::mesh::Span).
-#[repr(C)]
-pub struct Span {
-    pub line: COption<u64>,
-}
-
-impl From<mesh::Span> for Span {
-    fn from(other: mesh::Span) -> Self {
-        Self {
-            line: other.line.into(),
-        }
-    }
-}
-
-impl Into<mesh::Span> for Span {
-    fn into(self) -> mesh::Span {
-        mesh::Span { line: self.line.into() }
     }
 }
 

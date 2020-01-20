@@ -1,5 +1,6 @@
 use crate::parse::mesh::instructions::*;
-use crate::parse::mesh::{FileType, MeshError, MeshErrorKind, Span};
+use crate::parse::mesh::{FileType, MeshError, MeshErrorKind};
+use crate::parse::Span;
 use csv::{ReaderBuilder, StringRecord, Trim};
 use std::iter::FromIterator;
 

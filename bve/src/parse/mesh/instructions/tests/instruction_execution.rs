@@ -1,7 +1,8 @@
 use crate::parse::mesh::instructions::tests::generate_instructions_from_obj;
 use crate::parse::mesh::instructions::tests::meshes::*;
 use crate::parse::mesh::instructions::*;
-use crate::parse::mesh::{BlendMode, Glow, GlowAttenuationMode, Span};
+use crate::parse::mesh::{BlendMode, Glow, GlowAttenuationMode};
+use crate::parse::Span;
 use crate::{ColorU8RGB, ColorU8RGBA};
 use cgmath::Vector3;
 use cgmath::{Array, Vector2};

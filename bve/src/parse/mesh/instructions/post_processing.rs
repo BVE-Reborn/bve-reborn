@@ -1,5 +1,6 @@
 use crate::parse::mesh::instructions::*;
-use crate::parse::mesh::{MeshError, MeshErrorKind, Span};
+use crate::parse::mesh::{MeshError, MeshErrorKind};
+use crate::parse::Span;
 use cgmath::{Array, Vector2, Vector3};
 use std::f32::consts::PI;
 

@@ -1,5 +1,5 @@
-use crate::parse::mesh::{BlendMode, GlowAttenuationMode, MeshError, Span};
-use crate::parse::util;
+use crate::parse::mesh::{BlendMode, GlowAttenuationMode, MeshError};
+use crate::parse::{util, Span};
 use crate::{ColorU8RGB, ColorU8RGBA};
 use cgmath::{Vector2, Vector3};
 pub use creation::*;

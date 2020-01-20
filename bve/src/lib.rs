@@ -45,5 +45,5 @@
 pub use datatypes::*;
 
 mod datatypes;
-pub mod iter;
+mod iter;
 pub mod parse;
