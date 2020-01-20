@@ -69,7 +69,7 @@ jobs:
       - name: Docs
         run: |
           export PATH=$PATH:$HOME/.cargo/bin
-          cargo docs --all
+          cargo doc --all
         shell: bash
 
       - name: CMake on C API
