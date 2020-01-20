@@ -8,6 +8,21 @@
 //!
 //! There is a [`default_panic_handler`] which is called if you don't manually set your own.
 //! This takes the provided string and prints it to stderr and returns.
+//!
+//! # Safety
+//!
+//! There is a race condition between [`bve_set_panic_handler`] and [`bve_set_panic_data`].
+//!
+//! If:
+//! - you set the panic handler
+//! - haven't called panic data to the proper pointer
+//! - there is a panic in rust code running concurrently,
+//!
+//! the new panic handler will be called with the wrong pointer. This can cause all kinds of bad things if the panic
+//! handler expects that pointer to be of a specific type.
+//!
+//! This is, in practice, little cause for concern with this race. As long as no other rust code is executing, there is
+//! no problem. If you call these at the beginning of the program, like would be expected, there's no chace of race.
 
 use std::ffi::{c_void, CStr, CString};
 use std::io::Write;
@@ -56,6 +71,7 @@ pub unsafe extern "C" fn bve_default_panic_handler(_: *mut c_void, string: *cons
 ///
 /// - `handler` must not be null and must point to a valid function of the proper signature.
 /// - The function `handler` points to must uphold the invariants of the contract of [`PanicHandler`]
+/// - There is a minor race between this function and [`bve_set_panic_data`]. See module documentation.
 #[no_mangle]
 pub unsafe extern "C" fn bve_set_panic_handler(handler: PanicHandler) {
     let handler_transmute: PanicHandlerProxy = handler as PanicHandlerProxy;
@@ -67,6 +83,7 @@ pub unsafe extern "C" fn bve_set_panic_handler(handler: PanicHandler) {
 /// # Safety
 ///
 /// - If the installed panic handler touches this data, it must be non-null and point to the data it expects
+/// - There is a minor race between this function and [`bve_set_panic_handler`]. See module documentation.
 #[no_mangle]
 pub unsafe extern "C" fn bve_set_panic_data(data: *mut c_void) {
     PANIC_HANDLER_DATA.store(data, Ordering::SeqCst);
