@@ -6,7 +6,7 @@
 //! the functions in this module. The function is called with the void* and a string which
 //! contains printable information about the panic.
 //!
-//! There is a [`default_panic_handler`] which is called if you don't manually set your own.
+//! There is a [`bve_default_panic_handler`] which is called if you don't manually set your own.
 //! This takes the provided string and prints it to stderr and returns.
 //!
 //! # Safety
@@ -35,7 +35,7 @@ use std::sync::atomic::{AtomicPtr, Ordering};
 ///
 /// # Arguments
 ///
-/// - `void*`: The data pointer provided using [`set_panic_data`]. Must be able to gracefully deal with null.
+/// - `void*`: The data pointer provided using [`bve_set_panic_data`]. Must be able to gracefully deal with null.
 /// - `const char*`: String containing human readable information about the panic, including a backtrace. Will never be
 ///   null.
 ///

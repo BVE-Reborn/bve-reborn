@@ -16,7 +16,7 @@
 //!
 //! ***DO NOT CALL ANY OTHER FUNCTION BEFORE YOU CALL INIT***.
 //!
-//! Libraries ***must*** be initialized by calling [`init`] before calling anything else. The library
+//! Libraries ***must*** be initialized by calling [`bve_init`] before calling anything else. The library
 //! does not need to be de-initialized. If this is not done, panics may propagate beyond the C -> Rust boundary,
 //! leading to undefined behavior.
 //!
