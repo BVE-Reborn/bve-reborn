@@ -9,10 +9,10 @@ use bve_derive::c_interface;
 use std::ffi::CStr;
 use std::ptr::null;
 
-pub use mesh::BlendMode as Blend_Mode;
-pub use mesh::FileType as File_Type;
-pub use mesh::Glow as Mesh_Glow;
-pub use mesh::GlowAttenuationMode as Mesh_Glow_Attenuation_Mode;
+pub use mesh::BlendMode;
+pub use mesh::FileType;
+pub use mesh::Glow;
+pub use mesh::GlowAttenuationMode;
 pub use mesh::Vertex;
 
 /// C safe wrapper for [`ParsedStaticObject`](bve::parse::mesh::ParsedStaticObject).
@@ -171,8 +171,8 @@ pub struct Mesh {
     pub indices: CVector<libc::size_t>,
     pub texture: Mesh_Texture,
     pub color: ColorU8RGBA,
-    pub blend_mode: Blend_Mode,
-    pub glow: Mesh_Glow,
+    pub blend_mode: BlendMode,
+    pub glow: Glow,
 }
 
 impl From<mesh::Mesh> for Mesh {
@@ -316,7 +316,7 @@ impl Into<mesh::Span> for Span {
 #[c_interface]
 pub unsafe extern "C" fn bve_parse_mesh_from_string(
     string: *const c_char,
-    file_type: File_Type,
+    file_type: FileType,
 ) -> Parsed_Static_Object {
     let result = mesh::mesh_from_str(&unowned_ptr_to_str(&string), file_type);
     result.into()

@@ -11,14 +11,17 @@ jobs:
         os: [windows-2019, macos-latest, ubuntu-18.04]
         include:
           - rust: nightly-2020-01-16
+            triple: x86_64-pc-windows-msvc
             os: windows-2019
-            name: windows-nightly-2020-01-16
+            name: windows-nightly-2020-01-16-msvc
 
           - rust: nightly-2020-01-16
+            triple: x86_64-apple-darwin
             os: macos-latest
             name: mac-nightly-2020-01-16
 
           - rust: nightly-2020-01-16
+            triple: x86_64-unknown-linux-gnu
             os: ubuntu-18.04
             name: linux-nightly-2020-01-16
     runs-on: ${{ matrix.os }}
@@ -39,16 +42,47 @@ jobs:
       - name: Install Rust ${{ matrix.rust }}
         run: |
           export PATH=$PATH:$HOME/.cargo/bin
+          rustup set default-host ${{ matrix.triple }}
           rustup toolchain install ${{ matrix.rust }}
         shell: bash
 
       - uses: actions/checkout@v1
 
+      - name: Build C API
+        run: |
+          export PATH=$PATH:$HOME/.cargo/bin
+          cargo run --bin bve-build -- --color=always --no-build
+        shell: bash
+
       - name: Build
         run: |
           export PATH=$PATH:$HOME/.cargo/bin
-          cargo build --all --tests
+          cargo build --all
         shell: bash
+
+      - name: CMake on C API
+        run: |
+          export PATH=$PATH:$HOME/.cargo/bin
+          mkdir -p target/capi/debug/
+          cd target/capi/debug/
+          cmake ../../../bve-native/tests/
+          cmake --build .
+          cd -
+        shell: bash
+
+      - name: Run C API (win)
+        run: |
+          target/capi/debug/Debug/bve-native-c.exe
+          target/capi/debug/Debug/bve-native-c.exe
+        shell: bash
+        if: matrix.os == 'windows-2019'
+
+      - name: Run C API (unix)
+        run: |
+          target/capi/debug/bve-native-c
+          target/capi/debug/bve-native-cpp
+        shell: bash
+        if: matrix.os == 'macos-latest' || matrix.os == 'ubuntu-18.04'
 
       - name: Run tests
         run: |
