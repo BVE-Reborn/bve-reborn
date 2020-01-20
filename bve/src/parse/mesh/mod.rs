@@ -1,4 +1,12 @@
 //! B3D/CSV Static Meshes
+//!
+//! There are two ways to make a mesh from a file. First is to directly
+//! call [`mesh_from_str`]. This is often the easiest as it takes care of
+//! everything that needs to be done. The other way is by manually calling
+//! the functions in [`instructions`].
+//!
+//! There is currently no way to stream from disk but these files are so small
+//! who cares.
 
 use crate::parse::mesh::instructions::post_process;
 use crate::{ColorU8RGB, ColorU8RGBA};
@@ -17,23 +25,36 @@ pub mod instructions;
 #[repr(C)]
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum FileType {
+    /// No comma after instruction name
     B3D,
+    /// Comma after instruction name
     CSV,
 }
 
+/// A single static object.
+///
+/// Despite having many meshes, the game treats this as a single object, and cannot be toyed
+/// with at a more granular level.
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct ParsedStaticObject {
+    /// All meshes in the object.
     pub meshes: Vec<Mesh>,
+    /// The set of texture names needed by mesh
     pub textures: TextureSet,
+    /// Errors when creating the mesh. If there are enough errors, there might not even be any meshes!
     pub errors: Vec<MeshError>,
 }
 
+/// Set of texture filenames.
+///
+/// Based on [`IndexSet`] so is indexable by both filenames and by index. Does not allow duplicate items.
 #[derive(Debug, Clone, PartialEq)]
 pub struct TextureSet {
     filenames: IndexSet<String>,
 }
 
 impl TextureSet {
+    /// Create a new `TextureSet` with no texture filenames in it.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -41,6 +62,7 @@ impl TextureSet {
         }
     }
 
+    /// Create a new `TextureSet` with a specific capacity
     #[must_use]
     pub fn with_capacity(size: usize) -> Self {
         Self {
@@ -48,20 +70,28 @@ impl TextureSet {
         }
     }
 
+    /// Texture count inside the set
     #[must_use]
     pub fn len(&self) -> usize {
         self.filenames.len()
     }
 
+    /// Returns if the `TextureSet` is empty
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.filenames.is_empty()
     }
 
+    /// Add a new texture filenames to the set.
+    ///
+    /// Returns the index into the set of the added item.
+    ///
+    /// If the item already exists, returns the index of the existing item.
     pub fn add(&mut self, value: &str) -> usize {
         self.filenames.insert_full(value.into()).0
     }
 
+    /// Lookup a texture filename by index.  
     #[must_use]
     pub fn lookup(&self, idx: usize) -> Option<&str> {
         self.filenames.get_index(idx).map(std::string::String::as_str)

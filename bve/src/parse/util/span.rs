@@ -1,5 +1,10 @@
+/// File location for errors/ast nodes
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Span {
+    /// Line of the location
+    ///
+    /// May be empty if there is no reasonable way to create a span for a construct.
+    /// Empty spans generally should not be exposed to the user.
     pub line: Option<u64>,
 }
 
