@@ -60,6 +60,12 @@ jobs:
           cargo build --all
         shell: bash
 
+      - name: Docs
+        run: |
+          export PATH=$PATH:$HOME/.cargo/bin
+          cargo docs --all
+        shell: bash
+
       - name: CMake on C API
         run: |
           export PATH=$PATH:$HOME/.cargo/bin
