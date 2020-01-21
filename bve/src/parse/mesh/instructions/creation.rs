@@ -55,7 +55,7 @@ fn deserialize_instruction(
                 kind: MeshErrorKind::UselessInstruction {
                     name: String::from("GenerateNormals"),
                 },
-                span,
+                location: span,
             });
         }
         InstructionType::Texture => {
@@ -63,7 +63,7 @@ fn deserialize_instruction(
                 kind: MeshErrorKind::UselessInstruction {
                     name: String::from("[texture]"),
                 },
-                span,
+                location: span,
             });
         }
         InstructionType::Translate => {
@@ -181,7 +181,7 @@ pub fn create_instructions(input: &str, file_type: FileType) -> InstructionList 
                             v
                         } else {
                             instructions.errors.push(MeshError {
-                                span,
+                                location: span,
                                 kind: MeshErrorKind::UnknownInstruction { name: name.to_owned() },
                             });
                             continue 'l;
@@ -199,7 +199,7 @@ pub fn create_instructions(input: &str, file_type: FileType) -> InstructionList 
                 match inst {
                     Ok(i) => instructions.instructions.push(i),
                     Err(mut e) => {
-                        e.span = span;
+                        e.location = span;
                         instructions.errors.push(e)
                     }
                 }

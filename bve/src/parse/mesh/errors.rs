@@ -6,7 +6,7 @@ pub struct MeshError {
     /// Info about the exact error.
     pub kind: MeshErrorKind,
     /// Location of the error within the file.
-    pub span: Span,
+    pub location: Span,
 }
 
 /// Enum representing various types of errors encountered when parsing meshes
@@ -46,17 +46,17 @@ impl From<csv::Error> for MeshError {
                     kind: MeshErrorKind::UTF8 {
                         column: deserialize_error.field().map(|f| f + 1),
                     },
-                    span: e.position().into(),
+                    location: e.position().into(),
                 },
                 csv::DeserializeErrorKind::Message(msg) | csv::DeserializeErrorKind::Unsupported(msg) => Self {
                     kind: MeshErrorKind::GenericCSV { msg: msg.clone() },
-                    span: e.position().into(),
+                    location: e.position().into(),
                 },
                 csv::DeserializeErrorKind::UnexpectedEndOfRow => Self {
                     kind: MeshErrorKind::GenericCSV {
                         msg: "Not enough arguments".into(),
                     },
-                    span: e.position().into(),
+                    location: e.position().into(),
                 },
                 csv::DeserializeErrorKind::ParseFloat(ferr) => {
                     let message = format!(
@@ -69,7 +69,7 @@ impl From<csv::Error> for MeshError {
 
                     Self {
                         kind: MeshErrorKind::GenericCSV { msg: message },
-                        span: e.position().into(),
+                        location: e.position().into(),
                     }
                 }
                 csv::DeserializeErrorKind::ParseInt(ierr) => {
@@ -83,7 +83,7 @@ impl From<csv::Error> for MeshError {
 
                     Self {
                         kind: MeshErrorKind::GenericCSV { msg: message },
-                        span: e.position().into(),
+                        location: e.position().into(),
                     }
                 }
                 csv::DeserializeErrorKind::ParseBool(berr) => {
@@ -97,7 +97,7 @@ impl From<csv::Error> for MeshError {
 
                     Self {
                         kind: MeshErrorKind::GenericCSV { msg: message },
-                        span: e.position().into(),
+                        location: e.position().into(),
                     }
                 }
             },
@@ -105,11 +105,11 @@ impl From<csv::Error> for MeshError {
                 kind: MeshErrorKind::UTF8 {
                     column: Some(err.field() as u64 + 1),
                 },
-                span: e.position().into(),
+                location: e.position().into(),
             },
             _ => Self {
                 kind: MeshErrorKind::UnknownCSV,
-                span: e.position().into(),
+                location: e.position().into(),
             },
         }
     }

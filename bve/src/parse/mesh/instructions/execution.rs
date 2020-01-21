@@ -157,7 +157,7 @@ fn add_face(ctx: &mut MeshBuildContext, span: Span, sides: Sides, indices: &[usi
     for &idx in indices {
         if idx >= ctx.vertices.len() {
             ctx.parsed.errors.push(MeshError {
-                span,
+                location: span,
                 kind: MeshErrorKind::OutOfBounds { idx },
             });
             return;

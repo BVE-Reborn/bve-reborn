@@ -209,14 +209,14 @@ impl Into<mesh::Mesh> for Mesh {
 /// - Must be destroyed as part of its parent [`Parsed_Static_Object`].
 #[repr(C)]
 pub struct Mesh_Error {
-    pub span: Span,
+    pub location: Span,
     pub kind: Mesh_Error_Kind,
 }
 
 impl From<mesh::MeshError> for Mesh_Error {
     fn from(other: mesh::MeshError) -> Self {
         Self {
-            span: other.span.into(),
+            location: other.location.into(),
             kind: other.kind.into(),
         }
     }
@@ -225,7 +225,7 @@ impl From<mesh::MeshError> for Mesh_Error {
 impl Into<mesh::MeshError> for Mesh_Error {
     fn into(self) -> mesh::MeshError {
         mesh::MeshError {
-            span: self.span.into(),
+            location: self.location.into(),
             kind: self.kind.into(),
         }
     }
@@ -253,7 +253,7 @@ impl From<mesh::MeshErrorKind> for Mesh_Error_Kind {
         match other {
             mesh::MeshErrorKind::UTF8 { column } => Self::UTF8 { column: column.into() },
             mesh::MeshErrorKind::OutOfBounds { idx } => Self::OutOfBounds { idx },
-            mesh::MeshErrorKind::UselessInstruction { name } => Self::DeprecatedInstruction {
+            mesh::MeshErrorKind::UselessInstruction { name } => Self::UselessInstruction {
                 name: string_to_owned_ptr(&name),
             },
             mesh::MeshErrorKind::UnknownInstruction { name } => Self::UnknownInstruction {
@@ -272,7 +272,7 @@ impl Into<mesh::MeshErrorKind> for Mesh_Error_Kind {
         match self {
             Self::UTF8 { column } => mesh::MeshErrorKind::UTF8 { column: column.into() },
             Self::OutOfBounds { idx } => mesh::MeshErrorKind::OutOfBounds { idx },
-            Self::DeprecatedInstruction { name } => mesh::MeshErrorKind::UselessInstruction {
+            Self::UselessInstruction { name } => mesh::MeshErrorKind::UselessInstruction {
                 name: unsafe { owned_ptr_to_string(name as *mut c_char) },
             },
             Self::UnknownInstruction { name } => mesh::MeshErrorKind::UnknownInstruction {

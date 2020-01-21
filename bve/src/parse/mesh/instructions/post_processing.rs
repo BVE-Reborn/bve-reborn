@@ -163,7 +163,7 @@ fn merge_texture_coords(mesh: &[Instruction], errors: &mut Vec<MeshError>) -> Ve
                 // Issue error if the index is out of range
                 if data.index >= vertex_indices.len() {
                     errors.push(MeshError {
-                        span: instruction.span,
+                        location: instruction.span,
                         kind: MeshErrorKind::OutOfBounds { idx: data.index },
                     });
                     continue;
