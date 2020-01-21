@@ -9,24 +9,32 @@ pub struct MeshError {
     pub span: Span,
 }
 
+/// Enum representing various types of errors encountered when parsing meshes
 #[derive(Debug, Clone, PartialEq)]
 pub enum MeshErrorKind {
     /// Invalid UTF-8. May be Shift-JIS or other encoding.
     UTF8 {
+        /// Column of the error. Only Optional due to the CSV library.
         column: Option<u64>,
     },
-    OutOfBounds {
-        idx: usize,
-    },
+    /// Index provided to vertex specific command is out of bounds.
+    OutOfBounds { idx: usize },
+    /// Instruction is deprecated in favor of another instruction
     DeprecatedInstruction {
+        /// Instruction that is deprecated
         name: String,
     },
+    /// Unrecognized instruction
     UnknownInstruction {
+        /// Instruction that is not recognized
         name: String,
     },
+    /// Handled CSV error
     GenericCSV {
+        /// Message provided by CSV Library
         msg: String,
     },
+    /// Unknown csv error
     UnknownCSV,
 }
 

@@ -295,6 +295,14 @@ impl Executable for SetDecalTransparentColor {
     }
 }
 
+/// Actually execute the instructions provided.
+///
+/// Errors are taken from [`InstructionList::errors`] and any new ones encountered are appended put in
+/// [`ParsedStaticObject::errors`].
+///
+/// # Panic
+///
+/// Must be postprocessed.
 #[must_use]
 pub fn generate_meshes(instructions: InstructionList) -> ParsedStaticObject {
     let mut mbc = MeshBuildContext::default();

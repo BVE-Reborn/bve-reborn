@@ -144,6 +144,9 @@ fn deserialize_instruction(
     Ok(Instruction { data, span })
 }
 
+/// Parse the given `input` as a `file_type` file and use it to generate an [`InstructionList`].
+///
+/// All errors are reported in [`InstructionList::errors`].
 #[must_use]
 pub fn create_instructions(input: &str, file_type: FileType) -> InstructionList {
     // Make entire setup lowercase to make it easy to match.

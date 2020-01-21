@@ -1,3 +1,19 @@
+//! Underlying instructions behind the parsing of a mesh.
+//!
+//! You may use this library if you need to specifically edit, or use the exact instructions.
+//!
+//! Three important functions in this library which must be run in order:
+//!
+//! - [`create_instructions`] takes a `&str` and parses it to instructions using a custom serde routine.
+//! - [`post_process`] postprocesses away difficult to execute instructions. Must be called before execution of the
+//!   instructions.
+//! - [`generate_meshes`] executes the instructions into mesh.
+//!
+//! The rest of the module is various data structures to support that.
+//!
+//! Makes heavy use of [`bve-derive::serde_proxy`](../../../../bve_derive/attr.serde_proxy.html) and
+//! [`bve-derive::serde_vector_proxy`](../../../../bve_derive/attr.serde_vector_proxy.html)
+
 use crate::parse::mesh::{BlendMode, GlowAttenuationMode, MeshError};
 use crate::parse::{util, Span};
 use crate::{ColorU8RGB, ColorU8RGBA};
@@ -103,6 +119,7 @@ pub struct AddVertex {
     pub position: Vector3<f32>,
     #[default("util::some_zero_f32")]
     pub normal: Vector3<f32>,
+    /// Only relevant after postprocessing away the [`SetTextureCoordinates`] command.
     #[serde(skip)]
     pub texture_coord: Vector2<f32>,
 }
@@ -114,11 +131,13 @@ pub struct AddFace {
     pub sides: Sides,
 }
 
+/// Cannot be executed, must be postprocessing away to [`AddVertex`] and [`AddFace`] commands
 #[bve_derive::serde_proxy]
 pub struct Cube {
     pub half_dim: Vector3<f32>,
 }
 
+/// Cannot be executed, must be preprocessed away to [`AddVertex`] and [`AddFace`] commands
 #[bve_derive::serde_proxy]
 pub struct Cylinder {
     pub sides: u32,
@@ -218,6 +237,7 @@ pub struct SetDecalTransparentColor {
     pub color: ColorU8RGB,
 }
 
+/// Cannot be executed, must be preprocessed away into the corresponding [`AddVertex`] command
 #[bve_derive::serde_proxy]
 pub struct SetTextureCoordinates {
     pub index: usize,

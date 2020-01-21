@@ -105,7 +105,7 @@ impl Default for TextureSet {
     }
 }
 
-/// ParsedObject's reference to texture by filename
+/// Static Object's reference to texture by filename
 #[derive(Debug, Clone, PartialEq)]
 pub struct Texture {
     /// Index to get the texture name in Object's [`TextureSet`]
@@ -115,7 +115,7 @@ pub struct Texture {
 }
 
 /// A mesh corresponds to a single `CreateMeshBuilder` and contains
-/// all per-mesh data for that particular mesh builder.
+/// all per-mesh data for it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Mesh {
     pub vertices: Vec<Vertex>,
