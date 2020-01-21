@@ -242,7 +242,7 @@ impl Into<mesh::MeshError> for Mesh_Error {
 pub enum Mesh_Error_Kind {
     UTF8 { column: COption<u64> },
     OutOfBounds { idx: usize },
-    DeprecatedInstruction { name: *const c_char },
+    UselessInstruction { name: *const c_char },
     UnknownInstruction { name: *const c_char },
     GenericCSV { msg: *const c_char },
     UnknownCSV,
@@ -253,7 +253,7 @@ impl From<mesh::MeshErrorKind> for Mesh_Error_Kind {
         match other {
             mesh::MeshErrorKind::UTF8 { column } => Self::UTF8 { column: column.into() },
             mesh::MeshErrorKind::OutOfBounds { idx } => Self::OutOfBounds { idx },
-            mesh::MeshErrorKind::DeprecatedInstruction { name } => Self::DeprecatedInstruction {
+            mesh::MeshErrorKind::UselessInstruction { name } => Self::DeprecatedInstruction {
                 name: string_to_owned_ptr(&name),
             },
             mesh::MeshErrorKind::UnknownInstruction { name } => Self::UnknownInstruction {
@@ -272,7 +272,7 @@ impl Into<mesh::MeshErrorKind> for Mesh_Error_Kind {
         match self {
             Self::UTF8 { column } => mesh::MeshErrorKind::UTF8 { column: column.into() },
             Self::OutOfBounds { idx } => mesh::MeshErrorKind::OutOfBounds { idx },
-            Self::DeprecatedInstruction { name } => mesh::MeshErrorKind::DeprecatedInstruction {
+            Self::DeprecatedInstruction { name } => mesh::MeshErrorKind::UselessInstruction {
                 name: unsafe { owned_ptr_to_string(name as *mut c_char) },
             },
             Self::UnknownInstruction { name } => mesh::MeshErrorKind::UnknownInstruction {

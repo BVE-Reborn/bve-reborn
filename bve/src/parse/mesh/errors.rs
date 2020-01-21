@@ -19,11 +19,8 @@ pub enum MeshErrorKind {
     },
     /// Index provided to vertex-specific command is out of bounds.
     OutOfBounds { idx: usize },
-    /// Instruction is deprecated in favor of another instruction
-    DeprecatedInstruction {
-        /// Instruction that is deprecated
-        name: String,
-    },
+    /// Instruction no longer does anything anymore
+    UselessInstruction { name: String },
     /// Unrecognized instruction
     UnknownInstruction {
         /// Instruction that is not recognized

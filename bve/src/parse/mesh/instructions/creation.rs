@@ -52,7 +52,7 @@ fn deserialize_instruction(
         }
         InstructionType::GenerateNormals => {
             return Err(MeshError {
-                kind: MeshErrorKind::DeprecatedInstruction {
+                kind: MeshErrorKind::UselessInstruction {
                     name: String::from("GenerateNormals"),
                 },
                 span,
@@ -60,7 +60,7 @@ fn deserialize_instruction(
         }
         InstructionType::Texture => {
             return Err(MeshError {
-                kind: MeshErrorKind::DeprecatedInstruction {
+                kind: MeshErrorKind::UselessInstruction {
                     name: String::from("[texture]"),
                 },
                 span,
