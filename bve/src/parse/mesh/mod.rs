@@ -105,14 +105,17 @@ impl Default for TextureSet {
     }
 }
 
+/// ParsedObject's reference to texture by filename
 #[derive(Debug, Clone, PartialEq)]
 pub struct Texture {
-    /// Index into the according texture set
+    /// Index to get the texture name in Object's [`TextureSet`]
     pub texture_id: Option<usize>,
     pub decal_transparent_color: Option<ColorU8RGB>,
     pub emission_color: ColorU8RGB,
 }
 
+/// A mesh corresponds to a single `CreateMeshBuilder` and contains
+/// all per-mesh data for that particular mesh builder.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Mesh {
     pub vertices: Vec<Vertex>,
@@ -154,6 +157,7 @@ pub struct Vertex {
 impl Vertex {
     /// Debugging code that can fuck off in other situations
     #[allow(dead_code, clippy::use_debug, clippy::print_stdout)]
+    #[inline(never)]
     fn print_positions(vertices: &[Self], indices: &[usize]) {
         println!("Vertices: [");
         for (i, v) in vertices.iter().enumerate() {
@@ -220,6 +224,7 @@ pub enum GlowAttenuationMode {
     DivideExponent4,
 }
 
+/// Parse the given `input` as `file_type` and generate a static object from it.
 #[must_use]
 pub fn mesh_from_str(input: &str, file_type: FileType) -> ParsedStaticObject {
     let instructions = instructions::create_instructions(input, file_type);

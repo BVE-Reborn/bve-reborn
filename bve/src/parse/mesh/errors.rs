@@ -1,18 +1,32 @@
 use crate::parse::Span;
 
+/// A single error in the parsing or evaluation of a mesh.
 #[derive(Debug, Clone, PartialEq)]
 pub struct MeshError {
+    /// Info about the exact error.
     pub kind: MeshErrorKind,
+    /// Location of the error within the file.
     pub span: Span,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum MeshErrorKind {
-    UTF8 { column: Option<u64> },
-    OutOfBounds { idx: usize },
-    DeprecatedInstruction { name: String },
-    UnknownInstruction { name: String },
-    GenericCSV { msg: String },
+    /// Invalid UTF-8. May be Shift-JIS or other encoding.
+    UTF8 {
+        column: Option<u64>,
+    },
+    OutOfBounds {
+        idx: usize,
+    },
+    DeprecatedInstruction {
+        name: String,
+    },
+    UnknownInstruction {
+        name: String,
+    },
+    GenericCSV {
+        msg: String,
+    },
     UnknownCSV,
 }
 

@@ -1,4 +1,6 @@
 /// File location for errors/ast nodes
+///
+/// Does not contain file information because they are already associated with an attempt to parse a file.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Span {
     /// Line of the location
