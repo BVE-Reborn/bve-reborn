@@ -4,6 +4,8 @@
 #![deny(nonstandard_style)]
 #![deny(rust_2018_idioms)]
 #![forbid(unsafe_code)]
+// Rustdoc Warnings
+#![deny(intra_doc_link_resolution_failure)]
 // Clippy warnings
 #![warn(clippy::cargo)]
 #![warn(clippy::nursery)]

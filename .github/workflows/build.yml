@@ -60,6 +60,18 @@ jobs:
           cargo build --all
         shell: bash
 
+      - name: Run tests
+        run: |
+          export PATH=$PATH:$HOME/.cargo/bin
+          cargo test --all
+        shell: bash
+
+      - name: Docs
+        run: |
+          export PATH=$PATH:$HOME/.cargo/bin
+          cargo doc --all
+        shell: bash
+
       - name: CMake on C API
         run: |
           export PATH=$PATH:$HOME/.cargo/bin
@@ -83,9 +95,3 @@ jobs:
           target/capi/debug/bve-native-cpp
         shell: bash
         if: matrix.os == 'macos-latest' || matrix.os == 'ubuntu-18.04'
-
-      - name: Run tests
-        run: |
-          export PATH=$PATH:$HOME/.cargo/bin
-          cargo test --all
-        shell: bash

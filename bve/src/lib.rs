@@ -6,6 +6,8 @@
 #![deny(nonstandard_style)]
 #![deny(rust_2018_idioms)]
 #![forbid(unsafe_code)]
+// Rustdoc Warnings
+#![deny(intra_doc_link_resolution_failure)]
 // Clippy warnings
 #![warn(clippy::cargo)]
 #![warn(clippy::nursery)]
@@ -39,9 +41,11 @@
 #![allow(clippy::shadow_same)]
 #![allow(clippy::unreachable)]
 #![allow(clippy::wildcard_enum_match_arm)]
+// CLion is having a fit about panic not existing
+#![feature(core_panic)]
 
 pub use datatypes::*;
 
 mod datatypes;
-pub mod iter;
+mod iter;
 pub mod parse;

@@ -1,5 +1,6 @@
 use crate::parse::mesh::instructions::*;
-use crate::parse::mesh::{FileType, Span};
+use crate::parse::mesh::FileType;
+use crate::parse::Span;
 use crate::{ColorU8RGB, ColorU8RGBA};
 use cgmath::{Vector2, Vector3};
 

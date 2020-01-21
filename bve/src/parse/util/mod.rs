@@ -2,9 +2,11 @@
 
 pub use loose_numbers::*;
 pub use numeric_bool::*;
+pub use span::*;
 
 mod loose_numbers;
 mod numeric_bool;
+mod span;
 
 pub(in crate::parse) const fn some_false() -> Option<LooseNumericBool> {
     Some(LooseNumericBool(false))

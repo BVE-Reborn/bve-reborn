@@ -1,5 +1,6 @@
 use crate::parse::mesh::instructions::*;
-use crate::parse::mesh::{FileType, MeshError, MeshErrorKind, Span};
+use crate::parse::mesh::{FileType, MeshError, MeshErrorKind};
+use crate::parse::Span;
 use csv::{ReaderBuilder, StringRecord, Trim};
 use std::iter::FromIterator;
 
@@ -51,18 +52,18 @@ fn deserialize_instruction(
         }
         InstructionType::GenerateNormals => {
             return Err(MeshError {
-                kind: MeshErrorKind::DeprecatedInstruction {
+                kind: MeshErrorKind::UselessInstruction {
                     name: String::from("GenerateNormals"),
                 },
-                span,
+                location: span,
             });
         }
         InstructionType::Texture => {
             return Err(MeshError {
-                kind: MeshErrorKind::DeprecatedInstruction {
+                kind: MeshErrorKind::UselessInstruction {
                     name: String::from("[texture]"),
                 },
-                span,
+                location: span,
             });
         }
         InstructionType::Translate => {
@@ -143,6 +144,9 @@ fn deserialize_instruction(
     Ok(Instruction { data, span })
 }
 
+/// Parse the given `input` as a `file_type` file and use it to generate an [`InstructionList`].
+///
+/// All errors are reported in [`InstructionList::errors`].
 #[must_use]
 pub fn create_instructions(input: &str, file_type: FileType) -> InstructionList {
     // Make entire setup lowercase to make it easy to match.
@@ -177,7 +181,7 @@ pub fn create_instructions(input: &str, file_type: FileType) -> InstructionList 
                             v
                         } else {
                             instructions.errors.push(MeshError {
-                                span,
+                                location: span,
                                 kind: MeshErrorKind::UnknownInstruction { name: name.to_owned() },
                             });
                             continue 'l;
@@ -195,7 +199,7 @@ pub fn create_instructions(input: &str, file_type: FileType) -> InstructionList 
                 match inst {
                     Ok(i) => instructions.instructions.push(i),
                     Err(mut e) => {
-                        e.span = span;
+                        e.location = span;
                         instructions.errors.push(e)
                     }
                 }

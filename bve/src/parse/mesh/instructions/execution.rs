@@ -1,5 +1,10 @@
+// CLion is having a fit about panic not existing
+#![allow(unused_imports)]
+use core::panicking::panic;
+
 use crate::parse::mesh::instructions::*;
 use crate::parse::mesh::*;
+use crate::parse::Span;
 use cgmath::{Array, Basis3, ElementWise, InnerSpace, Rad, Rotation, Rotation3, Vector3, Zero};
 use itertools::Itertools;
 
@@ -152,7 +157,7 @@ fn add_face(ctx: &mut MeshBuildContext, span: Span, sides: Sides, indices: &[usi
     for &idx in indices {
         if idx >= ctx.vertices.len() {
             ctx.parsed.errors.push(MeshError {
-                span,
+                location: span,
                 kind: MeshErrorKind::OutOfBounds { idx },
             });
             return;
@@ -290,6 +295,14 @@ impl Executable for SetDecalTransparentColor {
     }
 }
 
+/// Actually execute the instructions provided.
+///
+/// Errors are taken from [`InstructionList::errors`] and any new ones encountered are appended and put in
+/// [`ParsedStaticObject::errors`]. These errors are all non-fatal, so [`Result`] can't be used.
+///
+/// # Panic
+///
+/// Must be postprocessed.
 #[must_use]
 pub fn generate_meshes(instructions: InstructionList) -> ParsedStaticObject {
     let mut mbc = MeshBuildContext::default();

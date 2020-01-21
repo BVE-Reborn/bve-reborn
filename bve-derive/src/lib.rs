@@ -5,6 +5,8 @@
 #![deny(rust_2018_idioms)]
 #![forbid(unsafe_code)]
 #![allow(unused_extern_crates)] // cargo < 1.42 doesn't add `--extern proc_macro`, so allow an duplicate declaration
+// Rustdoc Warnings
+#![deny(intra_doc_link_resolution_failure)]
 // Clippy warnings
 #![warn(clippy::cargo)]
 #![warn(clippy::nursery)]

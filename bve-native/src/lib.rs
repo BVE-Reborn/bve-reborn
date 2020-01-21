@@ -16,7 +16,7 @@
 //!
 //! ***DO NOT CALL ANY OTHER FUNCTION BEFORE YOU CALL INIT***.
 //!
-//! Libraries ***must*** be initialized by calling [`init`] before calling anything else. The library
+//! Libraries ***must*** be initialized by calling [`bve_init`] before calling anything else. The library
 //! does not need to be de-initialized. If this is not done, panics may propagate beyond the C -> Rust boundary,
 //! leading to undefined behavior.
 //!
@@ -45,6 +45,8 @@
 #![allow(non_snake_case)] // Naming in FFI is weird
 #![allow(non_camel_case_types)] // Naming in FFI is weird
 #![allow(unsafe_code)] // We're doing FFI
+// Rustdoc Warnings
+#![deny(intra_doc_link_resolution_failure)]
 // Clippy warnings
 #![warn(clippy::cargo)]
 #![warn(clippy::nursery)]

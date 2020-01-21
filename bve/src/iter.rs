@@ -1,3 +1,5 @@
+//! Various iterator helpers
+
 trait CollectBy1<T1>: Iterator<Item = (T1,)> {
     fn collect1(self) -> (Vec<T1>,);
 }

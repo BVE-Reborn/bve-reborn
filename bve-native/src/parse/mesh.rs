@@ -9,6 +9,7 @@ use bve_derive::c_interface;
 use std::ffi::CStr;
 use std::ptr::null;
 
+use crate::parse::Span;
 pub use mesh::BlendMode;
 pub use mesh::FileType;
 pub use mesh::Glow;
@@ -208,14 +209,14 @@ impl Into<mesh::Mesh> for Mesh {
 /// - Must be destroyed as part of its parent [`Parsed_Static_Object`].
 #[repr(C)]
 pub struct Mesh_Error {
-    pub span: Span,
+    pub location: Span,
     pub kind: Mesh_Error_Kind,
 }
 
 impl From<mesh::MeshError> for Mesh_Error {
     fn from(other: mesh::MeshError) -> Self {
         Self {
-            span: other.span.into(),
+            location: other.location.into(),
             kind: other.kind.into(),
         }
     }
@@ -224,7 +225,7 @@ impl From<mesh::MeshError> for Mesh_Error {
 impl Into<mesh::MeshError> for Mesh_Error {
     fn into(self) -> mesh::MeshError {
         mesh::MeshError {
-            span: self.span.into(),
+            location: self.location.into(),
             kind: self.kind.into(),
         }
     }
@@ -241,7 +242,7 @@ impl Into<mesh::MeshError> for Mesh_Error {
 pub enum Mesh_Error_Kind {
     UTF8 { column: COption<u64> },
     OutOfBounds { idx: usize },
-    DeprecatedInstruction { name: *const c_char },
+    UselessInstruction { name: *const c_char },
     UnknownInstruction { name: *const c_char },
     GenericCSV { msg: *const c_char },
     UnknownCSV,
@@ -252,7 +253,7 @@ impl From<mesh::MeshErrorKind> for Mesh_Error_Kind {
         match other {
             mesh::MeshErrorKind::UTF8 { column } => Self::UTF8 { column: column.into() },
             mesh::MeshErrorKind::OutOfBounds { idx } => Self::OutOfBounds { idx },
-            mesh::MeshErrorKind::DeprecatedInstruction { name } => Self::DeprecatedInstruction {
+            mesh::MeshErrorKind::UselessInstruction { name } => Self::UselessInstruction {
                 name: string_to_owned_ptr(&name),
             },
             mesh::MeshErrorKind::UnknownInstruction { name } => Self::UnknownInstruction {
@@ -271,7 +272,7 @@ impl Into<mesh::MeshErrorKind> for Mesh_Error_Kind {
         match self {
             Self::UTF8 { column } => mesh::MeshErrorKind::UTF8 { column: column.into() },
             Self::OutOfBounds { idx } => mesh::MeshErrorKind::OutOfBounds { idx },
-            Self::DeprecatedInstruction { name } => mesh::MeshErrorKind::DeprecatedInstruction {
+            Self::UselessInstruction { name } => mesh::MeshErrorKind::UselessInstruction {
                 name: unsafe { owned_ptr_to_string(name as *mut c_char) },
             },
             Self::UnknownInstruction { name } => mesh::MeshErrorKind::UnknownInstruction {
@@ -282,26 +283,6 @@ impl Into<mesh::MeshErrorKind> for Mesh_Error_Kind {
             },
             Self::UnknownCSV => mesh::MeshErrorKind::UnknownCSV,
         }
-    }
-}
-
-/// C safe wrapper for [`Span`](bve::parse::mesh::Span).
-#[repr(C)]
-pub struct Span {
-    pub line: COption<u64>,
-}
-
-impl From<mesh::Span> for Span {
-    fn from(other: mesh::Span) -> Self {
-        Self {
-            line: other.line.into(),
-        }
-    }
-}
-
-impl Into<mesh::Span> for Span {
-    fn into(self) -> mesh::Span {
-        mesh::Span { line: self.line.into() }
     }
 }
 

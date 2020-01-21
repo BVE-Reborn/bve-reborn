@@ -1,8 +1,22 @@
 use crate::parse::mesh::instructions::*;
-use crate::parse::mesh::{MeshError, MeshErrorKind, Span};
+use crate::parse::mesh::{MeshError, MeshErrorKind};
+use crate::parse::Span;
 use cgmath::{Array, Vector2, Vector3};
 use std::f32::consts::PI;
 
+/// Prepares instructions for execution.
+///
+/// Performs two postprocessing steps on the instruction list:
+///
+/// - Splits up [`Cube`] and [`Cylinder`] into their respective [`AddVertex`] and [`AddFace`] instructions. This allows
+///   the following step to happen.
+/// - Applies all [`SetTextureCoordinates`] to their vertex, moving the data into the [`AddVertex`] data structure.
+///
+/// The last bit of post processing must be done as the executor isn't actually able to edit the resulting
+/// [`Vertex`](crate::parse::mesh::Vertex) structs arbitrarily by index as [`SetTextureCoordinates`] requires.
+///
+/// Errors are taken from [`InstructionList::errors`] and any new ones encountered are appended and put in the result's
+/// [`InstructionList::errors`]. These errors are all non-fatal, so [`Result`] can't be used.
 #[must_use]
 pub fn post_process(mut instructions: InstructionList) -> InstructionList {
     let mut output = Vec::new();
@@ -149,7 +163,7 @@ fn merge_texture_coords(mesh: &[Instruction], errors: &mut Vec<MeshError>) -> Ve
                 // Issue error if the index is out of range
                 if data.index >= vertex_indices.len() {
                     errors.push(MeshError {
-                        span: instruction.span,
+                        location: instruction.span,
                         kind: MeshErrorKind::OutOfBounds { idx: data.index },
                     });
                     continue;

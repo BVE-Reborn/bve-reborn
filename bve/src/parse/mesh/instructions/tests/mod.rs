@@ -2,6 +2,7 @@
 
 use crate::parse::mesh::instructions::*;
 use crate::parse::mesh::*;
+use crate::parse::Span;
 use cgmath::{Array, Vector2, Vector3};
 use obj::{Obj, SimplePolygon};
 use std::io::{BufReader, Cursor};
