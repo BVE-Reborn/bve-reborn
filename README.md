@@ -1,7 +1,7 @@
 # BVE-Reborn
 
-BVE-Reborn is a remake of the train simulator OpenBVE, focusing on modern programming
-techniques and visual quality, as well as performance and flexibility.
+BVE-Reborn is a remake of the train simulator OpenBVE that focuses on visual quality and
+performance, as well as code quality and flexibility.
 
 While progress is strong, there is still a lot of work to do in order to get a working
 demo.

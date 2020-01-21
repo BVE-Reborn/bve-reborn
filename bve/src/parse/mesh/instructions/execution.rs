@@ -297,8 +297,8 @@ impl Executable for SetDecalTransparentColor {
 
 /// Actually execute the instructions provided.
 ///
-/// Errors are taken from [`InstructionList::errors`] and any new ones encountered are appended put in
-/// [`ParsedStaticObject::errors`].
+/// Errors are taken from [`InstructionList::errors`] and any new ones encountered are appended and put in
+/// [`ParsedStaticObject::errors`]. These errors are all non-fatal, so [`Result`] can't be used.
 ///
 /// # Panic
 ///

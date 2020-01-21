@@ -1,6 +1,6 @@
 use cgmath::{Vector1, Vector2, Vector3, Vector4};
 
-/// Reinterprets vector as a integer.
+/// Reinterprets a vector as an integer.
 ///
 /// Used for sorting vectors where the actual order doesn't matter, but _an_ order needs to be made.
 pub(crate) trait Asu32 {

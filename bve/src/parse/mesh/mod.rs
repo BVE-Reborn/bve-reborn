@@ -2,8 +2,8 @@
 //!
 //! There are two ways to make a mesh from a file. First is to directly
 //! call [`mesh_from_str`]. This is often the easiest as it takes care of
-//! everything that needs to be done. The other way is by manually calling
-//! the functions in [`instructions`].
+//! parsing, post processing, and execution automatically. The other way is by
+//! manually calling the functions in [`instructions`].
 //!
 //! There is currently no way to stream from disk but these files are so small
 //! who cares.
@@ -33,8 +33,10 @@ pub enum FileType {
 
 /// A single static object.
 ///
-/// Despite having many meshes, the game treats this as a single object, and cannot be toyed
-/// with at a more granular level.
+/// Despite having many meshes, the game treats this as a single game object, and always moves and behaves as a single
+/// compound mesh.
+///
+/// Each mesh has it's own legacy properties that are on a per-mesh basis, so the meshes can't be combined.
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct ParsedStaticObject {
     /// All meshes in the object.

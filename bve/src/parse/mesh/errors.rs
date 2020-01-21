@@ -17,7 +17,7 @@ pub enum MeshErrorKind {
         /// Column of the error. Only Optional due to the CSV library.
         column: Option<u64>,
     },
-    /// Index provided to vertex specific command is out of bounds.
+    /// Index provided to vertex-specific command is out of bounds.
     OutOfBounds { idx: usize },
     /// Instruction is deprecated in favor of another instruction
     DeprecatedInstruction {

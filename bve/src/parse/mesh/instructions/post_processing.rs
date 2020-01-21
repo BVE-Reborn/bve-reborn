@@ -9,14 +9,14 @@ use std::f32::consts::PI;
 /// Performs two postprocessing steps on the instruction list:
 ///
 /// - Splits up [`Cube`] and [`Cylinder`] into their respective [`AddVertex`] and [`AddFace`] instructions. This allows
-///   the following:
+///   the following step to happen.
 /// - Applies all [`SetTextureCoordinates`] to their vertex, moving the data into the [`AddVertex`] data structure.
 ///
 /// The last bit of post processing must be done as the executor isn't actually able to edit the resulting
 /// [`Vertex`](crate::parse::mesh::Vertex) structs arbitrarily by index as [`SetTextureCoordinates`] requires.
 ///
 /// Errors are taken from [`InstructionList::errors`] and any new ones encountered are appended and put in the result's
-/// [`InstructionList::errors`].
+/// [`InstructionList::errors`]. These errors are all non-fatal, so [`Result`] can't be used.
 #[must_use]
 pub fn post_process(mut instructions: InstructionList) -> InstructionList {
     let mut output = Vec::new();

@@ -13,16 +13,16 @@
 //!
 //! There is a race condition between [`bve_set_panic_handler`] and [`bve_set_panic_data`].
 //!
+//! This race is, in practice, little cause for concern. As long as no other rust code is executing, there is
+//! no problem. If you call these at the beginning of the program, like would be expected, there's no chance of a race.
+//!
 //! If:
-//! - you set the panic handler
-//! - haven't called panic data to the proper pointer
-//! - there is a panic in rust code running concurrently,
+//! - you set the panic handler,
+//! - you haven't set the panic data to the proper pointer,
+//! - there is rust code that is currently panicking,
 //!
 //! the new panic handler will be called with the wrong pointer. This can cause all kinds of bad things if the panic
 //! handler expects that pointer to be of a specific type.
-//!
-//! This is, in practice, little cause for concern with this race. As long as no other rust code is executing, there is
-//! no problem. If you call these at the beginning of the program, like would be expected, there's no chace of race.
 
 use std::ffi::{c_void, CStr, CString};
 use std::io::Write;
@@ -35,7 +35,7 @@ use std::sync::atomic::{AtomicPtr, Ordering};
 ///
 /// # Arguments
 ///
-/// - `void*`: The data pointer provided using [`bve_set_panic_data`]. Must be able to gracefully deal with null.
+/// - `void*`: The data pointer provided using [`bve_set_panic_data`]. Allowed to be null.
 /// - `const char*`: String containing human readable information about the panic, including a backtrace. Will never be
 ///   null.
 ///
