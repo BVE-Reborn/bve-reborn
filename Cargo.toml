@@ -3,7 +3,8 @@ members = ["bve*"]
 exclude = ["bve-reborn"]    # Ignore the Unity project cause it's not a Rust project
 
 [patch.crates-io]
-cgmath = { git = "https://github.com/rustgd/cgmath.git", branch = "master" }
+cgmath = { git = "https://github.com/rustgd/cgmath.git", rev = "50a345b7c439c492a9c658dbb432f6cbd70a0557" }
+crossbeam = { git = "https://github.com/crossbeam-rs/crossbeam.git", rev = "ebecb82c740a1b3d9d10f235387848f7e3fa9c68" }
 
 [profile.release]
 overflow-checks = true
