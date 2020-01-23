@@ -24,14 +24,21 @@ pub fn kill_thread(thread: JoinHandle<()>) -> Option<()> {
 
 #[cfg(test)]
 mod test {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::Arc;
     use std::time::Duration;
 
     #[test]
     fn kill_thread() {
-        super::kill_thread(std::thread::spawn(|| {
-            std::thread::sleep(Duration::from_secs(1));
+        let b = Arc::new(AtomicBool::new(false));
+        let b2 = Arc::clone(&b);
+        super::kill_thread(std::thread::spawn(move || {
+            std::thread::sleep(Duration::from_millis(500));
+            b2.store(true, Ordering::SeqCst);
             assert!(false, "Thread not killed in time.")
         }))
         .unwrap();
+        std::thread::sleep(Duration::from_millis(750));
+        assert_eq!(b.load(Ordering::SeqCst), false);
     }
 }
