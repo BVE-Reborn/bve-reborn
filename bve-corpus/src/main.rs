@@ -1,20 +1,23 @@
+use crate::enumeration::enumerate_all_files;
 use crossbeam::channel::unbounded;
+use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
+pub use options::*;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::Arc;
+use std::time::Duration;
 use structopt::StructOpt;
 use walkdir::{DirEntry, WalkDir};
 
 mod enumeration;
 mod options;
-
-use crate::enumeration::enumerate_all_files;
-pub use options::*;
-use std::sync::Arc;
+mod thread_kill;
+mod worker;
 
 #[derive(Debug, Default)]
 pub struct Stats {
-    finished: AtomicUsize,
-    total: AtomicUsize,
+    finished: AtomicU64,
+    total: AtomicU64,
 }
 
 pub struct File {
@@ -52,6 +55,8 @@ pub struct SharedData {
     sound_cfg: Stats,
     train_dat: Stats,
     train_xml: Stats,
+
+    fully_loaded: AtomicBool,
 }
 
 fn main() {
@@ -60,13 +65,31 @@ fn main() {
     let shared = Arc::new(SharedData::default());
     let (sender, receiver) = unbounded();
 
+    // Progress bars
+    let mp = MultiProgress::new();
+    let style = ProgressStyle::default_spinner()
+        .template("Total: {wide_bar} {pos:>6}/{len:6} {msg}")
+        .progress_chars("##-");
+
+    let total_progress = mp.add(ProgressBar::new(0).with_style(style.clone()));
+
     let sending = {
         let shared = Arc::clone(&shared);
         let options = options.clone();
         std::thread::spawn(move || enumerate_all_files(options, sender, shared))
     };
 
+    let progress_thread = std::thread::spawn(move || mp.join().unwrap());
+
+    while shared.fully_loaded.load(Ordering::SeqCst) == false {
+        total_progress.set_length(shared.total.total.load(Ordering::SeqCst));
+        std::thread::sleep(Duration::from_millis(2));
+    }
+
+    total_progress.finish();
+
     sending.join().unwrap();
+    progress_thread.join().unwrap();
 
     dbg!(shared);
 }

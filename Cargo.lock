@@ -113,8 +113,10 @@ dependencies = [
  "crossbeam",
  "indicatif",
  "itertools",
+ "libc",
  "structopt",
  "walkdir",
+ "winapi",
 ]
 
 [[package]]

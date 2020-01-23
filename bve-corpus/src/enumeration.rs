@@ -167,4 +167,6 @@ pub fn enumerate_all_files(options: Options, sender: Sender<File>, shared: Arc<S
             _ => {}
         }
     });
+
+    shared.fully_loaded.store(true, Ordering::SeqCst);
 }
