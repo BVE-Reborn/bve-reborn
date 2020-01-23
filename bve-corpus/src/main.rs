@@ -130,7 +130,10 @@ fn main() {
         std::thread::spawn(move || enumerate_all_files(options, file_sink, shared))
     };
 
-    let worker_thread = create_worker_thread(&file_source, &result_sink, &shared);
+    let thread_count = num_cpus::get();
+    let worker_threads: Vec<_> = (0..thread_count)
+        .map(|_| create_worker_thread(&file_source, &result_sink, &shared))
+        .collect();
 
     let tui_progress_thread = std::thread::spawn(move || mp.join().unwrap());
 
@@ -147,7 +150,9 @@ fn main() {
     enumeration_thread.join().unwrap(); // Closes down file_sink which shuts down the processing threads when done.
     tui_progress_thread.join().unwrap();
 
-    worker_thread.handle.join();
+    for t in worker_threads.into_iter() {
+        t.handle.join();
+    }
 
     dbg!(shared);
 }
