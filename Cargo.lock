@@ -10,6 +10,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "anyhow"
+version = "1.0.26"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7825f6833612eb2414095684fcf6c635becf3ce97fe48cf6421321e93bfbd53c"
+
+[[package]]
 name = "approx"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -110,6 +116,7 @@ dependencies = [
 name = "bve-corpus"
 version = "0.0.0-Placeholder"
 dependencies = [
+ "anyhow",
  "crossbeam",
  "indicatif",
  "itertools",
