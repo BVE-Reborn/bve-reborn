@@ -13,5 +13,5 @@ pub fn kill_thread(thread: JoinHandle<()>) {
     use std::os::unix::thread::{JoinHandleExt, RawPthread};
 
     let handle: RawPthread = thread.into_pthread_t();
-    unsafe { libc::pthread_cacnel(handle) };
+    unsafe { libc::pthread_cancel(handle) };
 }
