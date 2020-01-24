@@ -1,7 +1,12 @@
-use crate::{File, FileKind, FileResult, SharedData};
+use crate::panic::PANIC;
+use crate::{File, FileKind, FileResult, ParseResult, SharedData};
+use bve::parse::mesh::{mesh_from_str, FileType, ParsedStaticObject};
 use crossbeam::atomic::AtomicCell;
 use crossbeam::channel::{Receiver, Sender};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
+use itertools::Itertools;
+use std::fs::read_to_string;
+use std::io::Write;
 use std::path::PathBuf;
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
@@ -44,14 +49,53 @@ fn processing_loop(
     last_file: Arc<Mutex<PathBuf>>,
 ) {
     while let Ok(file) = job_source.recv() {
+        // Set last file to our current file
         *last_file.lock().unwrap() = file.path.clone();
-        let result = match file.kind {
-            FileKind::RouteRw => {
-                std::thread::sleep(std::time::Duration::from_secs(10));
+        // Say that we're alive
+        last_respond.store(Instant::now());
+        // Get beginning time
+        let start = Instant::now();
+
+        let panicked = std::panic::catch_unwind(|| match file.kind {
+            FileKind::ModelCsv => {
+                let ParsedStaticObject { errors, .. } =
+                    mesh_from_str(&read_to_string(&file.path).unwrap(), FileType::CSV);
+
+                ParseResult::Errors {
+                    count: errors.len() as u64,
+                    error: anyhow::Error::msg(errors.into_iter().map(|v| format!("{:?}", v)).join(",")),
+                }
             }
-            _ => {}
+            _ => ParseResult::Success,
+        });
+
+        let duration = Instant::now() - start;
+
+        let result = match panicked {
+            Ok(parse_result) => parse_result,
+            Err(..) => PANIC.with(|v| {
+                let stderr = std::io::stderr();
+                let mut stderr_guard = stderr.lock();
+                let path_str = format!("Panicked while parsing: {:?}\n", file.path);
+                stderr_guard.write(path_str.as_bytes()).unwrap();
+                drop(stderr_guard);
+
+                let m = &mut *v.borrow_mut();
+                let cause = std::mem::replace(m, None).unwrap_or_else(String::default);
+                ParseResult::Panic { cause }
+            }),
         };
-        std::thread::sleep(std::time::Duration::from_millis(1));
+
+        let file_result = FileResult {
+            path: file.path,
+            kind: file.kind,
+            result,
+            duration,
+        };
+
+        result_sink.send(file_result).unwrap();
+
+        // Dump the total amount worked on
         shared.total.finished.fetch_add(1, Ordering::SeqCst);
     }
 }
