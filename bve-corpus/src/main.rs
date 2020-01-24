@@ -147,7 +147,8 @@ fn main() {
     };
 
     let thread_count = num_cpus::get();
-    let worker_threads: Vec<_> = (0..thread_count)
+    let worker_thread_count = thread_count.saturating_sub(1).max(1);
+    let worker_threads: Vec<_> = (0..worker_thread_count)
         .map(|_| create_worker_thread(&file_source, &result_sink, &shared))
         .collect();
 
