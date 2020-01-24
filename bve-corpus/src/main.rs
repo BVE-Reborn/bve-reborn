@@ -39,6 +39,10 @@
 #![allow(clippy::shadow_same)]
 #![allow(clippy::unreachable)]
 #![allow(clippy::wildcard_enum_match_arm)]
+// CLion is having a fit about panic not existing
+#![feature(core_panic)]
+#![allow(unused_imports)]
+use core::panicking::panic;
 
 use crate::enumeration::enumerate_all_files;
 use crate::worker::create_worker_thread;
@@ -46,16 +50,18 @@ use anyhow::Result;
 use crossbeam::channel::unbounded;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 pub use options::*;
+use std::panic::PanicInfo;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use structopt::StructOpt;
 use walkdir::{DirEntry, WalkDir};
 
 mod enumeration;
+mod logger;
 mod options;
-mod thread_kill;
+mod panic;
 mod worker;
 
 #[derive(Debug, Default)]
@@ -87,7 +93,15 @@ enum FileKind {
 pub struct FileResult {
     path: PathBuf,
     kind: FileKind,
-    result: Result<Duration>,
+    result: ParseResult,
+    duration: Duration,
+}
+
+enum ParseResult {
+    Finish,
+    Success,
+    Errors { count: u64, error: anyhow::Error },
+    Panic { cause: String },
 }
 
 #[derive(Debug, Default)]
@@ -110,6 +124,8 @@ pub struct SharedData {
 }
 
 fn main() {
+    std::panic::set_hook(Box::new(panic::panic_dispatch));
+
     let options: Options = Options::from_args();
 
     let shared = Arc::new(SharedData::default());
@@ -135,6 +151,12 @@ fn main() {
         .map(|_| create_worker_thread(&file_source, &result_sink, &shared))
         .collect();
 
+    let logger_thread = {
+        let options = options.clone();
+        let result_source = result_source.clone();
+        std::thread::spawn(|| logger::receive_results(options, result_source))
+    };
+
     let tui_progress_thread = std::thread::spawn(move || mp.join().unwrap());
 
     while shared.fully_loaded.load(Ordering::SeqCst) == false
@@ -142,6 +164,29 @@ fn main() {
     {
         total_progress.set_position(shared.total.finished.load(Ordering::SeqCst));
         total_progress.set_length(shared.total.total.load(Ordering::SeqCst));
+        let now = Instant::now();
+        for t in &worker_threads {
+            let last_respond = t.last_respond.load();
+            if (now > last_respond) && (now - last_respond > Duration::from_secs(1)) {
+                eprintln!(
+                    "Job for file {:?} has taken longer than 1s. Aborting.",
+                    t.last_file.lock().unwrap()
+                );
+                result_sink
+                    .send(FileResult {
+                        path: PathBuf::new(),
+                        result: ParseResult::Finish,
+                        kind: FileKind::AtsCfg,
+                        duration: Duration::new(0, 0),
+                    })
+                    .unwrap();
+                logger_thread.join().unwrap();
+                panic!(
+                    "Job for file {:?} has taken longer than 1s.",
+                    t.last_file.lock().unwrap()
+                );
+            }
+        }
         std::thread::sleep(Duration::from_millis(2));
     }
 
@@ -150,8 +195,10 @@ fn main() {
     enumeration_thread.join().unwrap(); // Closes down file_sink which shuts down the processing threads when done.
     tui_progress_thread.join().unwrap();
 
+    logger_thread.join().unwrap();
+
     for t in worker_threads.into_iter() {
-        t.handle.join();
+        t.handle.join().unwrap();
     }
 
     dbg!(shared);

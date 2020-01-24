@@ -15,11 +15,15 @@ keywords = ["bve", "serialization", "simulation"]
 
 [dependencies]
 anyhow = "1.0.26"
+backtrace = "0.3.42"
+bve = { version = "0.0.0-Placeholder", path = "../bve" }
 crossbeam = "0.7.3"
 indicatif = "0.13.0"
 itertools = "0.8.2"
 libc = "0.2.66"
 num_cpus = "1.12.0"
+serde = { version = "1.0.104", features = ["derive"] }
+serde_json = "1.0.45"
 structopt = "0.3.8"
 walkdir = "2.3.1"
 winapi = { version =  "0.3.8", features = ["processthreadsapi"] }

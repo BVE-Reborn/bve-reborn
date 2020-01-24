@@ -1,6 +1,7 @@
 use crate::panic::PANIC;
 use crate::{File, FileKind, FileResult, ParseResult, SharedData};
 use bve::parse::mesh::{mesh_from_str, FileType, ParsedStaticObject};
+use core::panicking::panic;
 use crossbeam::atomic::AtomicCell;
 use crossbeam::channel::{Receiver, Sender};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
@@ -58,8 +59,16 @@ fn processing_loop(
 
         let panicked = std::panic::catch_unwind(|| match file.kind {
             FileKind::ModelCsv => {
-                let ParsedStaticObject { errors, .. } =
-                    mesh_from_str(&read_to_string(&file.path).unwrap(), FileType::CSV);
+                let ParsedStaticObject { errors, .. } = mesh_from_str(
+                    &match read_to_string(&file.path) {
+                        Ok(s) => s,
+                        Err(err) => {
+                            println!("Path Error: {:?}", err);
+                            panic!("Path Error: {:?}", err)
+                        }
+                    },
+                    FileType::CSV,
+                );
 
                 ParseResult::Errors {
                     count: errors.len() as u64,
