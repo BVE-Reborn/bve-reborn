@@ -18,6 +18,7 @@ anyhow = "1.0.26"
 backtrace = "0.3.42"
 bve = { version = "0.0.0-Placeholder", path = "../bve" }
 crossbeam = "0.7.3"
+clap = "2.33.0"
 indicatif = "0.13.0"
 itertools = "0.8.2"
 libc = "0.2.66"

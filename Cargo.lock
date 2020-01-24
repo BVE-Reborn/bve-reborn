@@ -121,6 +121,7 @@ dependencies = [
  "anyhow",
  "backtrace",
  "bve",
+ "clap",
  "crossbeam",
  "indicatif",
  "itertools",
