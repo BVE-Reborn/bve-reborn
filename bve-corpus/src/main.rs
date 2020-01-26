@@ -191,6 +191,9 @@ fn main() {
         std::thread::sleep(Duration::from_millis(2));
     }
 
+    // must be dropped to allow
+    drop(result_sink);
+
     total_progress.finish();
 
     enumeration_thread.join().unwrap(); // Closes down file_sink which shuts down the processing threads when done.
