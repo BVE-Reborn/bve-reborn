@@ -9,3 +9,4 @@ crossbeam = { git = "https://github.com/crossbeam-rs/crossbeam.git", rev = "ebec
 [profile.release]
 overflow-checks = true
 debug-assertions = true
+debug = true
