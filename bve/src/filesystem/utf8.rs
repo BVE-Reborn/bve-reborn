@@ -4,6 +4,10 @@ use std::io::Result;
 use std::path::Path;
 
 /// Reads a file, detects the encoding, and converts to utf8
+///
+/// # Errors
+///
+/// Returns Err if opening/reading the file fails. All errors come from [`std::fs::read`].
 pub fn read_convert_utf8(filename: impl AsRef<Path>) -> Result<String> {
     let bytes = read(filename)?;
 
@@ -15,7 +19,7 @@ pub fn read_convert_utf8(filename: impl AsRef<Path>) -> Result<String> {
     } else {
         let encoding = detector.guess(None, true);
 
-        let (result, _encoding, _malformed) = encoding.decode(&bytes);
+        let (result, ..) = encoding.decode(&bytes);
 
         Ok(result.to_string())
     }

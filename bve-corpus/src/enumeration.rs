@@ -19,6 +19,7 @@ fn add_file(file_sink: &Sender<File>, shared: &SharedData, stats: &Stats, file: 
     stats.total.fetch_add(1, Ordering::SeqCst);
 }
 
+#[allow(clippy::needless_pass_by_value)] // this is called across threads, needs ownership
 pub fn enumerate_all_files(options: Options, file_sink: Sender<File>, shared: Arc<SharedData>) {
     let mut entry_func = |path: PathBuf, _entry: DirEntry| {
         let shared = shared.as_ref();
@@ -135,7 +136,7 @@ pub fn enumerate_all_files(options: Options, file_sink: Sender<File>, shared: Ar
 
     enumerate(path, &mut entry_func);
 
-    let mut path = options.root_path.clone();
+    let mut path = options.root_path;
     path.push("LegacyContent");
     path.push("Railway");
     path.push("Route");

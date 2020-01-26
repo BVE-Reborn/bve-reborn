@@ -16,6 +16,7 @@
 #![allow(clippy::cast_precision_loss)] // Annoying
 #![allow(clippy::cast_possible_truncation)] // Annoying
 #![allow(clippy::cognitive_complexity)] // This is dumb
+#![allow(clippy::too_many_lines)] // This is also dumb
 // Annoying/irrelevant clippy Restrictions
 #![allow(clippy::as_conversions)]
 #![allow(clippy::decimal_literal_representation)]

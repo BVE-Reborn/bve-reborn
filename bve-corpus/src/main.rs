@@ -15,6 +15,7 @@
 #![allow(clippy::cast_precision_loss)] // Annoying
 #![allow(clippy::cast_possible_truncation)] // Annoying
 #![allow(clippy::cognitive_complexity)] // This is dumb
+#![allow(clippy::too_many_lines)] // This is also dumb
 // Annoying/irrelevant clippy Restrictions
 #![allow(clippy::as_conversions)]
 #![allow(clippy::decimal_literal_representation)]
@@ -38,6 +39,7 @@
 #![allow(clippy::shadow_reuse)]
 #![allow(clippy::shadow_same)]
 #![allow(clippy::unreachable)]
+#![allow(clippy::use_debug)]
 #![allow(clippy::wildcard_enum_match_arm)]
 // CLion is having a fit about panic not existing
 #![feature(core_panic)]
@@ -93,9 +95,9 @@ enum FileKind {
 
 pub struct FileResult {
     path: PathBuf,
-    kind: FileKind,
+    _kind: FileKind,
     result: ParseResult,
-    duration: Duration,
+    _duration: Duration,
 }
 
 enum ParseResult {
@@ -139,7 +141,7 @@ fn main() {
         .template("Total: {wide_bar} {pos:>6}/{len:6} {elapsed_precise} (eta {eta_precise}) {msg}")
         .progress_chars("##-");
 
-    let total_progress = mp.add(ProgressBar::new(0).with_style(style.clone()));
+    let total_progress = mp.add(ProgressBar::new(0).with_style(style));
 
     let enumeration_thread = {
         let shared = Arc::clone(&shared);
@@ -153,23 +155,20 @@ fn main() {
         .map(|_| create_worker_thread(&file_source, &result_sink, &shared))
         .collect();
 
-    let logger_thread = {
-        let options = options.clone();
-        let result_source = result_source.clone();
-        std::thread::spawn(|| logger::receive_results(options, result_source))
-    };
+    let logger_thread = { std::thread::spawn(|| logger::receive_results(options, result_source)) };
 
     let tui_progress_thread = std::thread::spawn(move || mp.join().unwrap());
 
-    while shared.fully_loaded.load(Ordering::SeqCst) == false
+    while !shared.fully_loaded.load(Ordering::SeqCst)
         || (shared.total.total.load(Ordering::SeqCst) - shared.total.finished.load(Ordering::SeqCst)) != 0
     {
         total_progress.set_position(shared.total.finished.load(Ordering::SeqCst));
         total_progress.set_length(shared.total.total.load(Ordering::SeqCst));
         let now = Instant::now();
         for t in &worker_threads {
-            let last_respond = t.last_respond.load();
             const TIMEOUT: Duration = Duration::from_secs(10);
+
+            let last_respond = t.last_respond.load();
             if (now > last_respond) && (now - last_respond > TIMEOUT) {
                 eprintln!(
                     "Job for file {:?} has taken longer than {:.2}. Aborting.",
@@ -180,8 +179,8 @@ fn main() {
                     .send(FileResult {
                         path: PathBuf::new(),
                         result: ParseResult::Finish,
-                        kind: FileKind::AtsCfg,
-                        duration: Duration::new(0, 0),
+                        _kind: FileKind::AtsCfg,
+                        _duration: Duration::new(0, 0),
                     })
                     .unwrap();
                 logger_thread.join().unwrap();
@@ -203,11 +202,9 @@ fn main() {
     enumeration_thread.join().unwrap(); // Closes down file_sink which shuts down the processing threads when done.
     tui_progress_thread.join().unwrap();
 
-    logger_thread.join();
+    logger_thread.join().unwrap();
 
-    for t in worker_threads.into_iter() {
+    for t in worker_threads {
         t.handle.join().unwrap();
     }
-
-    dbg!(shared);
 }

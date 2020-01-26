@@ -1,3 +1,5 @@
+#![allow(clippy::option_unwrap_used)] // Internal to structopt
+
 use std::path::PathBuf;
 use structopt::StructOpt;
 

@@ -43,6 +43,7 @@ pub fn create_worker_thread(
     }
 }
 
+#[allow(clippy::needless_pass_by_value)] // this is called across threads, needs ownership
 fn processing_loop(
     job_source: Receiver<File>,
     result_sink: Sender<FileResult>,
@@ -89,20 +90,20 @@ fn processing_loop(
                 let stderr = std::io::stderr();
                 let mut stderr_guard = stderr.lock();
                 let path_str = format!("Panicked while parsing: {:?}\n", file.path);
-                stderr_guard.write(path_str.as_bytes()).unwrap();
+                stderr_guard.write_all(path_str.as_bytes()).unwrap();
                 drop(stderr_guard);
 
                 let m = &mut *v.borrow_mut();
-                let cause = std::mem::replace(m, None).unwrap_or_else(String::default);
+                let cause = m.take().unwrap_or_else(String::default);
                 ParseResult::Panic { cause }
             }),
         };
 
         let file_result = FileResult {
             path: file.path,
-            kind: file.kind,
+            _kind: file.kind,
             result,
-            duration,
+            _duration: duration,
         };
 
         result_sink.send(file_result).unwrap();
