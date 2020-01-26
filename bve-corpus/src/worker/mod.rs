@@ -34,7 +34,7 @@ pub fn create_worker_thread(
         let shared = Arc::clone(shared);
         let last_respond = Arc::clone(&last_respond);
         let last_file = Arc::clone(&last_file);
-        std::thread::spawn(move || processing_loop(job_source, result_sink, shared, last_respond, last_file))
+        std::thread::spawn(move || processing_loop(&job_source, &result_sink, &shared, &last_respond, &last_file))
     };
     WorkerThread {
         handle,
@@ -43,13 +43,12 @@ pub fn create_worker_thread(
     }
 }
 
-#[allow(clippy::needless_pass_by_value)] // this is called across threads, needs ownership
 fn processing_loop(
-    job_source: Receiver<File>,
-    result_sink: Sender<FileResult>,
-    shared: Arc<SharedData>,
-    last_respond: Arc<AtomicCell<Instant>>,
-    last_file: Arc<Mutex<PathBuf>>,
+    job_source: &Receiver<File>,
+    result_sink: &Sender<FileResult>,
+    shared: &SharedData,
+    last_respond: &AtomicCell<Instant>,
+    last_file: &Mutex<PathBuf>,
 ) {
     while let Ok(file) = job_source.recv() {
         // Set last file to our current file

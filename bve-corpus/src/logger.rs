@@ -24,8 +24,7 @@ struct Panic {
     cause: String,
 }
 
-#[allow(clippy::needless_pass_by_value)] // this is called across threads, needs ownership
-pub fn receive_results(options: Options, result_source: Receiver<FileResult>) {
+pub fn receive_results(options: &Options, result_source: &Receiver<FileResult>) {
     let mut results = ResultCollection::default();
 
     while let Ok(result) = result_source.recv() {

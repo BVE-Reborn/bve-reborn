@@ -146,7 +146,7 @@ fn main() {
     let enumeration_thread = {
         let shared = Arc::clone(&shared);
         let options = options.clone();
-        std::thread::spawn(move || enumerate_all_files(options, file_sink, shared))
+        std::thread::spawn(move || enumerate_all_files(&options, &file_sink, &shared))
     };
 
     let thread_count = num_cpus::get();
@@ -155,7 +155,7 @@ fn main() {
         .map(|_| create_worker_thread(&file_source, &result_sink, &shared))
         .collect();
 
-    let logger_thread = { std::thread::spawn(|| logger::receive_results(options, result_source)) };
+    let logger_thread = { std::thread::spawn(move || logger::receive_results(&options, &result_source)) };
 
     let tui_progress_thread = std::thread::spawn(move || mp.join().unwrap());
 
