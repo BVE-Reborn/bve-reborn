@@ -4,3 +4,7 @@
 /target
 **/*.rs.bk
 cargo-timing*.html
+
+# often need a place to throw one-off files
+/tmp
+/temp
