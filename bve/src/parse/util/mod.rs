@@ -1,9 +1,11 @@
 //! Random functions needed for various parts of the parser
 
+pub use comment_strip::*;
 pub use loose_numbers::*;
 pub use numeric_bool::*;
 pub use span::*;
 
+mod comment_strip;
 mod loose_numbers;
 mod numeric_bool;
 mod span;

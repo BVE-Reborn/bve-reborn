@@ -4,7 +4,22 @@ use crate::parse::Span;
 use crate::{ColorU8RGB, ColorU8RGBA};
 use cgmath::{Vector2, Vector3};
 
-macro_rules! no_instruction_assert {
+macro_rules! no_instruction_assert_no_errors {
+    ( $inputB3D:literal, $inputCSV:literal, $args:literal ) => {
+        let result_a = create_instructions(concat!($inputB3D, " ", $args).into(), FileType::B3D);
+        if !result_a.errors.is_empty() {
+            panic!("ERRORS!! {:#?}", result_a)
+        }
+        assert_eq!(result_a.instructions.len(), 0);
+        let result_b = create_instructions(concat!($inputCSV, ",", $args).into(), FileType::CSV);
+        if !result_b.errors.is_empty() {
+            panic!("ERRORS!! {:#?}", result_b)
+        }
+        assert_eq!(result_b.instructions.len(), 0);
+    };
+}
+
+macro_rules! no_instruction_assert_errors {
     ( $inputB3D:literal, $inputCSV:literal, $args:literal ) => {
         let result_a = create_instructions(concat!($inputB3D, " ", $args).into(), FileType::B3D);
         if result_a.errors.is_empty() {
@@ -86,6 +101,41 @@ fn too_many_arguments() {
         InstructionData::AddVertex(AddVertex {
             position: Vector3::new(0.0, 0.0, 0.0),
             normal: Vector3::new(0.0, 0.0, 0.0),
+            texture_coord: Vector2::new(0.0, 0.0),
+        })
+    );
+}
+
+#[test]
+fn beginning_of_line_comment() {
+    no_instruction_assert_no_errors!(";", ";", "");
+}
+
+#[test]
+fn middle_of_line_comment() {
+    // Adapted from no_arguments
+    instruction_assert!(
+        "Vertex;",
+        "AddVertex;",
+        "1, 2, 3, 4, 5, 6", // these are commented out
+        InstructionData::AddVertex(AddVertex {
+            position: Vector3::new(0.0, 0.0, 0.0),
+            normal: Vector3::new(0.0, 0.0, 0.0),
+            texture_coord: Vector2::new(0.0, 0.0),
+        })
+    );
+}
+
+#[test]
+fn end_of_line_comment() {
+    // Adapted from no_arguments
+    instruction_assert!(
+        "Vertex",
+        "AddVertex",
+        "1, 2, 3, 4, 5, 6;",
+        InstructionData::AddVertex(AddVertex {
+            position: Vector3::new(1.0, 2.0, 3.0),
+            normal: Vector3::new(4.0, 5.0, 6.0),
             texture_coord: Vector2::new(0.0, 0.0),
         })
     );
@@ -176,12 +226,12 @@ fn cylinder() {
 
 #[test]
 fn generate_normals() {
-    no_instruction_assert!("GenerateNormals", "GenerateNormals", "");
+    no_instruction_assert_errors!("GenerateNormals", "GenerateNormals", "");
 }
 
 #[test]
 fn texture() {
-    no_instruction_assert!("[texture]", "Texture", "");
+    no_instruction_assert_errors!("[texture]", "Texture", "");
 }
 
 #[test]

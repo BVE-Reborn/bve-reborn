@@ -1,5 +1,6 @@
 use crate::parse::mesh::instructions::*;
 use crate::parse::mesh::{FileType, MeshError, MeshErrorKind};
+use crate::parse::util::strip_comments;
 use crate::parse::Span;
 use csv::{ReaderBuilder, StringRecord, Trim};
 use std::iter::FromIterator;
@@ -161,12 +162,13 @@ pub fn create_instructions(input: &str, file_type: FileType) -> InstructionList 
         p
     };
 
+    let stripped = strip_comments(&processed, ';');
+
     let csv_reader = ReaderBuilder::new()
-        .comment(Some(b';'))
         .has_headers(false)
         .flexible(true)
         .trim(Trim::All)
-        .from_reader(processed.as_bytes());
+        .from_reader(stripped.as_bytes());
 
     let mut instructions = InstructionList::new();
     'l: for line in csv_reader.into_records() {

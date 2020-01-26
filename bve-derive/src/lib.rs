@@ -18,6 +18,7 @@
 #![allow(clippy::cast_sign_loss)] // Annoying
 #![allow(clippy::cognitive_complexity)] // This is dumb
 #![allow(clippy::single_match_else)] // Future expansion
+#![allow(clippy::too_many_lines)] // This is also dumb
 // Annoying/irrelevant clippy Restrictions
 #![allow(clippy::as_conversions)]
 #![allow(clippy::decimal_literal_representation)]

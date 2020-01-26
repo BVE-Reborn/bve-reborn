@@ -3,14 +3,26 @@ unlicensed = "deny"
 allow-osi-fsf-free = "either"
 allow = [
     "Apache-2.0",
-    "BSD-3-Clause",
+
     "BSL-1.0",
     "MIT",
     "MPL-2.0",
     "Unlicense",
     "WTFPL",
-    "Zlib",
+
 ]
 
 [bans]
 multiple-versions = "deny"
+
+[advisories]
+vulnerability = "deny"
+unmaintained = "deny"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-git = [
+    "https://github.com/rustgd/cgmath.git",
+    "https://github.com/crossbeam-rs/crossbeam.git",
+]
