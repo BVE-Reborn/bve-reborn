@@ -162,7 +162,6 @@ pub fn create_instructions(input: &str, file_type: FileType) -> InstructionList 
     };
 
     let csv_reader = ReaderBuilder::new()
-        .comment(Some(b';'))
         .has_headers(false)
         .flexible(true)
         .trim(Trim::All)
