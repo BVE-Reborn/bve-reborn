@@ -1,4 +1,4 @@
-use crate::panic::PANIC;
+use crate::panic::{PANIC, USE_DEFAULT_PANIC_HANLDER};
 use crate::{File, FileKind, FileResult, ParseResult, SharedData};
 use bve::filesystem::read_convert_utf8;
 use bve::parse::mesh::{mesh_from_str, FileType, ParsedStaticObject};
@@ -58,6 +58,7 @@ fn processing_loop(
         // Get beginning time
         let start = Instant::now();
 
+        USE_DEFAULT_PANIC_HANLDER.with(|v| *v.borrow_mut() = false);
         let panicked = std::panic::catch_unwind(|| match file.kind {
             FileKind::ModelCsv => {
                 let ParsedStaticObject { errors, .. } = mesh_from_str(
@@ -78,6 +79,7 @@ fn processing_loop(
             }
             _ => ParseResult::Success,
         });
+        USE_DEFAULT_PANIC_HANLDER.with(|v| *v.borrow_mut() = true);
 
         let duration = Instant::now() - start;
 

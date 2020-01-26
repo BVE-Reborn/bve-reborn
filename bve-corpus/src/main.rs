@@ -45,6 +45,7 @@
 use core::panicking::panic;
 
 use crate::enumeration::enumerate_all_files;
+use crate::panic::setup_panic_hook;
 use crate::worker::create_worker_thread;
 use anyhow::Result;
 use crossbeam::channel::unbounded;
@@ -124,7 +125,7 @@ pub struct SharedData {
 }
 
 fn main() {
-    std::panic::set_hook(Box::new(panic::panic_dispatch));
+    setup_panic_hook();
 
     let options: Options = Options::from_args();
 
@@ -168,10 +169,12 @@ fn main() {
         let now = Instant::now();
         for t in &worker_threads {
             let last_respond = t.last_respond.load();
-            if (now > last_respond) && (now - last_respond > Duration::from_secs(1)) {
+            const TIMEOUT: Duration = Duration::from_secs(10);
+            if (now > last_respond) && (now - last_respond > TIMEOUT) {
                 eprintln!(
-                    "Job for file {:?} has taken longer than 1s. Aborting.",
-                    t.last_file.lock().unwrap()
+                    "Job for file {:?} has taken longer than {:.2}. Aborting.",
+                    t.last_file.lock().unwrap(),
+                    TIMEOUT.as_secs_f32()
                 );
                 result_sink
                     .send(FileResult {
@@ -183,8 +186,9 @@ fn main() {
                     .unwrap();
                 logger_thread.join().unwrap();
                 panic!(
-                    "Job for file {:?} has taken longer than 1s.",
-                    t.last_file.lock().unwrap()
+                    "Job for file {:?} has taken longer than {:.2}.",
+                    t.last_file.lock().unwrap(),
+                    TIMEOUT.as_secs_f32()
                 );
             }
         }
@@ -199,7 +203,7 @@ fn main() {
     enumeration_thread.join().unwrap(); // Closes down file_sink which shuts down the processing threads when done.
     tui_progress_thread.join().unwrap();
 
-    logger_thread.join().unwrap();
+    logger_thread.join();
 
     for t in worker_threads.into_iter() {
         t.handle.join().unwrap();
