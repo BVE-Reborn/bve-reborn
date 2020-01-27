@@ -79,6 +79,11 @@ fn empty_line() {
 }
 
 #[test]
+fn empty_line_with_commas() {
+    no_instruction_assert_no_errors!(",,,,,,", ",,,,,,,", "");
+}
+
+#[test]
 fn no_arguments() {
     instruction_assert!(
         "Vertex",

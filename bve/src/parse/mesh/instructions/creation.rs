@@ -182,10 +182,13 @@ pub fn create_instructions(input: &str, file_type: FileType) -> InstructionList 
                         if let Ok(v) = serde_plain::from_str(name) {
                             v
                         } else {
-                            instructions.errors.push(MeshError {
-                                location: span,
-                                kind: MeshErrorKind::UnknownInstruction { name: name.to_owned() },
-                            });
+                            // If only whitespace, this is an instance a line with just commmas `,,,,,`, ignore it
+                            if !name.chars().all(|c: char| c.is_whitespace()) {
+                                instructions.errors.push(MeshError {
+                                    location: span,
+                                    kind: MeshErrorKind::UnknownInstruction { name: name.to_owned() },
+                                });
+                            }
                             continue 'l;
                         }
                     }
