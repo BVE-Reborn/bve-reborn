@@ -107,6 +107,32 @@ fn too_many_arguments() {
 }
 
 #[test]
+fn too_many_arguments_end_vector() {
+    instruction_assert!(
+        "Face",
+        "AddFace",
+        "0, 1, 2, 3,",
+        InstructionData::AddFace(AddFace {
+            indexes: vec![0, 1, 2, 3],
+            sides: Sides::One,
+        })
+    );
+}
+
+#[test]
+fn too_many_arguments_middle_vector() {
+    instruction_assert!(
+        "Face",
+        "AddFace",
+        "0, 1, 2,,,,,,,,3",
+        InstructionData::AddFace(AddFace {
+            indexes: vec![0, 1, 2, 3],
+            sides: Sides::One,
+        })
+    );
+}
+
+#[test]
 fn beginning_of_line_comment() {
     no_instruction_assert_no_errors!(";", ";", "");
 }

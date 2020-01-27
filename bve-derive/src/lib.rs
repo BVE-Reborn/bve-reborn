@@ -43,6 +43,8 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unreachable)]
 #![allow(clippy::wildcard_enum_match_arm)]
+// CLion is having a fit about panic not existing
+#![feature(core_panic)]
 
 extern crate proc_macro;
 
