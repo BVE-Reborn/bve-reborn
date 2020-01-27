@@ -1,6 +1,7 @@
 use crate::{FileResult, Options, ParseResult};
 use crossbeam::channel::Receiver;
 use serde::Serialize;
+use std::cmp::Reverse;
 use std::fs::write;
 use std::path::PathBuf;
 
@@ -42,6 +43,10 @@ pub fn receive_results(options: &Options, result_source: &Receiver<FileResult>) 
             ParseResult::Finish => break,
         }
     }
+
+    results
+        .failures
+        .sort_by_cached_key(|v| Reverse((v.count, v.path.clone())));
 
     if let Some(output) = &options.output {
         write(output, serde_json::to_string_pretty(&results).unwrap()).unwrap();
