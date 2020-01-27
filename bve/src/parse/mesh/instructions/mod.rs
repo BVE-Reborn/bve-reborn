@@ -245,7 +245,9 @@ pub struct SetDecalTransparentColor {
 /// Cannot be executed, must be preprocessed away into the corresponding [`AddVertex`] command
 #[bve_derive::serde_proxy]
 pub struct SetTextureCoordinates {
+    #[default("util::some_zero_usize")]
     pub index: usize,
+    #[default("util::some_zero_f32")]
     pub coords: Vector2<f32>,
 }
 

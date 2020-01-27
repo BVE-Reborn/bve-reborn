@@ -586,13 +586,18 @@ fn instruction_assert_default() {
 
 #[test]
 fn texture_coordinates() {
-    instruction_assert!(
+    instruction_assert_default!(
         "Coordinates",
         "SetTextureCoordinates",
         "1, 2, 3",
         InstructionData::SetTextureCoordinates(SetTextureCoordinates {
             index: 1,
             coords: Vector2::new(2.0, 3.0),
+        }),
+        ",,",
+        InstructionData::SetTextureCoordinates(SetTextureCoordinates {
+            index: 0,
+            coords: Vector2::new(0.0, 0.0),
         })
     );
 }
