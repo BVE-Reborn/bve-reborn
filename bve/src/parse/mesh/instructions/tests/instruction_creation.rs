@@ -230,19 +230,23 @@ fn add_face2() {
 
 #[test]
 fn cube() {
-    instruction_assert!(
+    instruction_assert_default!(
         "Cube",
         "Cube",
         "1, 2, 3",
         InstructionData::Cube(Cube {
             half_dim: Vector3::new(1.0, 2.0, 3.0)
+        }),
+        ",,",
+        InstructionData::Cube(Cube {
+            half_dim: Vector3::new(1.0, 1.0, 1.0)
         })
     );
 }
 
 #[test]
 fn cylinder() {
-    instruction_assert!(
+    instruction_assert_default!(
         "Cylinder",
         "Cylinder",
         "1, 2, 3, 4",
@@ -251,6 +255,13 @@ fn cylinder() {
             upper_radius: 2.0,
             lower_radius: 3.0,
             height: 4.0,
+        }),
+        ",,,",
+        InstructionData::Cylinder(Cylinder {
+            sides: 8,
+            upper_radius: 1.0,
+            lower_radius: 1.0,
+            height: 1.0,
         })
     );
 }

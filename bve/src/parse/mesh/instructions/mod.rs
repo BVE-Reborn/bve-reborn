@@ -134,15 +134,20 @@ pub struct AddFace {
 /// Cannot be executed, must be postprocessing away to [`AddVertex`] and [`AddFace`] commands
 #[bve_derive::serde_proxy]
 pub struct Cube {
+    #[default("util::some_one_f32")]
     pub half_dim: Vector3<f32>,
 }
 
 /// Cannot be executed, must be preprocessed away to [`AddVertex`] and [`AddFace`] commands
 #[bve_derive::serde_proxy]
 pub struct Cylinder {
+    #[default("util::some_eight_u32")]
     pub sides: u32,
+    #[default("util::some_one_f32")]
     pub upper_radius: f32,
+    #[default("util::some_one_f32")]
     pub lower_radius: f32,
+    #[default("util::some_one_f32")]
     pub height: f32,
 }
 
