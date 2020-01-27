@@ -99,6 +99,7 @@ dependencies = [
  "indexmap",
  "itertools",
  "maplit",
+ "num-traits",
  "obj",
  "serde",
  "serde_plain",

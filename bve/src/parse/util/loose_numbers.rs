@@ -1,3 +1,4 @@
+use num_traits::Zero;
 use serde::de::Visitor;
 use serde::export::PhantomData;
 use serde::{Deserialize, Deserializer};
@@ -11,7 +12,7 @@ pub struct LooseNumber<T>(pub T);
 
 impl<'de, T> Deserialize<'de> for LooseNumber<T>
 where
-    T: FromStr,
+    T: FromStr + Zero,
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -30,7 +31,7 @@ where
 
 impl<'de, T> Visitor<'de> for LooseNumberVisitor<T>
 where
-    T: FromStr,
+    T: FromStr + Zero,
 {
     type Value = LooseNumber<T>;
 
@@ -48,7 +49,14 @@ where
             let parsed: Result<T, _> = filtered.parse();
             match parsed {
                 Ok(v) => return Ok(LooseNumber(v)),
-                Err(_) => filtered.pop(),
+                Err(_) => {
+                    // Allow a single dot to represent 0.0
+                    if filtered == "." {
+                        return Ok(LooseNumber(T::zero()));
+                    } else {
+                        filtered.pop();
+                    }
+                }
             };
         }
         Err(serde::de::Error::custom(format!(
@@ -83,6 +91,14 @@ mod test {
         assert_de_tokens(&l, &[Token::Str("1 . 0")]);
         assert_de_tokens(&l, &[Token::Str("1 . 0  E  0")]);
         assert_de_tokens(&l, &[Token::Str("1 . 0  E  0 oh yeah!")]);
+    }
+
+    #[test]
+    fn loose_number_f32_dot() {
+        let l = LooseNumber::<f32>(0.0);
+        assert_de_tokens(&l, &[Token::Str(".")]);
+        assert_de_tokens(&l, &[Token::Str("    .     ")]);
+        assert_de_tokens(&l, &[Token::Str("    .      oh yeah")]);
     }
 
     #[test]
