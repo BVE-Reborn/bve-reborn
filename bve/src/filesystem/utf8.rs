@@ -31,8 +31,6 @@ fn convert_to_utf8(bytes: Vec<u8>) -> String {
         detector.guess(None, true)
     };
 
-    println!("{}", encoding.name());
-
     let (result, ..) = encoding.decode_with_bom_removal(&bytes);
 
     result.to_string()
