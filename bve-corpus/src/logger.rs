@@ -44,11 +44,17 @@ pub fn receive_results(options: &Options, result_source: &Receiver<FileResult>) 
         }
     }
 
+    results.failures.retain(|v| v.count != 0);
+
     results
         .failures
         .sort_by_cached_key(|v| Reverse((v.count, v.path.clone())));
 
+    println!("Panics: {}", results.panics.len());
+    println!("Failures: {}", results.failures.len());
+    println!("Successes: {}", results.successes.len());
+
     if let Some(output) = &options.output {
-        write(output, serde_json::to_string_pretty(&results).unwrap()).unwrap();
+        write(output, serde_json::to_string_pretty(&results.failures).unwrap()).unwrap();
     }
 }
