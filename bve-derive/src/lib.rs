@@ -35,6 +35,7 @@
 #![allow(clippy::missing_docs_in_private_items)]
 #![allow(clippy::missing_inline_in_public_items)]
 #![allow(clippy::module_name_repetitions)]
+#![allow(clippy::non_ascii_literal)]
 #![allow(clippy::option_expect_used)]
 #![allow(clippy::panic)]
 #![allow(clippy::result_expect_used)]
@@ -43,6 +44,8 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unreachable)]
 #![allow(clippy::wildcard_enum_match_arm)]
+// CLion is having a fit about panic not existing
+#![feature(core_panic)]
 
 extern crate proc_macro;
 

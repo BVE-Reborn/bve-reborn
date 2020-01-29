@@ -1,3 +1,4 @@
+use num_traits::Zero;
 use serde::de::Visitor;
 use serde::export::PhantomData;
 use serde::{Deserialize, Deserializer};
@@ -6,35 +7,36 @@ use std::fmt::Formatter;
 use std::str::FromStr;
 
 #[derive(Debug, Copy, Clone, PartialOrd, PartialEq, Default)]
+#[repr(transparent)]
 pub struct LooseNumber<T>(pub T);
 
 impl<'de, T> Deserialize<'de> for LooseNumber<T>
 where
-    T: FromStr,
+    T: FromStr + Zero,
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_str(LooseFloatVisitor { pd: PhantomData::<T> })
+        deserializer.deserialize_str(LooseNumberVisitor { pd: PhantomData::<T> })
     }
 }
 
-struct LooseFloatVisitor<T>
+struct LooseNumberVisitor<T>
 where
     T: FromStr,
 {
     pd: PhantomData<T>,
 }
 
-impl<'de, T> Visitor<'de> for LooseFloatVisitor<T>
+impl<'de, T> Visitor<'de> for LooseNumberVisitor<T>
 where
-    T: FromStr,
+    T: FromStr + Zero,
 {
     type Value = LooseNumber<T>;
 
     fn expecting<'a>(&self, formatter: &mut Formatter<'a>) -> fmt::Result {
-        write!(formatter, "Expected loose float.")
+        write!(formatter, "Expected loose number.")
     }
 
     fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
@@ -47,10 +49,20 @@ where
             let parsed: Result<T, _> = filtered.parse();
             match parsed {
                 Ok(v) => return Ok(LooseNumber(v)),
-                Err(_) => filtered.pop(),
+                Err(_) => {
+                    // Allow a single dot to represent 0.0
+                    if filtered == "." {
+                        return Ok(LooseNumber(T::zero()));
+                    } else {
+                        filtered.pop();
+                    }
+                }
             };
         }
-        Err(serde::de::Error::custom(format!("Error parsing the loose float {}", v)))
+        Err(serde::de::Error::custom(format!(
+            "Error parsing the loose number {}",
+            v
+        )))
     }
 }
 
@@ -79,6 +91,14 @@ mod test {
         assert_de_tokens(&l, &[Token::Str("1 . 0")]);
         assert_de_tokens(&l, &[Token::Str("1 . 0  E  0")]);
         assert_de_tokens(&l, &[Token::Str("1 . 0  E  0 oh yeah!")]);
+    }
+
+    #[test]
+    fn loose_number_f32_dot() {
+        let l = LooseNumber::<f32>(0.0);
+        assert_de_tokens(&l, &[Token::Str(".")]);
+        assert_de_tokens(&l, &[Token::Str("    .     ")]);
+        assert_de_tokens(&l, &[Token::Str("    .      oh yeah")]);
     }
 
     #[test]

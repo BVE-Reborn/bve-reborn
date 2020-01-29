@@ -1,7 +1,7 @@
 use crate::panic::{PANIC, USE_DEFAULT_PANIC_HANLDER};
 use crate::{File, FileKind, FileResult, ParseResult, SharedData};
 use bve::filesystem::read_convert_utf8;
-use bve::parse::mesh::{mesh_from_str, FileType, ParsedStaticObject};
+use bve::parse::mesh::{mesh_from_str, FileType, MeshErrorKind, ParsedStaticObject};
 use core::panicking::panic;
 use crossbeam::atomic::AtomicCell;
 use crossbeam::channel::{Receiver, Sender};
@@ -61,7 +61,7 @@ fn processing_loop(
         USE_DEFAULT_PANIC_HANLDER.with(|v| *v.borrow_mut() = false);
         let panicked = std::panic::catch_unwind(|| match file.kind {
             FileKind::ModelCsv => {
-                let ParsedStaticObject { errors, .. } = mesh_from_str(
+                let ParsedStaticObject { mut errors, .. } = mesh_from_str(
                     &match read_convert_utf8(&file.path) {
                         Ok(s) => s,
                         Err(err) => {
@@ -71,6 +71,8 @@ fn processing_loop(
                     },
                     FileType::CSV,
                 );
+
+                errors.retain(|v| !matches!(v.kind, MeshErrorKind::UselessInstruction{..}));
 
                 ParseResult::Errors {
                     count: errors.len() as u64,

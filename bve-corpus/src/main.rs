@@ -31,6 +31,7 @@
 #![allow(clippy::missing_docs_in_private_items)]
 #![allow(clippy::missing_inline_in_public_items)]
 #![allow(clippy::module_name_repetitions)]
+#![allow(clippy::non_ascii_literal)]
 #![allow(clippy::option_expect_used)]
 #![allow(clippy::panic)]
 #![allow(clippy::print_stdout)] // This is a build script, not a fancy app
@@ -149,8 +150,7 @@ fn main() {
         std::thread::spawn(move || enumerate_all_files(&options, &file_sink, &shared))
     };
 
-    let thread_count = num_cpus::get();
-    let worker_thread_count = thread_count.saturating_sub(1).max(1);
+    let worker_thread_count = options.jobs.unwrap_or_else(num_cpus::get);
     let worker_threads: Vec<_> = (0..worker_thread_count)
         .map(|_| create_worker_thread(&file_source, &result_sink, &shared))
         .collect();

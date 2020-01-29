@@ -10,4 +10,7 @@ pub struct Options {
     /// Location of result file
     #[structopt(short, long)]
     pub output: Option<PathBuf>,
+    /// Job Count
+    #[structopt(short, long)]
+    pub jobs: Option<usize>,
 }

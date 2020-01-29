@@ -79,6 +79,11 @@ fn empty_line() {
 }
 
 #[test]
+fn empty_line_with_commas() {
+    no_instruction_assert_no_errors!(",,,,,,", ",,,,,,,", "");
+}
+
+#[test]
 fn no_arguments() {
     instruction_assert!(
         "Vertex",
@@ -102,6 +107,32 @@ fn too_many_arguments() {
             position: Vector3::new(0.0, 0.0, 0.0),
             normal: Vector3::new(0.0, 0.0, 0.0),
             texture_coord: Vector2::new(0.0, 0.0),
+        })
+    );
+}
+
+#[test]
+fn too_many_arguments_end_vector() {
+    instruction_assert!(
+        "Face",
+        "AddFace",
+        "0, 1, 2, 3,",
+        InstructionData::AddFace(AddFace {
+            indexes: vec![0, 1, 2, 3],
+            sides: Sides::One,
+        })
+    );
+}
+
+#[test]
+fn too_many_arguments_middle_vector() {
+    instruction_assert!(
+        "Face",
+        "AddFace",
+        "0, 1, 2,,,,,,,,3",
+        InstructionData::AddFace(AddFace {
+            indexes: vec![0, 1, 2, 3],
+            sides: Sides::One,
         })
     );
 }
@@ -199,19 +230,23 @@ fn add_face2() {
 
 #[test]
 fn cube() {
-    instruction_assert!(
+    instruction_assert_default!(
         "Cube",
         "Cube",
         "1, 2, 3",
         InstructionData::Cube(Cube {
             half_dim: Vector3::new(1.0, 2.0, 3.0)
+        }),
+        ",,",
+        InstructionData::Cube(Cube {
+            half_dim: Vector3::new(1.0, 1.0, 1.0)
         })
     );
 }
 
 #[test]
 fn cylinder() {
-    instruction_assert!(
+    instruction_assert_default!(
         "Cylinder",
         "Cylinder",
         "1, 2, 3, 4",
@@ -220,6 +255,13 @@ fn cylinder() {
             upper_radius: 2.0,
             lower_radius: 3.0,
             height: 4.0,
+        }),
+        ",,,",
+        InstructionData::Cylinder(Cylinder {
+            sides: 8,
+            upper_radius: 1.0,
+            lower_radius: 1.0,
+            height: 1.0,
         })
     );
 }
@@ -544,13 +586,18 @@ fn instruction_assert_default() {
 
 #[test]
 fn texture_coordinates() {
-    instruction_assert!(
+    instruction_assert_default!(
         "Coordinates",
         "SetTextureCoordinates",
         "1, 2, 3",
         InstructionData::SetTextureCoordinates(SetTextureCoordinates {
             index: 1,
             coords: Vector2::new(2.0, 3.0),
+        }),
+        ",,",
+        InstructionData::SetTextureCoordinates(SetTextureCoordinates {
+            index: 0,
+            coords: Vector2::new(0.0, 0.0),
         })
     );
 }

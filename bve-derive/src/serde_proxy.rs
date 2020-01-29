@@ -6,6 +6,10 @@ use quote::{format_ident, quote};
 use syn::export::{ToTokens, TokenStream2};
 use syn::{Attribute, ExprPath, GenericArgument, PathArguments, Type, TypePath, Visibility};
 
+// clion having a fit
+#[allow(unused_imports)]
+use core::panicking::panic;
+
 #[derive(Debug)]
 struct Field {
     attributes: Vec<Attribute>,
@@ -52,7 +56,11 @@ fn process_explicit_type_proxy_path(t: &TypePath) -> TokenStream2 {
             let generic = b.args.first().expect("Must have generic type");
             let inner = if let GenericArgument::Type(t) = generic {
                 if let Type::Path(p) = t {
-                    process_explicit_type_proxy_path(p)
+                    let inner = process_explicit_type_proxy_path(p);
+                    match ident.to_string().as_str() {
+                        "Vec" => quote!(Option<#inner>), // this is only for serde_vector_proxy
+                        _ => inner,
+                    }
                 } else {
                     panic!("Expected type path");
                 }
@@ -125,7 +133,8 @@ fn process_type_proxy_conversion(inner_type: TokenStream2) -> TokenStream2 {
 
             match ident.as_str() {
                 "LooseNumber" => quote!(.0 #inner),
-                "Vec" => quote!(.into_iter().map(|v| v #inner).collect()),
+                "Vec" => quote!(.into_iter().filter_map(std::convert::identity).map(|v| v #inner).collect()),
+                "Option" => quote!(#inner),
                 _ => quote!(),
             }
         }
@@ -434,6 +443,7 @@ pub fn serde_vector_proxy(item: TokenStream) -> TokenStream {
 
         parsed_fields.push(if primary {
             let proxy_type = process_explicit_type_proxy(field.ty.clone());
+            let proxy_type = quote!(#proxy_type);
             primary_type = Some(proxy_type.clone());
 
             let conversion = process_type_proxy_conversion(proxy_type.clone());

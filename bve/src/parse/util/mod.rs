@@ -26,6 +26,14 @@ pub(in crate::parse) const fn some_zero_u16() -> Option<LooseNumber<u16>> {
     Some(LooseNumber(0))
 }
 
+pub(in crate::parse) const fn some_eight_u32() -> Option<LooseNumber<u32>> {
+    Some(LooseNumber(8))
+}
+
+pub(in crate::parse) const fn some_zero_usize() -> Option<LooseNumber<usize>> {
+    Some(LooseNumber(0))
+}
+
 pub(in crate::parse) const fn some_zero_f32() -> Option<LooseNumber<f32>> {
     Some(LooseNumber(0.0))
 }
