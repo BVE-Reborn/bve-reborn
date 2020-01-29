@@ -20,7 +20,7 @@ fn convert_to_utf8(bytes: Vec<u8>) -> Result<String> {
         encoding_rs::UTF_16LE
     } else if bytes.len() >= 2 && bytes[0..2] == [0xFE, 0xFF] {
         encoding_rs::UTF_16BE
-    } else if bytes.len() >= 3 && bytes[0..3] == [0xEF, 0xBB, 0xEF] {
+    } else if bytes.len() >= 3 && bytes[0..3] == [0xEF, 0xBB, 0xBF] {
         encoding_rs::UTF_8
     } else {
         let mut detector = EncodingDetector::new();
@@ -45,5 +45,20 @@ mod test {
     #[test]
     fn bom_removal() {
         assert_eq!(convert_to_utf8(vec![0xFF, 0xFE]).unwrap(), "");
+        assert_eq!(convert_to_utf8(vec![0xFE, 0xFF]).unwrap(), "");
+        assert_eq!(convert_to_utf8(vec![0xEF, 0xBB, 0xBF]).unwrap(), "");
+    }
+
+    #[test]
+    fn shift_jis() {
+        // I'm sorry if this is not "hello how are you", blame google
+        assert_eq!(
+            convert_to_utf8(
+                b"\x82\xb1\x82\xf1\x82\xc9\x82\xbf\x82\xcd\x81\x41\x8c\xb3\x8b\x43\x82\xc5\x82\xb7\x82\xa9\x81\x48"
+                    .to_vec()
+            )
+            .unwrap(),
+            "こんにちは、元気ですか？"
+        );
     }
 }
