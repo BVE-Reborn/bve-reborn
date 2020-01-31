@@ -5,7 +5,7 @@ use num_traits::FromPrimitive;
 use std::io::{BufWriter, Write};
 use tracing::Id;
 
-pub(super) fn run_writer(receiver: &Receiver<Command>, dest: impl Write + Send, method: SerializationMethod) {
+pub(super) fn run_writer(receiver: &Receiver<Command>, dest: impl Write + Send, method: &SerializationMethod) {
     let mut buffered = BufWriter::new(dest);
 
     while let Ok(message) = receiver.recv() {

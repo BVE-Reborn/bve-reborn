@@ -38,7 +38,7 @@ impl Subscriber {
         let (sender, receiver) = unbounded();
 
         let handle = std::thread::spawn(move || {
-            run_writer(&receiver, dest, method);
+            run_writer(&receiver, dest, &method);
         });
 
         Self {
