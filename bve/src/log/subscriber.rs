@@ -1,5 +1,6 @@
 use crate::log::common::*;
 use crate::log::writer::run_writer;
+use crate::log::SerializationMethod;
 use crossbeam::{unbounded, Sender};
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -33,11 +34,11 @@ struct SubscriberData {
 }
 
 impl Subscriber {
-    pub fn new(dest: impl Write + Send + 'static) -> Self {
+    pub fn new(dest: impl Write + Send + 'static, method: SerializationMethod) -> Self {
         let (sender, receiver) = unbounded();
 
         let handle = std::thread::spawn(move || {
-            run_writer(&receiver, dest);
+            run_writer(&receiver, dest, method);
         });
 
         Self {

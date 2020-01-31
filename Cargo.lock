@@ -123,6 +123,7 @@ dependencies = [
  "num-traits",
  "obj",
  "serde",
+ "serde_json",
  "serde_plain",
  "serde_test",
  "smallvec",

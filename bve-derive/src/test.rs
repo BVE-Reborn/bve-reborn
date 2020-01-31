@@ -21,7 +21,7 @@ pub fn test(item: TokenStream) -> TokenStream {
             if in_clion {
                 task();
             } else {
-                let subscriber = crate::log::Subscriber::new(::std::io::stderr());
+                let subscriber = crate::log::Subscriber::new(::std::io::stderr(), crate::log::SerializationMethod::JsonPretty);
                 ::tracing::dispatcher::with_default(&::tracing::dispatcher::Dispatch::new(subscriber.clone()),
                     task
                 );

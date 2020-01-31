@@ -1,11 +1,11 @@
 use crate::log::common::*;
-use crate::log::Message;
+use crate::log::{Message, SerializationMethod};
 use crossbeam::Receiver;
 use num_traits::FromPrimitive;
 use std::io::{BufWriter, Write};
 use tracing::Id;
 
-pub(super) fn run_writer(receiver: &Receiver<Command>, dest: impl Write + Send) {
+pub(super) fn run_writer(receiver: &Receiver<Command>, dest: impl Write + Send, method: SerializationMethod) {
     let mut buffered = BufWriter::new(dest);
 
     while let Ok(message) = receiver.recv() {
@@ -41,7 +41,7 @@ pub(super) fn run_writer(receiver: &Receiver<Command>, dest: impl Write + Send) 
             },
         };
 
-        bincode::serialize_into(&mut buffered, &to_serialize).expect("Writing to buffered log destination failed");
+        method.serialize(&mut buffered, &to_serialize);
 
         buffered.flush().expect("Flushing to log destination failed");
     }
