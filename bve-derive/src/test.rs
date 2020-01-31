@@ -13,17 +13,13 @@ pub fn test(item: TokenStream) -> TokenStream {
         #[test]
         #attrs
         #vis #sig {
-            ::tracing::dispatcher::with_default(
-                &::tracing::dispatcher::Dispatch::new(
-                    ::tracing_subscriber::FmtSubscriber::builder()
-                        .with_writer(|| std::io::stdout())
-                        .with_max_level(tracing_subscriber::filter::LevelFilter::TRACE)
-                        .finish(),
-                ),
+            let subscriber = crate::log::Subscriber::new(std::io::stdout());
+            ::tracing::dispatcher::with_default(&::tracing::dispatcher::Dispatch::new(subscriber),
                 || {
                     #block;
-                },
+                }
             );
+            subscriber.terminate();
         }
     };
     result.into()
