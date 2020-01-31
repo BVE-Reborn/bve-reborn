@@ -51,7 +51,7 @@ mod test {
     use crate::parse::util::LooseNumericBool;
     use serde_test::{assert_de_tokens, Token};
 
-    #[test]
+    #[bve_derive::bve_test]
     fn loose_bool() {
         let b = LooseNumericBool(false);
         assert_de_tokens(&b, &[Token::Str("0")]);

@@ -71,7 +71,7 @@ mod test {
     use crate::parse::util::LooseNumber;
     use serde_test::{assert_de_tokens, Token};
 
-    #[test]
+    #[bve_derive::bve_test]
     fn loose_number_f32() {
         let l = LooseNumber::<f32>(1.2);
         assert_de_tokens(&l, &[Token::Str("1.2")]);
@@ -93,7 +93,7 @@ mod test {
         assert_de_tokens(&l, &[Token::Str("1 . 0  E  0 oh yeah!")]);
     }
 
-    #[test]
+    #[bve_derive::bve_test]
     fn loose_number_f32_dot() {
         let l = LooseNumber::<f32>(0.0);
         assert_de_tokens(&l, &[Token::Str(".")]);
@@ -101,7 +101,7 @@ mod test {
         assert_de_tokens(&l, &[Token::Str("    .      oh yeah")]);
     }
 
-    #[test]
+    #[bve_derive::bve_test]
     fn loose_number_i64() {
         let l = LooseNumber::<i64>(12);
         assert_de_tokens(&l, &[Token::Str("12")]);

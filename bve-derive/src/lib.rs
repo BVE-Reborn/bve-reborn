@@ -61,6 +61,9 @@ mod c_interface;
 #[cfg_attr(tarpaulin, skip)]
 mod helpers;
 
+#[cfg_attr(tarpaulin, skip)]
+mod test;
+
 #[proc_macro_attribute]
 #[cfg_attr(tarpaulin, skip)]
 pub fn serde_proxy(_attr: TokenStream, item: TokenStream) -> TokenStream {
@@ -77,4 +80,10 @@ pub fn serde_vector_proxy(_attr: TokenStream, item: TokenStream) -> TokenStream 
 #[cfg_attr(tarpaulin, skip)]
 pub fn c_interface(_attr: TokenStream, item: TokenStream) -> TokenStream {
     c_interface::c_interface(item)
+}
+
+#[proc_macro_attribute]
+#[cfg_attr(tarpaulin, skip)]
+pub fn bve_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    test::test(item)
 }

@@ -18,18 +18,18 @@ pub fn strip_comments(input: &str, comment_char: char) -> String {
 mod test {
     use crate::parse::util::strip_comments;
 
-    #[test]
+    #[bve_derive::bve_test]
     fn single_line() {
         assert_eq!(strip_comments("abcdefg;abcdefg", ';'), "abcdefg\n");
         assert_eq!(strip_comments(";abcdefg", ';'), "\n");
     }
 
-    #[test]
+    #[bve_derive::bve_test]
     fn single_end_of_line() {
         assert_eq!(strip_comments("abcdefg;", ';'), "abcdefg\n");
     }
 
-    #[test]
+    #[bve_derive::bve_test]
     fn double_line() {
         assert_eq!(strip_comments("abcdefg\nabcdefg;abcdefg", ';'), "abcdefg\nabcdefg\n");
         assert_eq!(strip_comments(";abcdefg\n;abcdefg", ';'), "\n\n");

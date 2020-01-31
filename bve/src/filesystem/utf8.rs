@@ -52,24 +52,14 @@ fn convert_to_utf8(bytes: Vec<u8>) -> String {
 mod test {
     use super::convert_to_utf8;
 
-    #[test]
+    #[bve_derive::bve_test]
     fn bom_removal() {
-        tracing::dispatcher::with_default(
-            &tracing::dispatcher::Dispatch::new(
-                tracing_subscriber::FmtSubscriber::builder()
-                    .with_writer(|| std::io::stdout())
-                    .with_max_level(tracing_subscriber::filter::LevelFilter::TRACE)
-                    .finish(),
-            ),
-            || {
-                assert_eq!(convert_to_utf8(vec![0xFF, 0xFE]), "");
-                assert_eq!(convert_to_utf8(vec![0xFE, 0xFF]), "");
-                assert_eq!(convert_to_utf8(vec![0xEF, 0xBB, 0xBF]), "");
-            },
-        );
+        assert_eq!(convert_to_utf8(vec![0xFF, 0xFE]), "");
+        assert_eq!(convert_to_utf8(vec![0xFE, 0xFF]), "");
+        assert_eq!(convert_to_utf8(vec![0xEF, 0xBB, 0xBF]), "");
     }
 
-    #[test]
+    #[bve_derive::bve_test]
     fn shift_jis() {
         // I'm sorry if this is not "hello how are you", blame google
         assert_eq!(

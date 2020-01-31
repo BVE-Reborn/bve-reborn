@@ -115,6 +115,7 @@ dependencies = [
  "serde_test",
  "smallvec",
  "tracing",
+ "tracing-core",
  "tracing-subscriber",
 ]
 
