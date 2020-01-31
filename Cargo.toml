@@ -1,3 +1,5 @@
+cargo-features = ["named-profiles"]
+
 [workspace]
 members = ["bve*"]
 exclude = ["bve-reborn"]    # Ignore the Unity project cause it's not a Rust project
@@ -11,3 +13,9 @@ tracing-subscriber = { git = "https://github.com/tokio-rs/tracing.git", rev = "1
 overflow-checks = true
 debug-assertions = true
 debug = true
+
+[profile.lto]
+inherits = "release"
+debug = false
+debug-assertions = false
+lto = true
