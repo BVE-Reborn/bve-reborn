@@ -1,5 +1,5 @@
+use crate::log::common::*;
 use crate::log::writer::run_writer;
-use crate::log::*;
 use crossbeam::{unbounded, Sender};
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -93,7 +93,7 @@ impl tracing::Subscriber for Subscriber {
             .background_sender
             .send(Command::from_data(CommandData::CreateSpan {
                 id: id.clone(),
-                name: span.metadata().name(),
+                metadata: span.metadata(),
                 data: visitor.into_data(),
             }));
 
@@ -148,6 +148,7 @@ impl tracing::Subscriber for Subscriber {
             .background_sender
             .send(Command::from_data(CommandData::Event {
                 span_id: span,
+                metadata: event.metadata(),
                 data: visitor.into_data(),
             }));
     }
