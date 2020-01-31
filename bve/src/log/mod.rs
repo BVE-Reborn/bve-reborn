@@ -4,11 +4,13 @@
 //! file. The logger backend is implemented using the `tracing` library.
 
 pub use data::*;
+pub use global::*;
 pub use method::*;
 pub use subscriber::*;
 
 mod common;
 mod data;
+mod global;
 mod method;
 mod subscriber;
 mod writer;

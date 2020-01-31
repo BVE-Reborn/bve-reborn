@@ -21,11 +21,11 @@ pub fn test(item: TokenStream) -> TokenStream {
             if in_clion {
                 task();
             } else {
+                // Manually dispatch to avoid non-thread-local state
                 let subscriber = crate::log::Subscriber::new(::std::io::stderr(), crate::log::SerializationMethod::JsonPretty);
-                ::tracing::dispatcher::with_default(&::tracing::dispatcher::Dispatch::new(subscriber.clone()),
+                ::tracing::dispatcher::with_default(&::tracing::dispatcher::Dispatch::new(subscriber),
                     task
                 );
-                ::std::mem::drop(subscriber);
             }
         }
     };

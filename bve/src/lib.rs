@@ -47,6 +47,7 @@
 
 pub use datatypes::*;
 
+pub mod concurrency;
 mod datatypes;
 pub mod filesystem;
 mod iter;

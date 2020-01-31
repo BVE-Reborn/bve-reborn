@@ -51,6 +51,7 @@ use crate::enumeration::enumerate_all_files;
 use crate::panic::setup_panic_hook;
 use crate::worker::create_worker_thread;
 use anyhow::Result;
+use bve::log::{run_with_global_logger, set_global_logger, SerializationMethod, Subscriber};
 use crossbeam::channel::unbounded;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 pub use options::*;
@@ -132,6 +133,12 @@ fn main() {
 
     let options: Options = Options::from_args();
 
+    let _guard = set_global_logger(std::io::stderr(), SerializationMethod::JsonPretty);
+
+    run_with_global_logger(move || program_main(options));
+}
+
+fn program_main(options: Options) {
     let shared = Arc::new(SharedData::default());
     let (file_sink, file_source) = unbounded();
     let (result_sink, result_source) = unbounded();
@@ -147,7 +154,7 @@ fn main() {
     let enumeration_thread = {
         let shared = Arc::clone(&shared);
         let options = options.clone();
-        std::thread::spawn(move || enumerate_all_files(&options, &file_sink, &shared))
+        bve::concurrency::spawn(move || enumerate_all_files(&options, &file_sink, &shared))
     };
 
     let worker_thread_count = options.jobs.unwrap_or_else(num_cpus::get);
@@ -155,9 +162,9 @@ fn main() {
         .map(|_| create_worker_thread(&file_source, &result_sink, &shared))
         .collect();
 
-    let logger_thread = { std::thread::spawn(move || logger::receive_results(&options, &result_source)) };
+    let logger_thread = { bve::concurrency::spawn(move || logger::receive_results(&options, &result_source)) };
 
-    let tui_progress_thread = std::thread::spawn(move || mp.join().unwrap());
+    let tui_progress_thread = bve::concurrency::spawn(move || mp.join().unwrap());
 
     while !shared.fully_loaded.load(Ordering::SeqCst)
         || (shared.total.total.load(Ordering::SeqCst) - shared.total.finished.load(Ordering::SeqCst)) != 0
