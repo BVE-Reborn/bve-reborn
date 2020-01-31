@@ -31,6 +31,9 @@ fn convert_to_utf8(bytes: Vec<u8>) -> String {
     } else if bytes.len() >= 3 && bytes[0..3] == [0xEF, 0xBB, 0xBF] {
         (encoding_rs::UTF_8, "BOM")
     } else {
+        let span: tracing::Span = tracing::trace_span!("chardetng", size = bytes.len());
+        let _guard = span.enter();
+        tracing::debug!("blah");
         let mut detector = EncodingDetector::new();
         let ascii_only = !detector.feed(&bytes, true);
         if ascii_only {

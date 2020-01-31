@@ -5,8 +5,10 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::io::Write;
+use std::mem::ManuallyDrop;
 use std::sync::atomic::AtomicU64;
 use std::sync::atomic::Ordering;
+use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use tracing::span::{Attributes, Record};
 use tracing::Id;
@@ -17,10 +19,17 @@ thread_local! {
     static CURRENT_SPAN: RefCell<Option<Id>> = RefCell::new(None);
 }
 
+#[derive(Clone)]
 pub struct Subscriber {
+    inner: Arc<SubscriberData>,
+}
+
+struct SubscriberData {
     current_span_id: AtomicU64,
-    background_sender: Sender<Command>, // Must be dropped before thread
-    background_thread: JoinHandle<()>,
+    background_sender: ManuallyDrop<Sender<Command>>, // Must be dropped before thread
+    background_thread: ManuallyDrop<JoinHandle<()>>,  // Needs to be joined
+    // Points from child to parent
+    span_parents: Mutex<HashMap<u64, u64>>,
 }
 
 impl Subscriber {
@@ -32,14 +41,37 @@ impl Subscriber {
         });
 
         Self {
-            current_span_id: AtomicU64::new(1),
-            background_thread: handle,
-            background_sender: sender,
+            inner: Arc::new(SubscriberData {
+                current_span_id: AtomicU64::new(1),
+                background_thread: ManuallyDrop::new(handle),
+                background_sender: ManuallyDrop::new(sender),
+                span_parents: Mutex::new(HashMap::new()),
+            }),
         }
     }
 
-    pub fn terminate(self) {
-        drop(self.background_sender);
+    fn add_parent(&self, parent: Id, child: Id) {
+        self.inner
+            .background_sender
+            .send(Command::from_data(CommandData::RecordRelationship {
+                parent: parent.clone(),
+                child: child.clone(),
+            }));
+        self.inner
+            .span_parents
+            .lock()
+            .expect("Need to lock parental_relationship map")
+            .insert(child.into_u64(), parent.into_u64());
+    }
+}
+
+impl Drop for SubscriberData {
+    fn drop(&mut self) {
+        unsafe {
+            ManuallyDrop::drop(&mut self.background_sender);
+        }
+        let thread = unsafe { ManuallyDrop::take(&mut self.background_thread) };
+        thread.join().expect("Logging thread panicked");
     }
 }
 
@@ -50,18 +82,20 @@ impl tracing::Subscriber for Subscriber {
 
     // noinspection DuplicatedCode
     fn new_span(&self, span: &Attributes<'_>) -> Id {
-        let id = Id::from_u64(self.current_span_id.fetch_add(1, Ordering::Relaxed));
+        let id = Id::from_u64(self.inner.current_span_id.fetch_add(1, Ordering::Relaxed));
 
         // Record all members with a visitor
         let mut visitor = RecordVisitor::new();
         span.record(&mut visitor);
 
         // Send the creation of the span to the background thread
-        self.background_sender.send(Command::from_data(CommandData::CreateSpan {
-            id: id.clone(),
-            name: span.metadata().name(),
-            data: visitor.into_data(),
-        }));
+        self.inner
+            .background_sender
+            .send(Command::from_data(CommandData::CreateSpan {
+                id: id.clone(),
+                name: span.metadata().name(),
+                data: visitor.into_data(),
+            }));
 
         // Determine if this span has a parent, and if it does, get the ID
         let parent = if span.is_contextual() {
@@ -72,11 +106,7 @@ impl tracing::Subscriber for Subscriber {
 
         // If there is a parent, explain the relationship to the backend
         if let Some(parent_id) = parent {
-            self.background_sender
-                .send(Command::from_data(CommandData::RecordRelationship {
-                    parent: parent_id,
-                    child: id.clone(),
-                }));
+            self.add_parent(parent_id, id.clone())
         }
 
         id
@@ -88,7 +118,8 @@ impl tracing::Subscriber for Subscriber {
         values.record(&mut visitor);
 
         // Send the new information to the backend
-        self.background_sender
+        self.inner
+            .background_sender
             .send(Command::from_data(CommandData::RecordSpanData {
                 id: span.clone(),
                 data: visitor.into_data(),
@@ -96,11 +127,7 @@ impl tracing::Subscriber for Subscriber {
     }
 
     fn record_follows_from(&self, span: &Id, follows: &Id) {
-        self.background_sender
-            .send(Command::from_data(CommandData::RecordRelationship {
-                parent: follows.clone(),
-                child: span.clone(),
-            }));
+        self.add_parent(follows.clone(), span.clone())
     }
 
     // noinspection DuplicatedCode
@@ -117,10 +144,12 @@ impl tracing::Subscriber for Subscriber {
         };
 
         // Send event
-        self.background_sender.send(Command::from_data(CommandData::Event {
-            span_id: span,
-            data: visitor.into_data(),
-        }));
+        self.inner
+            .background_sender
+            .send(Command::from_data(CommandData::Event {
+                span_id: span,
+                data: visitor.into_data(),
+            }));
     }
 
     fn enter(&self, span: &Id) {
@@ -128,7 +157,23 @@ impl tracing::Subscriber for Subscriber {
     }
 
     fn exit(&self, span: &Id) {
-        CURRENT_SPAN.with(|v| v.replace(None));
+        let parent = self
+            .inner
+            .span_parents
+            .lock()
+            .expect("Need to lock parental_relationship map")
+            .get(&span.into_u64())
+            .map(|v| Id::from_u64(*v));
+        CURRENT_SPAN.with(|v| v.replace(parent));
+    }
+
+    fn try_close(&self, id: Id) -> bool {
+        self.inner
+            .span_parents
+            .lock()
+            .expect("Need to lock parental_relationship map")
+            .remove(&id.into_u64());
+        true
     }
 }
 
