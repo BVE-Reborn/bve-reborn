@@ -13,14 +13,20 @@ pub fn test(item: TokenStream) -> TokenStream {
         #[test]
         #attrs
         #vis #sig {
-            println!("");
-            let subscriber = crate::log::Subscriber::new(std::io::stdout());
-            ::tracing::dispatcher::with_default(&::tracing::dispatcher::Dispatch::new(subscriber.clone()),
-                || {
-                    #block;
-                }
-            );
-            ::std::mem::drop(subscriber);
+            let task = || {
+                #block;
+            };
+            // TODO: Actually fix these clion issues
+            let in_clion = !std::env::args().any(|v| v == "--nocapture"); // clion causes the logger issues, disable it when in the test harness. Output isn't seen anyway.
+            if in_clion {
+                task();
+            } else {
+                let subscriber = crate::log::Subscriber::new(::std::io::stderr());
+                ::tracing::dispatcher::with_default(&::tracing::dispatcher::Dispatch::new(subscriber.clone()),
+                    task
+                );
+                ::std::mem::drop(subscriber);
+            }
         }
     };
     result.into()

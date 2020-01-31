@@ -37,7 +37,7 @@ impl Subscriber {
         let (sender, receiver) = unbounded();
 
         let handle = std::thread::spawn(move || {
-            run_writer(receiver, dest);
+            run_writer(&receiver, dest);
         });
 
         Self {
@@ -52,16 +52,14 @@ impl Subscriber {
 
     fn add_parent(&self, parent: Id, child: Id) {
         self.inner
-            .background_sender
-            .send(Command::from_data(CommandData::RecordRelationship {
-                parent: parent.clone(),
-                child: child.clone(),
-            }));
-        self.inner
             .span_parents
             .lock()
             .expect("Need to lock parental_relationship map")
             .insert(child.into_u64(), parent.into_u64());
+        self.inner
+            .background_sender
+            .send(Command::from_data(CommandData::RecordRelationship { parent, child }))
+            .expect("Cannot send parent to logger");
     }
 }
 
@@ -76,7 +74,7 @@ impl Drop for SubscriberData {
 }
 
 impl tracing::Subscriber for Subscriber {
-    fn enabled(&self, metadata: &Metadata<'_>) -> bool {
+    fn enabled(&self, _metadata: &Metadata<'_>) -> bool {
         true
     }
 
@@ -95,7 +93,8 @@ impl tracing::Subscriber for Subscriber {
                 id: id.clone(),
                 metadata: span.metadata(),
                 data: visitor.into_data(),
-            }));
+            }))
+            .expect("Cannot send span to logger");
 
         // Determine if this span has a parent, and if it does, get the ID
         let parent = if span.is_contextual() {
@@ -123,7 +122,8 @@ impl tracing::Subscriber for Subscriber {
             .send(Command::from_data(CommandData::RecordSpanData {
                 id: span.clone(),
                 data: visitor.into_data(),
-            }));
+            }))
+            .expect("Cannot send record to logger");
     }
 
     fn record_follows_from(&self, span: &Id, follows: &Id) {
@@ -150,7 +150,8 @@ impl tracing::Subscriber for Subscriber {
                 span_id: span,
                 metadata: event.metadata(),
                 data: visitor.into_data(),
-            }));
+            }))
+            .expect("Cannot send event to logger");
     }
 
     fn enter(&self, span: &Id) {
@@ -179,7 +180,8 @@ impl tracing::Subscriber for Subscriber {
 }
 
 struct RecordVisitor {
-    data: HashMap<&'static str, Data>,
+    data: HashMap<String, Data>, /* This is owned because it needs to be owned in the writer serialization
+                                  * structure. */
 }
 
 impl RecordVisitor {
@@ -189,29 +191,32 @@ impl RecordVisitor {
         }
     }
 
-    fn into_data(self) -> HashMap<&'static str, Data> {
+    #[allow(clippy::missing_const_for_fn)] // flat out wrong
+    fn into_data(self) -> HashMap<String, Data> {
         self.data
     }
 }
 
 impl Visit for RecordVisitor {
     fn record_i64(&mut self, field: &Field, value: i64) {
-        self.data.insert(field.name(), Data::I64(value));
+        self.data.insert(field.name().to_string(), Data::I64(value));
     }
 
     fn record_u64(&mut self, field: &Field, value: u64) {
-        self.data.insert(field.name(), Data::U64(value));
+        self.data.insert(field.name().to_string(), Data::U64(value));
     }
 
     fn record_bool(&mut self, field: &Field, value: bool) {
-        self.data.insert(field.name(), Data::Bool(value));
+        self.data.insert(field.name().to_string(), Data::Bool(value));
     }
 
     fn record_str(&mut self, field: &Field, value: &str) {
-        self.data.insert(field.name(), Data::String(value.to_string()));
+        self.data
+            .insert(field.name().to_string(), Data::String(value.to_string()));
     }
 
     fn record_debug(&mut self, field: &Field, value: &dyn Debug) {
-        self.data.insert(field.name(), Data::String(format!("{:?}", value)));
+        self.data
+            .insert(field.name().to_string(), Data::String(format!("{:?}", value)));
     }
 }

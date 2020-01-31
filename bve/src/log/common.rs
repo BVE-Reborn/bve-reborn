@@ -1,5 +1,8 @@
+use serde::export::fmt::Error;
+use serde::export::Formatter;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::fmt::Display;
 use std::thread::ThreadId;
 use std::time::Instant;
 use tracing::Id;
@@ -27,11 +30,13 @@ pub enum CommandData {
     CreateSpan {
         id: Id,
         metadata: &'static Metadata<'static>,
-        data: HashMap<&'static str, Data>,
+        data: HashMap<String, Data>, /* This is owned because it needs to be owned in the writer serialization
+                                      * structure. */
     },
     RecordSpanData {
         id: Id,
-        data: HashMap<&'static str, Data>,
+        data: HashMap<String, Data>, /* This is owned because it needs to be owned in the writer serialization
+                                      * structure. */
     },
     RecordRelationship {
         parent: Id,
@@ -40,7 +45,8 @@ pub enum CommandData {
     Event {
         span_id: Option<Id>,
         metadata: &'static Metadata<'static>,
-        data: HashMap<&'static str, Data>,
+        data: HashMap<String, Data>, /* This is owned because it needs to be owned in the writer serialization
+                                      * structure. */
     },
 }
 
@@ -50,4 +56,15 @@ pub enum Data {
     I64(i64),
     Bool(bool),
     String(String),
+}
+
+impl Display for Data {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+        match self {
+            Self::U64(v) => Display::fmt(v, f),
+            Self::I64(v) => Display::fmt(v, f),
+            Self::Bool(v) => Display::fmt(v, f),
+            Self::String(v) => Display::fmt(v, f),
+        }
+    }
 }

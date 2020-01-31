@@ -23,7 +23,7 @@ pub enum Message {
         child: u64,
     },
     Event {
-        span_id: u64,
+        span_id: Option<u64>,
         file: String,
         line: u16,
         severity: Severity,
@@ -52,15 +52,15 @@ impl From<&Level> for Severity {
     #[inline]
     fn from(l: &Level) -> Self {
         if *l == Level::ERROR {
-            Severity::Error
+            Self::Error
         } else if *l == Level::WARN {
-            Severity::Warn
+            Self::Warn
         } else if *l == Level::INFO {
-            Severity::Info
+            Self::Info
         } else if *l == Level::DEBUG {
-            Severity::Debug
+            Self::Debug
         } else {
-            Severity::Trace
+            Self::Trace
         }
     }
 }
