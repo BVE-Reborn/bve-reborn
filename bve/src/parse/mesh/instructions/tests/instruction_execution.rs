@@ -23,7 +23,7 @@ macro_rules! generate_instruction_list {
     };
 }
 
-#[test]
+#[bve_derive::bve_test]
 fn single_mesh() {
     let v = generate_instruction_list!(
         0: CreateMeshBuilder {},
@@ -81,7 +81,7 @@ fn single_mesh() {
 
 /// First mesh uses all possible attributes besides texture coords,
 /// helps test to make sure state is properly reset
-#[test]
+#[bve_derive::bve_test]
 fn double_mesh() {
     let v = generate_instruction_list!(
         0: CreateMeshBuilder {},
@@ -204,7 +204,7 @@ fn double_mesh() {
     assert_eq!(result.errors.len(), 0);
 }
 
-#[test]
+#[bve_derive::bve_test]
 fn texture_coords() {
     let v = generate_instruction_list!(
         0: CreateMeshBuilder {},
@@ -273,7 +273,7 @@ fn texture_coords() {
     assert_eq!(result.errors.len(), 0);
 }
 
-#[test]
+#[bve_derive::bve_test]
 fn cube() {
     let v = generate_instructions_from_obj(CUBE_SOURCE);
 

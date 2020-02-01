@@ -3,7 +3,6 @@ unlicensed = "deny"
 allow-osi-fsf-free = "either"
 allow = [
     "Apache-2.0",
-
     "BSL-1.0",
     "MIT",
     "MPL-2.0",
@@ -25,4 +24,5 @@ unknown-git = "deny"
 allow-git = [
     "https://github.com/rustgd/cgmath.git",
     "https://github.com/crossbeam-rs/crossbeam.git",
+    "https://github.com/tokio-rs/tracing",
 ]

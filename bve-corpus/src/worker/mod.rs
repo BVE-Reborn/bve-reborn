@@ -34,7 +34,7 @@ pub fn create_worker_thread(
         let shared = Arc::clone(shared);
         let last_respond = Arc::clone(&last_respond);
         let last_file = Arc::clone(&last_file);
-        std::thread::spawn(move || processing_loop(&job_source, &result_sink, &shared, &last_respond, &last_file))
+        bve::concurrency::spawn(move || processing_loop(&job_source, &result_sink, &shared, &last_respond, &last_file))
     };
     WorkerThread {
         handle,

@@ -1,11 +1,11 @@
 //! Implementation of the high performance runtime logic for the game BVE-Reborn.
 
+#![feature(manually_drop_take)]
 // Rust warnings
 #![warn(unused)]
 #![deny(future_incompatible)]
 #![deny(nonstandard_style)]
 #![deny(rust_2018_idioms)]
-#![forbid(unsafe_code)]
 // Rustdoc Warnings
 #![deny(intra_doc_link_resolution_failure)]
 // Clippy warnings
@@ -47,7 +47,9 @@
 
 pub use datatypes::*;
 
+pub mod concurrency;
 mod datatypes;
 pub mod filesystem;
 mod iter;
+pub mod log;
 pub mod parse;
