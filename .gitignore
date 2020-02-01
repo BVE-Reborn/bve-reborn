@@ -12,3 +12,4 @@ cargo-timing*.html
 # Log files
 log.*
 !log.rs
+*.log
