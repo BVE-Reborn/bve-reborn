@@ -152,9 +152,8 @@ fn deserialize_instruction(
 ///
 /// All errors are reported in [`InstructionList::errors`].
 #[must_use]
+#[bve_derive::span(DEBUG, "Create .b3d/csv instructions", ?file_type, input_size = %input.len())]
 pub fn create_instructions(input: &str, file_type: FileType) -> InstructionList {
-    tracing::debug_span!("create .b3d/csv instructions", ?file_type, input_size = %input.len());
-
     // Make entire setup lowercase to make it easy to match.
     let processed = if file_type == FileType::B3D {
         b3d_to_csv_syntax(input)

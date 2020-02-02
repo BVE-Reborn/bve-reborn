@@ -228,6 +228,7 @@ pub enum GlowAttenuationMode {
 
 /// Parse the given `input` as `file_type` and generate a static object from it.
 #[must_use]
+#[bve_derive::span(WARN, "Load Mesh", ?file_type)]
 pub fn mesh_from_str(input: &str, file_type: FileType) -> ParsedStaticObject {
     let instructions = instructions::create_instructions(input, file_type);
     instructions::generate_meshes(post_process(instructions))
