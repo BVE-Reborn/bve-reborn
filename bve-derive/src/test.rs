@@ -10,7 +10,6 @@ pub fn test(item: TokenStream) -> TokenStream {
     let vis = &function.vis;
 
     let result = quote::quote! {
-        #[test]
         #attrs
         #vis #sig {
             let task = || {

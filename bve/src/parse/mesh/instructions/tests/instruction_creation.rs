@@ -69,6 +69,7 @@ macro_rules! instruction_assert_default {
 }
 
 #[bve_derive::bve_test]
+#[test]
 fn empty_line() {
     let result_a = create_instructions("", FileType::B3D);
     assert_eq!(result_a.instructions.len(), 0);
@@ -79,11 +80,13 @@ fn empty_line() {
 }
 
 #[bve_derive::bve_test]
+#[test]
 fn empty_line_with_commas() {
     no_instruction_assert_no_errors!(",,,,,,", ",,,,,,,", "");
 }
 
 #[bve_derive::bve_test]
+#[test]
 fn no_arguments() {
     instruction_assert!(
         "Vertex",
@@ -98,6 +101,7 @@ fn no_arguments() {
 }
 
 #[bve_derive::bve_test]
+#[test]
 fn too_many_arguments() {
     instruction_assert!(
         "Vertex",
@@ -112,6 +116,7 @@ fn too_many_arguments() {
 }
 
 #[bve_derive::bve_test]
+#[test]
 fn too_many_arguments_end_vector() {
     instruction_assert!(
         "Face",
@@ -125,6 +130,7 @@ fn too_many_arguments_end_vector() {
 }
 
 #[bve_derive::bve_test]
+#[test]
 fn too_many_arguments_middle_vector() {
     instruction_assert!(
         "Face",
@@ -138,11 +144,13 @@ fn too_many_arguments_middle_vector() {
 }
 
 #[bve_derive::bve_test]
+#[test]
 fn beginning_of_line_comment() {
     no_instruction_assert_no_errors!(";", ";", "");
 }
 
 #[bve_derive::bve_test]
+#[test]
 fn middle_of_line_comment() {
     // Adapted from no_arguments
     instruction_assert!(
@@ -158,6 +166,7 @@ fn middle_of_line_comment() {
 }
 
 #[bve_derive::bve_test]
+#[test]
 fn end_of_line_comment() {
     // Adapted from no_arguments
     instruction_assert!(
@@ -173,6 +182,7 @@ fn end_of_line_comment() {
 }
 
 #[bve_derive::bve_test]
+#[test]
 fn mesh_builder() {
     instruction_assert!(
         "[meshbuilder]",
@@ -183,6 +193,7 @@ fn mesh_builder() {
 }
 
 #[bve_derive::bve_test]
+#[test]
 fn add_vertex() {
     instruction_assert_default!(
         "Vertex",
@@ -203,6 +214,7 @@ fn add_vertex() {
 }
 
 #[bve_derive::bve_test]
+#[test]
 fn add_face() {
     instruction_assert!(
         "Face",
@@ -216,6 +228,7 @@ fn add_face() {
 }
 
 #[bve_derive::bve_test]
+#[test]
 fn add_face2() {
     instruction_assert!(
         "Face2",
@@ -229,6 +242,7 @@ fn add_face2() {
 }
 
 #[bve_derive::bve_test]
+#[test]
 fn cube() {
     instruction_assert_default!(
         "Cube",
@@ -245,6 +259,7 @@ fn cube() {
 }
 
 #[bve_derive::bve_test]
+#[test]
 fn cylinder() {
     instruction_assert_default!(
         "Cylinder",
@@ -267,16 +282,19 @@ fn cylinder() {
 }
 
 #[bve_derive::bve_test]
+#[test]
 fn generate_normals() {
     no_instruction_assert_errors!("GenerateNormals", "GenerateNormals", "");
 }
 
 #[bve_derive::bve_test]
+#[test]
 fn texture() {
     no_instruction_assert_errors!("[texture]", "Texture", "");
 }
 
 #[bve_derive::bve_test]
+#[test]
 fn translate() {
     instruction_assert_default!(
         "Translate",
@@ -295,6 +313,7 @@ fn translate() {
 }
 
 #[bve_derive::bve_test]
+#[test]
 fn translate_all() {
     instruction_assert_default!(
         "TranslateAll",
@@ -313,6 +332,7 @@ fn translate_all() {
 }
 
 #[bve_derive::bve_test]
+#[test]
 fn scale() {
     instruction_assert_default!(
         "Scale",
@@ -331,6 +351,7 @@ fn scale() {
 }
 
 #[bve_derive::bve_test]
+#[test]
 fn scale_all() {
     instruction_assert_default!(
         "ScaleAll",
@@ -349,6 +370,7 @@ fn scale_all() {
 }
 
 #[bve_derive::bve_test]
+#[test]
 fn rotate() {
     instruction_assert_default!(
         "Rotate",
@@ -369,6 +391,7 @@ fn rotate() {
 }
 
 #[bve_derive::bve_test]
+#[test]
 fn rotate_all() {
     instruction_assert_default!(
         "RotateAll",
@@ -389,6 +412,7 @@ fn rotate_all() {
 }
 
 #[bve_derive::bve_test]
+#[test]
 fn shear() {
     instruction_assert_default!(
         "Shear",
@@ -411,6 +435,7 @@ fn shear() {
 }
 
 #[bve_derive::bve_test]
+#[test]
 fn shear_all() {
     instruction_assert_default!(
         "ShearAll",
@@ -433,6 +458,7 @@ fn shear_all() {
 }
 
 #[bve_derive::bve_test]
+#[test]
 fn mirror() {
     instruction_assert_default!(
         "Mirror",
@@ -451,6 +477,7 @@ fn mirror() {
 }
 
 #[bve_derive::bve_test]
+#[test]
 fn mirror_all() {
     instruction_assert_default!(
         "MirrorAll",
@@ -469,6 +496,7 @@ fn mirror_all() {
 }
 
 #[bve_derive::bve_test]
+#[test]
 fn color() {
     instruction_assert_default!(
         "Color",
@@ -485,6 +513,7 @@ fn color() {
 }
 
 #[bve_derive::bve_test]
+#[test]
 fn emmisive_color() {
     instruction_assert_default!(
         "EmissiveColor",
@@ -501,6 +530,7 @@ fn emmisive_color() {
 }
 
 #[bve_derive::bve_test]
+#[test]
 fn blend_mode() {
     instruction_assert_default!(
         "BlendMode",
@@ -551,6 +581,7 @@ fn blend_mode() {
 }
 
 #[bve_derive::bve_test]
+#[test]
 fn load_texture() {
     instruction_assert_default!(
         "Load",
@@ -569,6 +600,7 @@ fn load_texture() {
 }
 
 #[bve_derive::bve_test]
+#[test]
 fn instruction_assert_default() {
     instruction_assert_default!(
         "Transparent",
@@ -585,6 +617,7 @@ fn instruction_assert_default() {
 }
 
 #[bve_derive::bve_test]
+#[test]
 fn texture_coordinates() {
     instruction_assert_default!(
         "Coordinates",

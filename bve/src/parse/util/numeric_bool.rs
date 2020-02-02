@@ -52,6 +52,7 @@ mod test {
     use serde_test::{assert_de_tokens, Token};
 
     #[bve_derive::bve_test]
+    #[test]
     fn loose_bool() {
         let b = LooseNumericBool(false);
         assert_de_tokens(&b, &[Token::Str("0")]);

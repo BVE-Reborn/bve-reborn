@@ -53,6 +53,7 @@ mod test {
     use super::convert_to_utf8;
 
     #[bve_derive::bve_test]
+    #[test]
     fn bom_removal() {
         assert_eq!(convert_to_utf8(vec![0xFF, 0xFE]), "");
         assert_eq!(convert_to_utf8(vec![0xFE, 0xFF]), "");
@@ -60,6 +61,7 @@ mod test {
     }
 
     #[bve_derive::bve_test]
+    #[test]
     fn shift_jis() {
         // I'm sorry if this is not "hello how are you", blame google
         assert_eq!(
