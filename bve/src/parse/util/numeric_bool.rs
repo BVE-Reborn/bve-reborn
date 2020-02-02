@@ -29,12 +29,18 @@ impl<'de> Visitor<'de> for LooseNumericBoolVisitor {
     where
         E: de::Error,
     {
+        tracing::trace!(input = v, "Parsing numeric bool...");
+
         let mut filtered: String = v.chars().filter(|c| !c.is_whitespace()).collect();
 
         while !filtered.is_empty() {
             let parsed: Result<i64, _> = filtered.parse();
             match parsed {
-                Ok(v) => return Ok(LooseNumericBool(v != 0)),
+                Ok(v) => {
+                    let output = v != 0;
+                    tracing::trace!(output, %filtered, "Parsed loose bool");
+                    return Ok(LooseNumericBool(output));
+                }
                 Err(_) => filtered.pop(),
             };
         }
