@@ -7,6 +7,7 @@ use std::iter::FromIterator;
 
 /// Adds a comma after the first space on each line. Forces newline on last line. Lowercases string.
 pub(in crate::parse::mesh::instructions) fn b3d_to_csv_syntax(input: &str) -> String {
+    tracing::trace!("Processing .b3d into .csv");
     let mut p = String::with_capacity((input.len() as f32 * 1.1) as usize);
     for line in input.lines() {
         let mut lowered = line.to_lowercase();
@@ -52,6 +53,7 @@ fn deserialize_instruction(
             InstructionData::Cylinder(parsed)
         }
         InstructionType::GenerateNormals => {
+            tracing::info!(?inst_type, ?record, line = ?span.line, "Useless instruction");
             return Err(MeshError {
                 kind: MeshErrorKind::UselessInstruction {
                     name: String::from("GenerateNormals"),
@@ -60,6 +62,7 @@ fn deserialize_instruction(
             });
         }
         InstructionType::Texture => {
+            tracing::info!(?inst_type, ?record, line = ?span.line, "Useless instruction");
             return Err(MeshError {
                 kind: MeshErrorKind::UselessInstruction {
                     name: String::from("[texture]"),
@@ -150,6 +153,8 @@ fn deserialize_instruction(
 /// All errors are reported in [`InstructionList::errors`].
 #[must_use]
 pub fn create_instructions(input: &str, file_type: FileType) -> InstructionList {
+    tracing::debug_span!("create .b3d/csv instructions", ?file_type, input_size = %input.len());
+
     // Make entire setup lowercase to make it easy to match.
     let processed = if file_type == FileType::B3D {
         b3d_to_csv_syntax(input)
@@ -157,6 +162,7 @@ pub fn create_instructions(input: &str, file_type: FileType) -> InstructionList 
         let mut p = input.to_lowercase();
         // Ensure file ends with lowercase
         if !p.ends_with('\n') {
+            tracing::trace!("input ends without newline, adding one");
             p.push('\n');
         }
         p
@@ -175,7 +181,7 @@ pub fn create_instructions(input: &str, file_type: FileType) -> InstructionList 
         match line {
             Ok(record) => {
                 // Get the line number
-                let span = record.position().into();
+                let span: Span = record.position().into();
                 // Parse the instruction name
                 let instruction: InstructionType = match record.get(0) {
                     Some(name) => {
@@ -184,10 +190,13 @@ pub fn create_instructions(input: &str, file_type: FileType) -> InstructionList 
                         } else {
                             // If only whitespace, this is an instance a line with just commmas `,,,,,`, ignore it
                             if !name.chars().all(char::is_whitespace) {
+                                tracing::warn!(name, ?record, line = ?span.line, "Unknown command");
                                 instructions.errors.push(MeshError {
                                     location: span,
                                     kind: MeshErrorKind::UnknownInstruction { name: name.to_owned() },
                                 });
+                            } else {
+                                tracing::info!(name, ?record, line = ?span.line, "Ignoring empty command name");
                             }
                             continue 'l;
                         }

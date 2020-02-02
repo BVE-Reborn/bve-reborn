@@ -1,5 +1,5 @@
 pub fn strip_comments(input: &str, comment_char: char) -> String {
-    tracing::trace!(?comment_char, input_size = input.len(), "Stripping comments.");
+    tracing::trace!(%comment_char, input_size = input.len(), "Stripping comments.");
 
     let mut result = String::new();
 
@@ -13,7 +13,7 @@ pub fn strip_comments(input: &str, comment_char: char) -> String {
         result.push('\n');
     }
 
-    tracing::trace!(?comment_char, output_size = result.len(), "Stripped comments");
+    tracing::trace!(%comment_char, output_size = result.len(), "Stripped comments");
 
     result
 }
