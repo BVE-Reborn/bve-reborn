@@ -74,6 +74,12 @@ fn triangulate_faces(input_face: &[usize]) -> Vec<usize> {
         output_list.push(input_face[i]);
     }
 
+    tracing::trace!(
+        input_indices = input_face.len(),
+        output_indices = output_list.len(),
+        "Triangulated faces"
+    );
+
     output_list
 }
 
@@ -94,7 +100,9 @@ fn calculate_normals(mesh: &mut Mesh) {
         mesh.vertices[i3].normal += normal;
     }
 
-    mesh.vertices.iter_mut().for_each(|v| v.normal = v.normal.normalize())
+    mesh.vertices.iter_mut().for_each(|v| v.normal = v.normal.normalize());
+
+    tracing::trace!(indices = mesh.indices.len(), "Calculated normals");
 }
 
 fn shrink_vertex_list(vertices: &[Vertex], indices: &[usize]) -> (Vec<Vertex>, Vec<usize>) {
@@ -122,6 +130,8 @@ fn shrink_vertex_list(vertices: &[Vertex], indices: &[usize]) -> (Vec<Vertex>, V
     for index in &mut new_indices {
         *index = translation[*index];
     }
+
+    tracing::trace!(input = ?(vertices.len(), indices.len()), output = ?(new_vertices.len(), new_indices.len()), "Shrunk vertex list");
 
     (new_vertices, new_indices)
 }
