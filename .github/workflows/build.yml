@@ -46,7 +46,10 @@ jobs:
           rustup toolchain install ${{ matrix.rust }}
         shell: bash
 
-      - uses: actions/checkout@v1
+      - name: Checkout repository
+        uses: actions/checkout@v1
+        with:
+          submodules: true
 
       - name: Build C API
         run: |
