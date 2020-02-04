@@ -209,6 +209,11 @@ dependencies = [
 [[package]]
 name = "bve-rex-sys"
 version = "0.0.0-Placeholder"
+dependencies = [
+ "cc",
+ "sdl2-sys",
+ "walkdir",
+]
 
 [[package]]
 name = "byteorder"
@@ -801,6 +806,16 @@ name = "scopeguard"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b42e15e59b18a828bbf5c58ea01debb36b9b096346de35d941dcb89009f24a0d"
+
+[[package]]
+name = "sdl2-sys"
+version = "0.33.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c2e1deb61ff274d29fb985017d4611d4004b113676eaa9c06754194caf82094e"
+dependencies = [
+ "cfg-if",
+ "libc",
+]
 
 [[package]]
 name = "semver"

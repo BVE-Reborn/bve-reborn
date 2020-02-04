@@ -11,6 +11,13 @@ readme = "README.md"
 categories = ["games", "simulation"]
 keywords = ["bve", "rex", "engine"]
 
+links = "bverex"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+
+[build-dependencies]
+cc = "1.0.50"
+sdl2-sys = "0.33.0"
+walkdir = "2.3.1"
