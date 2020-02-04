@@ -142,6 +142,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "bve-client"
+version = "0.0.0-Placeholder"
+dependencies = [
+ "bve",
+ "bve-rex",
+]
+
+[[package]]
 name = "bve-corpus"
 version = "0.0.0-Placeholder"
 dependencies = [
@@ -194,6 +202,9 @@ dependencies = [
 [[package]]
 name = "bve-rex"
 version = "0.0.0-Placeholder"
+dependencies = [
+ "bve-rex-sys",
+]
 
 [[package]]
 name = "bve-rex-sys"
