@@ -1,0 +1,4 @@
+[submodule "bve-rex"]
+	path = bve-rex-sys/rex
+	url = git@github.com:BVE-Reborn/rex.git
+	branch = bve-tracking
