@@ -314,12 +314,14 @@ impl Executable for SetDecalTransparentColor {
 ///
 /// Must be postprocessed.
 #[must_use]
+#[bve_derive::span(INFO, "Run Mesh", count = instructions.instructions.len())]
 pub fn generate_meshes(instructions: InstructionList) -> ParsedStaticObject {
     let mut mbc = MeshBuildContext::default();
     for instr in instructions.instructions {
         instr.execute(&mut mbc);
     }
     run_create_mesh_builder(&mut mbc);
+    tracing::debug!(errors = instructions.errors.len(), "Generated mesh");
     mbc.parsed.errors = instructions.errors;
     mbc.parsed
 }
