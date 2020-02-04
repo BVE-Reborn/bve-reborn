@@ -18,6 +18,7 @@ use std::f32::consts::PI;
 /// Errors are taken from [`InstructionList::errors`] and any new ones encountered are appended and put in the result's
 /// [`InstructionList::errors`]. These errors are all non-fatal, so [`Result`] can't be used.
 #[must_use]
+#[bve_derive::span(INFO, "Post Processing Instructions", count = instructions.instructions.len())]
 pub fn post_process(mut instructions: InstructionList) -> InstructionList {
     let mut output = Vec::new();
     let meshes = instructions
@@ -34,6 +35,8 @@ pub fn post_process(mut instructions: InstructionList) -> InstructionList {
     }
 
     instructions.instructions = output;
+
+    tracing::debug!(count = instructions.instructions.len(), "Finished post-processing.");
 
     instructions
 }
@@ -100,6 +103,8 @@ fn process_compound(mesh: &[Instruction]) -> Vec<Instruction> {
                 result.push(create_face(instruction, vec![vi + 6, vi + 7, vi + 3, vi + 2]));
                 result.push(create_face(instruction, vec![vi + 6, vi + 2, vi + 1, vi + 5]));
 
+                tracing::trace!(starting_index = vi, "Processed Cube");
+
                 vertex_index += 8;
             }
             InstructionData::Cylinder(cylinder) => {
@@ -135,6 +140,9 @@ fn process_compound(mesh: &[Instruction]) -> Vec<Instruction> {
                         vec![vi + 0, vi + 1, vi + (2 * i + 1), vi + (2 * i + 0)],
                     ));
                 }
+
+                tracing::trace!(starting_index = vi, "Processed Cylinder");
+
                 vertex_index += (2 * n) as usize;
             }
             _ => {
@@ -162,6 +170,7 @@ fn merge_texture_coords(mesh: &[Instruction], errors: &mut Vec<MeshError>) -> Ve
             InstructionData::SetTextureCoordinates(data) => {
                 // Issue error if the index is out of range
                 if data.index >= vertex_indices.len() {
+                    tracing::warn!(location = ?instruction.span, idx = data.index, "SetTextureCoords out of bounds!");
                     errors.push(MeshError {
                         location: instruction.span,
                         kind: MeshErrorKind::OutOfBounds { idx: data.index },

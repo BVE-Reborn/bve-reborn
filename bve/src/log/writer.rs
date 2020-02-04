@@ -30,15 +30,19 @@ pub(super) fn run_writer(receiver: &Receiver<Command>, dest: impl Write + Send, 
             CommandData::Event {
                 span_id,
                 metadata,
-                data,
-            } => Message::Event {
-                span_id: span_id.as_ref().map(Id::into_u64),
-                file: metadata.file().map_or_else(String::new, str::to_string),
-                line: metadata.line().and_then(u16::from_u32).unwrap_or_else(u16::max_value),
-                severity: metadata.level().into(),
-                message: data.get("message").map(|v| format!("{}", v)),
-                values: data,
-            },
+                mut data,
+            } => {
+                // Remove the message from the data map
+                let message = data.remove("message").map(|v| format!("{}", v));
+                Message::Event {
+                    span_id: span_id.as_ref().map(Id::into_u64),
+                    file: metadata.file().map_or_else(String::new, str::to_string),
+                    line: metadata.line().and_then(u16::from_u32).unwrap_or_else(u16::max_value),
+                    severity: metadata.level().into(),
+                    message,
+                    values: data,
+                }
+            }
         };
 
         method.serialize(&mut buffered, &to_serialize);

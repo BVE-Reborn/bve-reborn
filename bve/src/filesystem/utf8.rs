@@ -8,19 +8,15 @@ use std::path::Path;
 /// # Errors
 ///
 /// Returns Err if opening/reading the file fails. All errors come from [`std::fs::read`].
+#[bve_derive::span(DEBUG, "Read to UTF-8", filename = ?filename.as_ref())]
 pub fn read_convert_utf8(filename: impl AsRef<Path>) -> Result<String> {
-    let span: tracing::Span = tracing::debug_span!("Read to UTF-8", filename = ?filename.as_ref());
-    let _guard = span.enter();
-
     let bytes = read(filename)?;
 
     Ok(convert_to_utf8(bytes))
 }
 
+#[bve_derive::span(TRACE, "UTF-8 Conversion", size = bytes.len())]
 fn convert_to_utf8(bytes: Vec<u8>) -> String {
-    let span: tracing::Span = tracing::trace_span!("UTF-8 Conversion", size = bytes.len());
-    let _guard = span.enter();
-
     tracing::trace!("Converting file of {} bytes", bytes.len());
 
     // Byte order marks are not properly dealt with in chardetng, detect them here, encoding_rs will remove them
@@ -53,6 +49,7 @@ mod test {
     use super::convert_to_utf8;
 
     #[bve_derive::bve_test]
+    #[test]
     fn bom_removal() {
         assert_eq!(convert_to_utf8(vec![0xFF, 0xFE]), "");
         assert_eq!(convert_to_utf8(vec![0xFE, 0xFF]), "");
@@ -60,6 +57,7 @@ mod test {
     }
 
     #[bve_derive::bve_test]
+    #[test]
     fn shift_jis() {
         // I'm sorry if this is not "hello how are you", blame google
         assert_eq!(

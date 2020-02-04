@@ -111,6 +111,7 @@ mod test {
     use itertools::multizip;
 
     #[bve_derive::bve_test]
+    #[test]
     fn collect1() {
         let in_vec: Vec<(i32,)> = vec![(0,), (1,), (2,)];
         let (vec1,): (Vec<i32>,) = in_vec.clone().into_iter().collect1();
@@ -120,6 +121,7 @@ mod test {
     }
 
     #[bve_derive::bve_test]
+    #[test]
     fn collect2() {
         let in_vec: Vec<(i32, i32)> = vec![(0, 1), (1, 2), (2, 3)];
         let (vec1, vec2): (Vec<i32>, Vec<i32>) = in_vec.clone().into_iter().collect2();
@@ -130,6 +132,7 @@ mod test {
     }
 
     #[bve_derive::bve_test]
+    #[test]
     fn collect3() {
         let in_vec: Vec<(i32, i32, i32)> = vec![(0, 1, 2), (1, 2, 3), (2, 3, 4)];
         let (vec1, vec2, vec3): (Vec<i32>, Vec<i32>, Vec<i32>) = in_vec.clone().into_iter().collect3();
@@ -141,6 +144,7 @@ mod test {
     }
 
     #[bve_derive::bve_test]
+    #[test]
     fn collect4() {
         let in_vec: Vec<(i32, i32, i32, i32)> = vec![(0, 1, 2, 3), (1, 2, 3, 4), (2, 3, 4, 5)];
         let (vec1, vec2, vec3, vec4): (Vec<i32>, Vec<i32>, Vec<i32>, Vec<i32>) = in_vec.clone().into_iter().collect4();
