@@ -1,0 +1,16 @@
+[package]
+name = "bve-rex-sys"
+version = "0.0.0-Placeholder"
+description = "C bindings to BVE's fork of Rex"
+license = "MPL-2.0"
+authors = ["Connor Fitzgerald <connorwadefitzgerald@gmail.com>"]
+edition = "2018"
+
+repository = "https://gitlab.bvereborn.com/bve-reborn/bve-reborn"
+readme = "README.md"
+categories = ["games", "simulation"]
+keywords = ["bve", "rex", "engine"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
