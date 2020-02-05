@@ -113,10 +113,14 @@ fn main() {
         }
     }
 
+    // Announce our include directories
     let mut include_path: PathBuf = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
     include_path.push("rex");
     include_path.push("src");
     println!("cargo:include={}", include_path.display());
+
+    // We also need to link with SDL2
+    println!("cargo:rustc-link-lib=static=SDL2");
 
     run_bindgen();
 
@@ -173,6 +177,7 @@ fn run_bindgen() {
         .whitelist_type("rx::game$")
         .whitelist_type("rx::render::frontend::interface$")
         .whitelist_function("create$")
+        .whitelist_function("rx_main")
         .opaque_type("rx::concurrency.*")
         .opaque_type("rx::traits.*")
         .no_copy("rx::concurrency.*")
