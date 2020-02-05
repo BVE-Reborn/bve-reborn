@@ -46,6 +46,11 @@ jobs:
           rustup toolchain install ${{ matrix.rust }}
         shell: bash
 
+      - name: Install scoop
+        run: Invoke-Expression (New-Object System.Net.WebClient).DownloadString('https://get.scoop.sh')
+        if: matrix.os == 'windows-2019'
+        shell: bash
+
       - name: Install clang-cl
         run: scoop install --global clang-cl
         if: matrix.os == 'windows-2019'
