@@ -120,7 +120,7 @@ fn main() {
     println!("cargo:include={}", include_path.display());
 
     // We also need to link with SDL2
-    println!("cargo:rustc-link-lib=static=SDL2");
+    println!("cargo:rustc-flags=-l SDL2");
 
     run_bindgen();
 
