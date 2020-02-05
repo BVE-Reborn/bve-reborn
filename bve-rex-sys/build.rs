@@ -112,6 +112,11 @@ fn main() {
         }
     }
 
+    let mut include_path: PathBuf = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
+    include_path.push("rex");
+    include_path.push("src");
+    println!("cargo:include={}", include_path.display());
+
     let c_sources: Vec<_> = walkdir::WalkDir::new("rex/src/")
         .into_iter()
         .filter_map(match_c_files(FileTypes::C))
