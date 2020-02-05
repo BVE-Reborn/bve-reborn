@@ -56,8 +56,10 @@ jobs:
       - name: Install clang-cl
         run: |
           scoop install llvm
+          export LIBCLANG_PATH=$HOME/scoop/apps/llvm/current/bin
+          echo "::set-env name=LIBCLANG_PATH::$LIBCLANG_PATH"
         if: matrix.os == 'windows-2019'
-        shell: powershell
+        shell: bash
 
       - name: Checkout repository
         uses: actions/checkout@v1
