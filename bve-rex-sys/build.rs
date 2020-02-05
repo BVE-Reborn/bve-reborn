@@ -38,7 +38,7 @@ impl BuildExt for cc::Build {
             if #[cfg(target_os = "windows")] {
                 self.define("_CRT_SECURE_NO_WARNINGS", None)
             } else {
-                self
+                self.define("_DEFAULT_SOURCE", None)
             }
         }
     }
