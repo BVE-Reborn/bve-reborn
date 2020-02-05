@@ -104,13 +104,12 @@ fn match_c_files(files: FileTypes) -> impl Fn(Result<DirEntry, Error>) -> Option
 }
 
 fn main() {
-    #[cfg(target_env = "mingw")]
-    {
-        panic!("Rex does not support mingw");
-    }
-    #[cfg(target_os = "macos")]
-    {
-        panic!("Rex does not support macos");
+    cfg_if::cfg_if! {
+        if #[cfg(target_env = "mingw")] {
+            panic!("Rex does not support mingw");
+        } else if #[cfg(target_os = "macos")] {
+            panic!("Rex does not support macos");
+        }
     }
 
     let c_sources: Vec<_> = walkdir::WalkDir::new("rex/src/")
