@@ -8,17 +8,17 @@ jobs:
       fail-fast: false
       matrix:
         rust: [nightly-2020-01-16]
-        os: [windows-2019, macos-latest, ubuntu-18.04]
+        os: [windows-2019, ubuntu-18.04]
         include:
           - rust: nightly-2020-01-16
             triple: x86_64-pc-windows-msvc
             os: windows-2019
             name: windows-nightly-2020-01-16-msvc
 
-          - rust: nightly-2020-01-16
-            triple: x86_64-apple-darwin
-            os: macos-latest
-            name: mac-nightly-2020-01-16
+#          - rust: nightly-2020-01-16
+#            triple: x86_64-apple-darwin
+#            os: macos-latest
+#            name: mac-nightly-2020-01-16
 
           - rust: nightly-2020-01-16
             triple: x86_64-unknown-linux-gnu
@@ -46,7 +46,23 @@ jobs:
           rustup toolchain install ${{ matrix.rust }}
         shell: bash
 
-      - uses: actions/checkout@v1
+      - name: Install scoop
+        run: |
+          Invoke-Expression (New-Object System.Net.WebClient).DownloadString('https://get.scoop.sh')
+          echo "::set-env name=PATH::$env:PATH"
+        if: matrix.os == 'windows-2019'
+        shell: powershell
+
+      - name: Install clang-cl
+        run: |
+          scoop install llvm
+        if: matrix.os == 'windows-2019'
+        shell: powershell
+
+      - name: Checkout repository
+        uses: actions/checkout@v1
+        with:
+          submodules: true
 
       - name: Build C API
         run: |
