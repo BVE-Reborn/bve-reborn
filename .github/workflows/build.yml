@@ -55,9 +55,9 @@ jobs:
 
       - name: Install clang-cl
         run: |
-          scoop install --global llvm
+          scoop install llvm
         if: matrix.os == 'windows-2019'
-        shell: bash
+        shell: powershell
 
       - name: Checkout repository
         uses: actions/checkout@v1
