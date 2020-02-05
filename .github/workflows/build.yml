@@ -54,7 +54,9 @@ jobs:
         shell: powershell
 
       - name: Install clang-cl
-        run: scoop install --global clang-cl
+        run: |
+          scoop install --global llvm
+          echo "::set-env name=PATH::$PATH"
         if: matrix.os == 'windows-2019'
         shell: bash
 
