@@ -243,6 +243,7 @@ name = "bve-rex-sys"
 version = "0.0.0-Placeholder"
 dependencies = [
  "bindgen",
+ "bve-derive",
  "cc",
  "cfg-if",
  "sdl2-sys",

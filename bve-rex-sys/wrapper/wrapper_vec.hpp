@@ -1,5 +1,4 @@
-#ifndef BVE_NATIVE_TEST_WRAPPER_VEC_H
-#define BVE_NATIVE_TEST_WRAPPER_VEC_H
+#pragma once
 
 /// <div rustbindgen replaces="rx::math::vec2"></div>
 template<typename T>
@@ -24,5 +23,3 @@ struct vec4 {
     T z;
     T w;
 };
-
-#endif //BVE_NATIVE_TEST_WRAPPER_VEC_H

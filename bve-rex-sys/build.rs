@@ -174,6 +174,7 @@ fn run_bindgen() {
     let bindings = bindgen::builder()
         .clang_arg("-Irex/src")
         .header("wrapper/wrapper.hpp")
+        .whitelist_type("bve::.*")
         .whitelist_type("rx::game$")
         .whitelist_type("rx::render::frontend::interface$")
         .whitelist_function("create$")
