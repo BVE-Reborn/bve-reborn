@@ -211,6 +211,7 @@ name = "bve-rex-sys"
 version = "0.0.0-Placeholder"
 dependencies = [
  "cc",
+ "cfg-if",
  "sdl2-sys",
  "walkdir",
 ]
@@ -810,8 +811,7 @@ checksum = "b42e15e59b18a828bbf5c58ea01debb36b9b096346de35d941dcb89009f24a0d"
 [[package]]
 name = "sdl2-sys"
 version = "0.33.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c2e1deb61ff274d29fb985017d4611d4004b113676eaa9c06754194caf82094e"
+source = "git+https://github.com/BVE-Reborn/rust-sdl2.git?branch=include-from-sys#bc94f1f5b6dbc63f2d7453bd9939fe4e4790b38b"
 dependencies = [
  "cfg-if",
  "libc",

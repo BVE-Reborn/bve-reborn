@@ -24,5 +24,6 @@ unknown-git = "deny"
 allow-git = [
     "https://github.com/rustgd/cgmath.git",
     "https://github.com/crossbeam-rs/crossbeam.git",
+    "https://github.com/BVE-Reborn/rust-sdl2.git",
     "https://github.com/tokio-rs/tracing",
 ]
