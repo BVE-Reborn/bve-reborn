@@ -1,14 +1,6 @@
 #pragma once
 
 #include "rx/main.h"
+#include "rx/game.h"
 
-class Blah {
-public:
-    Blah();
-    ~Blah();
-private:
-	int x;
-};
-
-Blah blah();
-
+#include "wrapper_vec.hpp"

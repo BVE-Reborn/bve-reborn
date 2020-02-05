@@ -1,5 +1,5 @@
-#![allow(non_upper_case_globals)]
-#![allow(non_camel_case_types)]
-#![allow(non_snake_case)]
+pub use root_wrapper::root::*;
 
-include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
+mod root_wrapper {
+    include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
+}

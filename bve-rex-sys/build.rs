@@ -1,3 +1,4 @@
+use bindgen::{EnumVariation, RustTarget};
 use std::path::PathBuf;
 use walkdir::{DirEntry, Error};
 
@@ -117,6 +118,8 @@ fn main() {
     include_path.push("src");
     println!("cargo:include={}", include_path.display());
 
+    run_bindgen();
+
     let c_sources: Vec<_> = walkdir::WalkDir::new("rex/src/")
         .into_iter()
         .filter_map(match_c_files(FileTypes::C))
@@ -161,14 +164,24 @@ fn main() {
         .warnings(false)
         .files(cpp_sources)
         .compile("bverex");
-
-    run_bindgen()
 }
 
 fn run_bindgen() {
     let bindings = bindgen::builder()
         .clang_arg("-Irex/src")
         .header("wrapper/wrapper.hpp")
+        .whitelist_type("rx::game$")
+        .whitelist_type("rx::render::frontend::interface$")
+        .whitelist_function("create$")
+        .opaque_type("rx::concurrency.*")
+        .opaque_type("rx::traits.*")
+        .no_copy("rx::concurrency.*")
+        .rust_target(RustTarget::Nightly)
+        .use_core()
+        .enable_cxx_namespaces()
+        .default_enum_style(EnumVariation::NewType { is_bitfield: true })
+        .size_t_is_usize(true)
+        .rustfmt_bindings(true)
         .generate()
         .expect("Couldn't generate bindings");
 
