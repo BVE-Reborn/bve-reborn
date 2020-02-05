@@ -178,6 +178,7 @@ dependencies = [
  "bve",
  "bve-rex",
  "bve-rex-sys",
+ "sdl2-sys",
 ]
 
 [[package]]
