@@ -6,9 +6,9 @@ performance, as well as code quality and flexibility.
 While progress is strong, there is still a lot of work to do in order to get a working
 demo.
 
-BVE uses Unity to provide graphics, main gameplay management, and user input. For all
+BVE uses rex to provide graphics and user input. For all
 internal code it uses rust. Rust allows the code to be robust and safe from crashes
-but just as fast as C/C++.
+while being just as fast as C/C++.
 
 ## Building from Source
 
@@ -29,4 +29,4 @@ Then you may run the main build process:
 cargo run --bin bve-build --release
 ```
 
-This will build bve, generate C/C++/C# bindings, and build with Unity.
+This will build bve, generate C/C++ bindings, and build the game.
