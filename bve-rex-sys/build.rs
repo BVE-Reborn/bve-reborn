@@ -6,6 +6,8 @@ trait BuildExt {
     fn enable_clang_cl(&mut self) -> &mut Self;
     /// Platform specific defines
     fn add_defines(&mut self) -> &mut Self;
+    /// Enable c11
+    fn enable_c11(&mut self) -> &mut Self;
     /// Enable c++17
     fn enable_cpp17(&mut self) -> &mut Self;
 }
@@ -37,6 +39,15 @@ impl BuildExt for cc::Build {
             }
         }
     }
+    fn enable_c11(&mut self) -> &mut Self {
+        cfg_if::cfg_if! {
+            if #[cfg(target_os = "windows")] {
+                self
+            } else {
+                self.flag_if_supported("-std=c11")
+            }
+        }
+    }
     fn enable_cpp17(&mut self) -> &mut Self {
         cfg_if::cfg_if! {
             if #[cfg(target_os = "windows")] {
@@ -48,7 +59,26 @@ impl BuildExt for cc::Build {
     }
 }
 
-fn match_c_files(enable_headers: bool) -> impl Fn(Result<DirEntry, Error>) -> Option<PathBuf> {
+#[derive(Eq, PartialEq, Debug, Clone)]
+enum FileTypes {
+    C,
+    Cpp,
+    All,
+}
+
+impl FileTypes {
+    pub fn c(&self) -> bool {
+        (*self == Self::C) | (*self == Self::All)
+    }
+    pub fn cpp(&self) -> bool {
+        (*self == Self::Cpp) | (*self == Self::All)
+    }
+    pub fn headers(&self) -> bool {
+        *self == Self::All
+    }
+}
+
+fn match_c_files(files: FileTypes) -> impl Fn(Result<DirEntry, Error>) -> Option<PathBuf> {
     move |value| match value {
         Ok(entry) => {
             if entry.file_type().is_file() {
@@ -57,8 +87,9 @@ fn match_c_files(enable_headers: bool) -> impl Fn(Result<DirEntry, Error>) -> Op
                 let ext_str = ext.and_then(|v| v.to_str());
 
                 match ext_str {
-                    Some("c") | Some("cpp") => Some(buf),
-                    Some("h") | Some("hpp") if enable_headers => Some(buf),
+                    Some("c") if files.c() => Some(buf),
+                    Some("cpp") if files.cpp() => Some(buf),
+                    Some("h") | Some("hpp") if files.headers() => Some(buf),
                     _ => None,
                 }
             } else {
@@ -81,13 +112,28 @@ fn main() {
 
     let c_sources: Vec<_> = walkdir::WalkDir::new("rex/src/")
         .into_iter()
-        .filter_map(match_c_files(false))
+        .filter_map(match_c_files(FileTypes::C))
+        .collect();
+    let cpp_sources: Vec<_> = walkdir::WalkDir::new("rex/src/")
+        .into_iter()
+        .filter_map(match_c_files(FileTypes::Cpp))
         .collect();
 
     walkdir::WalkDir::new("rex/src/")
         .into_iter()
-        .filter_map(match_c_files(true))
+        .filter_map(match_c_files(FileTypes::All))
         .for_each(|p: PathBuf| println!("cargo:rerun-if-changed={}", p.display()));
+
+    cc::Build::new()
+        .enable_clang_cl()
+        .include(std::env::var("DEP_SDL2_INCLUDE").unwrap())
+        .include("rex/src/")
+        .cpp(false)
+        .enable_c11()
+        .add_defines()
+        .warnings(false)
+        .files(c_sources)
+        .compile("bverex-deps");
 
     cc::Build::new()
         .enable_clang_cl()
@@ -97,6 +143,6 @@ fn main() {
         .enable_cpp17()
         .add_defines()
         .warnings(false)
-        .files(c_sources)
+        .files(cpp_sources)
         .compile("bverex");
 }
