@@ -116,12 +116,21 @@ fn main() {
         .into_iter()
         .filter_map(match_c_files(FileTypes::C))
         .collect();
-    let cpp_sources: Vec<_> = walkdir::WalkDir::new("rex/src/")
+    let mut cpp_sources: Vec<_> = walkdir::WalkDir::new("rex/src/")
         .into_iter()
         .filter_map(match_c_files(FileTypes::Cpp))
         .collect();
 
+    let wrapper_sources = walkdir::WalkDir::new("wrapper")
+        .into_iter()
+        .filter_map(match_c_files(FileTypes::Cpp));
+    cpp_sources.extend(wrapper_sources);
+
     walkdir::WalkDir::new("rex/src/")
+        .into_iter()
+        .filter_map(match_c_files(FileTypes::All))
+        .for_each(|p: PathBuf| println!("cargo:rerun-if-changed={}", p.display()));
+    walkdir::WalkDir::new("wrapper")
         .into_iter()
         .filter_map(match_c_files(FileTypes::All))
         .for_each(|p: PathBuf| println!("cargo:rerun-if-changed={}", p.display()));
@@ -147,4 +156,19 @@ fn main() {
         .warnings(false)
         .files(cpp_sources)
         .compile("bverex");
+
+    run_bindgen()
+}
+
+fn run_bindgen() {
+    let bindings = bindgen::builder()
+        .clang_arg("-Irex/src")
+        .header("wrapper/wrapper.hpp")
+        .generate()
+        .expect("Couldn't generate bindings");
+
+    let out_path = PathBuf::from(std::env::var("OUT_DIR").unwrap());
+    bindings
+        .write_to_file(out_path.join("bindings.rs"))
+        .expect("Couldn't write bindings");
 }
