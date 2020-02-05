@@ -22,7 +22,10 @@ impl BuildExt for cc::Build {
                 clang_path.push("bin");
                 clang_path.push("clang-cl.exe");
                 if !clang_path.exists() || !clang_path.is_file() {
-                    panic!("Rex requires clang-cl on Windows. Please set LLVM_DIR to the root of your LLVM install or install LLVM to C:/Program Files/LLVM/")
+                    match which::which("clang-cl") {
+                        Ok(path) => clang_path = path,
+                        Err(..) => panic!("Rex requires clang-cl on Windows. Please set LLVM_DIR to the root of your LLVM install or install LLVM to C:/Program Files/LLVM/"),
+                    }
                 }
                 self.compiler(clang_path)
             } else {
