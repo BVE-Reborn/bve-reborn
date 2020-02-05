@@ -47,7 +47,9 @@ jobs:
         shell: bash
 
       - name: Install scoop
-        run: Invoke-Expression (New-Object System.Net.WebClient).DownloadString('https://get.scoop.sh')
+        run: |
+          Invoke-Expression (New-Object System.Net.WebClient).DownloadString('https://get.scoop.sh')
+          echo "::set-env name=PATH::$env:PATH"
         if: matrix.os == 'windows-2019'
         shell: powershell
 
