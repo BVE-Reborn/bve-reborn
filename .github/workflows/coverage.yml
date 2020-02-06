@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - 'update/**'
 
 jobs:
   build:
@@ -11,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        rust: [nightly-2020-01-16]
+        rust: [nightly-2020-02-05]
         tool: [tarpaulin]
     runs-on: ubuntu-18.04
 
@@ -33,7 +34,7 @@ jobs:
         if: matrix.tool == 'tarpaulin'
         run: |
           export PATH=$PATH:$HOME/.cargo/bin
-          cargo install cargo-tarpaulin
+          cargo "+${{ matrix.rust }}" install cargo-tarpaulin
         shell: bash
 
       - uses: actions/checkout@v1
@@ -42,7 +43,7 @@ jobs:
         if: matrix.tool == 'tarpaulin'
         run: |
           export PATH=$PATH:$HOME/.cargo/bin
-          cargo tarpaulin --all --out Xml
+          cargo "+${{ matrix.rust }}" tarpaulin --all --out Xml
         shell: bash
 
       - name: Upload to CodeCov

@@ -1,6 +1,5 @@
 //! Implementation of the high performance runtime logic for the game BVE-Reborn.
 
-#![feature(manually_drop_take)]
 // Rust warnings
 #![warn(unused)]
 #![deny(future_incompatible)]

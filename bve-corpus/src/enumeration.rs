@@ -4,7 +4,7 @@ use crossbeam::Sender;
 fn enumerate(path: impl AsRef<Path>, mut func: impl FnMut(PathBuf, DirEntry) -> ()) {
     for entry in WalkDir::new(path.as_ref()).follow_links(true).same_file_system(false) {
         if let Ok(entry) = entry {
-            if entry.file_type().is_file() {
+            if !entry.file_type().is_dir() {
                 let mut file_path = path.as_ref().to_path_buf();
                 file_path.push(entry.path());
                 func(file_path, entry);

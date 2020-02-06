@@ -324,14 +324,7 @@ fn find_default_attribute(mut attributes: Vec<Attribute>) -> (Option<Literal>, V
     let mut default = None;
     let mut default_buffer = Vec::new();
     for attr in attributes.drain(0..) {
-        match attr
-            .path
-            .segments
-            .first()
-            .map(|s| s.ident.to_string())
-            .as_ref()
-            .map(String::as_str)
-        {
+        match attr.path.segments.first().map(|s| s.ident.to_string()).as_deref() {
             Some("default") => {
                 default = Some(
                     syn::parse2::<Literal>(
@@ -352,14 +345,7 @@ fn find_primary_attribute(mut attributes: Vec<Attribute>) -> (bool, Vec<Attribut
     let mut found = false;
     let mut attr_buffer = Vec::new();
     for attr in attributes.drain(0..) {
-        match attr
-            .path
-            .segments
-            .first()
-            .map(|s| s.ident.to_string())
-            .as_ref()
-            .map(String::as_str)
-        {
+        match attr.path.segments.first().map(|s| s.ident.to_string()).as_deref() {
             Some("primary") => found = true,
             _ => attr_buffer.push(attr),
         }
