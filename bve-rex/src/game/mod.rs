@@ -7,9 +7,9 @@ trait GameBuilder: Sized {
 }
 
 trait Game: Sized {
-    fn on_init(&mut self) -> bool;
-    fn on_slice(&mut self, input: &mut rx::input::input) -> rx::game_status;
-    fn on_resize(&mut self, dimensions: &rx::math::vec2z);
+    extern "C" fn on_init(&mut self) -> bool;
+    extern "C" fn on_slice(&mut self, input: &mut rx::input::input) -> rx::game_status;
+    extern "C" fn on_resize(&mut self, dimensions: &rx::math::vec2z);
 }
 
 unsafe fn build_wrapper<B>(
@@ -23,9 +23,12 @@ where
     let built: Box<B::Built> = (*data).build(interface);
     Box::into_raw(Box::new(bve::game::new(
         Box::into_raw(built) as *mut core::ffi::c_void,
-        Some(B::Built::on_init as fn(this: *mut core::ffi::c_void) -> bool),
-        Some(B::Built::on_slice as fn(this: *mut core::ffi::c_void, input: &mut rx::input::input) -> rx::game_status),
-        Some(B::Built::on_resize as fn(this: *mut core::ffi::c_void, dimensions: &rx::math::vec2z)),
+        Some(B::Built::on_init as extern "C" fn(this: *mut core::ffi::c_void) -> bool),
+        Some(
+            B::Built::on_slice
+                as extern "C" fn(this: *mut core::ffi::c_void, input: *mut rx::input::input) -> rx::game_status,
+        ),
+        Some(B::Built::on_resize as extern "C" fn(this: *mut core::ffi::c_void, dimensions: *const rx::math::vec2z)),
         Some(drop_game::<B::Built>),
     )))
 }
