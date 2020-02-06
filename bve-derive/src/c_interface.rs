@@ -13,7 +13,7 @@ pub fn c_interface(item: TokenStream) -> TokenStream {
         #[no_mangle]
         #attrs
         #vis #sig {
-            let result = std::panic::catch_unwind(|| #block);
+            let result = std::panic::catch_unwind(::std::panic::AssertUnwindSafe(move || #block));
             match result {
                 Ok(r) => r,
                 Err(_) => {
