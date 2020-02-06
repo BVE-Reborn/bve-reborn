@@ -13,17 +13,17 @@ jobs:
           - rust: nightly-2020-02-05
             triple: x86_64-pc-windows-msvc
             os: windows-2019
-            name: windows-nightly-2020-02-05-msvc
+            name: windows-nightly
 
 #          - rust: nightly-2020-02-05
 #            triple: x86_64-apple-darwin
 #            os: macos-latest
-#            name: mac-nightly-2020-02-05
+#            name: mac-nightly
 
           - rust: nightly-2020-02-05
             triple: x86_64-unknown-linux-gnu
             os: ubuntu-18.04
-            name: linux-nightly-2020-02-05
+            name: linux-nightly
     runs-on: ${{ matrix.os }}
 
     steps:
