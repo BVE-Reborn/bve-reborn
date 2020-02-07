@@ -15,6 +15,8 @@ pub trait Game: Sized {
     fn on_resize(&mut self, dimensions: &rx::math::vec2z);
 }
 
+// This doesn't need to be extern C nor c_interface(nomangle) as I am calling it from create, which is c_interface
+// itself
 unsafe fn build_wrapper<B>(data: *mut c_void, interface: &mut rx::render::frontend::interface) -> *mut bve::game
 where
     B: GameBuilder,
