@@ -14,4 +14,5 @@ keywords = ["bve", "rex", "engine"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+bve-derive = { version = "0.0.0-Placeholder", path = "../bve-derive" }
 bve-rex-sys = { version = "0.0.0-Placeholder", path = "../bve-rex-sys" }

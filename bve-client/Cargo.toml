@@ -17,4 +17,3 @@ keywords = ["bve", "rex", "engine"]
 bve = { version = "0.0.0-Placeholder", path = "../bve" }
 bve-rex = { version = "0.0.0-Placeholder", path = "../bve-rex" }
 bve-rex-sys = { version = "0.0.0-Placeholder", path = "../bve-rex-sys" }
-sdl2-sys = { version = "0.33.0", features = ["bundled"] }
