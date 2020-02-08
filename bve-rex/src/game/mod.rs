@@ -1,6 +1,7 @@
 use bve_rex_sys::*;
 use std::ffi::c_void;
 use std::ffi::CString;
+use std::mem::transmute;
 use std::os::raw::c_char;
 
 pub trait GameBuilder: Sized {
@@ -93,6 +94,14 @@ where
     unsafe {
         rx_main(
             &mut builder as *mut game::UnsafeGameBuilder as *mut c_void,
+            transmute::<
+                unsafe extern "C" fn(
+                    *mut game::UnsafeGameBuilder,
+                    &mut rx::render::frontend::interface,
+                ) -> *mut rx::game,
+                rx::creator,
+            >(game::create),
+            transmute::<unsafe extern "C" fn(Box<bve::game>), rx::destructor>(game::destroy),
             args.len() as i32,
             args.as_mut_ptr(),
         );
