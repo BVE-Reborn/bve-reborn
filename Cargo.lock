@@ -1312,8 +1312,3 @@ name = "winapi-x86_64-pc-windows-gnu"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
-
-[[patch.unused]]
-name = "sdl2-sys"
-version = "0.33.0"
-source = "git+https://github.com/Rust-SDL2/rust-sdl2.git?rev=4ff7e9ce79c42360bf02f716818cdb3bfd057370#4ff7e9ce79c42360bf02f716818cdb3bfd057370"
