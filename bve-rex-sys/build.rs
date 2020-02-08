@@ -13,55 +13,55 @@ trait BuildExt {
     fn enable_cpp17(&mut self) -> &mut Self;
 }
 
-impl BuildExt for cc::Build {
-    fn enable_clang_cl(&mut self) -> &mut Self {
-        cfg_if::cfg_if! {
-            if #[cfg(target_os = "windows")] {
-                let llvm_dir = std::env::var("LLVM_DIR").ok();
-                let llvm_dir = llvm_dir.unwrap_or_else(|| String::from("C:/Program Files/LLVM/"));
-                let mut clang_path = PathBuf::from(llvm_dir);
-                clang_path.push("bin");
-                clang_path.push("clang-cl.exe");
-                if !clang_path.exists() || !clang_path.is_file() {
-                    match which::which("clang-cl") {
-                        Ok(path) => clang_path = path,
-                        Err(..) => panic!("Rex requires clang-cl on Windows. Please add it to path, set LLVM_DIR to the root of your LLVM install or install LLVM to C:/Program Files/LLVM/"),
-                    }
-                }
-                self.compiler(clang_path)
-            } else {
-                self
-            }
-        }
-    }
-    fn add_defines(&mut self) -> &mut Self {
-        cfg_if::cfg_if! {
-            if #[cfg(target_os = "windows")] {
-                self.define("_CRT_SECURE_NO_WARNINGS", None)
-            } else {
-                self.define("_DEFAULT_SOURCE", None)
-            }
-        }
-    }
-    fn enable_c11(&mut self) -> &mut Self {
-        cfg_if::cfg_if! {
-            if #[cfg(target_os = "windows")] {
-                self
-            } else {
-                self.flag_if_supported("-std=c11")
-            }
-        }
-    }
-    fn enable_cpp17(&mut self) -> &mut Self {
-        cfg_if::cfg_if! {
-            if #[cfg(target_os = "windows")] {
-                self.flag_if_supported("/std:c++17")
-            } else {
-                self.flag_if_supported("-std=c++1z")
-            }
-        }
-    }
-}
+// impl BuildExt for cc::Build {
+//    fn enable_clang_cl(&mut self) -> &mut Self {
+//        cfg_if::cfg_if! {
+//            if #[cfg(target_os = "windows")] {
+//                let llvm_dir = std::env::var("LLVM_DIR").ok();
+//                let llvm_dir = llvm_dir.unwrap_or_else(|| String::from("C:/Program Files/LLVM/"));
+//                let mut clang_path = PathBuf::from(llvm_dir);
+//                clang_path.push("bin");
+//                clang_path.push("clang-cl.exe");
+//                if !clang_path.exists() || !clang_path.is_file() {
+//                    match which::which("clang-cl") {
+//                        Ok(path) => clang_path = path,
+//                        Err(..) => panic!("Rex requires clang-cl on Windows. Please add it to path, set LLVM_DIR to
+// the root of your LLVM install or install LLVM to C:/Program Files/LLVM/"),                    }
+//                }
+//                self.compiler(clang_path)
+//            } else {
+//                self
+//            }
+//        }
+//    }
+//    fn add_defines(&mut self) -> &mut Self {
+//        cfg_if::cfg_if! {
+//            if #[cfg(target_os = "windows")] {
+//                self.define("_CRT_SECURE_NO_WARNINGS", None)
+//            } else {
+//                self.define("_DEFAULT_SOURCE", None)
+//            }
+//        }
+//    }
+//    fn enable_c11(&mut self) -> &mut Self {
+//        cfg_if::cfg_if! {
+//            if #[cfg(target_os = "windows")] {
+//                self
+//            } else {
+//                self.flag_if_supported("-std=c11")
+//            }
+//        }
+//    }
+//    fn enable_cpp17(&mut self) -> &mut Self {
+//        cfg_if::cfg_if! {
+//            if #[cfg(target_os = "windows")] {
+//                self.flag_if_supported("/std:c++17")
+//            } else {
+//                self.flag_if_supported("-std=c++17")
+//            }
+//        }
+//    }
+//}
 
 #[derive(Eq, PartialEq, Debug, Clone)]
 enum FileTypes {
@@ -119,25 +119,6 @@ fn main() {
     include_path.push("src");
     println!("cargo:include={}", include_path.display());
 
-    // We also need to link with SDL2
-    println!("cargo:rustc-flags=-l SDL2");
-
-    run_bindgen();
-
-    let c_sources: Vec<_> = walkdir::WalkDir::new("rex/src/")
-        .into_iter()
-        .filter_map(match_c_files(FileTypes::C))
-        .collect();
-    let mut cpp_sources: Vec<_> = walkdir::WalkDir::new("rex/src/")
-        .into_iter()
-        .filter_map(match_c_files(FileTypes::Cpp))
-        .collect();
-
-    let wrapper_sources = walkdir::WalkDir::new("wrapper")
-        .into_iter()
-        .filter_map(match_c_files(FileTypes::Cpp));
-    cpp_sources.extend(wrapper_sources);
-
     walkdir::WalkDir::new("rex/src/")
         .into_iter()
         .filter_map(match_c_files(FileTypes::All))
@@ -146,28 +127,14 @@ fn main() {
         .into_iter()
         .filter_map(match_c_files(FileTypes::All))
         .for_each(|p: PathBuf| println!("cargo:rerun-if-changed={}", p.display()));
+    println!("cargo:rerun-if-changed=CMakeLists.txt");
 
-    cc::Build::new()
-        .enable_clang_cl()
-        .include(std::env::var("DEP_SDL2_INCLUDE").unwrap())
-        .include("rex/src/")
-        .cpp(false)
-        .enable_c11()
-        .add_defines()
-        .warnings(false)
-        .files(c_sources)
-        .compile("bverex-deps");
+    run_bindgen();
 
-    cc::Build::new()
-        .enable_clang_cl()
-        .include(std::env::var("DEP_SDL2_INCLUDE").unwrap())
-        .include("rex/src/")
-        .cpp(true)
-        .enable_cpp17()
-        .add_defines()
-        .warnings(false)
-        .files(cpp_sources)
-        .compile("bverex");
+    let location = cmake::Config::new(".").build();
+
+    println!("cargo:rustc-link-search=native={}", location.display());
+    println!("cargo:rustc-link-lib=dylib=bverex")
 }
 
 fn run_bindgen() {

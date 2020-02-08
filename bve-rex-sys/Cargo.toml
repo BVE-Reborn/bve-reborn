@@ -17,11 +17,10 @@ links = "bverex"
 
 [dependencies]
 bve-derive = { version = "0.0.0-Placeholder", path = "../bve-derive" }
-sdl2-sys = { version = "0.33.0", features = ["bundled"] }
 
 [build-dependencies]
 bindgen = "0.53.1"
-cc = { version = "1.0.50", features = ["parallel"] }
 cfg-if = "0.1.10"
+cmake = "0.1.42"
 walkdir = "2.3.1"
 which = { version = "3.1.0", default-features = false }

@@ -2,3 +2,6 @@
 	path = bve-rex-sys/rex
 	url = https://github.com/BVE-Reborn/rex.git
 	branch = bve-tracking
+[submodule "sdl"]
+	path = bve-rex-sys/sdl2
+	url = https://github.com/SDL-mirror/SDL.git
