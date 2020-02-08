@@ -134,7 +134,8 @@ fn main() {
     let location = cmake::Config::new(".").build();
 
     println!("cargo:rustc-link-search=native={}", location.display());
-    println!("cargo:rustc-link-lib=dylib=bverex")
+    println!("cargo:rustc-link-lib=dylib=bverex");
+    println!("cargo:rustc-link-lib=dylib=SDL2");
 }
 
 fn run_bindgen() {
