@@ -97,4 +97,8 @@ where
             args.as_mut_ptr(),
         );
     }
+
+    args.into_iter().for_each(|ptr| unsafe {
+        CString::from_raw(ptr);
+    })
 }
