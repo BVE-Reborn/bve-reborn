@@ -13,5 +13,6 @@ cargo-timing*.html
 log.*
 !log.rs
 *.log
+*.cfg
 
 cmake-*/
