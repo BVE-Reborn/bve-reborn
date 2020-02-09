@@ -29,26 +29,20 @@ jobs:
       - name: Cache cargo registry
         uses: actions/cache@v1
         with:
-          env:
-            cache-name: cargo-registry
           path: ~/.cargo/registry
-          key: repostate-${{ matrix.tool }}-${{ env.cache-name }}
+          key: repostate-${{ matrix.tool }}-cargo-registry
 
       - name: Cache cargo index
         uses: actions/cache@v1
         with:
-          env:
-            cache-name: cargo-index
           path: ~/.cargo/git
-          key: repostate-${{ matrix.tool }}-${{ env.cache-name }}
+          key: repostate-${{ matrix.tool }}-cargo-index
 
       - name: Cache Binaries
         uses: actions/cache@v1
         with:
-          env:
-            cache-name: binary
           path: ~/.cargo/bin
-          key: repostate-${{ matrix.tool }}-${{ env.cache-name }}
+          key: repostate-${{ matrix.tool }}-binary
 
       - name: Cache AdvisoryDB
         uses: actions/cache@v1
@@ -58,7 +52,7 @@ jobs:
           env:
             cache-name: advisorydb
           path: ~/.cargo/bin
-          key: repostate-${{ matrix.tool }}-${{ env.cache-name }}
+          key: repostate-${{ matrix.tool }}-advisorydb
         if: matrix.tool == deny
 
       - name: Update Rustup

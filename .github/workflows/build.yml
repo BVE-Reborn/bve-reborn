@@ -45,44 +45,33 @@ jobs:
       - name: Cache scoop
         uses: actions/cache@v1
         with:
-          env:
-            cache-name: scoop
           path: ~/.cargo/registry
-          key: ${{ matrix.os }}-${{ env.cache-name }}
+          key: ${{ matrix.os }}-scoop
         if: matrix.os == 'windows-2019'
 
       - name: Cache cargo registry
         uses: actions/cache@v1
         with:
-          env:
-            cache-name: cargo-registry
           path: ~/.cargo/registry
-          key: ${{ matrix.os }}-${{ env.cache-name }}-${{ hashFiles('**/Cargo.lock') }}-${{ github.sha }}
+          key: ${{ matrix.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            ${{ matrix.os }}-${{ env.cache-name }}-${{ hashFiles('**/Cargo.lock') }}-
-            ${{ matrix.os }}-${{ env.cache-name }}-
+            ${{ matrix.os }}-cargo-registry-
 
       - name: Cache cargo index
         uses: actions/cache@v1
         with:
-          env:
-            cache-name: cargo-index
           path: ~/.cargo/git
-          key: ${{ matrix.os }}-${{ env.cache-name }}-${{ hashFiles('**/Cargo.lock') }}-${{ github.sha }}
+          key: ${{ matrix.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            ${{ matrix.os }}-${{ env.cache-name }}-${{ hashFiles('**/Cargo.lock') }}-
-            ${{ matrix.os }}-${{ env.cache-name }}-
+            ${{ matrix.os }}-cargo-index-
 
       - name: Cache build
         uses: actions/cache@v1
         with:
-          env:
-            cache-name: build
           path: target
-          key: ${{ matrix.os }}-${{ env.cache-name }}-${{ hashFiles('**/Cargo.lock') }}-${{ github.sha }}
+          key: ${{ matrix.os }}-build-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            ${{ matrix.os }}-${{ env.cache-name }}-${{ hashFiles('**/Cargo.lock') }}-
-            ${{ matrix.os }}-${{ env.cache-name }}-
+            ${{ matrix.os }}-build-
 
       - name: Install Rustup
         run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain none --profile minimal -y
