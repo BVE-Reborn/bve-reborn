@@ -37,13 +37,16 @@ jobs:
           cargo "+${{ matrix.rust }}" install cargo-tarpaulin
         shell: bash
 
-      - uses: actions/checkout@v1
+      - name: Checkout repository
+        uses: actions/checkout@v1
+        with:
+          submodules: true
 
       - name: Run Cargo Tarpaulin
         if: matrix.tool == 'tarpaulin'
         run: |
           export PATH=$PATH:$HOME/.cargo/bin
-          cargo "+${{ matrix.rust }}" tarpaulin --all --out Xml
+          cargo "+${{ matrix.rust }}" tarpaulin --all --out Xml -e bve-rex-sys -v
         shell: bash
 
       - name: Upload to CodeCov

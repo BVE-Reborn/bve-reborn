@@ -40,10 +40,12 @@ jobs:
         shell: bash
 
       - name: Install Rust ${{ matrix.rust }}
+        # we need rustfmt for bindgen
         run: |
           export PATH=$PATH:$HOME/.cargo/bin
           rustup set default-host ${{ matrix.triple }}
           rustup toolchain install ${{ matrix.rust }}
+          rustup component add --toolchain ${{ matrix.rust }} rustfmt
         shell: bash
 
       - name: Install scoop
@@ -53,11 +55,20 @@ jobs:
         if: matrix.os == 'windows-2019'
         shell: powershell
 
-      - name: Install clang-cl
+      - name: Install deps (win)
         run: |
-          scoop install llvm
+          scoop install llvm ninja
+          export LIBCLANG_PATH=$HOME/scoop/apps/llvm/current/bin
+          echo "::set-env name=LIBCLANG_PATH::$LIBCLANG_PATH"
         if: matrix.os == 'windows-2019'
-        shell: powershell
+        shell: bash
+
+      - name: Install deps (linux)
+        run: |
+          sudo apt update
+          sudo apt install libsdl2-dev # not needed, but good for transitives dependencies
+        if: matrix.os == 'ubuntu-18.04'
+        shell: bash
 
       - name: Checkout repository
         uses: actions/checkout@v1
@@ -85,7 +96,7 @@ jobs:
       - name: Docs
         run: |
           export PATH=$PATH:$HOME/.cargo/bin
-          cargo doc --all
+          cargo doc --all --no-deps
         shell: bash
 
       - name: CMake on C API

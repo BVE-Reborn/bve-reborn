@@ -51,7 +51,10 @@ jobs:
           cargo "+${{ matrix.rust }}" install cargo-deny
         shell: bash
 
-      - uses: actions/checkout@v1
+      - name: Checkout repository
+        uses: actions/checkout@v1
+        with:
+          submodules: true
 
       - name: Run Clippy
         if: matrix.tool == 'clippy'

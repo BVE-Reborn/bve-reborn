@@ -81,8 +81,8 @@ pub fn serde_vector_proxy(_attr: TokenStream, item: TokenStream) -> TokenStream 
 
 #[proc_macro_attribute]
 #[cfg_attr(tarpaulin, skip)]
-pub fn c_interface(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    c_interface::c_interface(item)
+pub fn c_interface(attr: TokenStream, item: TokenStream) -> TokenStream {
+    c_interface::c_interface(&attr, item)
 }
 
 #[proc_macro_attribute]

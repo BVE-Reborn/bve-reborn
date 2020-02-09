@@ -6,8 +6,8 @@ members = ["bve*"]
 [patch.crates-io]
 cgmath = { git = "https://github.com/rustgd/cgmath.git", rev = "50a345b7c439c492a9c658dbb432f6cbd70a0557" }
 crossbeam = { git = "https://github.com/crossbeam-rs/crossbeam.git", rev = "ebecb82c740a1b3d9d10f235387848f7e3fa9c68" }
-sdl2-sys = { git = "https://github.com/BVE-Reborn/rust-sdl2.git", branch = "include-from-sys" }
 tracing-subscriber = { git = "https://github.com/tokio-rs/tracing.git", rev = "1c3bb7087db7570e91d27cd40e5e27f0f9a2c8b1" }
+sdl2-sys = { git = "https://github.com/BVE-Reborn/rust-sdl2.git", rev = "b79db2b23c2bc7c46e53cdb9e7c92f54433c27dd"}
 
 [profile.release]
 overflow-checks = true
