@@ -45,7 +45,7 @@ jobs:
       - name: Cache scoop
         uses: actions/cache@v1
         with:
-          path: ~/.cargo/registry
+          path: ~/scoop
           key: ${{ matrix.os }}-scoop
         if: matrix.os == 'windows-2019'
 
