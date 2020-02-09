@@ -46,11 +46,7 @@ jobs:
 
       - name: Cache AdvisoryDB
         uses: actions/cache@v1
-        env:
-          cache-name: advisorydb
         with:
-          env:
-            cache-name: advisorydb
           path: ~/.cargo/bin
           key: repostate-${{ matrix.tool }}-advisorydb
         if: matrix.tool == deny
