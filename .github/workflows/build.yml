@@ -55,11 +55,17 @@ jobs:
         if: matrix.os == 'windows-2019'
         shell: powershell
 
-      - name: Install clang-cl ninja
+      - name: Install deps (win)
         run: |
           scoop install llvm ninja
           export LIBCLANG_PATH=$HOME/scoop/apps/llvm/current/bin
           echo "::set-env name=LIBCLANG_PATH::$LIBCLANG_PATH"
+        if: matrix.os == 'windows-2019'
+        shell: bash
+
+      - name: Install deps (linux)
+        run: |
+          apt install libsdl2-dev # not needed, but good for transitives dependencies
         if: matrix.os == 'windows-2019'
         shell: bash
 
