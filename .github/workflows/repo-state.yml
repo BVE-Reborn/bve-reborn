@@ -21,6 +21,11 @@ jobs:
         run: echo "::add-path::$HOME/.cargo/bin"
         shell: bash
 
+      - name: Checkout repository
+        uses: actions/checkout@v1
+        with:
+          submodules: true
+
       - name: Cache cargo registry
         uses: actions/cache@v1
         env:
@@ -35,7 +40,7 @@ jobs:
           cache-name: cargo-index
         with:
           path: ~/.cargo/git
-            key: repostate-${{ matrix.tool }}-${{ env.cache-name }}
+          key: repostate-${{ matrix.tool }}-${{ env.cache-name }}
 
       - name: Cache Binaries
         uses: actions/cache@v1
@@ -43,7 +48,7 @@ jobs:
           cache-name: binary
         with:
           path: ~/.cargo/bin
-            key: repostate-${{ matrix.tool }}-${{ env.cache-name }}
+          key: repostate-${{ matrix.tool }}-${{ env.cache-name }}
 
       - name: Cache AdvisoryDB
         uses: actions/cache@v1
@@ -51,7 +56,7 @@ jobs:
           cache-name: advisorydb
         with:
           path: ~/.cargo/bin
-            key: repostate-${{ matrix.tool }}-${{ env.cache-name }}
+          key: repostate-${{ matrix.tool }}-${{ env.cache-name }}
         if: matrix.tool == deny
 
       - name: Update Rustup
@@ -82,11 +87,6 @@ jobs:
         run: |
           cargo "+${{ matrix.rust }}" install cargo-deny
         shell: bash
-
-      - name: Checkout repository
-        uses: actions/checkout@v1
-        with:
-          submodules: true
 
       - name: Run Clippy
         if: matrix.tool == 'clippy'
