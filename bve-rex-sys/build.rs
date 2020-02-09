@@ -76,9 +76,9 @@ fn match_c_files(files: FileTypes) -> impl Fn(Result<DirEntry, Error>) -> Option
 fn main() {
     cfg_if::cfg_if! {
         if #[cfg(target_env = "mingw")] {
-            panic!("Rex does not support mingw");
+            panic!("bve-rex-sys does not support mingw");
         } else if #[cfg(target_os = "macos")] {
-            panic!("Rex does not support macos");
+            panic!("bve-rex-sys does not support macos");
         }
     }
 
