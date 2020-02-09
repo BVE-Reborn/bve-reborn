@@ -40,10 +40,12 @@ jobs:
         shell: bash
 
       - name: Install Rust ${{ matrix.rust }}
+        # we need rustfmt for bindgen
         run: |
           export PATH=$PATH:$HOME/.cargo/bin
           rustup set default-host ${{ matrix.triple }}
           rustup toolchain install ${{ matrix.rust }}
+          rustup toolchain add --toolchain ${{ matrix.rust }} rustfmt
         shell: bash
 
       - name: Install scoop
@@ -53,9 +55,9 @@ jobs:
         if: matrix.os == 'windows-2019'
         shell: powershell
 
-      - name: Install clang-cl
+      - name: Install clang-cl ninja
         run: |
-          scoop install llvm
+          scoop install llvm ninja
           export LIBCLANG_PATH=$HOME/scoop/apps/llvm/current/bin
           echo "::set-env name=LIBCLANG_PATH::$LIBCLANG_PATH"
         if: matrix.os == 'windows-2019'
