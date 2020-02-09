@@ -19,35 +19,31 @@ jobs:
     steps:
       - name: Update Rustup
         run: |
-          export PATH=$PATH:$HOME/.cargo/bin
           rustup self update
           rustup set profile minimal
+          echo "::set-env name=PATH::$PATH"
         shell: bash
 
       - name: Install Rust ${{ matrix.rust }}
         run: |
-          export PATH=$PATH:$HOME/.cargo/bin
           rustup toolchain install ${{ matrix.rust }}
         shell: bash
 
       - name: Install Clippy
         if: matrix.tool == 'clippy'
         run: |
-          export PATH=$PATH:$HOME/.cargo/bin
           rustup component add clippy --toolchain ${{ matrix.rust }}
         shell: bash
 
       - name: Install Rustfmt
         if: matrix.tool == 'rustfmt'
         run: |
-          export PATH=$PATH:$HOME/.cargo/bin
           rustup component add rustfmt --toolchain ${{ matrix.rust }}
         shell: bash
 
       - name: Install Cargo Deny
         if: matrix.tool == 'deny'
         run: |
-          export PATH=$PATH:$HOME/.cargo/bin
           cargo "+${{ matrix.rust }}" install cargo-deny
         shell: bash
 
@@ -59,20 +55,17 @@ jobs:
       - name: Run Clippy
         if: matrix.tool == 'clippy'
         run: |
-          export PATH=$PATH:$HOME/.cargo/bin
           cargo "+${{ matrix.rust }}" clippy --all --tests -- -D warnings
         shell: bash
 
       - name: Run Rustfmt
         if: matrix.tool == 'rustfmt'
         run: |
-          export PATH=$PATH:$HOME/.cargo/bin
           cargo "+${{ matrix.rust }}" fmt --all -- --check
         shell: bash
 
       - name: Run Cargo Deny
         if: matrix.tool == 'deny'
         run: |
-          export PATH=$PATH:$HOME/.cargo/bin
           cargo "+${{ matrix.rust }}" deny check
         shell: bash

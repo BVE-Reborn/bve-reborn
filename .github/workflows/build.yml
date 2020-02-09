@@ -37,12 +37,12 @@ jobs:
           export PATH=$PATH:$HOME/.cargo/bin
           rustup self update
           rustup set profile minimal
+          echo "::set-env name=PATH::$PATH"
         shell: bash
 
       - name: Install Rust ${{ matrix.rust }}
         # we need rustfmt for bindgen
         run: |
-          export PATH=$PATH:$HOME/.cargo/bin
           rustup set default-host ${{ matrix.triple }}
           rustup toolchain install ${{ matrix.rust }}
           rustup component add --toolchain ${{ matrix.rust }} rustfmt
@@ -77,31 +77,26 @@ jobs:
 
       - name: Build C API
         run: |
-          export PATH=$PATH:$HOME/.cargo/bin
           cargo run --bin bve-build -- --color=always --no-build
         shell: bash
 
       - name: Build
         run: |
-          export PATH=$PATH:$HOME/.cargo/bin
           cargo build --all
         shell: bash
 
       - name: Run tests
         run: |
-          export PATH=$PATH:$HOME/.cargo/bin
           cargo test --all
         shell: bash
 
       - name: Docs
         run: |
-          export PATH=$PATH:$HOME/.cargo/bin
           cargo doc --all --no-deps
         shell: bash
 
       - name: CMake on C API
         run: |
-          export PATH=$PATH:$HOME/.cargo/bin
           mkdir -p target/capi/debug/
           cd target/capi/debug/
           cmake ../../../bve-native/tests/
