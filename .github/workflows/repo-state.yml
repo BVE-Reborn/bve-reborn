@@ -28,25 +28,25 @@ jobs:
 
       - name: Cache cargo registry
         uses: actions/cache@v1
-        env:
-          cache-name: cargo-registry
         with:
+          env:
+            cache-name: cargo-registry
           path: ~/.cargo/registry
           key: repostate-${{ matrix.tool }}-${{ env.cache-name }}
 
       - name: Cache cargo index
         uses: actions/cache@v1
-        env:
-          cache-name: cargo-index
         with:
+          env:
+            cache-name: cargo-index
           path: ~/.cargo/git
           key: repostate-${{ matrix.tool }}-${{ env.cache-name }}
 
       - name: Cache Binaries
         uses: actions/cache@v1
-        env:
-          cache-name: binary
         with:
+          env:
+            cache-name: binary
           path: ~/.cargo/bin
           key: repostate-${{ matrix.tool }}-${{ env.cache-name }}
 
@@ -55,6 +55,8 @@ jobs:
         env:
           cache-name: advisorydb
         with:
+          env:
+            cache-name: advisorydb
           path: ~/.cargo/bin
           key: repostate-${{ matrix.tool }}-${{ env.cache-name }}
         if: matrix.tool == deny

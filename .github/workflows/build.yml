@@ -44,18 +44,18 @@ jobs:
 
       - name: Cache scoop
         uses: actions/cache@v1
-        env:
-          cache-name: scoop
         with:
+          env:
+            cache-name: scoop
           path: ~/.cargo/registry
           key: ${{ matrix.os }}-${{ env.cache-name }}
         if: matrix.os == 'windows-2019'
 
       - name: Cache cargo registry
         uses: actions/cache@v1
-        env:
-          cache-name: cargo-registry
         with:
+          env:
+            cache-name: cargo-registry
           path: ~/.cargo/registry
           key: ${{ matrix.os }}-${{ env.cache-name }}-${{ hashFiles('**/Cargo.lock') }}-${{ github.sha }}
           restore-keys: |
@@ -64,9 +64,9 @@ jobs:
 
       - name: Cache cargo index
         uses: actions/cache@v1
-        env:
-          cache-name: cargo-index
         with:
+          env:
+            cache-name: cargo-index
           path: ~/.cargo/git
           key: ${{ matrix.os }}-${{ env.cache-name }}-${{ hashFiles('**/Cargo.lock') }}-${{ github.sha }}
           restore-keys: |
@@ -75,9 +75,9 @@ jobs:
 
       - name: Cache build
         uses: actions/cache@v1
-        env:
-          cache-name: build
         with:
+          env:
+            cache-name: build
           path: target
           key: ${{ matrix.os }}-${{ env.cache-name }}-${{ hashFiles('**/Cargo.lock') }}-${{ github.sha }}
           restore-keys: |
