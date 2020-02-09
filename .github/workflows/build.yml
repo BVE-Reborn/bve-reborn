@@ -65,6 +65,7 @@ jobs:
 
       - name: Install deps (linux)
         run: |
+          sudo apt update
           sudo apt install libsdl2-dev # not needed, but good for transitives dependencies
         if: matrix.os == 'ubuntu-18.04'
         shell: bash
