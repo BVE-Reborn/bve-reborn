@@ -78,7 +78,8 @@ jobs:
       - name: Install Cargo Deny
         if: matrix.tool == 'deny'
         run: |
-          cargo "+${{ matrix.rust }}" install cargo-deny
+          hash cargo-install-update || cargo "+${{ matrix.rust }}" install cargo-update
+          cargo install-update -i cargo-deny
         shell: bash
 
       - name: Run Clippy
