@@ -33,7 +33,9 @@ jobs:
         if: matrix.os == 'windows-2019'
 
       - name: Set Env (nix)
-        run: echo "::add-path::$HOME/.cargo/bin"
+        run: |
+          echo "::add-path::$HOME/.cargo/bin"
+          echo "::add-path::$HOME/scoop/shims"
         shell: bash
         if: matrix.os != 'windows-2019'
 
