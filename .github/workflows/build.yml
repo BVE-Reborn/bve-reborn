@@ -37,6 +37,48 @@ jobs:
         shell: bash
         if: matrix.os != 'windows-2019'
 
+      - name: Cache scoop
+        uses: actions/cache@v1
+        env:
+          cache-name: scoop
+        with:
+          path: ~/.cargo/registry
+          key: ${{ matrix.os }}-${{ env.cache-name }}
+        if: matrix.os == 'windows-2019'
+
+      - name: Cache cargo registry
+        uses: actions/cache@v1
+        env:
+          cache-name: cargo-registry
+        with:
+          path: ~/.cargo/registry
+          key: ${{ matrix.os }}-${{ env.cache-name }}-${{ hashFiles('**/Cargo.lock') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ matrix.os }}-${{ env.cache-name }}-${{ hashFiles('**/Cargo.lock') }}-
+            ${{ matrix.os }}-${{ env.cache-name }}-
+
+      - name: Cache cargo index
+        uses: actions/cache@v1
+        env:
+          cache-name: cargo-index
+        with:
+          path: ~/.cargo/git
+          key: ${{ matrix.os }}-${{ env.cache-name }}-${{ hashFiles('**/Cargo.lock') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ matrix.os }}-${{ env.cache-name }}-${{ hashFiles('**/Cargo.lock') }}-
+            ${{ matrix.os }}-${{ env.cache-name }}-
+
+      - name: Cache build
+        uses: actions/cache@v1
+        env:
+          cache-name: build
+        with:
+          path: target
+          key: ${{ matrix.os }}-${{ env.cache-name }}-${{ hashFiles('**/Cargo.lock') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ matrix.os }}-${{ env.cache-name }}-${{ hashFiles('**/Cargo.lock') }}-
+            ${{ matrix.os }}-${{ env.cache-name }}-
+
       - name: Install Rustup
         run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain none --profile minimal -y
         if: matrix.os == 'macos-latest' || matrix.os == 'windows-2019'
