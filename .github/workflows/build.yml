@@ -45,7 +45,7 @@ jobs:
           export PATH=$PATH:$HOME/.cargo/bin
           rustup set default-host ${{ matrix.triple }}
           rustup toolchain install ${{ matrix.rust }}
-          rustup toolchain add --toolchain ${{ matrix.rust }} rustfmt
+          rustup component add --toolchain ${{ matrix.rust }} rustfmt
         shell: bash
 
       - name: Install scoop
