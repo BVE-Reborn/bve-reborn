@@ -27,6 +27,16 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
+      - name: Set Env (win)
+        run: echo "::add-path::$env:HOME\.cargo\bin"
+        shell: powershell
+        if: matrix.os == 'windows-2019'
+
+      - name: Set Env (nix)
+        run: echo "::add-path::$HOME/.cargo/bin"
+        shell: bash
+        if: matrix.os != 'windows-2019'
+
       - name: Install Rustup
         run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain none --profile minimal -y
         if: matrix.os == 'macos-latest' || matrix.os == 'windows-2019'
@@ -34,7 +44,6 @@ jobs:
 
       - name: Update Rustup
         run: |
-          export PATH=$PATH:$HOME/.cargo/bin
           rustup self update
           rustup set profile minimal
         shell: bash
@@ -42,7 +51,6 @@ jobs:
       - name: Install Rust ${{ matrix.rust }}
         # we need rustfmt for bindgen
         run: |
-          export PATH=$PATH:$HOME/.cargo/bin
           rustup set default-host ${{ matrix.triple }}
           rustup toolchain install ${{ matrix.rust }}
           rustup component add --toolchain ${{ matrix.rust }} rustfmt
@@ -77,31 +85,26 @@ jobs:
 
       - name: Build C API
         run: |
-          export PATH=$PATH:$HOME/.cargo/bin
           cargo run --bin bve-build -- --color=always --no-build
         shell: bash
 
       - name: Build
         run: |
-          export PATH=$PATH:$HOME/.cargo/bin
           cargo build --all
         shell: bash
 
       - name: Run tests
         run: |
-          export PATH=$PATH:$HOME/.cargo/bin
           cargo test --all
         shell: bash
 
       - name: Docs
         run: |
-          export PATH=$PATH:$HOME/.cargo/bin
           cargo doc --all --no-deps
         shell: bash
 
       - name: CMake on C API
         run: |
-          export PATH=$PATH:$HOME/.cargo/bin
           mkdir -p target/capi/debug/
           cd target/capi/debug/
           cmake ../../../bve-native/tests/
