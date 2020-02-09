@@ -29,8 +29,8 @@ jobs:
     steps:
       - name: Set Env (win)
         run: |
-          echo "::add-path::$env:HOME\.cargo\bin"
-          echo "::add-path::$env:HOME\scoop\shims"
+          echo "::add-path::$env:USERPROFILE\.cargo\bin"
+          echo "::add-path::$env:USERPROFILE\scoop\shims"
         shell: powershell
         if: matrix.os == 'windows-2019'
 
@@ -98,13 +98,12 @@ jobs:
       - name: Install scoop
         run: |
           powershell -command "Invoke-Expression (New-Object System.Net.WebClient).DownloadString('https://get.scoop.sh'); exit 0"
-          echo "::set-env name=PATH::$env:PATH"
         if: matrix.os == 'windows-2019'
         shell: powershell
 
       - name: Install deps (win)
         run: |
-          powershell -command "scoop install llvm ninja; exit 0"
+          scoop install llvm ninja | true
           export LIBCLANG_PATH=$HOME/scoop/apps/llvm/current/bin
           echo "::set-env name=LIBCLANG_PATH::$LIBCLANG_PATH"
         if: matrix.os == 'windows-2019'
