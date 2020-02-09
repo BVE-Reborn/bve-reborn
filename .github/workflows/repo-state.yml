@@ -4,7 +4,8 @@ on:
   push:
     branches:
       - master
-      - 'update/**'
+      - 'update-**'
+      - 'ci-**'
 
 jobs:
   build:
@@ -17,15 +18,39 @@ jobs:
     runs-on: ubuntu-18.04
 
     steps:
-      - name: Set Env (win)
-        run: echo "::add-path::$env:HOME\.cargo\bin"
-        shell: powershell
-        if: matrix.os == 'windows-2019'
-
       - name: Set Env (nix)
         run: echo "::add-path::$HOME/.cargo/bin"
         shell: bash
-        if: matrix.os != 'windows-2019'
+
+      - name: Checkout repository
+        uses: actions/checkout@v1
+        with:
+          submodules: true
+
+      - name: Cache cargo registry
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/registry
+          key: repostate-${{ matrix.tool }}-cargo-registry
+
+      - name: Cache cargo index
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/git
+          key: repostate-${{ matrix.tool }}-cargo-index
+
+      - name: Cache Binaries
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/bin
+          key: repostate-${{ matrix.tool }}-binary
+
+      - name: Cache AdvisoryDB
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/bin
+          key: repostate-${{ matrix.tool }}-advisorydb
+        if: matrix.tool == 'deny'
 
       - name: Update Rustup
         run: |
@@ -53,13 +78,9 @@ jobs:
       - name: Install Cargo Deny
         if: matrix.tool == 'deny'
         run: |
-          cargo "+${{ matrix.rust }}" install cargo-deny
+          hash cargo-install-update || cargo "+${{ matrix.rust }}" install cargo-update
+          cargo install-update -a -i cargo-deny
         shell: bash
-
-      - name: Checkout repository
-        uses: actions/checkout@v1
-        with:
-          submodules: true
 
       - name: Run Clippy
         if: matrix.tool == 'clippy'

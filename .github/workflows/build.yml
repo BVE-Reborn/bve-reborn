@@ -28,14 +28,53 @@ jobs:
 
     steps:
       - name: Set Env (win)
-        run: echo "::add-path::$env:HOME\.cargo\bin"
+        run: |
+          echo "::add-path::$env:USERPROFILE\.cargo\bin"
+          echo "::add-path::$env:USERPROFILE\scoop\shims"
         shell: powershell
         if: matrix.os == 'windows-2019'
 
       - name: Set Env (nix)
-        run: echo "::add-path::$HOME/.cargo/bin"
+        run: |
+          echo "::add-path::$HOME/.cargo/bin"
         shell: bash
         if: matrix.os != 'windows-2019'
+
+      - name: Checkout repository
+        uses: actions/checkout@v1
+        with:
+          submodules: true
+
+      - name: Cache scoop
+        uses: actions/cache@v1
+        with:
+          path: ~/scoop
+          key: ${{ matrix.os }}-scoop
+        if: matrix.os == 'windows-2019'
+
+      - name: Cache cargo registry
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/registry
+          key: ${{ matrix.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ matrix.os }}-cargo-registry-
+
+      - name: Cache cargo index
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/git
+          key: ${{ matrix.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ matrix.os }}-cargo-index-
+
+      - name: Cache build
+        uses: actions/cache@v1
+        with:
+          path: target
+          key: ${{ matrix.os }}-build-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ matrix.os }}-build-
 
       - name: Install Rustup
         run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain none --profile minimal -y
@@ -58,14 +97,13 @@ jobs:
 
       - name: Install scoop
         run: |
-          Invoke-Expression (New-Object System.Net.WebClient).DownloadString('https://get.scoop.sh')
-          echo "::set-env name=PATH::$env:PATH"
+          powershell -command "Invoke-Expression (New-Object System.Net.WebClient).DownloadString('https://get.scoop.sh'); exit 0"
         if: matrix.os == 'windows-2019'
         shell: powershell
 
       - name: Install deps (win)
         run: |
-          scoop install llvm ninja
+          scoop install llvm ninja || true
           export LIBCLANG_PATH=$HOME/scoop/apps/llvm/current/bin
           echo "::set-env name=LIBCLANG_PATH::$LIBCLANG_PATH"
         if: matrix.os == 'windows-2019'
@@ -77,11 +115,6 @@ jobs:
           sudo apt install libsdl2-dev # not needed, but good for transitives dependencies
         if: matrix.os == 'ubuntu-18.04'
         shell: bash
-
-      - name: Checkout repository
-        uses: actions/checkout@v1
-        with:
-          submodules: true
 
       - name: Build C API
         run: |
