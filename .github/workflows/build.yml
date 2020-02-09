@@ -103,7 +103,7 @@ jobs:
 
       - name: Install deps (win)
         run: |
-          scoop install llvm ninja | true
+          scoop install llvm ninja || true
           export LIBCLANG_PATH=$HOME/scoop/apps/llvm/current/bin
           echo "::set-env name=LIBCLANG_PATH::$LIBCLANG_PATH"
         if: matrix.os == 'windows-2019'
