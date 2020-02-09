@@ -1,7 +1,5 @@
 name: build
 on: [push, pull_request]
-env:
-  PATH: ~/.cargo/bin
 
 jobs:
   build:
@@ -29,6 +27,16 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
+      - name: Set Env (win)
+        run: echo "::add-path::$env:HOME\.cargo\bin"
+        shell: powershell
+        if: matrix.os == 'windows-2019'
+
+      - name: Set Env (nix)
+        run: echo "::add-path::$HOME/.cargo/bin"
+        shell: bash
+        if: matrix.os != 'windows-2019'
+
       - name: Install Rustup
         run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain none --profile minimal -y
         if: matrix.os == 'macos-latest' || matrix.os == 'windows-2019'
