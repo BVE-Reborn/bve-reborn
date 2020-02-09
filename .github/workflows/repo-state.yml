@@ -5,6 +5,8 @@ on:
     branches:
       - master
       - 'update/**'
+env:
+  PATH: ~/.cargo/bin
 
 jobs:
   build:
@@ -21,7 +23,6 @@ jobs:
         run: |
           rustup self update
           rustup set profile minimal
-          echo "::set-env name=PATH::$PATH"
         shell: bash
 
       - name: Install Rust ${{ matrix.rust }}

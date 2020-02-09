@@ -1,5 +1,7 @@
 name: build
 on: [push, pull_request]
+env:
+  PATH: ~/.cargo/bin
 
 jobs:
   build:
@@ -34,10 +36,8 @@ jobs:
 
       - name: Update Rustup
         run: |
-          export PATH=$PATH:$HOME/.cargo/bin
           rustup self update
           rustup set profile minimal
-          echo "::set-env name=PATH::$PATH"
         shell: bash
 
       - name: Install Rust ${{ matrix.rust }}
