@@ -84,6 +84,7 @@
 #![allow(clippy::unreachable)]
 #![allow(clippy::wildcard_enum_match_arm)]
 
+pub mod filesystem;
 pub mod panic;
 
 use std::borrow::Cow;

@@ -3,7 +3,7 @@ use std::fs::read;
 use std::io::Result;
 use std::path::Path;
 
-/// Reads a file, detects the encoding, and converts to utf8
+/// Reads a file, detects the encoding, and converts to utf8.
 ///
 /// # Errors
 ///
