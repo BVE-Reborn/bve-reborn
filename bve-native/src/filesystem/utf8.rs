@@ -9,7 +9,7 @@ use std::ptr::NonNull;
 /// # Safety
 ///
 /// - Pointer returned points to an **owned** string containing the contents of the file in utf8.
-/// - Returned pointer must be deleted by [`bve_delete_string`].
+/// - Returned pointer must be deleted by [`crate::bve_delete_string`].
 /// - If file loading fails, output is null.
 #[must_use]
 #[c_interface]
