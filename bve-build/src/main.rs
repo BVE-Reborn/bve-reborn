@@ -69,6 +69,18 @@ struct Options {
     /// Don't run cbindgen
     #[structopt(long)]
     no_bindgen: bool,
+
+    /// Build `bve` crate
+    #[structopt(long)]
+    core: bool,
+
+    /// Build `bve-client` crate
+    #[structopt(long)]
+    client: bool,
+
+    /// Build `bve-native` crate
+    #[structopt(long)]
+    native: bool,
 }
 
 fn clean() {
@@ -87,6 +99,28 @@ fn build(options: &Options) {
     };
 
     options.color.iter().for_each(|s| args.push(format!("--color={}", s)));
+
+    // what is DRY?
+    if options.core {
+        args.push(String::from("-p"));
+        args.push(String::from("bve"));
+    }
+    if options.client {
+        args.push(String::from("-p"));
+        args.push(String::from("bve-client"));
+    }
+    if options.native {
+        args.push(String::from("-p"));
+        args.push(String::from("bve-native"));
+    }
+    if !(options.core || options.client || options.native) {
+        args.push(String::from("-p"));
+        args.push(String::from("bve"));
+        args.push(String::from("-p"));
+        args.push(String::from("bve-client"));
+        args.push(String::from("-p"));
+        args.push(String::from("bve-native"));
+    }
 
     let mut child = Command::new("cargo")
         .args(&args)
