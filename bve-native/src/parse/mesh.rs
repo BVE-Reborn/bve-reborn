@@ -25,6 +25,7 @@ pub use mesh::Vertex;
 pub struct Parsed_Static_Object {
     pub meshes: CVector<Mesh>,
     pub textures: *mut Texture_Set,
+    pub warnings: CVector<Mesh_Warning>,
     pub errors: CVector<Mesh_Error>,
 }
 
@@ -34,6 +35,7 @@ impl From<mesh::ParsedStaticObject> for Parsed_Static_Object {
         Self {
             meshes: other.meshes.into(),
             textures: Box::into_raw(Box::new(other.textures.into())),
+            warnings: other.warnings.into(),
             errors: other.errors.into(),
         }
     }
@@ -45,6 +47,7 @@ impl Into<mesh::ParsedStaticObject> for Parsed_Static_Object {
         mesh::ParsedStaticObject {
             meshes: self.meshes.into(),
             textures: unsafe { *Box::from_raw(self.textures) }.into(),
+            warnings: self.warnings.into(),
             errors: self.errors.into(),
         }
     }
@@ -242,7 +245,6 @@ impl Into<mesh::MeshError> for Mesh_Error {
 pub enum Mesh_Error_Kind {
     UTF8 { column: COption<u64> },
     OutOfBounds { idx: usize },
-    UselessInstruction { name: *const c_char },
     UnknownInstruction { name: *const c_char },
     GenericCSV { msg: *const c_char },
     UnknownCSV,
@@ -253,9 +255,6 @@ impl From<mesh::MeshErrorKind> for Mesh_Error_Kind {
         match other {
             mesh::MeshErrorKind::UTF8 { column } => Self::UTF8 { column: column.into() },
             mesh::MeshErrorKind::OutOfBounds { idx } => Self::OutOfBounds { idx },
-            mesh::MeshErrorKind::UselessInstruction { name } => Self::UselessInstruction {
-                name: string_to_owned_ptr(&name),
-            },
             mesh::MeshErrorKind::UnknownInstruction { name } => Self::UnknownInstruction {
                 name: string_to_owned_ptr(&name),
             },
@@ -272,9 +271,6 @@ impl Into<mesh::MeshErrorKind> for Mesh_Error_Kind {
         match self {
             Self::UTF8 { column } => mesh::MeshErrorKind::UTF8 { column: column.into() },
             Self::OutOfBounds { idx } => mesh::MeshErrorKind::OutOfBounds { idx },
-            Self::UselessInstruction { name } => mesh::MeshErrorKind::UselessInstruction {
-                name: unsafe { owned_ptr_to_string(name as *mut c_char) },
-            },
             Self::UnknownInstruction { name } => mesh::MeshErrorKind::UnknownInstruction {
                 name: unsafe { owned_ptr_to_string(name as *mut c_char) },
             },
@@ -282,6 +278,67 @@ impl Into<mesh::MeshErrorKind> for Mesh_Error_Kind {
                 msg: unsafe { owned_ptr_to_string(msg as *mut c_char) },
             },
             Self::UnknownCSV => mesh::MeshErrorKind::UnknownCSV,
+        }
+    }
+}
+
+/// C safe wrapper for [`MeshError`](bve::parse::mesh::MeshWarning).
+///
+/// # Safety
+///
+/// - Must be destroyed as part of its parent [`Parsed_Static_Object`].
+#[repr(C)]
+pub struct Mesh_Warning {
+    pub location: Span,
+    pub kind: Mesh_Warning_Kind,
+}
+
+impl From<mesh::MeshWarning> for Mesh_Warning {
+    fn from(other: mesh::MeshWarning) -> Self {
+        Self {
+            location: other.location.into(),
+            kind: other.kind.into(),
+        }
+    }
+}
+
+impl Into<mesh::MeshWarning> for Mesh_Warning {
+    fn into(self) -> mesh::MeshWarning {
+        mesh::MeshWarning {
+            location: self.location.into(),
+            kind: self.kind.into(),
+        }
+    }
+}
+
+/// C safe wrapper for [`MeshErrorKind`](bve::parse::mesh::MeshWarningKind).
+///
+/// # Safety
+///
+/// - Only read the union value that the `tag`/`determinant` says is inside the enum.
+/// - Reading another value results in UB.
+/// - Must be destroyed as part of its parent [`Parsed_Static_Object`].
+#[repr(C, u8)]
+pub enum Mesh_Warning_Kind {
+    UselessInstruction { name: *const c_char },
+}
+
+impl From<mesh::MeshWarningKind> for Mesh_Warning_Kind {
+    fn from(other: mesh::MeshWarningKind) -> Self {
+        match other {
+            mesh::MeshWarningKind::UselessInstruction { name } => Self::UselessInstruction {
+                name: string_to_owned_ptr(&name),
+            },
+        }
+    }
+}
+
+impl Into<mesh::MeshWarningKind> for Mesh_Warning_Kind {
+    fn into(self) -> mesh::MeshWarningKind {
+        match self {
+            Self::UselessInstruction { name } => mesh::MeshWarningKind::UselessInstruction {
+                name: unsafe { owned_ptr_to_string(name as *mut c_char) },
+            },
         }
     }
 }
