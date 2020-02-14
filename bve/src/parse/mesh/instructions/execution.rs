@@ -322,6 +322,7 @@ pub fn generate_meshes(instructions: InstructionList) -> ParsedStaticObject {
     }
     run_create_mesh_builder(&mut mbc);
     tracing::debug!(errors = instructions.errors.len(), "Generated mesh");
+    mbc.parsed.warnings = instructions.warnings;
     mbc.parsed.errors = instructions.errors;
     mbc.parsed
 }

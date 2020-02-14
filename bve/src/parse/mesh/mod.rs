@@ -43,6 +43,8 @@ pub struct ParsedStaticObject {
     pub meshes: Vec<Mesh>,
     /// The set of texture names needed by mesh
     pub textures: TextureSet,
+    /// Warnings when creating the mesh. Does not affect mesh.
+    pub warnings: Vec<MeshWarning>,
     /// Errors when creating the mesh. If there are enough errors, there might not even be any meshes!
     pub errors: Vec<MeshError>,
 }

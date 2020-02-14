@@ -62,6 +62,7 @@ fn generate_instructions_from_obj(input: &'static str) -> InstructionList {
 
     InstructionList {
         instructions: result,
+        warnings: Vec::default(),
         errors: Vec::default(),
     }
 }

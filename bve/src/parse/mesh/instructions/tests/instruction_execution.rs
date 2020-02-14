@@ -18,6 +18,7 @@ macro_rules! generate_instruction_list {
                     line: Some($num)
                 }
             }),+],
+            warnings: vec![],
             errors: vec![],
         }
     };

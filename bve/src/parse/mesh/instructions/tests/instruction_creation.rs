@@ -7,11 +7,17 @@ use cgmath::{Vector2, Vector3};
 macro_rules! no_instruction_assert_no_errors {
     ( $inputB3D:literal, $inputCSV:literal, $args:literal ) => {
         let result_a = create_instructions(concat!($inputB3D, " ", $args).into(), FileType::B3D);
+        if !result_a.warnings.is_empty() {
+            panic!("WARNINGS!! {:#?}", result_a)
+        }
         if !result_a.errors.is_empty() {
             panic!("ERRORS!! {:#?}", result_a)
         }
         assert_eq!(result_a.instructions.len(), 0);
         let result_b = create_instructions(concat!($inputCSV, ",", $args).into(), FileType::CSV);
+        if !result_b.warnings.is_empty() {
+            panic!("WARNINGS!! {:#?}", result_b)
+        }
         if !result_b.errors.is_empty() {
             panic!("ERRORS!! {:#?}", result_b)
         }
@@ -19,9 +25,34 @@ macro_rules! no_instruction_assert_no_errors {
     };
 }
 
+macro_rules! no_instruction_assert_warnings {
+    ( $inputB3D:literal, $inputCSV:literal, $args:literal ) => {
+        let result_a = create_instructions(concat!($inputB3D, " ", $args).into(), FileType::B3D);
+        if result_a.warnings.is_empty() {
+            panic!("Missing Warnings: {:#?}", result_a)
+        }
+        if !result_a.errors.is_empty() {
+            panic!("ERRORS!! {:#?}", result_a)
+        }
+        assert_eq!(result_a.instructions.len(), 0);
+        let result_b = create_instructions(concat!($inputCSV, ",", $args).into(), FileType::CSV);
+        if result_b.warnings.is_empty() {
+            panic!("Missing Warnings: {:#?}", result_b)
+        }
+        if !result_b.errors.is_empty() {
+            panic!("ERRORS!! {:#?}", result_b)
+        }
+        assert_eq!(result_b.instructions.len(), 0);
+    };
+}
+
+#[allow(unused_macros)]
 macro_rules! no_instruction_assert_errors {
     ( $inputB3D:literal, $inputCSV:literal, $args:literal ) => {
         let result_a = create_instructions(concat!($inputB3D, " ", $args).into(), FileType::B3D);
+        if !result_a.warnings.is_empty() {
+            panic!("WARNINGS!! {:#?}", result_a)
+        }
         if result_a.errors.is_empty() {
             panic!("Missing Errors: {:#?}", result_a)
         }
@@ -30,6 +61,9 @@ macro_rules! no_instruction_assert_errors {
         if result_b.errors.is_empty() {
             panic!("Missing Errors: {:#?}", result_b)
         }
+        if !result_b.warnings.is_empty() {
+            panic!("WARNINGS!! {:#?}", result_b)
+        }
         assert_eq!(result_b.instructions.len(), 0);
     };
 }
@@ -37,6 +71,9 @@ macro_rules! no_instruction_assert_errors {
 macro_rules! instruction_assert {
     ( $inputB3D:literal, $inputCSV:literal, $args:literal, $data:expr ) => {
         let result_a = create_instructions(concat!($inputB3D, " ", $args).into(), FileType::B3D);
+        if !result_a.warnings.is_empty() {
+            panic!("WARNINGS!! {:#?}", result_a)
+        }
         if !result_a.errors.is_empty() {
             panic!("ERRORS!! {:#?}", result_a)
         }
@@ -48,6 +85,9 @@ macro_rules! instruction_assert {
             }
         );
         let result_b = create_instructions(concat!($inputCSV, ",", $args).into(), FileType::CSV);
+        if !result_b.warnings.is_empty() {
+            panic!("WARNINGS!! {:#?}", result_b)
+        }
         if !result_b.errors.is_empty() {
             panic!("ERRORS!! {:#?}", result_b)
         }
@@ -284,13 +324,13 @@ fn cylinder() {
 #[bve_derive::bve_test]
 #[test]
 fn generate_normals() {
-    no_instruction_assert_errors!("GenerateNormals", "GenerateNormals", "");
+    no_instruction_assert_warnings!("GenerateNormals", "GenerateNormals", "");
 }
 
 #[bve_derive::bve_test]
 #[test]
 fn texture() {
-    no_instruction_assert_errors!("[texture]", "Texture", "");
+    no_instruction_assert_warnings!("[texture]", "Texture", "");
 }
 
 #[bve_derive::bve_test]
