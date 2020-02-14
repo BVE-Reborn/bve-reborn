@@ -129,8 +129,7 @@ fn process_compound(mesh: &[Instruction]) -> Vec<Instruction> {
                 // Faces
                 let vi = vertex_index;
 
-                // logically (n - 1).max(0) but that caused underflow
-                let split = (n.max(1) - 1) as usize;
+                let split = n.saturating_sub(1) as usize;
                 for i in 0..split {
                     result.push(create_face(
                         instruction,
