@@ -133,7 +133,7 @@ fn main() {
 
     let options: Options = Options::from_args();
 
-    let _guard = set_global_logger(std::io::stderr(), SerializationMethod::JsonPretty);
+    let _guard = set_global_logger(std::io::sink(), SerializationMethod::JsonPretty);
 
     run_with_global_logger(move || program_main(options));
 }
