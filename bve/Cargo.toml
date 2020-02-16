@@ -24,6 +24,7 @@ encoding_rs = "0.8.22"
 indexmap = "1.2"
 itertools = "0.8"
 lazy_static = "1.4.0"
+nom = "5.1.0"
 num-traits = "0.2.11"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.45"
