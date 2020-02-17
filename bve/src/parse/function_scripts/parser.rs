@@ -263,22 +263,132 @@ fn digit(input: &str) -> IResult<&str, char> {
 mod test {
     use crate::parse::function_scripts::parser::parse_function_script;
     use crate::parse::function_scripts::Instruction;
-    use itertools::assert_equal;
+
+    macro_rules! function_script_assert {
+        ($input:expr, $($result:expr),* ,) => {
+            let input = $input;
+            let (remaining, output) = parse_function_script(input.as_ref()).unwrap();
+            assert_eq!(remaining, "");
+
+            itertools::assert_equal(
+                output.into_iter(),
+                vec![
+                    $($result),*
+                ]
+                .into_iter(),
+            )
+        };
+    }
 
     #[test]
     fn addition() {
-        let (input_left, output) = parse_function_script("1 + 2 + 3").unwrap();
-        assert!(input_left.is_empty());
-        assert_equal(
-            output.into_iter(),
-            vec![
+        // Left associative
+        function_script_assert!(
+            "1 + 2 + 3",
+            Instruction::Number { value: 1.0 },
+            Instruction::Number { value: 2.0 },
+            Instruction::Addition,
+            Instruction::Number { value: 3.0 },
+            Instruction::Addition,
+        );
+    }
+
+    #[test]
+    fn subtraction() {
+        // Left associative
+        function_script_assert!(
+            "1 - 2 - 3",
+            Instruction::Number { value: 1.0 },
+            Instruction::Number { value: 2.0 },
+            Instruction::Subtraction,
+            Instruction::Number { value: 3.0 },
+            Instruction::Subtraction,
+        );
+    }
+
+    #[test]
+    fn multiplication() {
+        function_script_assert!(
+            "1 * 2 * 3",
+            Instruction::Number { value: 1.0 },
+            Instruction::Number { value: 2.0 },
+            Instruction::Number { value: 3.0 },
+            Instruction::Multiplication,
+            Instruction::Multiplication,
+        );
+    }
+
+    #[test]
+    fn division() {
+        function_script_assert!(
+            "1 / 2 / 3",
+            Instruction::Number { value: 1.0 },
+            Instruction::Number { value: 2.0 },
+            Instruction::Number { value: 3.0 },
+            Instruction::Division,
+            Instruction::Division,
+        );
+    }
+
+    #[test]
+    fn equality() {
+        let operators = [
+            ("<", Instruction::Less),
+            ("<=", Instruction::LessEqual),
+            ("==", Instruction::Equal),
+            ("!=", Instruction::NotEqual),
+            (">", Instruction::Greater),
+            (">=", Instruction::GreaterEqual),
+        ];
+        for (string, instruction) in operators.iter() {
+            function_script_assert!(
+                format!("1 {0} 2 {0} 3", string),
                 Instruction::Number { value: 1.0 },
                 Instruction::Number { value: 2.0 },
+                instruction.clone(),
                 Instruction::Number { value: 3.0 },
-                Instruction::Addition,
-                Instruction::Addition,
-            ]
-            .into_iter(),
-        )
+                instruction.clone(),
+            );
+        }
+    }
+
+    #[test]
+    fn parens() {
+        function_script_assert!(
+            "1 + (2 + 3)",
+            Instruction::Number { value: 1.0 },
+            Instruction::Number { value: 2.0 },
+            Instruction::Number { value: 3.0 },
+            Instruction::Addition,
+            Instruction::Addition,
+        );
+    }
+
+    #[test]
+    fn order_of_operations() {
+        function_script_assert!(
+            "1 + 2 - 3 * 4 / 5",
+            Instruction::Number { value: 1.0 },
+            Instruction::Number { value: 2.0 },
+            Instruction::Addition,
+            Instruction::Number { value: 3.0 },
+            Instruction::Number { value: 4.0 },
+            Instruction::Number { value: 5.0 },
+            Instruction::Division,
+            Instruction::Multiplication,
+            Instruction::Subtraction,
+        );
+        function_script_assert!(
+            "1 / 2 * 3 - 4 + 5",
+            Instruction::Number { value: 1.0 },
+            Instruction::Number { value: 2.0 },
+            Instruction::Division,
+            Instruction::Number { value: 3.0 },
+            Instruction::Multiplication,
+            Instruction::Number { value: 4.0 },
+            Instruction::Subtraction,
+            Instruction::Number { value: 5.0 },
+            Instruction::Addition,
+        );
     }
 }
