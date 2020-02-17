@@ -81,7 +81,7 @@ macro_rules! instruction_assert {
             *result_a.instructions.get(0).unwrap(),
             Instruction {
                 data: $data,
-                span: Span { line: Some(1) }
+                span: Span::from_line(1),
             }
         );
         let result_b = create_instructions(concat!($inputCSV, ",", $args).into(), FileType::CSV);
@@ -95,7 +95,7 @@ macro_rules! instruction_assert {
             *result_b.instructions.get(0).unwrap(),
             Instruction {
                 data: $data,
-                span: Span { line: Some(1) }
+                span: Span::from_line(1),
             }
         );
     };

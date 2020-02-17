@@ -24,7 +24,7 @@ impl Default for Section {
     fn default() -> Self {
         Self {
             name: None,
-            span: Span { line: Some(0) },
+            span: Span::from_line(0),
             values: Vec::default(),
         }
     }
@@ -61,9 +61,7 @@ pub fn parse_kvp_file(input: &str) -> KVPFile {
                     &mut current_section,
                     Section {
                         name: Some(name),
-                        span: Span {
-                            line: Some((line_idx + 1) as u64),
-                        },
+                        span: Span::from_line(line_idx + 1),
                         values: Vec::default(),
                     },
                 ));
@@ -86,9 +84,7 @@ pub fn parse_kvp_file(input: &str) -> KVPFile {
                 };
                 // Push data onto current section
                 current_section.values.push(Value {
-                    span: Span {
-                        line: Some((line_idx + 1) as u64),
-                    },
+                    span: Span::from_line(line_idx + 1),
                     data,
                 });
             }
