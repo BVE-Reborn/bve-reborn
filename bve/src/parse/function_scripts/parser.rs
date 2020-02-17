@@ -126,6 +126,7 @@ fn equal_symbol(input: &str) -> IResult<&str, &str> {
 }
 
 fn equal_expr(input: &str) -> IResult<&str, Vec<Instruction>> {
+    // This is left associative while the rest of everything is right associative
     binary_left(plus_expr, equal_symbol, plus_expr)(input).map(|(input, (mut left, right_vec))| {
         for (operator, right) in right_vec {
             left.extend(right.into_iter());
@@ -281,58 +282,10 @@ mod test {
     }
 
     #[test]
-    fn addition() {
-        // Left associative
-        function_script_assert!(
-            "1 + 2 + 3",
-            Instruction::Number { value: 1.0 },
-            Instruction::Number { value: 2.0 },
-            Instruction::Addition,
-            Instruction::Number { value: 3.0 },
-            Instruction::Addition,
-        );
-    }
-
-    #[test]
-    fn subtraction() {
-        // Left associative
-        function_script_assert!(
-            "1 - 2 - 3",
-            Instruction::Number { value: 1.0 },
-            Instruction::Number { value: 2.0 },
-            Instruction::Subtraction,
-            Instruction::Number { value: 3.0 },
-            Instruction::Subtraction,
-        );
-    }
-
-    #[test]
-    fn multiplication() {
-        function_script_assert!(
-            "1 * 2 * 3",
-            Instruction::Number { value: 1.0 },
-            Instruction::Number { value: 2.0 },
-            Instruction::Number { value: 3.0 },
-            Instruction::Multiplication,
-            Instruction::Multiplication,
-        );
-    }
-
-    #[test]
-    fn division() {
-        function_script_assert!(
-            "1 / 2 / 3",
-            Instruction::Number { value: 1.0 },
-            Instruction::Number { value: 2.0 },
-            Instruction::Number { value: 3.0 },
-            Instruction::Division,
-            Instruction::Division,
-        );
-    }
-
-    #[test]
-    fn equality() {
+    fn left_associative_operators() {
         let operators = [
+            ("+", Instruction::Addition),
+            ("-", Instruction::Subtraction),
             ("<", Instruction::Less),
             ("<=", Instruction::LessEqual),
             ("==", Instruction::Equal),
@@ -340,6 +293,7 @@ mod test {
             (">", Instruction::Greater),
             (">=", Instruction::GreaterEqual),
         ];
+        // Left associative
         for (string, instruction) in operators.iter() {
             function_script_assert!(
                 format!("1 {0} 2 {0} 3", string),
@@ -350,6 +304,64 @@ mod test {
                 instruction.clone(),
             );
         }
+    }
+
+    #[test]
+    fn right_associative_operators() {
+        let operators = [
+            ("/", Instruction::Division),
+            ("*", Instruction::Multiplication),
+            ("&", Instruction::LogicalAnd),
+            ("|", Instruction::LogicalOr),
+            ("^", Instruction::LogicalXor),
+        ];
+        // Right associative
+        for (string, instruction) in operators.iter() {
+            function_script_assert!(
+                format!("1 {0} 2 {0} 3", string),
+                Instruction::Number { value: 1.0 },
+                Instruction::Number { value: 2.0 },
+                Instruction::Number { value: 3.0 },
+                instruction.clone(),
+                instruction.clone(),
+            );
+        }
+    }
+
+    #[test]
+    fn unary_operators() {
+        let operators = [("!", Instruction::UnaryLogicalNot), ("-", Instruction::UnaryNegative)];
+        for (string, instruction) in operators.iter() {
+            function_script_assert!(
+                format!("{0} 1", string),
+                Instruction::Number { value: 1.0 },
+                instruction.clone(),
+            );
+            function_script_assert!(
+                format!("{0}(1)", string),
+                Instruction::Number { value: 1.0 },
+                instruction.clone(),
+            );
+            function_script_assert!(
+                format!("{0}(1 + 2)", string),
+                Instruction::Number { value: 1.0 },
+                Instruction::Number { value: 2.0 },
+                Instruction::Addition,
+                instruction.clone(),
+            );
+        }
+    }
+
+    #[test]
+    fn function_call() {
+        function_script_assert!(
+            "func[1]",
+            Instruction::Number { value: 1.0 },
+            Instruction::FunctionCall {
+                name: String::from("func"),
+                arg_count: 1
+            },
+        );
     }
 
     #[test]
@@ -365,7 +377,7 @@ mod test {
     }
 
     #[test]
-    fn order_of_operations() {
+    fn basic_order_of_operations() {
         function_script_assert!(
             "1 + 2 - 3 * 4 / 5",
             Instruction::Number { value: 1.0 },
@@ -389,6 +401,46 @@ mod test {
             Instruction::Subtraction,
             Instruction::Number { value: 5.0 },
             Instruction::Addition,
+        );
+    }
+
+    #[test]
+    fn complex_order_of_operations() {
+        function_script_assert!(
+            "!-func[1] / 2 * 3 + 4 - 5 == 6 != 7 < 8 > 9 <= 10 >= 11 & 12 ^ 13 | 14",
+            Instruction::Number { value: 1.0 },
+            Instruction::FunctionCall {
+                name: String::from("func"),
+                arg_count: 1
+            },
+            Instruction::UnaryNegative,
+            Instruction::Number { value: 2.0 },
+            Instruction::Division,
+            Instruction::Number { value: 3.0 },
+            Instruction::Multiplication,
+            Instruction::Number { value: 4.0 },
+            Instruction::Addition,
+            Instruction::Number { value: 5.0 },
+            Instruction::Subtraction,
+            Instruction::Number { value: 6.0 },
+            Instruction::Equal,
+            Instruction::Number { value: 7.0 },
+            Instruction::NotEqual,
+            Instruction::Number { value: 8.0 },
+            Instruction::Less,
+            Instruction::Number { value: 9.0 },
+            Instruction::Greater,
+            Instruction::Number { value: 10.0 },
+            Instruction::LessEqual,
+            Instruction::Number { value: 11.0 },
+            Instruction::GreaterEqual,
+            Instruction::UnaryLogicalNot,
+            Instruction::Number { value: 12.0 },
+            Instruction::LogicalAnd,
+            Instruction::Number { value: 13.0 },
+            Instruction::LogicalXor,
+            Instruction::Number { value: 14.0 },
+            Instruction::LogicalOr,
         );
     }
 }
