@@ -13,15 +13,18 @@ pub struct Span {
 }
 
 impl Span {
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self { line: None }
     }
 
-    pub fn none() -> Self {
+    #[must_use]
+    pub const fn none() -> Self {
         Self { line: None }
     }
 
-    pub fn from_line(line: impl ToPrimitive) -> Self {
+    #[must_use]
+    pub fn from_line(line: impl ToPrimitive + Copy) -> Self {
         Self { line: line.to_u64() }
     }
 }

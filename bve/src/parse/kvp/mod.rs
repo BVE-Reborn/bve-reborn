@@ -63,6 +63,8 @@ pub enum ValueData {
     Value { value: String },
 }
 
+#[must_use]
+#[allow(clippy::single_match_else)] // This advises less clear code
 pub fn parse_kvp_file(input: &str) -> KVPFile {
     let mut file = KVPFile::default();
     let mut current_section = Section::default();
