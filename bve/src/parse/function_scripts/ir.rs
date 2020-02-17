@@ -1,0 +1,21 @@
+#[derive(Debug, Clone, PartialEq)]
+pub enum Instruction {
+    Addition,
+    Subtraction,
+    Multiplication,
+    Division,
+    LogicalOr,
+    LogicalAnd,
+    LogicalXor,
+    UnaryLogicalNot,
+    UnaryNegative,
+    Equal,
+    NotEqual,
+    Less,
+    Greater,
+    LessEqual,
+    GreaterEqual,
+    FunctionCall { name: String, arg_count: usize },
+    Variable { name: String },
+    Number { value: f64 },
+}

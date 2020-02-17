@@ -1,10 +1,12 @@
+use crate::parse::function_scripts::Instruction;
 use nom::branch::alt;
 use nom::bytes::complete::{tag, take_while};
 use nom::character::complete::{char as char_f, one_of};
-use nom::combinator::opt;
+use nom::combinator::{map_res, opt};
 use nom::multi::many0;
 use nom::sequence::{delimited, tuple};
 use nom::{AsChar, IResult, InputTakeAtPosition};
+use std::num::ParseFloatError;
 
 /// Takes a parser and wraps it so it delimited with whitespace
 fn w<F, I, O>(func: F) -> impl Fn(I) -> IResult<I, O>
@@ -44,63 +46,141 @@ where
     move |input| tuple((opt(w(left)), right))(input)
 }
 
-pub fn parse_function_script(input: &str) -> IResult<&str, ()> {
+enum OneOrManyInstructions {
+    One(Instruction),
+    Many(Vec<Instruction>),
+}
+
+impl From<OneOrManyInstructions> for Vec<Instruction> {
+    fn from(rhs: OneOrManyInstructions) -> Self {
+        match rhs {
+            OneOrManyInstructions::One(instruction) => vec![instruction],
+            OneOrManyInstructions::Many(instructions) => instructions,
+        }
+    }
+}
+
+pub fn parse_function_script(input: &str) -> IResult<&str, Vec<Instruction>> {
     expression(input)
 }
 
-pub fn expression(input: &str) -> IResult<&str, ()> {
+pub fn expression(input: &str) -> IResult<&str, Vec<Instruction>> {
     logical_or(input)
 }
 
-fn logical_or(input: &str) -> IResult<&str, ()> {
-    binary(logical_xor, char_f('|'), logical_or)(input).map(|(input, _)| (input, ()))
+fn logical_or(input: &str) -> IResult<&str, Vec<Instruction>> {
+    binary(logical_xor, char_f('|'), logical_or)(input).map(|(input, (mut left, right_opt))| {
+        if let Some((_, right)) = right_opt {
+            left.extend(right.into_iter());
+            left.push(Instruction::LogicalOr);
+        }
+        (input, left)
+    })
 }
 
-fn logical_xor(input: &str) -> IResult<&str, ()> {
-    binary(logical_and, char_f('^'), logical_xor)(input).map(|(input, _)| (input, ()))
+fn logical_xor(input: &str) -> IResult<&str, Vec<Instruction>> {
+    binary(logical_and, char_f('^'), logical_xor)(input).map(|(input, (mut left, right_opt))| {
+        if let Some((_, right)) = right_opt {
+            left.extend(right.into_iter());
+            left.push(Instruction::LogicalXor);
+        }
+        (input, left)
+    })
 }
 
-fn logical_and(input: &str) -> IResult<&str, ()> {
-    binary(logical_not, char_f('^'), logical_xor)(input).map(|(input, _)| (input, ()))
+fn logical_and(input: &str) -> IResult<&str, Vec<Instruction>> {
+    binary(logical_not, char_f('&'), logical_xor)(input).map(|(input, (mut left, right_opt))| {
+        if let Some((_, right)) = right_opt {
+            left.extend(right.into_iter());
+            left.push(Instruction::LogicalAnd);
+        }
+        (input, left)
+    })
 }
 
-fn logical_not(input: &str) -> IResult<&str, ()> {
-    unary(char_f('!'), equal_expr)(input).map(|(input, _)| (input, ()))
+fn logical_not(input: &str) -> IResult<&str, Vec<Instruction>> {
+    unary(char_f('!'), equal_expr)(input).map(|(input, (operator, mut child))| {
+        if let Some(_) = operator {
+            child.push(Instruction::UnaryLogicalNot);
+        }
+        (input, child)
+    })
 }
 
 fn equal_symbol(input: &str) -> IResult<&str, &str> {
     w(alt((tag("=="), tag("!="), tag(">"), tag("<"), tag("<="), tag(">="))))(input)
 }
 
-fn equal_expr(input: &str) -> IResult<&str, ()> {
-    binary(plus_expr, equal_symbol, equal_expr)(input).map(|(input, _)| (input, ()))
+fn equal_expr(input: &str) -> IResult<&str, Vec<Instruction>> {
+    binary(plus_expr, equal_symbol, equal_expr)(input).map(|(input, (mut left, right_opt))| {
+        if let Some((operator, right)) = right_opt {
+            left.extend(right.into_iter());
+            left.push(match operator {
+                "==" => Instruction::Equal,
+                "!=" => Instruction::NotEqual,
+                "<" => Instruction::Less,
+                "<=" => Instruction::LessEqual,
+                ">" => Instruction::Greater,
+                ">=" => Instruction::GreaterEqual,
+                _ => unreachable!(),
+            });
+        }
+        (input, left)
+    })
 }
 
 fn plus_symbol(input: &str) -> IResult<&str, char> {
     w(alt((char_f('+'), char_f('-'))))(input)
 }
 
-fn plus_expr(input: &str) -> IResult<&str, ()> {
-    binary(times_expr, plus_symbol, plus_expr)(input).map(|(input, _)| (input, ()))
+fn plus_expr(input: &str) -> IResult<&str, Vec<Instruction>> {
+    binary(times_expr, plus_symbol, plus_expr)(input).map(|(input, (mut left, right_opt))| {
+        if let Some((operator, right)) = right_opt {
+            left.extend(right.into_iter());
+            left.push(if operator == '+' {
+                Instruction::Addition
+            } else {
+                Instruction::Subtraction
+            });
+        }
+        (input, left)
+    })
 }
 
-fn times_expr(input: &str) -> IResult<&str, ()> {
-    binary(divide_expr, char_f('*'), times_expr)(input).map(|(input, _)| (input, ()))
+fn times_expr(input: &str) -> IResult<&str, Vec<Instruction>> {
+    binary(divide_expr, char_f('*'), times_expr)(input).map(|(input, (mut left, right_opt))| {
+        if let Some((_, right)) = right_opt {
+            left.extend(right.into_iter());
+            left.push(Instruction::Multiplication);
+        }
+        (input, left)
+    })
 }
 
-fn divide_expr(input: &str) -> IResult<&str, ()> {
-    binary(unary_minus_expr, char_f('*'), times_expr)(input).map(|(input, _)| (input, ()))
+fn divide_expr(input: &str) -> IResult<&str, Vec<Instruction>> {
+    binary(unary_negative_expr, char_f('/'), times_expr)(input).map(|(input, (mut left, right_opt))| {
+        if let Some((_, right)) = right_opt {
+            left.extend(right.into_iter());
+            left.push(Instruction::Division);
+        }
+        (input, left)
+    })
 }
 
-fn unary_minus_expr(input: &str) -> IResult<&str, ()> {
-    unary(char_f('-'), function_expr)(input).map(|(input, _)| (input, ()))
+fn unary_negative_expr(input: &str) -> IResult<&str, Vec<Instruction>> {
+    unary(char_f('-'), function_expr)(input).map(|(input, (operator, mut child))| {
+        if let Some(_) = operator {
+            child.push(Instruction::UnaryNegative);
+        }
+        (input, child)
+    })
 }
 
-fn function_expr(input: &str) -> IResult<&str, ()> {
-    alt((function_call, term))(input).map(|(input, _)| (input, ()))
+fn function_expr(input: &str) -> IResult<&str, Vec<Instruction>> {
+    alt((function_call, term))(input)
 }
 
-fn function_call(input: &str) -> IResult<&str, ()> {
+fn function_call(input: &str) -> IResult<&str, Vec<Instruction>> {
     tuple((
         name,
         w(char_f('[')),
@@ -108,40 +188,81 @@ fn function_call(input: &str) -> IResult<&str, ()> {
         many0(tuple((w(char_f(',')), expression))),
         w(char_f(']')),
     ))(input)
-    .map(|(input, _)| (input, ()))
+    .map(
+        |(input, (name, _, arg1, argn, _)): (&str, (String, _, Vec<Instruction>, Vec<(char, Vec<Instruction>)>, _))| {
+            let mut instructions = Vec::new();
+            instructions.extend(arg1);
+            let arg_count = argn.len() + 1;
+            argn.into_iter()
+                .for_each(|(_, arg)| instructions.extend(arg.into_iter()));
+            instructions.push(Instruction::FunctionCall { name, arg_count });
+            (input, instructions)
+        },
+    )
 }
 
-fn term(input: &str) -> IResult<&str, ()> {
-    alt((parens_expr, name, number))(input).map(|(input, _)| (input, ()))
+fn term(input: &str) -> IResult<&str, Vec<Instruction>> {
+    alt((parens_expr, variable_name, number))(input)
+        .map(|(input, child_instructions)| (input, Vec::<Instruction>::from(child_instructions)))
 }
 
-fn parens_expr(input: &str) -> IResult<&str, ()> {
-    tuple((w(char_f('(')), expression, w(char_f(')'))))(input).map(|(input, _)| (input, ()))
+fn variable_name(input: &str) -> IResult<&str, OneOrManyInstructions> {
+    name(input).map(|(input, name)| (input, OneOrManyInstructions::One(Instruction::Variable { name })))
 }
 
-fn number(input: &str) -> IResult<&str, ()> {
-    w(take_while(char::is_dec_digit))(input).map(|(input, _)| (input, ()))
+fn parens_expr(input: &str) -> IResult<&str, OneOrManyInstructions> {
+    tuple((w(char_f('(')), expression, w(char_f(')'))))(input)
+        .map(|(input, (_, expr, _))| (input, OneOrManyInstructions::Many(expr)))
 }
 
-fn name(input: &str) -> IResult<&str, ()> {
-    w(tuple((letter, many0(alt((letter, digit))))))(input).map(|(input, _)| (input, ()))
+fn number(input: &str) -> IResult<&str, OneOrManyInstructions> {
+    map_res(
+        w(take_while(char::is_dec_digit)),
+        |digits: &str| -> Result<OneOrManyInstructions, ParseFloatError> {
+            let value: f64 = digits.parse()?;
+            Ok(OneOrManyInstructions::One(Instruction::Number { value }))
+        },
+    )(input)
 }
 
-fn letter(input: &str) -> IResult<&str, ()> {
-    one_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")(input).map(|(input, _)| (input, ()))
+fn name(input: &str) -> IResult<&str, String> {
+    w(tuple((letter, many0(alt((letter, digit))))))(input).map(|(input, (first_char, remaining))| {
+        let mut name = String::new();
+        name.push(first_char);
+        name.extend(remaining);
+        (input, name)
+    })
 }
 
-fn digit(input: &str) -> IResult<&str, ()> {
-    one_of("0123456789")(input).map(|(input, _)| (input, ()))
+// TODO: Optimize these routines
+fn letter(input: &str) -> IResult<&str, char> {
+    one_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")(input)
+}
+
+fn digit(input: &str) -> IResult<&str, char> {
+    one_of("0123456789.")(input)
 }
 
 #[cfg(test)]
 mod test {
     use crate::parse::function_scripts::parser::parse_function_script;
+    use crate::parse::function_scripts::Instruction;
+    use itertools::assert_equal;
 
     #[test]
     fn addition() {
-        let (input_left, _) = parse_function_script("1 + 2 + 3").unwrap();
+        let (input_left, output) = parse_function_script("1 + 2 + 3").unwrap();
         assert!(input_left.is_empty());
+        assert_equal(
+            output.into_iter(),
+            vec![
+                Instruction::Number { value: 1.0 },
+                Instruction::Number { value: 2.0 },
+                Instruction::Number { value: 3.0 },
+                Instruction::Addition,
+                Instruction::Addition,
+            ]
+            .into_iter(),
+        )
     }
 }
