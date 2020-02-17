@@ -74,11 +74,17 @@ impl From<OneOrManyInstructions> for Vec<Instruction> {
     }
 }
 
+/// Parses the function script string into function script IR.
+///
+/// # Errors
+///
+/// - Errors when function script grammar is violated and was unable to be parsed. There may be leftover input, this is
+///   likely a bug, but not enough to halt execution.
 pub fn parse_function_script(input: &str) -> IResult<&str, Vec<Instruction>> {
     expression(input)
 }
 
-pub fn expression(input: &str) -> IResult<&str, Vec<Instruction>> {
+fn expression(input: &str) -> IResult<&str, Vec<Instruction>> {
     logical_or(input)
 }
 
@@ -114,7 +120,7 @@ fn logical_and(input: &str) -> IResult<&str, Vec<Instruction>> {
 
 fn logical_not(input: &str) -> IResult<&str, Vec<Instruction>> {
     unary(char_f('!'), equal_expr)(input).map(|(input, (operator, mut child))| {
-        if let Some(_) = operator {
+        if operator.is_some() {
             child.push(Instruction::UnaryLogicalNot);
         }
         (input, child)
@@ -186,7 +192,7 @@ fn divide_expr(input: &str) -> IResult<&str, Vec<Instruction>> {
 
 fn unary_negative_expr(input: &str) -> IResult<&str, Vec<Instruction>> {
     unary(char_f('-'), function_expr)(input).map(|(input, (operator, mut child))| {
-        if let Some(_) = operator {
+        if operator.is_some() {
             child.push(Instruction::UnaryNegative);
         }
         (input, child)
@@ -205,17 +211,15 @@ fn function_call(input: &str) -> IResult<&str, Vec<Instruction>> {
         many0(tuple((w(char_f(',')), expression))),
         w(char_f(']')),
     ))(input)
-    .map(
-        |(input, (name, _, arg1, argn, _)): (&str, (String, _, Vec<Instruction>, Vec<(char, Vec<Instruction>)>, _))| {
-            let mut instructions = Vec::new();
-            instructions.extend(arg1);
-            let arg_count = argn.len() + 1;
-            argn.into_iter()
-                .for_each(|(_, arg)| instructions.extend(arg.into_iter()));
-            instructions.push(Instruction::FunctionCall { name, arg_count });
-            (input, instructions)
-        },
-    )
+    .map(|(input, (name, _, arg1, argn, _))| {
+        let mut instructions = Vec::new();
+        instructions.extend(arg1);
+        let arg_count = argn.len() + 1;
+        argn.into_iter()
+            .for_each(|(_, arg)| instructions.extend(arg.into_iter()));
+        instructions.push(Instruction::FunctionCall { name, arg_count });
+        (input, instructions)
+    })
 }
 
 fn term(input: &str) -> IResult<&str, Vec<Instruction>> {
@@ -266,7 +270,7 @@ mod test {
     use crate::parse::function_scripts::Instruction;
 
     macro_rules! function_script_assert {
-        ($input:expr, $($result:expr),* ,) => {
+        ($input:expr, $($result:expr),* ,) => {{
             let input = $input;
             let (remaining, output) = parse_function_script(input.as_ref()).unwrap();
             assert_eq!(remaining, "");
@@ -278,7 +282,7 @@ mod test {
                 ]
                 .into_iter(),
             )
-        };
+        }};
     }
 
     #[test]
@@ -294,7 +298,7 @@ mod test {
             (">=", Instruction::GreaterEqual),
         ];
         // Left associative
-        for (string, instruction) in operators.iter() {
+        for (string, instruction) in &operators {
             function_script_assert!(
                 format!("1 {0} 2 {0} 3", string),
                 Instruction::Number { value: 1.0 },
@@ -316,7 +320,7 @@ mod test {
             ("^", Instruction::LogicalXor),
         ];
         // Right associative
-        for (string, instruction) in operators.iter() {
+        for (string, instruction) in &operators {
             function_script_assert!(
                 format!("1 {0} 2 {0} 3", string),
                 Instruction::Number { value: 1.0 },
@@ -331,7 +335,7 @@ mod test {
     #[test]
     fn unary_operators() {
         let operators = [("!", Instruction::UnaryLogicalNot), ("-", Instruction::UnaryNegative)];
-        for (string, instruction) in operators.iter() {
+        for (string, instruction) in &operators {
             function_script_assert!(
                 format!("{0} 1", string),
                 Instruction::Number { value: 1.0 },
