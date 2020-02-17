@@ -23,7 +23,21 @@ where
     }
 }
 
-fn binary<F1, F2, F3, I, O1, O2, O3>(
+fn binary_left<F1, F2, F3, I, O1, O2, O3>(
+    left: F1,
+    middle: F2,
+    right: F3,
+) -> impl FnOnce(I) -> IResult<I, (O1, Vec<(O2, O3)>)>
+where
+    I: InputTakeAtPosition<Item = char> + Clone + PartialEq,
+    F1: Fn(I) -> IResult<I, O1>,
+    F2: Fn(I) -> IResult<I, O2>,
+    F3: Fn(I) -> IResult<I, O3>,
+{
+    move |input| tuple((left, many0(tuple((middle, right)))))(input)
+}
+
+fn binary_right<F1, F2, F3, I, O1, O2, O3>(
     left: F1,
     middle: F2,
     right: F3,
@@ -69,7 +83,7 @@ pub fn expression(input: &str) -> IResult<&str, Vec<Instruction>> {
 }
 
 fn logical_or(input: &str) -> IResult<&str, Vec<Instruction>> {
-    binary(logical_xor, char_f('|'), logical_or)(input).map(|(input, (mut left, right_opt))| {
+    binary_right(logical_xor, char_f('|'), logical_or)(input).map(|(input, (mut left, right_opt))| {
         if let Some((_, right)) = right_opt {
             left.extend(right.into_iter());
             left.push(Instruction::LogicalOr);
@@ -79,7 +93,7 @@ fn logical_or(input: &str) -> IResult<&str, Vec<Instruction>> {
 }
 
 fn logical_xor(input: &str) -> IResult<&str, Vec<Instruction>> {
-    binary(logical_and, char_f('^'), logical_xor)(input).map(|(input, (mut left, right_opt))| {
+    binary_right(logical_and, char_f('^'), logical_xor)(input).map(|(input, (mut left, right_opt))| {
         if let Some((_, right)) = right_opt {
             left.extend(right.into_iter());
             left.push(Instruction::LogicalXor);
@@ -89,7 +103,7 @@ fn logical_xor(input: &str) -> IResult<&str, Vec<Instruction>> {
 }
 
 fn logical_and(input: &str) -> IResult<&str, Vec<Instruction>> {
-    binary(logical_not, char_f('&'), logical_xor)(input).map(|(input, (mut left, right_opt))| {
+    binary_right(logical_not, char_f('&'), logical_and)(input).map(|(input, (mut left, right_opt))| {
         if let Some((_, right)) = right_opt {
             left.extend(right.into_iter());
             left.push(Instruction::LogicalAnd);
@@ -112,8 +126,8 @@ fn equal_symbol(input: &str) -> IResult<&str, &str> {
 }
 
 fn equal_expr(input: &str) -> IResult<&str, Vec<Instruction>> {
-    binary(plus_expr, equal_symbol, equal_expr)(input).map(|(input, (mut left, right_opt))| {
-        if let Some((operator, right)) = right_opt {
+    binary_left(plus_expr, equal_symbol, plus_expr)(input).map(|(input, (mut left, right_vec))| {
+        for (operator, right) in right_vec {
             left.extend(right.into_iter());
             left.push(match operator {
                 "==" => Instruction::Equal,
@@ -134,8 +148,10 @@ fn plus_symbol(input: &str) -> IResult<&str, char> {
 }
 
 fn plus_expr(input: &str) -> IResult<&str, Vec<Instruction>> {
-    binary(times_expr, plus_symbol, plus_expr)(input).map(|(input, (mut left, right_opt))| {
-        if let Some((operator, right)) = right_opt {
+    // This is left associative while the rest of everything is right associative
+    // Idk man
+    binary_left(times_expr, plus_symbol, times_expr)(input).map(|(input, (mut left, right_vec))| {
+        for (operator, right) in right_vec {
             left.extend(right.into_iter());
             left.push(if operator == '+' {
                 Instruction::Addition
@@ -148,7 +164,7 @@ fn plus_expr(input: &str) -> IResult<&str, Vec<Instruction>> {
 }
 
 fn times_expr(input: &str) -> IResult<&str, Vec<Instruction>> {
-    binary(divide_expr, char_f('*'), times_expr)(input).map(|(input, (mut left, right_opt))| {
+    binary_right(divide_expr, char_f('*'), times_expr)(input).map(|(input, (mut left, right_opt))| {
         if let Some((_, right)) = right_opt {
             left.extend(right.into_iter());
             left.push(Instruction::Multiplication);
@@ -158,7 +174,7 @@ fn times_expr(input: &str) -> IResult<&str, Vec<Instruction>> {
 }
 
 fn divide_expr(input: &str) -> IResult<&str, Vec<Instruction>> {
-    binary(unary_negative_expr, char_f('/'), times_expr)(input).map(|(input, (mut left, right_opt))| {
+    binary_right(unary_negative_expr, char_f('/'), divide_expr)(input).map(|(input, (mut left, right_opt))| {
         if let Some((_, right)) = right_opt {
             left.extend(right.into_iter());
             left.push(Instruction::Division);
