@@ -1,7 +1,27 @@
 //! Generic parser for key-value pair format. Not quite toml, not quite INI.
+//!
+//! No frills format. Does not deal with casing, comments, etc. That must be
+//! dealt with ahead of time. This just deserializes the file as is. However
+//! whitespace is trimmed off the edges of values
+//!
+//! There may be arbitrary duplicates.
+//!
+//! The first section before a section header is always the unnamed section `None`.
+//! This differs from an empty section name `Some("")`
+//!
+//! ```ini
+//! value1
+//! key1 = some_value
+//!
+//! [section1]
+//! value
+//! key = value
+//! key = value
+//! ```
 
 use crate::parse::Span;
 
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct KVPFile {
     pub sections: Vec<Section>,
 }
@@ -14,6 +34,7 @@ impl Default for KVPFile {
     }
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Section {
     pub name: Option<String>,
     pub span: Span,
@@ -30,19 +51,19 @@ impl Default for Section {
     }
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Value {
     pub span: Span,
     pub data: ValueData,
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ValueData {
     KeyValuePair { key: String, value: String },
     Value { value: String },
 }
 
 pub fn parse_kvp_file(input: &str) -> KVPFile {
-    let input = input.to_lowercase();
-
     let mut file = KVPFile::default();
     let mut current_section = Section::default();
     for (line_idx, line) in input.lines().enumerate() {
@@ -97,4 +118,150 @@ pub fn parse_kvp_file(input: &str) -> KVPFile {
     file.sections.push(current_section);
 
     file
+}
+
+#[cfg(test)]
+mod test {
+    use crate::parse::kvp::{parse_kvp_file, KVPFile, Section, Value, ValueData};
+    use crate::parse::Span;
+
+    #[test]
+    fn value() {
+        let kvp = parse_kvp_file("my_value");
+        assert_eq!(
+            kvp,
+            KVPFile {
+                sections: vec![Section {
+                    name: None,
+                    span: Span::from_line(0),
+                    values: vec![Value {
+                        span: Span::from_line(1),
+                        data: ValueData::Value {
+                            value: String::from("my_value")
+                        }
+                    }]
+                }]
+            }
+        );
+    }
+
+    #[test]
+    fn kvp() {
+        let kvp = parse_kvp_file("my_key = my_value");
+        assert_eq!(
+            kvp,
+            KVPFile {
+                sections: vec![Section {
+                    name: None,
+                    span: Span::from_line(0),
+                    values: vec![Value {
+                        span: Span::from_line(1),
+                        data: ValueData::KeyValuePair {
+                            key: String::from("my_key"),
+                            value: String::from("my_value"),
+                        }
+                    }]
+                }]
+            }
+        );
+    }
+
+    #[test]
+    fn named_section_value() {
+        let kvp = parse_kvp_file("[my_section]\nmy_value");
+        assert_eq!(
+            kvp,
+            KVPFile {
+                sections: vec![
+                    Section {
+                        name: None,
+                        span: Span::from_line(0),
+                        values: Vec::default(),
+                    },
+                    Section {
+                        name: Some(String::from("my_section")),
+                        span: Span::from_line(1),
+                        values: vec![Value {
+                            span: Span::from_line(2),
+                            data: ValueData::Value {
+                                value: String::from("my_value")
+                            }
+                        }]
+                    }
+                ]
+            }
+        );
+    }
+
+    #[test]
+    fn named_section_kvp() {
+        let kvp = parse_kvp_file("[my_section]\nmy_key = my_value");
+        assert_eq!(
+            kvp,
+            KVPFile {
+                sections: vec![
+                    Section {
+                        name: None,
+                        span: Span::from_line(0),
+                        values: Vec::default(),
+                    },
+                    Section {
+                        name: Some(String::from("my_section")),
+                        span: Span::from_line(1),
+                        values: vec![Value {
+                            span: Span::from_line(2),
+                            data: ValueData::KeyValuePair {
+                                key: String::from("my_key"),
+                                value: String::from("my_value"),
+                            }
+                        }]
+                    }
+                ]
+            }
+        );
+    }
+
+    #[test]
+    fn empty_section_name() {
+        let kvp = parse_kvp_file("[]");
+        assert_eq!(
+            kvp,
+            KVPFile {
+                sections: vec![
+                    Section {
+                        name: None,
+                        span: Span::from_line(0),
+                        values: Vec::default(),
+                    },
+                    Section {
+                        name: Some(String::from("")),
+                        span: Span::from_line(1),
+                        values: Vec::default(),
+                    }
+                ]
+            }
+        );
+    }
+
+    #[test]
+    fn section_name_no_rbracket() {
+        let kvp = parse_kvp_file("[my_section");
+        assert_eq!(
+            kvp,
+            KVPFile {
+                sections: vec![
+                    Section {
+                        name: None,
+                        span: Span::from_line(0),
+                        values: Vec::default(),
+                    },
+                    Section {
+                        name: Some(String::from("my_section")),
+                        span: Span::from_line(1),
+                        values: Vec::default(),
+                    }
+                ]
+            }
+        );
+    }
 }
