@@ -22,11 +22,11 @@
 use crate::parse::Span;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct KVPFile {
-    pub sections: Vec<Section>,
+pub struct KVPFile<'s> {
+    pub sections: Vec<Section<'s>>,
 }
 
-impl Default for KVPFile {
+impl<'s> Default for KVPFile<'s> {
     fn default() -> Self {
         Self {
             sections: Vec::default(),
@@ -35,13 +35,13 @@ impl Default for KVPFile {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct Section {
-    pub name: Option<String>,
+pub struct Section<'s> {
+    pub name: Option<&'s str>,
     pub span: Span,
-    pub values: Vec<Value>,
+    pub values: Vec<Value<'s>>,
 }
 
-impl Default for Section {
+impl<'s> Default for Section<'s> {
     fn default() -> Self {
         Self {
             name: None,
@@ -52,20 +52,20 @@ impl Default for Section {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct Value {
+pub struct Value<'s> {
     pub span: Span,
-    pub data: ValueData,
+    pub data: ValueData<'s>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub enum ValueData {
-    KeyValuePair { key: String, value: String },
-    Value { value: String },
+pub enum ValueData<'s> {
+    KeyValuePair { key: &'s str, value: &'s str },
+    Value { value: &'s str },
 }
 
 #[must_use]
 #[allow(clippy::single_match_else)] // This advises less clear code
-pub fn parse_kvp_file(input: &str) -> KVPFile {
+pub fn parse_kvp_file(input: &str) -> KVPFile<'_> {
     let mut file = KVPFile::default();
     let mut current_section = Section::default();
     for (line_idx, line) in input.lines().enumerate() {
@@ -76,8 +76,8 @@ pub fn parse_kvp_file(input: &str) -> KVPFile {
                 let end = line.find(']');
                 let name = match end {
                     // Allow there to be a missing ] in the section header
-                    Some(idx) => String::from(line[1..idx].trim()),
-                    None => String::from(line[1..].trim()),
+                    Some(idx) => line[1..idx].trim(),
+                    None => line[1..].trim(),
                 };
                 // Simultaneously push the previous section and create this new one
                 file.sections.push(std::mem::replace(
@@ -95,13 +95,13 @@ pub fn parse_kvp_file(input: &str) -> KVPFile {
                 let data = match equals {
                     // Key Value Pair
                     Some(idx) => {
-                        let key = String::from(line[0..idx].trim());
-                        let value = String::from(line[(idx + 1)..].trim());
+                        let key = line[0..idx].trim();
+                        let value = line[(idx + 1)..].trim();
                         ValueData::KeyValuePair { key, value }
                     }
                     // No Equals it's a Value
                     None => {
-                        let value = String::from(line.trim());
+                        let value = line.trim();
                         ValueData::Value { value }
                     }
                 };
@@ -138,9 +138,7 @@ mod test {
                     span: Span::from_line(0),
                     values: vec![Value {
                         span: Span::from_line(1),
-                        data: ValueData::Value {
-                            value: String::from("my_value")
-                        }
+                        data: ValueData::Value { value: "my_value" }
                     }]
                 }]
             }
@@ -159,8 +157,8 @@ mod test {
                     values: vec![Value {
                         span: Span::from_line(1),
                         data: ValueData::KeyValuePair {
-                            key: String::from("my_key"),
-                            value: String::from("my_value"),
+                            key: "my_key",
+                            value: "my_value",
                         }
                     }]
                 }]
@@ -181,13 +179,11 @@ mod test {
                         values: Vec::default(),
                     },
                     Section {
-                        name: Some(String::from("my_section")),
+                        name: Some("my_section"),
                         span: Span::from_line(1),
                         values: vec![Value {
                             span: Span::from_line(2),
-                            data: ValueData::Value {
-                                value: String::from("my_value")
-                            }
+                            data: ValueData::Value { value: "my_value" }
                         }]
                     }
                 ]
@@ -208,13 +204,13 @@ mod test {
                         values: Vec::default(),
                     },
                     Section {
-                        name: Some(String::from("my_section")),
+                        name: Some("my_section"),
                         span: Span::from_line(1),
                         values: vec![Value {
                             span: Span::from_line(2),
                             data: ValueData::KeyValuePair {
-                                key: String::from("my_key"),
-                                value: String::from("my_value"),
+                                key: "my_key",
+                                value: "my_value",
                             }
                         }]
                     }
@@ -236,7 +232,7 @@ mod test {
                         values: Vec::default(),
                     },
                     Section {
-                        name: Some(String::from("")),
+                        name: Some(""),
                         span: Span::from_line(1),
                         values: Vec::default(),
                     }
@@ -258,7 +254,7 @@ mod test {
                         values: Vec::default(),
                     },
                     Section {
-                        name: Some(String::from("my_section")),
+                        name: Some("my_section"),
                         span: Span::from_line(1),
                         values: Vec::default(),
                     }
