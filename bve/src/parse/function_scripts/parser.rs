@@ -122,7 +122,7 @@ fn logical_not(input: &str) -> IResult<&str, Vec<Instruction>> {
 }
 
 fn equal_symbol(input: &str) -> IResult<&str, &str> {
-    w(alt((tag("=="), tag("!="), tag(">"), tag("<"), tag("<="), tag(">="))))(input)
+    w(alt((tag("=="), tag("!="), tag("<="), tag(">="), tag(">"), tag("<"))))(input)
 }
 
 fn equal_expr(input: &str) -> IResult<&str, Vec<Instruction>> {
