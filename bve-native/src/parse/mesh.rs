@@ -282,7 +282,7 @@ impl Into<mesh::MeshErrorKind> for Mesh_Error_Kind {
     }
 }
 
-/// C safe wrapper for [`MeshError`](bve::parse::mesh::MeshWarning).
+/// C safe wrapper for [`MeshWarning`](bve::parse::mesh::MeshWarning).
 ///
 /// # Safety
 ///
@@ -311,7 +311,7 @@ impl Into<mesh::MeshWarning> for Mesh_Warning {
     }
 }
 
-/// C safe wrapper for [`MeshErrorKind`](bve::parse::mesh::MeshWarningKind).
+/// C safe wrapper for [`MeshWarningKind`](bve::parse::mesh::MeshWarningKind).
 ///
 /// # Safety
 ///
