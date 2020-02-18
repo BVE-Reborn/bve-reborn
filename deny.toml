@@ -13,6 +13,9 @@ allow = [
 
 [bans]
 multiple-versions = "deny"
+skip = [
+    { name = "nom", version = "4" },
+]
 
 [advisories]
 vulnerability = "deny"

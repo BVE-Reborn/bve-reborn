@@ -32,6 +32,7 @@
 #![allow(clippy::missing_docs_in_private_items)]
 #![allow(clippy::missing_inline_in_public_items)]
 #![allow(clippy::module_name_repetitions)]
+#![allow(clippy::multiple_crate_versions)] // Cargo deny's job
 #![allow(clippy::non_ascii_literal)]
 #![allow(clippy::option_expect_used)]
 #![allow(clippy::panic)]
