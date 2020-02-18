@@ -1,5 +1,5 @@
 use crate::parse::mesh::instructions::*;
-use crate::parse::mesh::{FileType, MeshError, MeshErrorKind};
+use crate::parse::mesh::{FileType, MeshError, MeshErrorKind, MeshWarning, MeshWarningKind};
 use crate::parse::util::strip_comments;
 use crate::parse::Span;
 use csv::{ReaderBuilder, StringRecord, Trim};
@@ -23,11 +23,34 @@ pub(in crate::parse::mesh::instructions) fn b3d_to_csv_syntax(input: &str) -> St
     p
 }
 
+enum DeserializeInstructionError {
+    MeshError(MeshError),
+    MeshWarning(MeshWarning),
+}
+
+impl From<MeshError> for DeserializeInstructionError {
+    fn from(e: MeshError) -> Self {
+        Self::MeshError(e)
+    }
+}
+
+impl From<MeshWarning> for DeserializeInstructionError {
+    fn from(e: MeshWarning) -> Self {
+        Self::MeshWarning(e)
+    }
+}
+
+impl From<csv::Error> for DeserializeInstructionError {
+    fn from(e: csv::Error) -> Self {
+        e.into()
+    }
+}
+
 fn deserialize_instruction(
     inst_type: InstructionType,
     record: &StringRecord,
     span: Span,
-) -> Result<Instruction, MeshError> {
+) -> Result<Instruction, DeserializeInstructionError> {
     let data = match inst_type {
         InstructionType::CreateMeshBuilder => InstructionData::CreateMeshBuilder(CreateMeshBuilder),
         InstructionType::AddVertex => {
@@ -54,21 +77,23 @@ fn deserialize_instruction(
         }
         InstructionType::GenerateNormals => {
             tracing::info!(?inst_type, ?record, line = ?span.line, "Useless instruction");
-            return Err(MeshError {
-                kind: MeshErrorKind::UselessInstruction {
+            return Err(MeshWarning {
+                kind: MeshWarningKind::UselessInstruction {
                     name: String::from("GenerateNormals"),
                 },
                 location: span,
-            });
+            }
+            .into());
         }
         InstructionType::Texture => {
             tracing::info!(?inst_type, ?record, line = ?span.line, "Useless instruction");
-            return Err(MeshError {
-                kind: MeshErrorKind::UselessInstruction {
+            return Err(MeshWarning {
+                kind: MeshWarningKind::UselessInstruction {
                     name: String::from("[texture]"),
                 },
                 location: span,
-            });
+            }
+            .into());
         }
         InstructionType::Translate => {
             let mut parsed: Translate = record.deserialize(None)?;
@@ -211,7 +236,11 @@ pub fn create_instructions(input: &str, file_type: FileType) -> InstructionList 
 
                 match inst {
                     Ok(i) => instructions.instructions.push(i),
-                    Err(mut e) => {
+                    Err(DeserializeInstructionError::MeshWarning(mut e)) => {
+                        e.location = span;
+                        instructions.warnings.push(e)
+                    }
+                    Err(DeserializeInstructionError::MeshError(mut e)) => {
                         e.location = span;
                         instructions.errors.push(e)
                     }

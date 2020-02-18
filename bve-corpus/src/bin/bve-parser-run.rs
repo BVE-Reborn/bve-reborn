@@ -1,5 +1,5 @@
 use bve::filesystem::read_convert_utf8;
-use bve::parse::mesh::{mesh_from_str, MeshErrorKind};
+use bve::parse::mesh::mesh_from_str;
 use clap::arg_enum;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
@@ -36,16 +36,16 @@ fn parse_mesh_b3d_csv(file: impl AsRef<Path>, errors: bool, b3d: bool) {
     };
 
     let start = Instant::now();
-    let mut parsed = mesh_from_str(&contents, file_type);
+    let parsed = mesh_from_str(&contents, file_type);
     let duration = Instant::now() - start;
 
     println!("Duration: {:.4}", duration.as_secs_f32());
 
-    parsed
-        .errors
-        .retain(|v| !matches!(v.kind, MeshErrorKind::UselessInstruction{..}));
-
     if errors {
+        println!("Warnings:");
+        for e in &parsed.warnings {
+            println!("\t{} {:?}", e.location.line.map(|v| v as i64).unwrap_or(-1), e.kind)
+        }
         println!("Errors:");
         for e in &parsed.errors {
             println!("\t{} {:?}", e.location.line.map(|v| v as i64).unwrap_or(-1), e.kind)

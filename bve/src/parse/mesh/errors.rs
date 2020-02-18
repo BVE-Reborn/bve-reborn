@@ -1,5 +1,21 @@
 use crate::parse::Span;
 
+/// A warning in the parsing or evaluation of a mesh.
+#[derive(Debug, Clone, PartialEq)]
+pub struct MeshWarning {
+    /// Info about the exact error.
+    pub kind: MeshWarningKind,
+    /// Location of the error within the file.
+    pub location: Span,
+}
+
+/// Enum representing various types of warnings encountered when parsing meshes
+#[derive(Debug, Clone, PartialEq)]
+pub enum MeshWarningKind {
+    /// Instruction no longer does anything anymore
+    UselessInstruction { name: String },
+}
+
 /// A single error in the parsing or evaluation of a mesh.
 #[derive(Debug, Clone, PartialEq)]
 pub struct MeshError {
@@ -19,8 +35,6 @@ pub enum MeshErrorKind {
     },
     /// Index provided to vertex-specific command is out of bounds.
     OutOfBounds { idx: usize },
-    /// Instruction no longer does anything anymore
-    UselessInstruction { name: String },
     /// Unrecognized instruction
     UnknownInstruction {
         /// Instruction that is not recognized

@@ -14,7 +14,7 @@
 //! Makes heavy use of [`bve-derive::serde_proxy`](../../../../bve_derive/attr.serde_proxy.html) and
 //! [`bve-derive::serde_vector_proxy`](../../../../bve_derive/attr.serde_vector_proxy.html)
 
-use crate::parse::mesh::{BlendMode, GlowAttenuationMode, MeshError};
+use crate::parse::mesh::{BlendMode, GlowAttenuationMode, MeshError, MeshWarning};
 use crate::parse::{util, Span};
 use crate::{ColorU8RGB, ColorU8RGBA};
 use cgmath::{Vector2, Vector3};
@@ -32,6 +32,7 @@ mod tests;
 #[derive(Debug, Clone, PartialEq)]
 pub struct InstructionList {
     pub instructions: Vec<Instruction>,
+    pub warnings: Vec<MeshWarning>,
     pub errors: Vec<MeshError>,
 }
 
@@ -39,6 +40,7 @@ impl InstructionList {
     const fn new() -> Self {
         Self {
             instructions: Vec::new(),
+            warnings: Vec::new(),
             errors: Vec::new(),
         }
     }

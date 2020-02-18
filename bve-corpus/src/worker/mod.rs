@@ -61,7 +61,7 @@ fn processing_loop(
         USE_DEFAULT_PANIC_HANLDER.with(|v| *v.borrow_mut() = false);
         let panicked = std::panic::catch_unwind(|| match file.kind {
             FileKind::ModelCsv => {
-                let ParsedStaticObject { mut errors, .. } = mesh_from_str(
+                let ParsedStaticObject { errors, .. } = mesh_from_str(
                     &match read_convert_utf8(&file.path) {
                         Ok(s) => s,
                         Err(err) => {
@@ -71,8 +71,6 @@ fn processing_loop(
                     },
                     FileType::CSV,
                 );
-
-                errors.retain(|v| !matches!(v.kind, MeshErrorKind::UselessInstruction{..}));
 
                 ParseResult::Errors {
                     count: errors.len() as u64,
