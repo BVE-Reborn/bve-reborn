@@ -23,24 +23,24 @@ pub(in crate::parse::mesh::instructions) fn b3d_to_csv_syntax(input: &str) -> St
     p
 }
 
-enum DeserializeInstruction {
+enum DeserializeInstructionError {
     MeshError(MeshError),
     MeshWarning(MeshWarning),
 }
 
-impl From<MeshError> for DeserializeInstruction {
+impl From<MeshError> for DeserializeInstructionError {
     fn from(e: MeshError) -> Self {
         Self::MeshError(e)
     }
 }
 
-impl From<MeshWarning> for DeserializeInstruction {
+impl From<MeshWarning> for DeserializeInstructionError {
     fn from(e: MeshWarning) -> Self {
         Self::MeshWarning(e)
     }
 }
 
-impl From<csv::Error> for DeserializeInstruction {
+impl From<csv::Error> for DeserializeInstructionError {
     fn from(e: csv::Error) -> Self {
         e.into()
     }
@@ -50,7 +50,7 @@ fn deserialize_instruction(
     inst_type: InstructionType,
     record: &StringRecord,
     span: Span,
-) -> Result<Instruction, DeserializeInstruction> {
+) -> Result<Instruction, DeserializeInstructionError> {
     let data = match inst_type {
         InstructionType::CreateMeshBuilder => InstructionData::CreateMeshBuilder(CreateMeshBuilder),
         InstructionType::AddVertex => {
@@ -236,11 +236,11 @@ pub fn create_instructions(input: &str, file_type: FileType) -> InstructionList 
 
                 match inst {
                     Ok(i) => instructions.instructions.push(i),
-                    Err(DeserializeInstruction::MeshWarning(mut e)) => {
+                    Err(DeserializeInstructionError::MeshWarning(mut e)) => {
                         e.location = span;
                         instructions.warnings.push(e)
                     }
-                    Err(DeserializeInstruction::MeshError(mut e)) => {
+                    Err(DeserializeInstructionError::MeshError(mut e)) => {
                         e.location = span;
                         instructions.errors.push(e)
                     }
