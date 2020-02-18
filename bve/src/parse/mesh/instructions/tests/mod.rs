@@ -19,7 +19,7 @@ fn generate_instructions_from_obj(input: &'static str) -> InstructionList {
 
     let obj: Obj<'_, SimplePolygon> = Obj::load_buf(&mut buf).expect("Unable to parse obj");
     let mut result = vec![Instruction {
-        span: Span { line: None },
+        span: Span::none(),
         data: InstructionData::CreateMeshBuilder(CreateMeshBuilder),
     }];
 
@@ -32,7 +32,7 @@ fn generate_instructions_from_obj(input: &'static str) -> InstructionList {
             let normal = obj.normal[vert.2.expect("OBJ must have normals")];
             let normal: Vector3<f32> = Vector3::new(normal[0], normal[1], normal[2]);
             result.push(Instruction {
-                span: Span { line: None },
+                span: Span::none(),
                 data: InstructionData::AddVertex(AddVertex {
                     position,
                     normal,
@@ -42,7 +42,7 @@ fn generate_instructions_from_obj(input: &'static str) -> InstructionList {
             let texture_coord = obj.texture[vert.1.expect("OBJ must have texture coords")];
             let texture_coord: Vector2<f32> = Vector2::new(texture_coord[0], texture_coord[1]);
             result.push(Instruction {
-                span: Span { line: None },
+                span: Span::none(),
                 data: InstructionData::SetTextureCoordinates(SetTextureCoordinates {
                     coords: texture_coord,
                     index: index_count + offset,
@@ -51,7 +51,7 @@ fn generate_instructions_from_obj(input: &'static str) -> InstructionList {
         }
         let face_vertices = face.len();
         result.push(Instruction {
-            span: Span { line: None },
+            span: Span::none(),
             data: InstructionData::AddFace(AddFace {
                 indexes: Vec::from_iter(index_count..(index_count + face_vertices)),
                 sides: Sides::One,

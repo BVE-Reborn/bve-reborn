@@ -28,7 +28,7 @@ pub fn post_process(mut instructions: InstructionList) -> InstructionList {
         let mesh = process_compound(mesh);
         let mesh = merge_texture_coords(&mesh, &mut instructions.errors);
         output.push(Instruction {
-            span: Span { line: None },
+            span: Span::none(),
             data: InstructionData::CreateMeshBuilder(CreateMeshBuilder),
         });
         output.extend(mesh);
