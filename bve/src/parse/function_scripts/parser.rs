@@ -1,4 +1,4 @@
-use crate::parse::function_scripts::Instruction;
+use crate::parse::function_scripts::{Instruction, ParsedFunctionScript};
 use nom::branch::alt;
 use nom::bytes::complete::{tag, take_while};
 use nom::character::complete::{char as char_f, one_of};
@@ -80,8 +80,8 @@ impl From<OneOrManyInstructions> for Vec<Instruction> {
 ///
 /// - Errors when function script grammar is violated and was unable to be parsed. There may be leftover input, this is
 ///   likely a bug, but not enough to halt execution.
-pub fn parse_function_script(input: &str) -> IResult<&str, Vec<Instruction>> {
-    expression(input)
+pub fn parse_function_script(input: &str) -> IResult<&str, ParsedFunctionScript> {
+    expression(input).map(|(input, output)| (input, output.into()))
 }
 
 fn expression(input: &str) -> IResult<&str, Vec<Instruction>> {
@@ -276,7 +276,7 @@ mod test {
             assert_eq!(remaining, "");
 
             itertools::assert_equal(
-                output.into_iter(),
+                output.instructions.into_iter(),
                 vec![
                     $($result),*
                 ]
