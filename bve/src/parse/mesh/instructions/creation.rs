@@ -42,7 +42,7 @@ impl From<MeshWarning> for DeserializeInstructionError {
 
 impl From<csv::Error> for DeserializeInstructionError {
     fn from(e: csv::Error) -> Self {
-        e.into()
+        Self::MeshError(e.into())
     }
 }
 
