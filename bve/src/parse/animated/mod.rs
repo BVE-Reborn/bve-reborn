@@ -1,9 +1,11 @@
 use crate::parse::function_scripts::ParsedFunctionScript;
+use bve_derive::FromKVPFile;
 use cgmath::{Vector2, Vector3};
 use num_traits::identities::Zero;
 
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, FromKVPFile)]
 pub struct ParsedAnimatedObject {
+    //    #[kvp(bare, alias = "left; right; center")]
     pub includes: Includes,
     pub objects: Vec<AnimatedObject>,
 }

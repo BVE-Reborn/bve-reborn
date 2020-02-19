@@ -68,6 +68,9 @@ mod helpers;
 #[cfg_attr(tarpaulin, skip)]
 mod test;
 
+#[cfg_attr(tarpaulin, skip)]
+mod kvp;
+
 #[proc_macro_attribute]
 #[cfg_attr(tarpaulin, skip)]
 pub fn serde_proxy(_attr: TokenStream, item: TokenStream) -> TokenStream {
@@ -96,4 +99,10 @@ pub fn bve_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
 #[cfg_attr(tarpaulin, skip)]
 pub fn span(attr: TokenStream, item: TokenStream) -> TokenStream {
     span::span(attr, item)
+}
+
+#[proc_macro_derive(FromKVPFile, attributes(alias, bare))]
+#[cfg_attr(tarpaulin, skip)]
+pub fn from_kvp_file(item: TokenStream) -> TokenStream {
+    kvp::kvp_file(item)
 }
