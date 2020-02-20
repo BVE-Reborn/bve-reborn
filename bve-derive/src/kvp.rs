@@ -1,15 +1,18 @@
+#![allow(clippy::default_trait_access)] // Needed by darling
+
 use crate::helpers::combine_token_streams;
 use darling::FromField;
 use proc_macro2::Ident;
-use quote::{quote, ToTokens};
-use syn::export::{TokenStream, TokenStream2};
+use quote::quote;
+use syn::export::TokenStream;
 use syn::{GenericArgument, ItemStruct, PathArguments, Type};
 
+#[allow(clippy::needless_pass_by_value)] // Needed for type deduction
 fn split_aliases(input: String) -> Vec<String> {
     if input.is_empty() {
         vec![]
     } else {
-        input.split(";").map(str::trim).map(String::from).collect()
+        input.split(';').map(str::trim).map(String::from).collect()
     }
 }
 
@@ -34,20 +37,21 @@ fn parse_fields(item: &ItemStruct) -> Vec<Field> {
     let fields = item.fields.iter().flat_map(Field::from_field);
     let fields: Vec<Field> = fields
         .map(|mut field: Field| {
-            match &field.ty {
-                Type::Path(path) => {
-                    if path.path.segments.last().unwrap().ident.to_string() == "Vec" && !field.variadic {
-                        field.vec = true;
-                        match &path.path.segments.last().unwrap().arguments {
-                            PathArguments::AngleBracketed(angled) => match angled.args.first().unwrap() {
+            if let Type::Path(path) = &field.ty {
+                let segments = path.path.segments.last().expect("No path segments found");
+                let last_path_str = segments.ident.to_string();
+                if last_path_str == "Vec" && !field.variadic {
+                    field.vec = true;
+                    match &segments.arguments {
+                        PathArguments::AngleBracketed(angled) => {
+                            match angled.args.first().expect("Generic must have args") {
                                 GenericArgument::Type(ty) => field.ty = ty.clone(),
                                 _ => unimplemented!(),
-                            },
-                            _ => unimplemented!(),
+                            }
                         }
+                        _ => unimplemented!(),
                     }
                 }
-                _ => {}
             };
             field
         })
@@ -70,15 +74,14 @@ pub fn kvp_file(item: TokenStream) -> TokenStream {
 
     let matches = combine_token_streams(fields.iter().map(|field| {
         let ty = field.ty.clone();
-        let ident = field.ident.clone().unwrap();
+        let ident = field.ident.clone().expect("Fields must have names");
         let primary = match &field.bare {
             true => quote! {None},
             false => {
-                let lower: String = field
-                    .rename
-                    .as_ref()
-                    .map(String::clone)
-                    .unwrap_or_else(|| ident.to_string().chars().filter(|&c| c != '_').collect());
+                let lower: String = field.rename.as_ref().map_or_else(
+                    || ident.to_string().chars().filter(|&c| c != '_').collect(),
+                    String::clone,
+                );
                 quote! {
                     Some(#lower)
                 }
@@ -102,7 +105,7 @@ pub fn kvp_file(item: TokenStream) -> TokenStream {
         }
     }));
 
-    let imp = quote! {
+    quote! (
         impl crate::parse::kvp::FromKVPFile for #ident {
             fn from_kvp_file(file: &crate::parse::kvp::KVPFile<'_>) -> Self {
                 use crate::parse::kvp::FromKVPSection;
@@ -118,10 +121,8 @@ pub fn kvp_file(item: TokenStream) -> TokenStream {
                 parsed
             }
         }
-    }
-    .into();
-
-    imp
+    )
+    .into()
 }
 
 pub fn kvp_section(item: TokenStream) -> TokenStream {
@@ -133,15 +134,14 @@ pub fn kvp_section(item: TokenStream) -> TokenStream {
 
     let matches = combine_token_streams(fields.iter().map(|field| {
         let ty = field.ty.clone();
-        let ident = field.ident.clone().unwrap();
+        let ident = field.ident.clone().expect("Fields must have names");
         let primary = match &field.bare {
             true => quote! {crate::parse::kvp::ValueData::Value{ value }},
             false => {
-                let lower: String = field
-                    .rename
-                    .as_ref()
-                    .map(String::clone)
-                    .unwrap_or_else(|| ident.to_string().chars().filter(|&c| c != '_').collect());
+                let lower: String = field.rename.as_ref().map_or_else(
+                    || ident.to_string().chars().filter(|&c| c != '_').collect(),
+                    String::clone,
+                );
                 quote! {
                     crate::parse::kvp::ValueData::KeyValuePair{ key: #lower, value }
                 }
@@ -171,7 +171,7 @@ pub fn kvp_section(item: TokenStream) -> TokenStream {
         }
     }));
 
-    let imp = quote! {
+    quote! (
         impl crate::parse::kvp::FromKVPSection for #ident {
             fn from_kvp_section(section: &crate::parse::kvp::KVPSection<'_>) -> Self {
                 let mut parsed = Self::default();
@@ -186,8 +186,6 @@ pub fn kvp_section(item: TokenStream) -> TokenStream {
                 parsed
             }
         }
-    }
-    .into();
-
-    imp
+    )
+    .into()
 }

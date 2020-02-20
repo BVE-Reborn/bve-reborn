@@ -141,6 +141,21 @@ pub struct AnimatedStateChangeSound {
     play_on_hide: PlayOn,
 }
 
+impl Default for AnimatedStateChangeSound {
+    fn default() -> Self {
+        Self {
+            filename: String::new(),
+            filenames: Vec::new(),
+            position: Vector3::zero(),
+            volume: 1.0,
+            pitch: 1.0,
+            radius: 30.0,
+            play_on_show: PlayOn::Silent,
+            play_on_hide: PlayOn::Silent,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Damping {
     pub frequency: f32,
@@ -149,7 +164,7 @@ pub struct Damping {
 
 impl FromKVPValue for Damping {
     fn from_kvp_value(value: &str) -> Option<Self> {
-        Vector2::<f32>::from_kvp_value(value).map(|vec| Damping {
+        Vector2::<f32>::from_kvp_value(value).map(|vec| Self {
             frequency: vec.x,
             damping_ratio: vec.y,
         })
@@ -216,7 +231,7 @@ impl FromKVPValue for PlayOn {
             } else if i == 1 {
                 Some(Self::Play)
             } else {
-                Some(Self::Seconds(i))
+                None
             }
         })
     }
