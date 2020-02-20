@@ -3,14 +3,17 @@ use cgmath::{Vector1, Vector2, Vector3, Vector4};
 use std::str::FromStr;
 
 pub trait FromKVPFile: Default {
+    #[must_use]
     fn from_kvp_file(k: &KVPFile<'_>) -> Self;
 }
 
 pub trait FromKVPSection: Default {
+    #[must_use]
     fn from_kvp_section(section: &KVPSection<'_>) -> Self;
 }
 
 pub trait FromKVPValue {
+    #[must_use]
     fn from_kvp_value(value: &str) -> Option<Self>
     where
         Self: Sized;

@@ -11,6 +11,8 @@ pub struct ParsedAnimatedObject {
     pub objects: Vec<AnimatedObject>,
     #[kvp(rename = "sound")]
     pub sounds: Vec<AnimatedSound>,
+    #[kvp(rename = "statechangesound")]
+    pub change_state_sounds: Vec<AnimatedStateChangeSound>,
 }
 
 #[derive(Debug, Clone, PartialEq, FromKVPSection)]
