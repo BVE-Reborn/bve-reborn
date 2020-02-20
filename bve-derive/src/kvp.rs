@@ -23,6 +23,8 @@ struct Field {
     #[darling(default)]
     bare: bool,
     #[darling(default)]
+    variadic: bool,
+    #[darling(default)]
     rename: Option<String>,
     #[darling(map = "split_aliases", default)]
     alias: Vec<String>,
@@ -34,7 +36,7 @@ fn parse_fields(item: &ItemStruct) -> Vec<Field> {
         .map(|mut field: Field| {
             match &field.ty {
                 Type::Path(path) => {
-                    if path.path.segments.last().unwrap().ident.to_string() == "Vec" {
+                    if path.path.segments.last().unwrap().ident.to_string() == "Vec" && !field.variadic {
                         field.vec = true;
                         match &path.path.segments.last().unwrap().arguments {
                             PathArguments::AngleBracketed(angled) => match angled.args.first().unwrap() {
@@ -51,11 +53,6 @@ fn parse_fields(item: &ItemStruct) -> Vec<Field> {
         })
         .collect();
 
-    assert!(
-        fields.iter().filter(|f| f.bare).count() <= 1,
-        "Cannot have more than 1 bare field"
-    );
-
     fields
 }
 
@@ -65,6 +62,11 @@ pub fn kvp_file(item: TokenStream) -> TokenStream {
     let ident = &item.ident;
 
     let fields = parse_fields(&item);
+
+    assert!(
+        fields.iter().filter(|f| f.bare).count() <= 1,
+        "Cannot have more than 1 bare field"
+    );
 
     let matches = combine_token_streams(fields.iter().map(|field| {
         let ty = field.ty.clone();
@@ -89,10 +91,10 @@ pub fn kvp_file(item: TokenStream) -> TokenStream {
         }));
         let operation = match field.vec {
             true => quote! {
-                parsed.#ident.push(#ty::from_kvp_section(section))
+                parsed.#ident.push(<#ty as crate::parse::kvp::FromKVPSection>::from_kvp_section(section))
             },
             false => quote! {
-                parsed.#ident = #ty::from_kvp_section(section)
+                parsed.#ident = <#ty as crate::parse::kvp::FromKVPSection>::from_kvp_section(section)
             },
         };
         quote! {
@@ -104,10 +106,78 @@ pub fn kvp_file(item: TokenStream) -> TokenStream {
         impl crate::parse::kvp::FromKVPFile for #ident {
             fn from_kvp_file(file: &crate::parse::kvp::KVPFile<'_>) -> Self {
                 use crate::parse::kvp::FromKVPSection;
-                let parsed = Self::default();
+                let mut parsed = Self::default();
 
                 for section in &file.sections {
                     match section.name {
+                        #matches
+                        _ => {}
+                    }
+                }
+
+                parsed
+            }
+        }
+    }
+    .into();
+
+    imp
+}
+
+pub fn kvp_section(item: TokenStream) -> TokenStream {
+    let item = syn::parse_macro_input!(item as ItemStruct);
+
+    let ident = &item.ident;
+
+    let fields = parse_fields(&item);
+
+    let matches = combine_token_streams(fields.iter().map(|field| {
+        let ty = field.ty.clone();
+        let ident = field.ident.clone().unwrap();
+        let primary = match &field.bare {
+            true => quote! {crate::parse::kvp::ValueData::Value{ value }},
+            false => {
+                let lower: String = field
+                    .rename
+                    .as_ref()
+                    .map(String::clone)
+                    .unwrap_or_else(|| ident.to_string().chars().filter(|&c| c != '_').collect());
+                quote! {
+                    crate::parse::kvp::ValueData::KeyValuePair{ key: #lower, value }
+                }
+            }
+        };
+        let aliases = combine_token_streams(field.alias.iter().map(|alias| {
+            quote! {
+                | crate::parse::kvp::KVPInnerData::KeyValuePair{ key: #alias, value }
+            }
+        }));
+        let operation = match field.vec {
+            true => quote! {{
+                let optional = <#ty as crate::parse::kvp::FromKVPValue>::from_kvp_value(value);
+                if let Some(inner) = optional {
+                    parsed.#ident.push(inner);
+                }
+            }},
+            false => quote! {{
+                let optional = <#ty as crate::parse::kvp::FromKVPValue>::from_kvp_value(value);
+                if let Some(inner) = optional {
+                    parsed.#ident = inner;
+                }
+            }},
+        };
+        quote! {
+            #primary #aliases => #operation,
+        }
+    }));
+
+    let imp = quote! {
+        impl crate::parse::kvp::FromKVPSection for #ident {
+            fn from_kvp_section(section: &crate::parse::kvp::KVPSection<'_>) -> Self {
+                let mut parsed = Self::default();
+
+                for field in &section.fields {
+                    match field.data {
                         #matches
                         _ => {}
                     }

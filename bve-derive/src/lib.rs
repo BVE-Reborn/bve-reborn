@@ -106,3 +106,9 @@ pub fn span(attr: TokenStream, item: TokenStream) -> TokenStream {
 pub fn from_kvp_file(item: TokenStream) -> TokenStream {
     kvp::kvp_file(item)
 }
+
+#[proc_macro_derive(FromKVPSection, attributes(kvp))]
+#[cfg_attr(tarpaulin, skip)]
+pub fn from_kvp_section(item: TokenStream) -> TokenStream {
+    kvp::kvp_section(item)
+}

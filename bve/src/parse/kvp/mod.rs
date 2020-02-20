@@ -21,8 +21,10 @@
 
 use crate::parse::Span;
 pub use parse::*;
+pub use traits::*;
 
 mod parse;
+mod traits;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct KVPFile<'s> {
@@ -41,7 +43,7 @@ impl<'s> Default for KVPFile<'s> {
 pub struct KVPSection<'s> {
     pub name: Option<&'s str>,
     pub span: Span,
-    pub values: Vec<KVPValue<'s>>,
+    pub fields: Vec<KVPField<'s>>,
 }
 
 impl<'s> Default for KVPSection<'s> {
@@ -49,13 +51,13 @@ impl<'s> Default for KVPSection<'s> {
         Self {
             name: None,
             span: Span::from_line(0),
-            values: Vec::default(),
+            fields: Vec::default(),
         }
     }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct KVPValue<'s> {
+pub struct KVPField<'s> {
     pub span: Span,
     pub data: ValueData<'s>,
 }
@@ -64,16 +66,4 @@ pub struct KVPValue<'s> {
 pub enum ValueData<'s> {
     KeyValuePair { key: &'s str, value: &'s str },
     Value { value: &'s str },
-}
-
-pub trait FromKVPFile: Default {
-    fn from_kvp_file(k: &KVPFile<'_>) -> Self;
-}
-
-pub trait FromKVPSection: Default {
-    fn from_kvp_section(section: &KVPSection<'_>) -> Self;
-}
-
-pub trait FromKVPData: Default {
-    fn from_kvp_data(data: &KVPValue<'_>) -> Self;
 }

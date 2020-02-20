@@ -1,18 +1,19 @@
 use crate::parse::function_scripts::ParsedFunctionScript;
-use bve_derive::FromKVPFile;
+use crate::parse::kvp::FromKVPValue;
+use bve_derive::{FromKVPFile, FromKVPSection};
 use cgmath::{Vector2, Vector3};
 use num_traits::identities::Zero;
 
 #[derive(Debug, Default, Clone, PartialEq, FromKVPFile)]
 pub struct ParsedAnimatedObject {
-    #[kvp(bare, alias = "left; right; center")]
     pub includes: Includes,
     #[kvp(rename = "object")]
     pub objects: Vec<AnimatedObject>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, FromKVPSection)]
 pub struct Includes {
+    #[kvp(bare)]
     pub files: Vec<String>,
     pub position: Vector3<f32>,
 }
@@ -26,9 +27,10 @@ impl Default for Includes {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, FromKVPSection)]
 pub struct AnimatedObject {
     pub position: Vector3<f32>,
+    #[kvp(variadic)]
     pub states: Vec<String>,
     pub state_function: Option<ParsedFunctionScript>,
 
@@ -103,6 +105,15 @@ pub struct Damping {
     pub damping_ratio: f32,
 }
 
+impl FromKVPValue for Damping {
+    fn from_kvp_value(value: &str) -> Option<Self> {
+        Vector2::<f32>::from_kvp_value(value).map(|vec| Damping {
+            frequency: vec.x,
+            damping_ratio: vec.y,
+        })
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum TextureOverride {
     None,
@@ -115,6 +126,16 @@ impl Default for TextureOverride {
     }
 }
 
+impl FromKVPValue for TextureOverride {
+    fn from_kvp_value(value: &str) -> Option<Self> {
+        if value == "timetable" {
+            Some(Self::Timetable)
+        } else {
+            None
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum RefreshRate {
     EveryFrame,
@@ -124,5 +145,11 @@ pub enum RefreshRate {
 impl Default for RefreshRate {
     fn default() -> Self {
         Self::EveryFrame
+    }
+}
+
+impl FromKVPValue for RefreshRate {
+    fn from_kvp_value(value: &str) -> Option<Self> {
+        f32::from_kvp_value(value).map(|f| if f == 0.0 { Self::EveryFrame } else { Self::Seconds(f) })
     }
 }

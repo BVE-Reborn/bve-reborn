@@ -1,4 +1,4 @@
-use crate::parse::kvp::{KVPFile, KVPSection, KVPValue, ValueData};
+use crate::parse::kvp::{KVPField, KVPFile, KVPSection, ValueData};
 use crate::parse::Span;
 
 #[must_use]
@@ -23,7 +23,7 @@ pub fn parse_kvp_file(input: &str) -> KVPFile<'_> {
                     KVPSection {
                         name: Some(name),
                         span: Span::from_line(line_idx + 1),
-                        values: Vec::default(),
+                        fields: Vec::default(),
                     },
                 ));
             }
@@ -44,7 +44,7 @@ pub fn parse_kvp_file(input: &str) -> KVPFile<'_> {
                     }
                 };
                 // Push data onto current section
-                current_section.values.push(KVPValue {
+                current_section.fields.push(KVPField {
                     span: Span::from_line(line_idx + 1),
                     data,
                 });
@@ -62,7 +62,7 @@ pub fn parse_kvp_file(input: &str) -> KVPFile<'_> {
 
 #[cfg(test)]
 mod test {
-    use crate::parse::kvp::{parse_kvp_file, KVPFile, KVPSection, KVPValue, ValueData};
+    use crate::parse::kvp::{parse_kvp_file, KVPField, KVPFile, KVPSection, ValueData};
     use crate::parse::Span;
 
     #[test]
@@ -74,7 +74,7 @@ mod test {
                 sections: vec![KVPSection {
                     name: None,
                     span: Span::from_line(0),
-                    values: vec![KVPValue {
+                    fields: vec![KVPField {
                         span: Span::from_line(1),
                         data: ValueData::Value { value: "my_value" }
                     }]
@@ -92,7 +92,7 @@ mod test {
                 sections: vec![KVPSection {
                     name: None,
                     span: Span::from_line(0),
-                    values: vec![KVPValue {
+                    fields: vec![KVPField {
                         span: Span::from_line(1),
                         data: ValueData::KeyValuePair {
                             key: "my_key",
@@ -114,12 +114,12 @@ mod test {
                     KVPSection {
                         name: None,
                         span: Span::from_line(0),
-                        values: Vec::default(),
+                        fields: Vec::default(),
                     },
                     KVPSection {
                         name: Some("my_section"),
                         span: Span::from_line(1),
-                        values: vec![KVPValue {
+                        fields: vec![KVPField {
                             span: Span::from_line(2),
                             data: ValueData::Value { value: "my_value" }
                         }]
@@ -139,12 +139,12 @@ mod test {
                     KVPSection {
                         name: None,
                         span: Span::from_line(0),
-                        values: Vec::default(),
+                        fields: Vec::default(),
                     },
                     KVPSection {
                         name: Some("my_section"),
                         span: Span::from_line(1),
-                        values: vec![KVPValue {
+                        fields: vec![KVPField {
                             span: Span::from_line(2),
                             data: ValueData::KeyValuePair {
                                 key: "my_key",
@@ -167,12 +167,12 @@ mod test {
                     KVPSection {
                         name: None,
                         span: Span::from_line(0),
-                        values: Vec::default(),
+                        fields: Vec::default(),
                     },
                     KVPSection {
                         name: Some(""),
                         span: Span::from_line(1),
-                        values: Vec::default(),
+                        fields: Vec::default(),
                     }
                 ]
             }
@@ -189,12 +189,12 @@ mod test {
                     KVPSection {
                         name: None,
                         span: Span::from_line(0),
-                        values: Vec::default(),
+                        fields: Vec::default(),
                     },
                     KVPSection {
                         name: Some("my_section"),
                         span: Span::from_line(1),
-                        values: Vec::default(),
+                        fields: Vec::default(),
                     }
                 ]
             }
