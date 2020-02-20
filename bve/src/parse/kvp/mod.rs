@@ -66,14 +66,14 @@ pub enum ValueData<'s> {
     Value { value: &'s str },
 }
 
-pub trait FromKVPFile {
+pub trait FromKVPFile: Default {
     fn from_kvp_file(k: &KVPFile<'_>) -> Self;
 }
 
-pub trait FromKVPSection {
+pub trait FromKVPSection: Default {
     fn from_kvp_section(section: &KVPSection<'_>) -> Self;
 }
 
-pub trait FromKVPData {
+pub trait FromKVPData: Default {
     fn from_kvp_data(data: &KVPValue<'_>) -> Self;
 }

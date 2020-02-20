@@ -101,7 +101,7 @@ pub fn span(attr: TokenStream, item: TokenStream) -> TokenStream {
     span::span(attr, item)
 }
 
-#[proc_macro_derive(FromKVPFile, attributes(alias, bare))]
+#[proc_macro_derive(FromKVPFile, attributes(kvp))]
 #[cfg_attr(tarpaulin, skip)]
 pub fn from_kvp_file(item: TokenStream) -> TokenStream {
     kvp::kvp_file(item)

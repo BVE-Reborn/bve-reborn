@@ -5,8 +5,9 @@ use num_traits::identities::Zero;
 
 #[derive(Debug, Default, Clone, PartialEq, FromKVPFile)]
 pub struct ParsedAnimatedObject {
-    //    #[kvp(bare, alias = "left; right; center")]
+    #[kvp(bare, alias = "left; right; center")]
     pub includes: Includes,
+    #[kvp(rename = "object")]
     pub objects: Vec<AnimatedObject>,
 }
 
