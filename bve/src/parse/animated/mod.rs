@@ -9,6 +9,8 @@ pub struct ParsedAnimatedObject {
     pub includes: Includes,
     #[kvp(rename = "object")]
     pub objects: Vec<AnimatedObject>,
+    #[kvp(rename = "sound")]
+    pub sounds: Vec<AnimatedSound>,
 }
 
 #[derive(Debug, Clone, PartialEq, FromKVPSection)]
@@ -99,6 +101,46 @@ impl Default for AnimatedObject {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, FromKVPSection)]
+pub struct AnimatedSound {
+    filename: String,
+    position: Vector3<f32>,
+    volume: f32,
+    volume_function: Option<ParsedFunctionScript>,
+    pitch: f32,
+    pitch_function: Option<ParsedFunctionScript>,
+    radius: f32,
+    track_follower_function: Option<ParsedFunctionScript>,
+}
+
+impl Default for AnimatedSound {
+    fn default() -> Self {
+        Self {
+            filename: String::new(),
+            position: Vector3::zero(),
+            volume: 1.0,
+            pitch: 1.0,
+            radius: 30.0,
+            volume_function: None,
+            pitch_function: None,
+            track_follower_function: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, FromKVPSection)]
+pub struct AnimatedStateChangeSound {
+    filename: String,
+    #[kvp(variadic)]
+    filenames: Vec<String>,
+    position: Vector3<f32>,
+    volume: f32,
+    pitch: f32,
+    radius: f32,
+    play_on_show: PlayOn,
+    play_on_hide: PlayOn,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Damping {
     pub frequency: f32,
@@ -151,5 +193,31 @@ impl Default for RefreshRate {
 impl FromKVPValue for RefreshRate {
     fn from_kvp_value(value: &str) -> Option<Self> {
         f32::from_kvp_value(value).map(|f| if f == 0.0 { Self::EveryFrame } else { Self::Seconds(f) })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum PlayOn {
+    Silent,
+    Play,
+}
+
+impl Default for PlayOn {
+    fn default() -> Self {
+        Self::Silent
+    }
+}
+
+impl FromKVPValue for PlayOn {
+    fn from_kvp_value(value: &str) -> Option<Self> {
+        i64::from_kvp_value(value).and_then(|i| {
+            if i == 0 {
+                Some(Self::Silent)
+            } else if i == 1 {
+                Some(Self::Play)
+            } else {
+                Some(Self::Seconds(i))
+            }
+        })
     }
 }
