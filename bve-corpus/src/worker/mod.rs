@@ -1,15 +1,18 @@
 use crate::panic::{PANIC, USE_DEFAULT_PANIC_HANLDER};
 use crate::{File, FileKind, FileResult, ParseResult, SharedData};
 use bve::filesystem::read_convert_utf8;
+use bve::parse::animated::parse_animated_file;
+use bve::parse::kvp::parse_kvp_file;
 use bve::parse::mesh::{mesh_from_str, FileType, MeshErrorKind, ParsedStaticObject};
 use core::panicking::panic;
 use crossbeam::atomic::AtomicCell;
 use crossbeam::channel::{Receiver, Sender};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use itertools::Itertools;
+use std::fmt::Debug;
 use std::fs::read_to_string;
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
@@ -43,6 +46,30 @@ pub fn create_worker_thread(
     }
 }
 
+fn read_from_file(filename: impl AsRef<Path>) -> String {
+    match read_convert_utf8(filename) {
+        Ok(s) => s,
+        Err(err) => {
+            println!("Path Error: {:?}", err);
+            panic!("Path Error: {:?}", err)
+        }
+    }
+}
+
+fn success_or_errors<E>(errors: Vec<E>) -> ParseResult
+where
+    E: Debug,
+{
+    if errors.is_empty() {
+        ParseResult::Success
+    } else {
+        ParseResult::Errors {
+            count: errors.len() as u64,
+            error: anyhow::Error::msg(errors.into_iter().map(|v| format!("{:?}", v)).join(",")),
+        }
+    }
+}
+
 fn processing_loop(
     job_source: &Receiver<File>,
     result_sink: &Sender<FileResult>,
@@ -58,24 +85,20 @@ fn processing_loop(
         // Get beginning time
         let start = Instant::now();
 
-        USE_DEFAULT_PANIC_HANLDER.with(|v| *v.borrow_mut() = false);
-        let panicked = std::panic::catch_unwind(|| match file.kind {
-            FileKind::ModelCsv => {
-                let ParsedStaticObject { errors, .. } = mesh_from_str(
-                    &match read_convert_utf8(&file.path) {
-                        Ok(s) => s,
-                        Err(err) => {
-                            println!("Path Error: {:?}", err);
-                            panic!("Path Error: {:?}", err)
-                        }
-                    },
-                    FileType::CSV,
-                );
+        let file_ref = &file;
 
-                ParseResult::Errors {
-                    count: errors.len() as u64,
-                    error: anyhow::Error::msg(errors.into_iter().map(|v| format!("{:?}", v)).join(",")),
-                }
+        USE_DEFAULT_PANIC_HANLDER.with(|v| *v.borrow_mut() = false);
+        let panicked = std::panic::catch_unwind(|| match &file_ref.kind {
+            FileKind::ModelCsv => {
+                let ParsedStaticObject { errors, .. } = mesh_from_str(&read_from_file(&file_ref.path), FileType::CSV);
+
+                success_or_errors(errors)
+            }
+            FileKind::ModelAnimated => {
+                let file = read_from_file(&file_ref.path);
+                let (_animated, warnings) = parse_animated_file(&file);
+
+                success_or_errors(warnings)
             }
             _ => ParseResult::Success,
         });
@@ -88,7 +111,7 @@ fn processing_loop(
             Err(..) => PANIC.with(|v| {
                 let stderr = std::io::stderr();
                 let mut stderr_guard = stderr.lock();
-                let path_str = format!("Panicked while parsing: {:?}\n", file.path);
+                let path_str = format!("Panicked while parsing: {:?}\n", file_ref.path);
                 stderr_guard.write_all(path_str.as_bytes()).unwrap();
                 drop(stderr_guard);
 
