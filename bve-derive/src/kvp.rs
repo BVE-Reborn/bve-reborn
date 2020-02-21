@@ -238,7 +238,7 @@ pub fn kvp_section(item: TokenStream) -> TokenStream {
                         crate::parse::kvp::ValueData::Value{ .. } => warnings.push(crate::parse::kvp::KVPGenericWarning{
                             span: field.span,
                             kind: crate::parse::kvp::KVPGenericWarningKind::UnknownField {
-                                name: format!("<bare field {} greater than {} field max>", bare_counter + 1, #bare_field_counter),
+                                name: format!("<bare field {} greater than {} field count>", bare_counter + 1, #bare_field_counter),
                             }
                         }),
                     }
