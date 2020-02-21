@@ -93,12 +93,16 @@ pub fn kvp_file(item: TokenStream) -> TokenStream {
             }
         }));
         let operation = match field.vec {
-            true => quote! {
-                parsed.#ident.push(<#ty as crate::parse::kvp::FromKVPSection>::from_kvp_section(section))
-            },
-            false => quote! {
-                parsed.#ident = <#ty as crate::parse::kvp::FromKVPSection>::from_kvp_section(section)
-            },
+            true => quote! {{
+                let (section_ty, section_warnings) = <#ty as crate::parse::kvp::FromKVPSection>::from_kvp_section(section);
+                parsed.#ident.push(section_ty);
+                warnings.extend(section_warnings);
+            }},
+            false => quote! {{
+                let (section_ty, section_warnings) = <#ty as crate::parse::kvp::FromKVPSection>::from_kvp_section(section);
+                parsed.#ident = section_ty;
+                warnings.extend(section_warnings);
+            }},
         };
         quote! {
             #primary #aliases => #operation,
@@ -107,18 +111,35 @@ pub fn kvp_file(item: TokenStream) -> TokenStream {
 
     quote! (
         impl crate::parse::kvp::FromKVPFile for #ident {
-            fn from_kvp_file(file: &crate::parse::kvp::KVPFile<'_>) -> Self {
+            type Warnings = crate::parse::kvp::KVPGenericWarning;
+            fn from_kvp_file(file: &crate::parse::kvp::KVPFile<'_>) -> (Self, Vec<Self::Warnings>) {
                 use crate::parse::kvp::FromKVPSection;
                 let mut parsed = Self::default();
+                let mut warnings = Vec::new();
 
                 for section in &file.sections {
+                    #[allow(unreachable_patterns)]
                     match section.name {
                         #matches
-                        _ => {}
+                        Some(name) => warnings.push(crate::parse::kvp::KVPGenericWarning{
+                            span: section.span,
+                            kind: crate::parse::kvp::KVPGenericWarningKind::UnknownSection {
+                                name: String::from(name),
+                            }
+                        }),
+                        // The header section is always there, so we only care if there's stuff in it
+                        None if !section.fields.is_empty() => warnings.push(crate::parse::kvp::KVPGenericWarning{
+                            span: section.span,
+                            kind: crate::parse::kvp::KVPGenericWarningKind::UnknownSection {
+                                name: String::from("<file header>"),
+                            }
+                        }),
+                        // Empty header section
+                        None => {}
                     }
                 }
 
-                parsed
+                (parsed, warnings)
             }
         }
     )
@@ -157,12 +178,26 @@ pub fn kvp_section(item: TokenStream) -> TokenStream {
                 let optional = <#ty as crate::parse::kvp::FromKVPValue>::from_kvp_value(value);
                 if let Some(inner) = optional {
                     parsed.#ident.push(inner);
+                } else {
+                    warnings.push(crate::parse::kvp::KVPGenericWarning{
+                        span: field.span,
+                        kind: crate::parse::kvp::KVPGenericWarningKind::InvalidValue {
+                            value: String::from(value),
+                        }
+                    })
                 }
             }},
             false => quote! {{
                 let optional = <#ty as crate::parse::kvp::FromKVPValue>::from_kvp_value(value);
                 if let Some(inner) = optional {
                     parsed.#ident = inner;
+                } else {
+                    warnings.push(crate::parse::kvp::KVPGenericWarning{
+                        span: field.span,
+                        kind: crate::parse::kvp::KVPGenericWarningKind::InvalidValue {
+                            value: String::from(value),
+                        }
+                    })
                 }
             }},
         };
@@ -173,17 +208,30 @@ pub fn kvp_section(item: TokenStream) -> TokenStream {
 
     quote! (
         impl crate::parse::kvp::FromKVPSection for #ident {
-            fn from_kvp_section(section: &crate::parse::kvp::KVPSection<'_>) -> Self {
+            type Warnings = crate::parse::kvp::KVPGenericWarning;
+            fn from_kvp_section(section: &crate::parse::kvp::KVPSection<'_>) -> (Self, Vec<Self::Warnings>) {
                 let mut parsed = Self::default();
+                let mut warnings = Vec::new();
 
                 for field in &section.fields {
                     match field.data {
                         #matches
-                        _ => {}
+                        crate::parse::kvp::ValueData::KeyValuePair{ key, .. } => warnings.push(crate::parse::kvp::KVPGenericWarning{
+                            span: field.span,
+                            kind: crate::parse::kvp::KVPGenericWarningKind::UnknownField {
+                                name: String::from(key),
+                            }
+                        }),
+                        crate::parse::kvp::ValueData::Value{ .. } => warnings.push(crate::parse::kvp::KVPGenericWarning{
+                            span: field.span,
+                            kind: crate::parse::kvp::KVPGenericWarningKind::UnknownField {
+                                name: String::from("<bare field>"),
+                            }
+                        }),
                     }
                 }
 
-                parsed
+                (parsed, warnings)
             }
         }
     )

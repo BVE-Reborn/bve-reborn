@@ -1,15 +1,31 @@
 use crate::parse::kvp::{KVPFile, KVPSection};
+use crate::parse::Span;
 use cgmath::{Vector1, Vector2, Vector3, Vector4};
 use std::str::FromStr;
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct KVPGenericWarning {
+    pub span: Span,
+    pub kind: KVPGenericWarningKind,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum KVPGenericWarningKind {
+    UnknownSection { name: String },
+    UnknownField { name: String },
+    InvalidValue { value: String },
+}
+
 pub trait FromKVPFile: Default {
+    type Warnings;
     #[must_use]
-    fn from_kvp_file(k: &KVPFile<'_>) -> Self;
+    fn from_kvp_file(k: &KVPFile<'_>) -> (Self, Vec<Self::Warnings>);
 }
 
 pub trait FromKVPSection: Default {
+    type Warnings;
     #[must_use]
-    fn from_kvp_section(section: &KVPSection<'_>) -> Self;
+    fn from_kvp_section(section: &KVPSection<'_>) -> (Self, Vec<Self::Warnings>);
 }
 
 pub trait FromKVPValue {
