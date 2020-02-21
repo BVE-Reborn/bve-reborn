@@ -1,5 +1,5 @@
-//! Macros for generating the [`FromKVPFile`](bve::parse::kvp::FromKVPFile) and
-//! [`FromKVPSection`](bve::parse::kvp::FromKVPSection) traits.
+//! Macros for generating the [`FromKVPFile`](../../bve/parse/kvp/trait.FromKVPFile.html) and
+//! [`FromKVPSection`](../../bve/parse/kvp/trait.FromKVPSection.html) traits.
 //!
 //! This consists of a routine that parses the fields from the struct,
 //! then emitting a loop over the sections/fields in the file and matching
