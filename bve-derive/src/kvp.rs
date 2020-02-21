@@ -4,7 +4,7 @@ use crate::helpers::combine_token_streams;
 use darling::FromField;
 use proc_macro2::Ident;
 use quote::quote;
-use syn::export::TokenStream;
+use syn::export::{TokenStream, TokenStream2};
 use syn::{GenericArgument, ItemStruct, PathArguments, Type};
 
 #[allow(clippy::needless_pass_by_value)] // Needed for type deduction
@@ -152,12 +152,17 @@ pub fn kvp_section(item: TokenStream) -> TokenStream {
     let ident = &item.ident;
 
     let fields = parse_fields(&item);
+    let mut bare_field_counter = 0_u64;
 
     let matches = combine_token_streams(fields.iter().map(|field| {
         let ty = field.ty.clone();
         let ident = field.ident.clone().expect("Fields must have names");
         let primary = match &field.bare {
-            true => quote! {crate::parse::kvp::ValueData::Value{ value }},
+            true => {
+                let ts = quote! {crate::parse::kvp::ValueData::Value{ value } if bare_counter == #bare_field_counter};
+                bare_field_counter += 1;
+                ts
+            }
             false => {
                 let lower: String = field.rename.as_ref().map_or_else(
                     || ident.to_string().chars().filter(|&c| c != '_').collect(),
@@ -173,6 +178,11 @@ pub fn kvp_section(item: TokenStream) -> TokenStream {
                 | crate::parse::kvp::KVPInnerData::KeyValuePair{ key: #alias, value }
             }
         }));
+        let bare_operation = if field.bare {
+            quote! {bare_counter += 1;}
+        } else {
+            TokenStream2::new()
+        };
         let operation = match field.vec {
             true => quote! {{
                 let optional = <#ty as crate::parse::kvp::FromKVPValue>::from_kvp_value(value);
@@ -185,7 +195,8 @@ pub fn kvp_section(item: TokenStream) -> TokenStream {
                             value: String::from(value),
                         }
                     })
-                }
+                };
+                #bare_operation
             }},
             false => quote! {{
                 let optional = <#ty as crate::parse::kvp::FromKVPValue>::from_kvp_value(value);
@@ -198,7 +209,8 @@ pub fn kvp_section(item: TokenStream) -> TokenStream {
                             value: String::from(value),
                         }
                     })
-                }
+                };
+                #bare_operation
             }},
         };
         quote! {
@@ -212,6 +224,7 @@ pub fn kvp_section(item: TokenStream) -> TokenStream {
             fn from_kvp_section(section: &crate::parse::kvp::KVPSection<'_>) -> (Self, Vec<Self::Warnings>) {
                 let mut parsed = Self::default();
                 let mut warnings = Vec::new();
+                let mut bare_counter = 0_u64;
 
                 for field in &section.fields {
                     match field.data {
@@ -225,7 +238,7 @@ pub fn kvp_section(item: TokenStream) -> TokenStream {
                         crate::parse::kvp::ValueData::Value{ .. } => warnings.push(crate::parse::kvp::KVPGenericWarning{
                             span: field.span,
                             kind: crate::parse::kvp::KVPGenericWarningKind::UnknownField {
-                                name: String::from("<bare field>"),
+                                name: format!("<bare field {} greater than {} field max>", bare_counter + 1, #bare_field_counter),
                             }
                         }),
                     }
