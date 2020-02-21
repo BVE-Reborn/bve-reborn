@@ -1,3 +1,10 @@
+//! Macros for generating the [`FromKVPFile`](bve::parse::kvp::FromKVPFile) and
+//! [`FromKVPSection`](bve::parse::kvp::FromKVPSection) traits.
+//!
+//! This consists of a routine that parses the fields from the struct,
+//! then emitting a loop over the sections/fields in the file and matching
+//! against the field names.  
+
 #![allow(clippy::default_trait_access)] // Needed by darling
 
 use crate::helpers::combine_token_streams;
@@ -67,6 +74,8 @@ pub fn kvp_file(item: TokenStream) -> TokenStream {
 
     let fields = parse_fields(&item);
 
+    // Error Checking
+
     assert!(
         fields.iter().filter(|f| f.bare).count() <= 1,
         "Cannot have more than 1 bare field"
@@ -76,7 +85,9 @@ pub fn kvp_file(item: TokenStream) -> TokenStream {
         let ty = field.ty.clone();
         let ident = field.ident.clone().expect("Fields must have names");
         let primary = match &field.bare {
+            // The bare section just uses None as a name
             true => quote! {None},
+            // Named sections are matched directly
             false => {
                 let lower: String = field.rename.as_ref().map_or_else(
                     || ident.to_string().chars().filter(|&c| c != '_').collect(),
@@ -87,15 +98,18 @@ pub fn kvp_file(item: TokenStream) -> TokenStream {
                 }
             }
         };
+        // Enumerate all aliases to append them on the match arm
         let aliases = combine_token_streams(field.alias.iter().map(|alias| {
             quote! {
                 | Some(#alias)
             }
         }));
+        // Vec fields need to be pushed onto, whereas regular fields need to be assigned.
         let operation = match field.vec {
             true => quote! {{
                 let (section_ty, section_warnings) = <#ty as crate::parse::kvp::FromKVPSection>::from_kvp_section(section);
                 parsed.#ident.push(section_ty);
+                // All section warnings need to be pushed onto the end of the file warnings
                 warnings.extend(section_warnings);
             }},
             false => quote! {{
@@ -104,6 +118,7 @@ pub fn kvp_file(item: TokenStream) -> TokenStream {
                 warnings.extend(section_warnings);
             }},
         };
+        // Hey look ma, a match arm
         quote! {
             #primary #aliases => #operation,
         }
@@ -118,15 +133,17 @@ pub fn kvp_file(item: TokenStream) -> TokenStream {
                 let mut warnings = Vec::new();
 
                 for section in &file.sections {
-                    #[allow(unreachable_patterns)]
+                    #[allow(unreachable_patterns)] // The error catching arms are sometimes redundant
                     match section.name {
                         #matches
+                        // Unknown named section
                         Some(name) => warnings.push(crate::parse::kvp::KVPGenericWarning{
                             span: section.span,
                             kind: crate::parse::kvp::KVPGenericWarningKind::UnknownSection {
                                 name: String::from(name),
                             }
                         }),
+                        // Unknown header section
                         // The header section is always there, so we only care if there's stuff in it
                         None if !section.fields.is_empty() => warnings.push(crate::parse::kvp::KVPGenericWarning{
                             span: section.span,
@@ -134,7 +151,7 @@ pub fn kvp_file(item: TokenStream) -> TokenStream {
                                 name: String::from("<file header>"),
                             }
                         }),
-                        // Empty header section
+                        // Empty header section is fine
                         None => {}
                     }
                 }
@@ -152,17 +169,41 @@ pub fn kvp_section(item: TokenStream) -> TokenStream {
     let ident = &item.ident;
 
     let fields = parse_fields(&item);
+
+    // Error Checking
+
+    let exists_bare_and_vec = fields.iter().filter(|f| f.bare && f.vec).count() >= 1;
+    let more_than_one_bare_field = fields.iter().filter(|f| f.bare).count() > 1;
+    if exists_bare_and_vec && more_than_one_bare_field {
+        panic!("If there are any fields that are bare and of type Vec<T>, there must be only one bare field");
+    }
+
+    fields
+        .iter()
+        .for_each(|f| assert!(!(f.bare && !f.alias.is_empty()), "Bare fields can't have aliases"));
+
+    // Used to assign bare fields indexes as we go. The runtime also keeps track of the current bare field index,
+    // matching its index with the index we assign each field.
     let mut bare_field_counter = 0_u64;
 
     let matches = combine_token_streams(fields.iter().map(|field| {
-        let ty = field.ty.clone();
         let ident = field.ident.clone().expect("Fields must have names");
+
+        let ty = field.ty.clone();
         let primary = match &field.bare {
+            // Bare fields must check the counter, and come in the form of ValueData::Value
             true => {
-                let ts = quote! {crate::parse::kvp::ValueData::Value{ value } if bare_counter == #bare_field_counter};
+                // If a bare field is a vector, then it is the only bare field, and all values
+                // should unconditionally shoved into it.
+                let ts = if field.vec {
+                    quote! {crate::parse::kvp::ValueData::Value{ value }}
+                } else {
+                    quote! {crate::parse::kvp::ValueData::Value{ value } if bare_counter == #bare_field_counter}
+                };
                 bare_field_counter += 1;
                 ts
             }
+            // Bare fields must check the key name, and come in the form of ValueData::KeyValuePair
             false => {
                 let lower: String = field.rename.as_ref().map_or_else(
                     || ident.to_string().chars().filter(|&c| c != '_').collect(),
@@ -173,19 +214,23 @@ pub fn kvp_section(item: TokenStream) -> TokenStream {
                 }
             }
         };
+        // If there are aliases, iterate over the possibilities
         let aliases = combine_token_streams(field.alias.iter().map(|alias| {
             quote! {
                 | crate::parse::kvp::KVPInnerData::KeyValuePair{ key: #alias, value }
             }
         }));
+        // If the field is bare, we must also increment the bare_counter in the body
         let bare_operation = if field.bare {
             quote! {bare_counter += 1;}
         } else {
             TokenStream2::new()
         };
+        // Vec fields need to be pushed onto, whereas regular fields need to be assigned.
         let operation = match field.vec {
             true => quote! {{
                 let optional = <#ty as crate::parse::kvp::FromKVPValue>::from_kvp_value(value);
+                // Push a warning if the conversion from a value fails
                 if let Some(inner) = optional {
                     parsed.#ident.push(inner);
                 } else {
@@ -213,6 +258,7 @@ pub fn kvp_section(item: TokenStream) -> TokenStream {
                 #bare_operation
             }},
         };
+        // Hey look ma, a match arm
         quote! {
             #primary #aliases => #operation,
         }
@@ -227,14 +273,17 @@ pub fn kvp_section(item: TokenStream) -> TokenStream {
                 let mut bare_counter = 0_u64;
 
                 for field in &section.fields {
+                    #[allow(unreachable_patterns)] // The error catching arms are sometimes redundant
                     match field.data {
                         #matches
+                        // Unknown kvp
                         crate::parse::kvp::ValueData::KeyValuePair{ key, .. } => warnings.push(crate::parse::kvp::KVPGenericWarning{
                             span: field.span,
                             kind: crate::parse::kvp::KVPGenericWarningKind::UnknownField {
                                 name: String::from(key),
                             }
                         }),
+                        // We have more bare fields than we have places to put them, complain
                         crate::parse::kvp::ValueData::Value{ .. } => warnings.push(crate::parse::kvp::KVPGenericWarning{
                             span: field.span,
                             kind: crate::parse::kvp::KVPGenericWarningKind::UnknownField {

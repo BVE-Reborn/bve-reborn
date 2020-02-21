@@ -1,5 +1,7 @@
 //! These are really tests of the derive macro, but are better logically here.
 
+#![allow(clippy::shadow_unrelated)] // These are tests
+
 use crate::parse::kvp::traits::FromKVPFile;
 use crate::parse::kvp::{parse_kvp_file, KVPGenericWarning, KVPGenericWarningKind};
 use crate::parse::Span;
@@ -195,6 +197,35 @@ fn single_section_mixed() {
     answer.first.kvp2 = 1.2;
     answer.first.bare1 = 1.3;
     answer.first.bare2 = 1.4;
+    assert_eq!(parsed, answer);
+    assert_eq!(warnings, vec![]);
+}
+
+#[test]
+fn additive_value() {
+    #[derive(Debug, Default, Clone, PartialEq, FromKVPFile)]
+    struct File {
+        first: Section,
+    }
+
+    #[derive(Debug, Default, Clone, PartialEq, FromKVPSection)]
+    struct Section {
+        #[kvp(bare)]
+        some1: Vec<f32>,
+    }
+
+    let file_lit = indoc!(
+        r#"
+        [first]
+        6.2
+        6.7
+    "#
+    );
+
+    let kvp = parse_kvp_file(file_lit);
+    let (parsed, warnings) = File::from_kvp_file(&kvp);
+    let mut answer = File::default();
+    answer.first.some1 = vec![6.2, 6.7];
     assert_eq!(parsed, answer);
     assert_eq!(warnings, vec![]);
 }
