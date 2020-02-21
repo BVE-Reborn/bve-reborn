@@ -58,7 +58,7 @@ fn bare_section_value() {
 }
 
 #[test]
-fn section_kvp() {
+fn bare_section_kvp() {
     #[derive(Debug, Default, Clone, PartialEq, FromKVPFile)]
     struct File {
         #[kvp(bare)]
@@ -226,6 +226,93 @@ fn additive_value() {
     let (parsed, warnings) = File::from_kvp_file(&kvp);
     let mut answer = File::default();
     answer.first.some1 = vec![6.2, 6.7];
+    assert_eq!(parsed, answer);
+    assert_eq!(warnings, vec![]);
+}
+
+#[test]
+fn additive_kvp() {
+    #[derive(Debug, Default, Clone, PartialEq, FromKVPFile)]
+    struct File {
+        first: Section,
+    }
+
+    #[derive(Debug, Default, Clone, PartialEq, FromKVPSection)]
+    struct Section {
+        kvp1: Vec<f32>,
+        kvp2: Vec<f32>,
+    }
+
+    let file_lit = indoc!(
+        r#"
+        [first]
+        kvp1 = 6.2
+        kvp2 = 6.5
+        kvp1 = 6.7
+    "#
+    );
+
+    let kvp = parse_kvp_file(file_lit);
+    let (parsed, warnings) = File::from_kvp_file(&kvp);
+    let mut answer = File::default();
+    answer.first.kvp1 = vec![6.2, 6.7];
+    answer.first.kvp2 = vec![6.5];
+    assert_eq!(parsed, answer);
+    assert_eq!(warnings, vec![]);
+}
+
+#[test]
+fn alias_kvp() {
+    #[derive(Debug, Default, Clone, PartialEq, FromKVPFile)]
+    struct File {
+        #[kvp(bare)]
+        first: Section,
+    }
+
+    #[derive(Debug, Default, Clone, PartialEq, FromKVPSection)]
+    struct Section {
+        #[kvp(alias = "some-other")]
+        some: f32,
+    }
+
+    let file_lit = indoc!(
+        r#"
+        some-other = 6.7
+    "#
+    );
+
+    let kvp = parse_kvp_file(file_lit);
+    let (parsed, warnings) = File::from_kvp_file(&kvp);
+    let mut answer = File::default();
+    answer.first.some = 6.7;
+    assert_eq!(parsed, answer);
+    assert_eq!(warnings, vec![]);
+}
+
+#[test]
+fn section_alias() {
+    #[derive(Debug, Default, Clone, PartialEq, FromKVPFile)]
+    struct File {
+        #[kvp(alias = "second")]
+        first: Section,
+    }
+
+    #[derive(Debug, Default, Clone, PartialEq, FromKVPSection)]
+    struct Section {
+        some: f32,
+    }
+
+    let file_lit = indoc!(
+        r#"
+        [second]
+        some = 6.7
+    "#
+    );
+
+    let kvp = parse_kvp_file(file_lit);
+    let (parsed, warnings) = File::from_kvp_file(&kvp);
+    let mut answer = File::default();
+    answer.first.some = 6.7;
     assert_eq!(parsed, answer);
     assert_eq!(warnings, vec![]);
 }

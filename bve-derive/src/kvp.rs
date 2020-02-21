@@ -217,7 +217,7 @@ pub fn kvp_section(item: TokenStream) -> TokenStream {
         // If there are aliases, iterate over the possibilities
         let aliases = combine_token_streams(field.alias.iter().map(|alias| {
             quote! {
-                | crate::parse::kvp::KVPInnerData::KeyValuePair{ key: #alias, value }
+                | crate::parse::kvp::ValueData::KeyValuePair{ key: #alias, value }
             }
         }));
         // If the field is bare, we must also increment the bare_counter in the body
