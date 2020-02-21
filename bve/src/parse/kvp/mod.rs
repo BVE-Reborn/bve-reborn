@@ -24,6 +24,8 @@ pub use parse::*;
 pub use traits::*;
 
 mod parse;
+#[cfg(test)]
+mod tests;
 mod traits;
 
 #[derive(Debug, Clone, Eq, PartialEq)]

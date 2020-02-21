@@ -33,6 +33,7 @@ tracing = "0.1.12"
 tracing-core = "0.1.9"
 
 [dev-dependencies]
+indoc = "0.3.4"
 maplit = "1"
 obj = "0.9.1"
 serde_test = "1.0"

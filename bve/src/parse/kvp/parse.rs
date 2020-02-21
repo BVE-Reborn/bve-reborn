@@ -7,6 +7,7 @@ pub fn parse_kvp_file(input: &str) -> KVPFile<'_> {
     let mut file = KVPFile::default();
     let mut current_section = KVPSection::default();
     for (line_idx, line) in input.lines().enumerate() {
+        let line = line.trim();
         // Match on the first character
         match line.chars().next() {
             Some('[') => {
@@ -64,10 +65,34 @@ pub fn parse_kvp_file(input: &str) -> KVPFile<'_> {
 mod test {
     use crate::parse::kvp::{parse_kvp_file, KVPField, KVPFile, KVPSection, ValueData};
     use crate::parse::Span;
+    use indoc::indoc;
+
+    #[test]
+    fn empty() {
+        let kvp = parse_kvp_file(indoc!(
+            r#"
+            
+        "#
+        ));
+        assert_eq!(
+            kvp,
+            KVPFile {
+                sections: vec![KVPSection {
+                    name: None,
+                    span: Span::from_line(0),
+                    fields: vec![]
+                }]
+            }
+        );
+    }
 
     #[test]
     fn value() {
-        let kvp = parse_kvp_file("my_value");
+        let kvp = parse_kvp_file(indoc!(
+            r#"
+            my_value
+        "#
+        ));
         assert_eq!(
             kvp,
             KVPFile {
@@ -85,7 +110,11 @@ mod test {
 
     #[test]
     fn kvp() {
-        let kvp = parse_kvp_file("my_key = my_value");
+        let kvp = parse_kvp_file(indoc!(
+            r#"
+            my_key = my_value
+        "#
+        ));
         assert_eq!(
             kvp,
             KVPFile {
@@ -106,7 +135,12 @@ mod test {
 
     #[test]
     fn named_section_value() {
-        let kvp = parse_kvp_file("[my_section]\nmy_value");
+        let kvp = parse_kvp_file(indoc!(
+            r#"
+            [my_section]
+            my_value
+        "#
+        ));
         assert_eq!(
             kvp,
             KVPFile {
@@ -131,7 +165,12 @@ mod test {
 
     #[test]
     fn named_section_kvp() {
-        let kvp = parse_kvp_file("[my_section]\nmy_key = my_value");
+        let kvp = parse_kvp_file(indoc!(
+            r#"
+            [my_section]
+            my_key = my_value
+        "#
+        ));
         assert_eq!(
             kvp,
             KVPFile {
@@ -159,7 +198,11 @@ mod test {
 
     #[test]
     fn empty_section_name() {
-        let kvp = parse_kvp_file("[]");
+        let kvp = parse_kvp_file(indoc!(
+            r#"
+            []
+        "#
+        ));
         assert_eq!(
             kvp,
             KVPFile {
@@ -181,7 +224,11 @@ mod test {
 
     #[test]
     fn section_name_no_rbracket() {
-        let kvp = parse_kvp_file("[my_section");
+        let kvp = parse_kvp_file(indoc!(
+            r#"
+            [my_section
+        "#
+        ));
         assert_eq!(
             kvp,
             KVPFile {
