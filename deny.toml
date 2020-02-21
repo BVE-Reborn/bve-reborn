@@ -14,7 +14,8 @@ allow = [
 [bans]
 multiple-versions = "deny"
 skip = [
-    { name = "nom", version = "4" },
+    { name = "nom", version = "4" }, # cexpr is quite old and looking unmaintained
+    { name = "strsim", version = "0.8.0" }, # clap 2 isn't in dev anymore, change merged with clap 3.
 ]
 
 [advisories]

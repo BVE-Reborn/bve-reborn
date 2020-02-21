@@ -43,6 +43,7 @@
 #![allow(clippy::shadow_reuse)]
 #![allow(clippy::shadow_same)]
 #![allow(clippy::too_many_lines)]
+#![allow(clippy::unimplemented)] // Specific use case proc macro, lots of holes
 #![allow(clippy::unreachable)]
 #![allow(clippy::wildcard_enum_match_arm)]
 // CLion is having a fit about panic not existing
@@ -67,6 +68,9 @@ mod helpers;
 
 #[cfg_attr(tarpaulin, skip)]
 mod test;
+
+#[cfg_attr(tarpaulin, skip)]
+mod kvp;
 
 #[proc_macro_attribute]
 #[cfg_attr(tarpaulin, skip)]
@@ -96,4 +100,16 @@ pub fn bve_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
 #[cfg_attr(tarpaulin, skip)]
 pub fn span(attr: TokenStream, item: TokenStream) -> TokenStream {
     span::span(attr, item)
+}
+
+#[proc_macro_derive(FromKVPFile, attributes(kvp))]
+#[cfg_attr(tarpaulin, skip)]
+pub fn from_kvp_file(item: TokenStream) -> TokenStream {
+    kvp::kvp_file(item)
+}
+
+#[proc_macro_derive(FromKVPSection, attributes(kvp))]
+#[cfg_attr(tarpaulin, skip)]
+pub fn from_kvp_section(item: TokenStream) -> TokenStream {
+    kvp::kvp_section(item)
 }

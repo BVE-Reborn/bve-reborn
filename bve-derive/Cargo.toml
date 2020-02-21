@@ -17,6 +17,7 @@ proc-macro = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+darling = "0.10.2"
 itertools = "0.8"
 proc-macro2 = "1"
 quote = "1"
