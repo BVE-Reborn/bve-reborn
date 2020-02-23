@@ -1,6 +1,6 @@
 use crate::parse::function_scripts::ParsedFunctionScript;
 use crate::parse::kvp::FromKVPValue;
-use bve_derive::{FromKVPFile, FromKVPSection};
+use bve_derive::{FromKVPFile, FromKVPSection, FromKVPValue};
 use cgmath::{Vector2, Vector3};
 use num_traits::identities::Zero;
 
@@ -159,19 +159,10 @@ impl Default for AnimatedStateChangeSound {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, FromKVPValue)]
 pub struct Damping {
     pub frequency: f32,
     pub damping_ratio: f32,
-}
-
-impl FromKVPValue for Damping {
-    fn from_kvp_value(value: &str) -> Option<Self> {
-        Vector2::<f32>::from_kvp_value(value).map(|vec| Self {
-            frequency: vec.x,
-            damping_ratio: vec.y,
-        })
-    }
 }
 
 #[derive(Debug, Clone, PartialEq)]

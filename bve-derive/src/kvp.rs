@@ -299,3 +299,34 @@ pub fn kvp_section(item: TokenStream) -> TokenStream {
     )
     .into()
 }
+
+pub fn kvp_value(item: TokenStream) -> TokenStream {
+    let item = syn::parse_macro_input!(item as ItemStruct);
+
+    let ident = &item.ident;
+
+    // Strictly speaking, we don't need that much functionality, but it gets us the core info we need
+    let fields = parse_fields(&item);
+
+    let conversion = combine_token_streams(fields.into_iter().map(|field| {
+        let ident = field.ident.clone().expect("Fields must have names");
+        let ty = field.ty;
+
+        quote! {
+            #ident: <#ty as crate::parse::kvp::FromKVPValue>::from_kvp_value(iterator.next()?)?,
+        }
+    }));
+
+    quote! (
+        impl crate::parse::kvp::FromKVPValue for #ident {
+            fn from_kvp_value(value: &str) -> Option<Self> {
+                let mut iterator = value.split(',').map(str::trim);
+
+                Some(#ident {
+                    #conversion
+                })
+            }
+        }
+    )
+    .into()
+}
