@@ -7,6 +7,7 @@ pub use data::*;
 pub use global::*;
 pub use method::*;
 pub use subscriber::*;
+pub use tracing_core::Level;
 
 mod common;
 mod data;

@@ -1,3 +1,5 @@
+#![allow(clippy::mem_forget)]
+
 use crate::{FileKind, FileResult, Options, ParseResult};
 use crossbeam::channel::Receiver;
 use serde::Serialize;

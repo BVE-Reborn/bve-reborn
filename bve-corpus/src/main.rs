@@ -52,7 +52,7 @@ use crate::enumeration::enumerate_all_files;
 use crate::panic::setup_panic_hook;
 use crate::worker::create_worker_thread;
 use anyhow::Result;
-use bve::log::{run_with_global_logger, set_global_logger, SerializationMethod, Subscriber};
+use bve::log::{run_with_global_logger, set_global_logger, Level, SerializationMethod, Subscriber};
 use crossbeam::channel::unbounded;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 pub use options::*;
@@ -136,7 +136,7 @@ fn main() {
 
     let options: Options = Options::from_args();
 
-    let _guard = set_global_logger(std::io::sink(), SerializationMethod::JsonPretty);
+    let _guard = set_global_logger(std::io::sink(), Level::WARN, SerializationMethod::JsonPretty);
 
     run_with_global_logger(move || program_main(options));
 }

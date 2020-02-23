@@ -14,7 +14,7 @@ use std::thread::JoinHandle;
 use tracing::span::{Attributes, Record};
 use tracing::Id;
 use tracing_core::field::Visit;
-use tracing_core::{Event, Field, Metadata};
+use tracing_core::{Event, Field, Level, Metadata};
 
 thread_local! {
     static CURRENT_SPAN: RefCell<Option<Id>> = RefCell::new(None);
@@ -27,6 +27,7 @@ pub struct Subscriber {
 
 struct SubscriberData {
     current_span_id: AtomicU64,
+    level: Level,
     background_sender: ManuallyDrop<Sender<Command>>, // Must be dropped before thread
     background_thread: ManuallyDrop<JoinHandle<()>>,  // Needs to be joined
     // Points from child to parent
@@ -34,7 +35,7 @@ struct SubscriberData {
 }
 
 impl Subscriber {
-    pub fn new(dest: impl Write + Send + 'static, method: SerializationMethod) -> Self {
+    pub fn new(dest: impl Write + Send + 'static, level: Level, method: SerializationMethod) -> Self {
         // Use a bounded queue to prevent an influx of messages using all of memory
         let (sender, receiver) = bounded(1024_usize);
 
@@ -45,6 +46,7 @@ impl Subscriber {
         Self {
             inner: Arc::new(SubscriberData {
                 current_span_id: AtomicU64::new(1),
+                level,
                 background_thread: ManuallyDrop::new(handle),
                 background_sender: ManuallyDrop::new(sender),
                 span_parents: Mutex::new(HashMap::new()),
@@ -76,8 +78,8 @@ impl Drop for SubscriberData {
 }
 
 impl tracing::Subscriber for Subscriber {
-    fn enabled(&self, _metadata: &Metadata<'_>) -> bool {
-        true
+    fn enabled(&self, metadata: &Metadata<'_>) -> bool {
+        self.inner.level <= *metadata.level()
     }
 
     // noinspection DuplicatedCode
@@ -134,6 +136,10 @@ impl tracing::Subscriber for Subscriber {
 
     // noinspection DuplicatedCode
     fn event(&self, event: &Event<'_>) {
+        if *event.metadata().level() > self.inner.level {
+            return;
+        }
+
         // Record all members with a visitor
         let mut visitor = RecordVisitor::new();
         event.record(&mut visitor);

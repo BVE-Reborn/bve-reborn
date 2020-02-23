@@ -21,7 +21,7 @@ pub fn test(item: TokenStream) -> TokenStream {
                 task();
             } else {
                 // Manually dispatch to avoid non-thread-local state
-                let subscriber = crate::log::Subscriber::new(::std::io::stderr(), crate::log::SerializationMethod::JsonPretty);
+                let subscriber = crate::log::Subscriber::new(::std::io::stderr(), crate::log::Level::TRACE, crate::log::SerializationMethod::JsonPretty);
                 ::tracing::dispatcher::with_default(&::tracing::dispatcher::Dispatch::new(subscriber),
                     task
                 );
