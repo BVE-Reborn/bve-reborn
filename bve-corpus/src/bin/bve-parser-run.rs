@@ -1,4 +1,5 @@
 use bve::filesystem::read_convert_utf8;
+use bve::parse::animated::parse_animated_file;
 use bve::parse::mesh::mesh_from_str;
 use clap::arg_enum;
 use std::path::{Path, PathBuf};
@@ -9,7 +10,8 @@ arg_enum! {
     #[derive(Debug, Clone)]
     enum FileType {
         B3D,
-        CSV
+        CSV,
+        Animated,
     }
 }
 
@@ -55,11 +57,31 @@ fn parse_mesh_b3d_csv(file: impl AsRef<Path>, errors: bool, b3d: bool) {
     }
 }
 
+fn parse_mesh_animated(file: impl AsRef<Path>, errors: bool) {
+    let contents = read_convert_utf8(file).expect("Must be able to read file");
+
+    let start = Instant::now();
+    let (_parsed, warnings) = parse_animated_file(&contents);
+    let duration = Instant::now() - start;
+
+    println!("Duration: {:.4}", duration.as_secs_f32());
+
+    if errors {
+        println!("Warnings:");
+        for e in &warnings {
+            println!("\t{} {:?}", e.span.line.map(|v| v as i64).unwrap_or(-1), e.kind)
+        }
+    } else {
+        println!("Warnings: {}", warnings.len());
+    }
+}
+
 fn main() {
     let options: Options = Options::from_args();
 
     match options.file_type {
         FileType::B3D => parse_mesh_b3d_csv(&options.source_file, options.errors, true),
         FileType::CSV => parse_mesh_b3d_csv(&options.source_file, options.errors, false),
+        FileType::Animated => parse_mesh_animated(&options.source_file, options.errors),
     }
 }

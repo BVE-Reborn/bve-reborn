@@ -3,19 +3,19 @@ use std::io::Write;
 use std::sync::Mutex;
 use std::thread::JoinHandle;
 use tracing_core::dispatcher::with_default;
-use tracing_core::Dispatch;
+use tracing_core::{Dispatch, Level};
 
 lazy_static::lazy_static! {
     static ref GLOBAL_LOGGER: Mutex<Option<Subscriber>> = Mutex::new(None);
 }
 
 /// Automatically removes the global logger when it goes out of scope, making sure everything gets cleaned up correctly.
-pub struct GlobalLoggerGuard();
+pub struct GlobalLoggerGuard;
 
 impl Drop for GlobalLoggerGuard {
     fn drop(&mut self) {
         if let Ok(mut guard) = GLOBAL_LOGGER.lock() {
-            *guard = None
+            (*guard).take(); // falls out of scope
         }
     }
 }
@@ -32,9 +32,13 @@ impl Drop for GlobalLoggerGuard {
 ///
 /// [`GlobalLoggerGuard`] which automatically removes the global logger when it goes out of scope, making sure
 /// everything gets cleaned up correctly.
-pub fn set_global_logger(dest: impl Write + Send + 'static, method: SerializationMethod) -> GlobalLoggerGuard {
-    *GLOBAL_LOGGER.lock().expect("Cannot lock to set global logger") = Some(Subscriber::new(dest, method));
-    GlobalLoggerGuard()
+pub fn set_global_logger(
+    dest: impl Write + Send + 'static,
+    level: Level,
+    method: SerializationMethod,
+) -> GlobalLoggerGuard {
+    *GLOBAL_LOGGER.lock().expect("Cannot lock to set global logger") = Some(Subscriber::new(dest, level, method));
+    GlobalLoggerGuard
 }
 
 /// Removes the global logger.

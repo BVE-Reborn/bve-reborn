@@ -6,7 +6,8 @@ use num_traits::identities::Zero;
 
 #[derive(Debug, Default, Clone, PartialEq, FromKVPFile)]
 pub struct ParsedAnimatedObject {
-    pub includes: Includes,
+    #[kvp(rename = "include")]
+    pub includes: Vec<Includes>,
     #[kvp(rename = "object")]
     pub objects: Vec<AnimatedObject>,
     #[kvp(rename = "sound")]
