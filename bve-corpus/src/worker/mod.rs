@@ -87,16 +87,20 @@ fn processing_loop(
 
         let file_ref = &file;
 
+        // File reading isn't part of the operation.
+        let file_contents = read_from_file(&file_ref.path);
+        // Say that we're still alive
+        last_respond.store(Instant::now());
+
         USE_DEFAULT_PANIC_HANLDER.with(|v| *v.borrow_mut() = false);
         let panicked = std::panic::catch_unwind(|| match &file_ref.kind {
             FileKind::ModelCsv => {
-                let ParsedStaticObject { errors, .. } = mesh_from_str(&read_from_file(&file_ref.path), FileType::CSV);
+                let ParsedStaticObject { errors, .. } = mesh_from_str(&file_contents, FileType::CSV);
 
                 success_or_errors(errors)
             }
             FileKind::ModelAnimated => {
-                let file = read_from_file(&file_ref.path);
-                let (_animated, warnings) = parse_animated_file(&file);
+                let (_animated, warnings) = parse_animated_file(&file_contents);
 
                 success_or_errors(warnings)
             }
@@ -110,8 +114,8 @@ fn processing_loop(
             Ok(parse_result) => parse_result,
             Err(..) => PANIC.with(|v| {
                 let stderr = std::io::stderr();
-                let mut stderr_guard = stderr.lock();
                 let path_str = format!("Panicked while parsing: {:?}\n", file_ref.path);
+                let mut stderr_guard = stderr.lock();
                 stderr_guard.write_all(path_str.as_bytes()).unwrap();
                 drop(stderr_guard);
 
@@ -122,13 +126,15 @@ fn processing_loop(
         };
 
         let file_result = FileResult {
-            path: file.path,
-            _kind: file.kind,
+            path: file.path.clone(),
+            kind: file.kind,
             result,
             _duration: duration,
         };
 
-        result_sink.send(file_result).unwrap();
+        result_sink
+            .send(file_result)
+            .expect(&format!("Send error on file {}", file.path.display()));
 
         // Dump the total amount worked on
         shared.total.finished.fetch_add(1, Ordering::SeqCst);

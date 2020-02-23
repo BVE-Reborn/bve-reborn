@@ -56,6 +56,7 @@ use bve::log::{run_with_global_logger, set_global_logger, SerializationMethod, S
 use crossbeam::channel::unbounded;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 pub use options::*;
+use serde::Serialize;
 use std::panic::PanicInfo;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -81,6 +82,7 @@ pub struct File {
     kind: FileKind,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 enum FileKind {
     AtsCfg,
     ExtensionsCfg,
@@ -98,7 +100,7 @@ enum FileKind {
 
 pub struct FileResult {
     path: PathBuf,
-    _kind: FileKind,
+    kind: FileKind,
     result: ParseResult,
     _duration: Duration,
 }
@@ -163,7 +165,7 @@ fn program_main(options: Options) {
         .map(|_| create_worker_thread(&file_source, &result_sink, &shared))
         .collect();
 
-    let logger_thread = { bve::concurrency::spawn(move || logger::receive_results(&options, &result_source)) };
+    let logger_thread = { bve::concurrency::spawn(move || logger::receive_results(&options, result_source)) };
 
     let tui_progress_thread = bve::concurrency::spawn(move || mp.join().unwrap());
 
@@ -174,7 +176,7 @@ fn program_main(options: Options) {
         total_progress.set_length(shared.total.total.load(Ordering::SeqCst));
         let now = Instant::now();
         for t in &worker_threads {
-            const TIMEOUT: Duration = Duration::from_secs(10);
+            const TIMEOUT: Duration = Duration::from_secs(100);
 
             let last_respond = t.last_respond.load();
             if (now > last_respond) && (now - last_respond > TIMEOUT) {
@@ -187,7 +189,7 @@ fn program_main(options: Options) {
                     .send(FileResult {
                         path: PathBuf::new(),
                         result: ParseResult::Finish,
-                        _kind: FileKind::AtsCfg,
+                        kind: FileKind::AtsCfg,
                         _duration: Duration::new(0, 0),
                     })
                     .unwrap();
