@@ -97,10 +97,21 @@ fn processing_loop(
             FileKind::ModelCsv => {
                 let ParsedStaticObject { errors, .. } = mesh_from_str(&file_contents, FileType::CSV);
 
+                shared.model_csv.finished.fetch_add(1, Ordering::AcqRel);
+
+                success_or_errors(errors)
+            }
+            FileKind::ModelB3d => {
+                let ParsedStaticObject { errors, .. } = mesh_from_str(&file_contents, FileType::B3D);
+
+                shared.model_b3d.finished.fetch_add(1, Ordering::AcqRel);
+
                 success_or_errors(errors)
             }
             FileKind::ModelAnimated => {
                 let (_animated, warnings) = parse_animated_file(&file_contents);
+
+                shared.model_animated.finished.fetch_add(1, Ordering::AcqRel);
 
                 success_or_errors(warnings)
             }
@@ -125,8 +136,10 @@ fn processing_loop(
             }),
         };
 
+        let file_path = file.path;
+
         let file_result = FileResult {
-            path: file.path.clone(),
+            path: file_path.clone(),
             kind: file.kind,
             result,
             _duration: duration,
@@ -134,7 +147,7 @@ fn processing_loop(
 
         result_sink
             .send(file_result)
-            .expect(&format!("Send error on file {}", file.path.display()));
+            .unwrap_or_else(|_| panic!("Send error on file {}", file_path.display()));
 
         // Dump the total amount worked on
         shared.total.finished.fetch_add(1, Ordering::SeqCst);
