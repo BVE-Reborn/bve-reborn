@@ -4,6 +4,7 @@ pub mod animated;
 pub mod function_scripts;
 pub mod kvp;
 pub mod mesh;
+pub mod train_dat;
 mod util;
 
 pub use util::Span;
