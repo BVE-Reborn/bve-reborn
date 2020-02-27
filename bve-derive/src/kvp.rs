@@ -125,6 +125,7 @@ pub fn kvp_file(item: TokenStream) -> TokenStream {
     }));
 
     quote! (
+        #[automatically_derived]
         impl crate::parse::kvp::FromKVPFile for #ident {
             type Warnings = crate::parse::kvp::KVPGenericWarning;
             fn from_kvp_file(file: &crate::parse::kvp::KVPFile<'_>) -> (Self, Vec<Self::Warnings>) {
@@ -265,6 +266,7 @@ pub fn kvp_section(item: TokenStream) -> TokenStream {
     }));
 
     quote! (
+        #[automatically_derived]
         impl crate::parse::kvp::FromKVPSection for #ident {
             type Warnings = crate::parse::kvp::KVPGenericWarning;
             fn from_kvp_section(section: &crate::parse::kvp::KVPSection<'_>) -> (Self, Vec<Self::Warnings>) {
@@ -318,6 +320,7 @@ pub fn kvp_value(item: TokenStream) -> TokenStream {
     }));
 
     quote! (
+        #[automatically_derived]
         impl crate::parse::kvp::FromKVPValue for #ident {
             fn from_kvp_value(value: &str) -> Option<Self> {
                 let mut iterator = value.split(',').map(str::trim);
