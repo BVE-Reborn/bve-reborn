@@ -1,5 +1,5 @@
 use crate::parse::kvp::FromKVPValue;
-use bve_derive::{FromKVPFile, FromKVPSection, FromKVPValue};
+use bve_derive::FromKVPSection;
 
 #[derive(Debug, Default, Clone, PartialEq, FromKVPSection)]
 pub struct VersionSection {

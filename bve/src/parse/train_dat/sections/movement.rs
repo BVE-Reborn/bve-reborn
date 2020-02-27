@@ -1,5 +1,4 @@
-use crate::parse::kvp::FromKVPValue;
-use bve_derive::{FromKVPFile, FromKVPSection, FromKVPValue};
+use bve_derive::FromKVPSection;
 
 #[derive(Debug, Clone, PartialEq, FromKVPSection)]
 pub struct MovementSection {

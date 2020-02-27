@@ -1,10 +1,15 @@
-use crate::parse::kvp::FromKVPValue;
-use bve_derive::{FromKVPFile, FromKVPSection, FromKVPValue};
+use bve_derive::FromKVPFile;
 
 pub mod acceleration;
+pub mod brake;
+pub mod cab;
 pub mod delay;
+pub mod device;
+pub mod handle;
+pub mod motor;
 pub mod movement;
 pub mod performance;
+pub mod pressure;
 pub mod version;
 
 #[derive(Debug, Default, Clone, PartialEq, FromKVPFile)]
@@ -17,4 +22,13 @@ pub struct ParsedTrainDat {
     pub delay: delay::DelaySection,
     #[kvp(rename = "move")] // move is a keyword
     pub movement: movement::MovementSection,
+    pub brake: brake::BrakeSection,
+    pub pressure: pressure::PressureSection,
+    pub handle: handle::HandleSection,
+    #[kvp(alias = "cab; cockpit")]
+    pub cab: cab::CabSection,
+    pub motor_p1: motor::MotorSection,
+    pub motor_p2: motor::MotorSection,
+    pub motor_b1: motor::MotorSection,
+    pub motor_b2: motor::MotorSection,
 }
