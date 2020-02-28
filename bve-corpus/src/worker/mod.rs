@@ -4,6 +4,7 @@ use bve::filesystem::read_convert_utf8;
 use bve::parse::animated::parse_animated_file;
 use bve::parse::kvp::parse_kvp_file;
 use bve::parse::mesh::{mesh_from_str, FileType, MeshErrorKind, ParsedStaticObject};
+use bve::parse::train_dat::parse_train_dat;
 use core::panicking::panic;
 use crossbeam::atomic::AtomicCell;
 use crossbeam::channel::{Receiver, Sender};
@@ -112,6 +113,13 @@ fn processing_loop(
                 let (_animated, warnings) = parse_animated_file(&file_contents);
 
                 shared.model_animated.finished.fetch_add(1, Ordering::AcqRel);
+
+                success_or_errors(warnings)
+            }
+            FileKind::TrainDat => {
+                let (_parsed, warnings) = parse_train_dat(&file_contents);
+
+                shared.train_dat.finished.fetch_add(1, Ordering::AcqRel);
 
                 success_or_errors(warnings)
             }
