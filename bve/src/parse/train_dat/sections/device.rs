@@ -7,7 +7,7 @@ pub struct DeviceSection {
     #[kvp(bare)]
     atc: AtcAvailable,
     #[kvp(bare)]
-    eb: EbAvailable,
+    eb: EmergencyBrakeAvailable,
     #[kvp(bare)]
     const_speed: ConstSpeedAvailable,
     #[kvp(bare)]
@@ -24,14 +24,16 @@ pub struct DeviceSection {
     door_close_mode: DoorMode,
 }
 
+/// Japanese implementation of digital Automatic Train Stops, supports ATS-SN and ATS-P
 #[derive(Debug, Clone, PartialEq, FromKVPValueEnumNumbers)]
 pub enum AtsAvailable {
     #[kvp(default, index = "-1")]
     Neither,
     AtsSn,
-    Both,
+    AtsSnAtsP,
 }
 
+/// Japanese implementation of digital Automatic Train Control
 #[derive(Debug, Clone, PartialEq, FromKVPValueEnumNumbers)]
 pub enum AtcAvailable {
     #[kvp(default)]
@@ -41,7 +43,7 @@ pub enum AtcAvailable {
 }
 
 #[derive(Debug, Clone, PartialEq, FromKVPValueEnumNumbers)]
-pub enum EbAvailable {
+pub enum EmergencyBrakeAvailable {
     #[kvp(default)]
     Unavailable,
     Available,
