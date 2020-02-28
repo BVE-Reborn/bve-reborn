@@ -27,8 +27,8 @@ struct Options {
     errors: bool,
 
     /// show result
-    #[structopt(long)]
-    result: bool,
+    #[structopt(short, long = "print")]
+    print_result: bool,
 
     /// file to load
     source_file: PathBuf,
@@ -49,7 +49,7 @@ fn parse_mesh_b3d_csv(file: impl AsRef<Path>, options: &Options, b3d: bool) {
 
     println!("Duration: {:.4}", duration.as_secs_f32());
 
-    if options.result {
+    if options.print_result {
         println!("{:#?}", &parsed);
     }
 
@@ -76,7 +76,7 @@ fn parse_mesh_animated(file: impl AsRef<Path>, options: &Options) {
 
     println!("Duration: {:.4}", duration.as_secs_f32());
 
-    if options.result {
+    if options.print_result {
         println!("{:#?}", parsed);
     }
 
@@ -99,7 +99,7 @@ fn parse_config_train_dat(file: impl AsRef<Path>, options: &Options) {
 
     println!("Duration: {:.4}", duration.as_secs_f32());
 
-    if options.result {
+    if options.print_result {
         println!("{:#?}", parsed);
     }
 
