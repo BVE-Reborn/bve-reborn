@@ -8,11 +8,11 @@
 #![allow(clippy::default_trait_access)] // Needed by darling
 
 use crate::helpers::combine_token_streams;
-use darling::FromField;
+use darling::{FromField, FromVariant};
 use proc_macro2::Ident;
 use quote::quote;
 use syn::export::{TokenStream, TokenStream2};
-use syn::{GenericArgument, ItemStruct, PathArguments, Type};
+use syn::{GenericArgument, ItemEnum, ItemStruct, PathArguments, Type};
 
 #[allow(clippy::needless_pass_by_value)] // Needed for type deduction
 fn split_aliases(input: String) -> Vec<String> {
@@ -23,6 +23,7 @@ fn split_aliases(input: String) -> Vec<String> {
     }
 }
 
+/// Struct field with possible attributes as returned by [`parse_fields`]
 #[derive(Debug, FromField)]
 #[darling(attributes(kvp))]
 struct Field {
@@ -125,6 +126,8 @@ pub fn kvp_file(item: TokenStream) -> TokenStream {
     }));
 
     quote! (
+        #[automatically_derived]
+        #[allow(clippy::used_underscore_binding)]
         impl crate::parse::kvp::FromKVPFile for #ident {
             type Warnings = crate::parse::kvp::KVPGenericWarning;
             fn from_kvp_file(file: &crate::parse::kvp::KVPFile<'_>) -> (Self, Vec<Self::Warnings>) {
@@ -265,6 +268,8 @@ pub fn kvp_section(item: TokenStream) -> TokenStream {
     }));
 
     quote! (
+        #[automatically_derived]
+        #[allow(clippy::used_underscore_binding)]
         impl crate::parse::kvp::FromKVPSection for #ident {
             type Warnings = crate::parse::kvp::KVPGenericWarning;
             fn from_kvp_section(section: &crate::parse::kvp::KVPSection<'_>) -> (Self, Vec<Self::Warnings>) {
@@ -296,6 +301,120 @@ pub fn kvp_section(item: TokenStream) -> TokenStream {
                 (parsed, warnings)
             }
         }
+    )
+    .into()
+}
+
+pub fn kvp_value(item: TokenStream) -> TokenStream {
+    let item = syn::parse_macro_input!(item as ItemStruct);
+
+    let ident = &item.ident;
+
+    // Strictly speaking, we don't need that much functionality, but it gets us the core info we need
+    let fields = parse_fields(&item);
+
+    let conversion = combine_token_streams(fields.into_iter().map(|field| {
+        let ident = field.ident.clone().expect("Fields must have names");
+        let ty = field.ty;
+
+        quote! {
+            #ident: <#ty as crate::parse::kvp::FromKVPValue>::from_kvp_value(iterator.next()?)?,
+        }
+    }));
+
+    quote! (
+        #[automatically_derived]
+        #[allow(clippy::used_underscore_binding)]
+        impl crate::parse::kvp::FromKVPValue for #ident {
+            fn from_kvp_value(value: &str) -> Option<Self> {
+                let mut iterator = value.split(',').map(str::trim);
+
+                Some(#ident {
+                    #conversion
+                })
+            }
+        }
+    )
+    .into()
+}
+
+/// Enum variant with possible attributes as used by [`kvp_enum_numbers`]
+#[derive(Debug, FromVariant)]
+#[darling(attributes(kvp))]
+struct Variant {
+    ident: Ident,
+    #[darling(default)]
+    default: bool,
+    #[darling(default)]
+    index: Option<i64>,
+}
+
+pub fn kvp_enum_numbers(item: TokenStream) -> TokenStream {
+    let item = syn::parse_macro_input!(item as ItemEnum);
+
+    let ident = item.ident;
+
+    let fields: Vec<Variant> = item
+        .variants
+        .iter()
+        .map(Variant::from_variant)
+        .filter_map(Result::ok)
+        .collect();
+
+    let default_count = fields.iter().filter(|v| v.default).count();
+    assert!(default_count <= 1, "Must not have more than one default field");
+
+    let default_impl = if default_count == 1 {
+        let default_ident = fields
+            .iter()
+            .find(|v| v.default)
+            .expect("Must have a default value")
+            .ident
+            .clone();
+        quote! {
+            #[automatically_derived]
+            impl std::default::Default for #ident {
+                fn default() -> Self {
+                    Self::#default_ident
+                }
+            }
+        }
+    } else {
+        quote! {}
+    };
+
+    let mut idx = 0_i64;
+
+    let matches = combine_token_streams(fields.iter().map(|variant| {
+        let ident = variant.ident.clone();
+
+        if let Some(replacement_idx) = variant.index {
+            idx = replacement_idx;
+        }
+
+        let new_idx = idx + 1;
+        let idx = std::mem::replace(&mut idx, new_idx);
+
+        quote! {
+            #idx => Self::#ident,
+        }
+    }));
+
+    quote! (
+        #[automatically_derived]
+        #[allow(clippy::used_underscore_binding)]
+        impl crate::parse::kvp::FromKVPValue for #ident {
+            fn from_kvp_value(value: &str) -> Option<Self> {
+                let number = <i64 as crate::parse::kvp::FromKVPValue>::from_kvp_value(value)?;
+
+                Some(match number {
+                    #matches
+                    _ => return None,
+                })
+            }
+        }
+
+        #default_impl
     )
     .into()
 }

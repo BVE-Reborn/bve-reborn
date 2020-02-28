@@ -113,3 +113,15 @@ pub fn from_kvp_file(item: TokenStream) -> TokenStream {
 pub fn from_kvp_section(item: TokenStream) -> TokenStream {
     kvp::kvp_section(item)
 }
+
+#[proc_macro_derive(FromKVPValue, attributes(kvp))]
+#[cfg_attr(tarpaulin, skip)]
+pub fn from_kvp_value(item: TokenStream) -> TokenStream {
+    kvp::kvp_value(item)
+}
+
+#[proc_macro_derive(FromKVPValueEnumNumbers, attributes(kvp))]
+#[cfg_attr(tarpaulin, skip)]
+pub fn from_kvp_value_enum_numbers(item: TokenStream) -> TokenStream {
+    kvp::kvp_enum_numbers(item)
+}

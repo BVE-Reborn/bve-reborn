@@ -309,6 +309,7 @@ fn generate_proxy_object(name: &Ident, fields: &[Field]) -> TokenStream2 {
             #proxy_fields
         }
 
+        #[automatically_derived]
         impl ::std::convert::From<#proxy_name> for #name {
             #[inline]
             fn from(proxy: #proxy_name) -> #name {
@@ -465,6 +466,7 @@ pub fn serde_vector_proxy(item: TokenStream) -> TokenStream {
         #[serde(from = #primary_type_str)]
         #parsed
 
+        #[automatically_derived]
         impl ::std::convert::From<#primary_type> for #name {
             #[allow(clippy::default_trait_access)]
             fn from(proxy: #primary_type) -> Self {
