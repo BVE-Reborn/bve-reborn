@@ -3,6 +3,7 @@ use bve_derive::FromKVPFile;
 pub mod acceleration;
 pub mod brake;
 pub mod cab;
+pub mod car;
 pub mod delay;
 pub mod device;
 pub mod handle;
@@ -27,8 +28,14 @@ pub struct ParsedTrainDat {
     pub handle: handle::HandleSection,
     #[kvp(alias = "cab; cockpit")]
     pub cab: cab::CabSection,
+    pub car: car::CarSection,
+    pub device: device::DeviceSection,
+    #[kvp(rename = "motor_p1")]
     pub motor_p1: motor::MotorSection,
+    #[kvp(rename = "motor_p2")]
     pub motor_p2: motor::MotorSection,
+    #[kvp(rename = "motor_b1")]
     pub motor_b1: motor::MotorSection,
+    #[kvp(rename = "motor_b2")]
     pub motor_b2: motor::MotorSection,
 }
