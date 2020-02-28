@@ -1,7 +1,7 @@
 use crate::parse::kvp::{KVPField, KVPFile, KVPSection, ValueData};
 use crate::parse::Span;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct KVPSymbols {
     start_section: char,
     end_section: Option<char>,

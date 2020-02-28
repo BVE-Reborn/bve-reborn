@@ -3,7 +3,7 @@
 #![allow(clippy::shadow_unrelated)] // These are tests
 
 use crate::parse::kvp::traits::FromKVPFile;
-use crate::parse::kvp::{parse_kvp_file, KVPGenericWarning, KVPGenericWarningKind};
+use crate::parse::kvp::{parse_kvp_file, KVPGenericWarning, KVPGenericWarningKind, ANIMATED_LIKE};
 use crate::parse::Span;
 use bve_derive::{FromKVPFile, FromKVPSection};
 use indoc::indoc;
@@ -19,7 +19,7 @@ fn empty_struct() {
     "#
     );
 
-    let kvp = parse_kvp_file(file_lit);
+    let kvp = parse_kvp_file(file_lit, ANIMATED_LIKE);
     let (parsed, warnings) = File::from_kvp_file(&kvp);
     assert_eq!(parsed, File::default());
     assert_eq!(warnings, vec![]);
@@ -48,7 +48,7 @@ fn bare_section_value() {
     "#
     );
 
-    let kvp = parse_kvp_file(file_lit);
+    let kvp = parse_kvp_file(file_lit, ANIMATED_LIKE);
     let (parsed, warnings) = File::from_kvp_file(&kvp);
     let mut answer = File::default();
     answer.first.some1 = 6.2;
@@ -76,7 +76,7 @@ fn bare_section_kvp() {
     "#
     );
 
-    let kvp = parse_kvp_file(file_lit);
+    let kvp = parse_kvp_file(file_lit, ANIMATED_LIKE);
     let (parsed, warnings) = File::from_kvp_file(&kvp);
     let mut answer = File::default();
     answer.first.some = 6.7;
@@ -107,7 +107,7 @@ fn single_section_value() {
     "#
     );
 
-    let kvp = parse_kvp_file(file_lit);
+    let kvp = parse_kvp_file(file_lit, ANIMATED_LIKE);
     let (parsed, warnings) = File::from_kvp_file(&kvp);
     let mut answer = File::default();
     answer.first.some1 = 6.2;
@@ -135,7 +135,7 @@ fn single_section_kvp() {
     "#
     );
 
-    let kvp = parse_kvp_file(file_lit);
+    let kvp = parse_kvp_file(file_lit, ANIMATED_LIKE);
     let (parsed, warnings) = File::from_kvp_file(&kvp);
     let mut answer = File::default();
     answer.first.some = 6.7;
@@ -170,7 +170,7 @@ fn single_section_mixed() {
     "#
     );
 
-    let kvp = parse_kvp_file(file_lit);
+    let kvp = parse_kvp_file(file_lit, ANIMATED_LIKE);
     let (parsed, warnings) = File::from_kvp_file(&kvp);
     let mut answer = File::default();
     answer.first.kvp1 = 1.1;
@@ -190,7 +190,7 @@ fn single_section_mixed() {
     "#
     );
 
-    let kvp = parse_kvp_file(file_lit);
+    let kvp = parse_kvp_file(file_lit, ANIMATED_LIKE);
     let (parsed, warnings) = File::from_kvp_file(&kvp);
     let mut answer = File::default();
     answer.first.kvp1 = 1.1;
@@ -222,7 +222,7 @@ fn additive_value() {
     "#
     );
 
-    let kvp = parse_kvp_file(file_lit);
+    let kvp = parse_kvp_file(file_lit, ANIMATED_LIKE);
     let (parsed, warnings) = File::from_kvp_file(&kvp);
     let mut answer = File::default();
     answer.first.some1 = vec![6.2, 6.7];
@@ -252,7 +252,7 @@ fn additive_kvp() {
     "#
     );
 
-    let kvp = parse_kvp_file(file_lit);
+    let kvp = parse_kvp_file(file_lit, ANIMATED_LIKE);
     let (parsed, warnings) = File::from_kvp_file(&kvp);
     let mut answer = File::default();
     answer.first.kvp1 = vec![6.2, 6.7];
@@ -281,7 +281,7 @@ fn alias_kvp() {
     "#
     );
 
-    let kvp = parse_kvp_file(file_lit);
+    let kvp = parse_kvp_file(file_lit, ANIMATED_LIKE);
     let (parsed, warnings) = File::from_kvp_file(&kvp);
     let mut answer = File::default();
     answer.first.some = 6.7;
@@ -309,7 +309,7 @@ fn section_alias() {
     "#
     );
 
-    let kvp = parse_kvp_file(file_lit);
+    let kvp = parse_kvp_file(file_lit, ANIMATED_LIKE);
     let (parsed, warnings) = File::from_kvp_file(&kvp);
     let mut answer = File::default();
     answer.first.some = 6.7;
@@ -328,7 +328,7 @@ fn unknown_section() {
     "#
     );
 
-    let kvp = parse_kvp_file(file_lit);
+    let kvp = parse_kvp_file(file_lit, ANIMATED_LIKE);
     let (parsed, warnings) = File::from_kvp_file(&kvp);
     assert_eq!(parsed, File::default());
     assert_eq!(
@@ -347,7 +347,7 @@ fn unknown_section() {
     "#
     );
 
-    let kvp = parse_kvp_file(file_lit);
+    let kvp = parse_kvp_file(file_lit, ANIMATED_LIKE);
     let (parsed, warnings) = File::from_kvp_file(&kvp);
     assert_eq!(parsed, File::default());
     assert_eq!(
@@ -378,7 +378,7 @@ fn unknown_field() {
     "#
     );
 
-    let kvp = parse_kvp_file(file_lit);
+    let kvp = parse_kvp_file(file_lit, ANIMATED_LIKE);
     let (parsed, warnings) = File::from_kvp_file(&kvp);
     assert_eq!(parsed, File::default());
     assert_eq!(
@@ -397,7 +397,7 @@ fn unknown_field() {
     "#
     );
 
-    let kvp = parse_kvp_file(file_lit);
+    let kvp = parse_kvp_file(file_lit, ANIMATED_LIKE);
     let (parsed, warnings) = File::from_kvp_file(&kvp);
     assert_eq!(parsed, File::default());
     assert_eq!(
@@ -431,7 +431,7 @@ fn invalid_value() {
     "#
     );
 
-    let kvp = parse_kvp_file(file_lit);
+    let kvp = parse_kvp_file(file_lit, ANIMATED_LIKE);
     let (parsed, warnings) = File::from_kvp_file(&kvp);
     assert_eq!(parsed, File::default());
     assert_eq!(
@@ -464,7 +464,7 @@ fn invalid_kvp_value() {
     "#
     );
 
-    let kvp = parse_kvp_file(file_lit);
+    let kvp = parse_kvp_file(file_lit, ANIMATED_LIKE);
     let (parsed, warnings) = File::from_kvp_file(&kvp);
     assert_eq!(parsed, File::default());
     assert_eq!(
