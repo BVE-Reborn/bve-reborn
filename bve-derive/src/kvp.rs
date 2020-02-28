@@ -338,7 +338,7 @@ pub fn kvp_value(item: TokenStream) -> TokenStream {
     .into()
 }
 
-/// Enum variants with possible attributes as used by [`kvp_enum_numbers`]
+/// Enum variant with possible attributes as used by [`kvp_enum_numbers`]
 #[derive(Debug, FromVariant)]
 #[darling(attributes(kvp))]
 struct Variant {
