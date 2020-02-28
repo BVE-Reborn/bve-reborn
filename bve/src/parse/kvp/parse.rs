@@ -1,18 +1,37 @@
 use crate::parse::kvp::{KVPField, KVPFile, KVPSection, ValueData};
 use crate::parse::Span;
 
+#[derive(Debug, Clone)]
+pub struct KVPSymbols {
+    start_section: char,
+    end_section: Option<char>,
+    kvp_separator: char,
+}
+
+pub const ANIMATED_LIKE: KVPSymbols = KVPSymbols {
+    start_section: '[',
+    end_section: Some(']'),
+    kvp_separator: '=',
+};
+
+pub const DAT_LIKE: KVPSymbols = KVPSymbols {
+    start_section: '#',
+    end_section: None,
+    kvp_separator: '=',
+};
+
 #[must_use]
 #[allow(clippy::single_match_else)] // This advises less clear code
-pub fn parse_kvp_file(input: &str) -> KVPFile<'_> {
+pub fn parse_kvp_file(input: &str, symbols: KVPSymbols) -> KVPFile<'_> {
     let mut file = KVPFile::default();
     let mut current_section = KVPSection::default();
     for (line_idx, line) in input.lines().enumerate() {
         let line = line.trim();
         // Match on the first character
         match line.chars().next() {
-            Some('[') => {
+            Some(c) if c == symbols.start_section => {
                 // This is a section
-                let end = line.find(']');
+                let end = symbols.end_section.and_then(|c| line.find(c));
                 let name = match end {
                     // Allow there to be a missing ] in the section header
                     Some(idx) => line[1..idx].trim(),
@@ -30,7 +49,7 @@ pub fn parse_kvp_file(input: &str) -> KVPFile<'_> {
             }
             Some(..) => {
                 // This is a piece of data
-                let equals = line.find('=');
+                let equals = line.find(symbols.kvp_separator);
                 let data = match equals {
                     // Key Value Pair
                     Some(idx) => {
@@ -63,17 +82,20 @@ pub fn parse_kvp_file(input: &str) -> KVPFile<'_> {
 
 #[cfg(test)]
 mod test {
-    use crate::parse::kvp::{parse_kvp_file, KVPField, KVPFile, KVPSection, ValueData};
+    use crate::parse::kvp::{parse_kvp_file, KVPField, KVPFile, KVPSection, ValueData, ANIMATED_LIKE};
     use crate::parse::Span;
     use indoc::indoc;
 
     #[test]
     fn empty() {
-        let kvp = parse_kvp_file(indoc!(
-            r#"
+        let kvp = parse_kvp_file(
+            indoc!(
+                r#"
             
         "#
-        ));
+            ),
+            ANIMATED_LIKE,
+        );
         assert_eq!(
             kvp,
             KVPFile {
@@ -88,11 +110,14 @@ mod test {
 
     #[test]
     fn value() {
-        let kvp = parse_kvp_file(indoc!(
-            r#"
+        let kvp = parse_kvp_file(
+            indoc!(
+                r#"
             my_value
         "#
-        ));
+            ),
+            ANIMATED_LIKE,
+        );
         assert_eq!(
             kvp,
             KVPFile {
@@ -110,11 +135,14 @@ mod test {
 
     #[test]
     fn kvp() {
-        let kvp = parse_kvp_file(indoc!(
-            r#"
+        let kvp = parse_kvp_file(
+            indoc!(
+                r#"
             my_key = my_value
         "#
-        ));
+            ),
+            ANIMATED_LIKE,
+        );
         assert_eq!(
             kvp,
             KVPFile {
@@ -135,12 +163,15 @@ mod test {
 
     #[test]
     fn named_section_value() {
-        let kvp = parse_kvp_file(indoc!(
-            r#"
+        let kvp = parse_kvp_file(
+            indoc!(
+                r#"
             [my_section]
             my_value
         "#
-        ));
+            ),
+            ANIMATED_LIKE,
+        );
         assert_eq!(
             kvp,
             KVPFile {
@@ -165,12 +196,15 @@ mod test {
 
     #[test]
     fn named_section_kvp() {
-        let kvp = parse_kvp_file(indoc!(
-            r#"
+        let kvp = parse_kvp_file(
+            indoc!(
+                r#"
             [my_section]
             my_key = my_value
         "#
-        ));
+            ),
+            ANIMATED_LIKE,
+        );
         assert_eq!(
             kvp,
             KVPFile {
@@ -198,11 +232,14 @@ mod test {
 
     #[test]
     fn empty_section_name() {
-        let kvp = parse_kvp_file(indoc!(
-            r#"
+        let kvp = parse_kvp_file(
+            indoc!(
+                r#"
             []
         "#
-        ));
+            ),
+            ANIMATED_LIKE,
+        );
         assert_eq!(
             kvp,
             KVPFile {
@@ -224,11 +261,14 @@ mod test {
 
     #[test]
     fn section_name_no_rbracket() {
-        let kvp = parse_kvp_file(indoc!(
-            r#"
+        let kvp = parse_kvp_file(
+            indoc!(
+                r#"
             [my_section
         "#
-        ));
+            ),
+            ANIMATED_LIKE,
+        );
         assert_eq!(
             kvp,
             KVPFile {
