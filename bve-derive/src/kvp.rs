@@ -23,6 +23,19 @@ fn split_aliases(input: String) -> Vec<String> {
     }
 }
 
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+enum FieldKind {
+    Normal,
+    Vec,
+    Hash,
+}
+
+impl Default for FieldKind {
+    fn default() -> Self {
+        Self::Normal
+    }
+}
+
 /// Struct field with possible attributes as returned by [`parse_fields`]
 #[derive(Debug, FromField)]
 #[darling(attributes(kvp))]
@@ -30,7 +43,7 @@ struct Field {
     ident: Option<Ident>,
     ty: Type,
     #[darling(skip)]
-    vec: bool,
+    kind: FieldKind,
     #[darling(default)]
     bare: bool,
     #[darling(default)]
@@ -45,14 +58,26 @@ fn parse_fields(item: &ItemStruct) -> Vec<Field> {
     let fields = item.fields.iter().flat_map(Field::from_field);
     let fields: Vec<Field> = fields
         .map(|mut field: Field| {
-            if let Type::Path(path) = &field.ty {
+            if let Type::Path(path) = field.ty.clone() {
                 let segments = path.path.segments.last().expect("No path segments found");
                 let last_path_str = segments.ident.to_string();
                 if last_path_str == "Vec" && !field.variadic {
-                    field.vec = true;
+                    field.kind = FieldKind::Vec;
                     match &segments.arguments {
                         PathArguments::AngleBracketed(angled) => {
                             match angled.args.first().expect("Generic must have args") {
+                                GenericArgument::Type(ty) => field.ty = ty.clone(),
+                                _ => unimplemented!(),
+                            }
+                        }
+                        _ => unimplemented!(),
+                    }
+                }
+                if last_path_str == "HashMap" {
+                    field.kind = FieldKind::Hash;
+                    match &segments.arguments {
+                        PathArguments::AngleBracketed(angled) => {
+                            match angled.args.last().expect("Generic must have args") {
                                 GenericArgument::Type(ty) => field.ty = ty.clone(),
                                 _ => unimplemented!(),
                             }
@@ -85,17 +110,25 @@ pub fn kvp_file(item: TokenStream) -> TokenStream {
     let matches = combine_token_streams(fields.iter().map(|field| {
         let ty = field.ty.clone();
         let ident = field.ident.clone().expect("Fields must have names");
-        let primary = match &field.bare {
+
+        let non_bare_ident: String = field.rename.as_ref().map_or_else(
+            || ident.to_string().chars().filter(|&c| c != '_').collect(),
+            String::clone,
+        );
+        let non_bare_ident_len = non_bare_ident.len();
+
+        let primary = match (&field.bare, &field.kind) {
             // The bare section just uses None as a name
-            true => quote! {None},
+            (true, _) => quote! {None},
             // Named sections are matched directly
-            false => {
-                let lower: String = field.rename.as_ref().map_or_else(
-                    || ident.to_string().chars().filter(|&c| c != '_').collect(),
-                    String::clone,
-                );
+            (false, FieldKind::Hash) => {
                 quote! {
-                    Some(#lower)
+                    Some(section_name) if section_name.starts_with(#non_bare_ident) && !section_name[#non_bare_ident_len..].chars().any(|c| !c.is_digit(10))
+                }
+            }
+            (false, _) => {
+                quote! {
+                    Some(#non_bare_ident)
                 }
             }
         };
@@ -106,14 +139,20 @@ pub fn kvp_file(item: TokenStream) -> TokenStream {
             }
         }));
         // Vec fields need to be pushed onto, whereas regular fields need to be assigned.
-        let operation = match field.vec {
-            true => quote! {{
+        let operation = match field.kind {
+            FieldKind::Vec => quote! {{
                 let (section_ty, section_warnings) = <#ty as crate::parse::kvp::FromKVPSection>::from_kvp_section(section);
                 parsed.#ident.push(section_ty);
                 // All section warnings need to be pushed onto the end of the file warnings
                 warnings.extend(section_warnings);
             }},
-            false => quote! {{
+            FieldKind::Hash => quote! {{
+                let (section_ty, section_warnings) = <#ty as crate::parse::kvp::FromKVPSection>::from_kvp_section(section);
+                parsed.#ident.insert(u64::parse(section_name[#non_bare_ident_len..]).expect("Unable to parse section name id"), section_ty);
+                // All section warnings need to be pushed onto the end of the file warnings
+                warnings.extend(section_warnings);
+            }},
+            FieldKind::Normal => quote! {{
                 let (section_ty, section_warnings) = <#ty as crate::parse::kvp::FromKVPSection>::from_kvp_section(section);
                 parsed.#ident = section_ty;
                 warnings.extend(section_warnings);
@@ -175,7 +214,7 @@ pub fn kvp_section(item: TokenStream) -> TokenStream {
 
     // Error Checking
 
-    let exists_bare_and_vec = fields.iter().filter(|f| f.bare && f.vec).count() >= 1;
+    let exists_bare_and_vec = fields.iter().filter(|f| f.bare && f.kind == FieldKind::Vec).count() >= 1;
     let more_than_one_bare_field = fields.iter().filter(|f| f.bare).count() > 1;
     if exists_bare_and_vec && more_than_one_bare_field {
         panic!("If there are any fields that are bare and of type Vec<T>, there must be only one bare field");
@@ -198,10 +237,12 @@ pub fn kvp_section(item: TokenStream) -> TokenStream {
             true => {
                 // If a bare field is a vector, then it is the only bare field, and all values
                 // should unconditionally shoved into it.
-                let ts = if field.vec {
+                let ts = if field.kind == FieldKind::Vec {
                     quote! {crate::parse::kvp::ValueData::Value{ value }}
-                } else {
+                } else if field.kind == FieldKind::Normal {
                     quote! {crate::parse::kvp::ValueData::Value{ value } if bare_counter == #bare_field_counter}
+                } else {
+                    unreachable!();
                 };
                 bare_field_counter += 1;
                 ts
@@ -230,8 +271,8 @@ pub fn kvp_section(item: TokenStream) -> TokenStream {
             TokenStream2::new()
         };
         // Vec fields need to be pushed onto, whereas regular fields need to be assigned.
-        let operation = match field.vec {
-            true => quote! {{
+        let operation = match field.kind {
+            FieldKind::Vec => quote! {{
                 let optional = <#ty as crate::parse::kvp::FromKVPValue>::from_kvp_value(value);
                 // Push a warning if the conversion from a value fails
                 if let Some(inner) = optional {
@@ -246,7 +287,7 @@ pub fn kvp_section(item: TokenStream) -> TokenStream {
                 };
                 #bare_operation
             }},
-            false => quote! {{
+            FieldKind::Normal => quote! {{
                 let optional = <#ty as crate::parse::kvp::FromKVPValue>::from_kvp_value(value);
                 if let Some(inner) = optional {
                     parsed.#ident = inner;
@@ -260,6 +301,7 @@ pub fn kvp_section(item: TokenStream) -> TokenStream {
                 };
                 #bare_operation
             }},
+            _ => unreachable!(),
         };
         // Hey look ma, a match arm
         quote! {
