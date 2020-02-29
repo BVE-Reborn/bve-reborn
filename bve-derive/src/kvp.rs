@@ -123,7 +123,10 @@ pub fn kvp_file(item: TokenStream) -> TokenStream {
             // Named sections are matched directly
             (false, FieldKind::Hash) => {
                 quote! {
-                    Some(section_name) if section_name.starts_with(#non_bare_ident) && !section_name[#non_bare_ident_len..].chars().any(|c| !c.is_digit(10))
+                    Some(section_name)
+                        if section_name.starts_with(#non_bare_ident) // Starts with the name we want
+                        && section_name.len() > #non_bare_ident_len // Has at least 1 more character than the name (there must be a number)
+                        && !section_name[#non_bare_ident_len..].chars().any(|c| !c.is_digit(10)) // All of the other characters are chars
                 }
             }
             (false, _) => {
@@ -148,7 +151,7 @@ pub fn kvp_file(item: TokenStream) -> TokenStream {
             }},
             FieldKind::Hash => quote! {{
                 let (section_ty, section_warnings) = <#ty as crate::parse::kvp::FromKVPSection>::from_kvp_section(section);
-                parsed.#ident.insert(u64::parse(section_name[#non_bare_ident_len..]).expect("Unable to parse section name id"), section_ty);
+                parsed.#ident.insert(<u64 as std::str::FromStr>::from_str(&section_name[#non_bare_ident_len..]).expect("Unable to parse section name id"), section_ty);
                 // All section warnings need to be pushed onto the end of the file warnings
                 warnings.extend(section_warnings);
             }},
