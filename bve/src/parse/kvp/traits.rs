@@ -1,7 +1,7 @@
 use crate::parse::kvp::{KVPFile, KVPSection};
+use crate::parse::util::{parse_loose_number, parse_loose_numeric_bool};
 use crate::parse::Span;
 use cgmath::{Vector1, Vector2, Vector3, Vector4};
-use std::str::FromStr;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct KVPGenericWarning {
@@ -36,17 +36,23 @@ pub trait FromKVPValue {
 }
 
 macro_rules! impl_from_kvp_value_primitive {
-    ($($int:ident),+) => {$(
-        impl FromKVPValue for $int
+    ($($prim:ident),+) => {$(
+        impl FromKVPValue for $prim
         {
-            fn from_kvp_value(value: &str) -> Option<$int> {
-                $int::from_str(value).ok()
+            fn from_kvp_value(value: &str) -> Option<$prim> {
+                parse_loose_number::<$prim>(value).map(|v| v.0)
             }
         }
     )*};
 }
 
 impl_from_kvp_value_primitive!(u8, i8, u16, i16, u32, i32, u64, i64, u128, i128, usize, isize, f32, f64);
+
+impl FromKVPValue for bool {
+    fn from_kvp_value(value: &str) -> Option<Self> {
+        parse_loose_numeric_bool(value).map(|v| v.0)
+    }
+}
 
 impl<T> FromKVPValue for Option<T>
 where
