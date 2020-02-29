@@ -427,7 +427,7 @@ fn invalid_value() {
 
     let file_lit = indoc!(
         r#"
-        62.3
+        |62.3
     "#
     );
 
@@ -439,7 +439,7 @@ fn invalid_value() {
         vec![KVPGenericWarning {
             span: Span::from_line(1),
             kind: KVPGenericWarningKind::InvalidValue {
-                value: String::from("62.3"),
+                value: String::from("|62.3"),
             }
         }]
     );
@@ -460,7 +460,7 @@ fn invalid_kvp_value() {
 
     let file_lit = indoc!(
         r#"
-        known = 62.3
+        known = |62.3
     "#
     );
 
@@ -472,7 +472,7 @@ fn invalid_kvp_value() {
         vec![KVPGenericWarning {
             span: Span::from_line(1),
             kind: KVPGenericWarningKind::InvalidValue {
-                value: String::from("62.3"),
+                value: String::from("|62.3"),
             }
         }]
     );

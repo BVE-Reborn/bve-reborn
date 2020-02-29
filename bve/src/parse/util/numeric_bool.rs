@@ -29,27 +29,30 @@ impl<'de> Visitor<'de> for LooseNumericBoolVisitor {
     where
         E: de::Error,
     {
-        tracing::trace!(input = v, "Parsing numeric bool...");
+        let parsed = parse_loose_numeric_bool(v);
 
-        let mut filtered: String = v.chars().filter(|c| !c.is_whitespace()).collect();
-
-        while !filtered.is_empty() {
-            let parsed: Result<i64, _> = filtered.parse();
-            match parsed {
-                Ok(v) => {
-                    let output = v != 0;
-                    tracing::trace!(output, %filtered, "Parsed loose bool");
-                    return Ok(LooseNumericBool(output));
-                }
-                Err(_) => filtered.pop(),
-            };
-        }
-
-        Err(serde::de::Error::custom(format!(
-            "Error parsing the numeric bool {}",
-            v
-        )))
+        parsed.ok_or_else(|| serde::de::Error::custom(format!("Error parsing the numeric bool {}", v)))
     }
+}
+
+pub fn parse_loose_numeric_bool(input: &str) -> Option<LooseNumericBool> {
+    tracing::trace!(input, "Parsing numeric bool...");
+
+    let mut filtered: String = input.chars().filter(|c| !c.is_whitespace()).collect();
+
+    while !filtered.is_empty() {
+        let parsed: Result<i64, _> = filtered.parse();
+        match parsed {
+            Ok(v) => {
+                let output = v != 0;
+                tracing::trace!(output, %filtered, "Parsed loose bool");
+                return Some(LooseNumericBool(output));
+            }
+            Err(_) => filtered.pop(),
+        };
+    }
+
+    None
 }
 
 #[cfg(test)]
