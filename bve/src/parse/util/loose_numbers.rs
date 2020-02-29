@@ -43,33 +43,40 @@ where
     where
         E: serde::de::Error,
     {
-        tracing::trace!(input = v, "Parsing loose number...");
+        let parsed = parse_loose_number::<T>(v);
 
-        let mut filtered: String = v.chars().filter(|c| !c.is_whitespace()).collect();
-
-        while !filtered.is_empty() {
-            let parsed: Result<T, _> = filtered.parse();
-            match parsed {
-                Ok(v) => {
-                    tracing::trace!(output = %v, %filtered, "Parsed loose number");
-                    return Ok(LooseNumber(v));
-                }
-                Err(_) => {
-                    // Allow a single dot to represent 0.0
-                    if filtered == "." {
-                        tracing::trace!(output = 0, %filtered, "Parsed loose number");
-                        return Ok(LooseNumber(T::zero()));
-                    } else {
-                        filtered.pop();
-                    }
-                }
-            };
-        }
-        Err(serde::de::Error::custom(format!(
-            "Error parsing the loose number {}",
-            v
-        )))
+        parsed.ok_or_else(|| serde::de::Error::custom(format!("Error parsing the loose number {}", v)))
     }
+}
+
+pub fn parse_loose_number<T>(input: &str) -> Option<LooseNumber<T>>
+where
+    T: FromStr + Zero + Display,
+{
+    tracing::trace!(input, "Parsing loose number...");
+
+    let mut filtered: String = input.chars().filter(|c| !c.is_whitespace()).collect();
+
+    while !filtered.is_empty() {
+        let parsed: Result<T, _> = filtered.parse();
+        match parsed {
+            Ok(v) => {
+                tracing::trace!(output = %v, %filtered, "Parsed loose number");
+                return Some(LooseNumber(v));
+            }
+            Err(_) => {
+                // Allow a single dot to represent 0.0
+                if filtered == "." {
+                    tracing::trace!(output = 0, %filtered, "Parsed loose number");
+                    return Some(LooseNumber(T::zero()));
+                } else {
+                    filtered.pop();
+                }
+            }
+        };
+    }
+
+    None
 }
 
 #[cfg(test)]
