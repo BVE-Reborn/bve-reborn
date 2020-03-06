@@ -223,6 +223,11 @@ pub fn kvp_section(item: TokenStream) -> TokenStream {
         panic!("If there are any fields that are bare and of type Vec<T>, there must be only one bare field");
     }
 
+    let exists_bare_and_hash = fields.iter().filter(|f| f.bare && f.kind == FieldKind::Hash).count() >= 1;
+    if exists_bare_and_hash {
+        panic!("Hash fields cannot be bare");
+    }
+
     fields
         .iter()
         .for_each(|f| assert!(!(f.bare && !f.alias.is_empty()), "Bare fields can't have aliases"));
@@ -290,6 +295,40 @@ pub fn kvp_section(item: TokenStream) -> TokenStream {
                 };
                 #bare_operation
             }},
+            FieldKind::Hash => quote! {{
+                // Workaround how exactly the match works. Would be too difficult to fully change
+                let key = if let crate::parse::kvp::ValueData::KeyValuePair{ key, .. } = field.data {
+                    key
+                } else {
+                    unreachable!();
+                };
+
+                let key_optional = <u64 as crate::parse::kvp::FromKVPValue>::from_kvp_value(key);
+                let value_optional = <#ty as crate::parse::kvp::FromKVPValue>::from_kvp_value(value);
+
+                if key_optional.is_some() && value_optional.is_some() {
+                    parsed.#ident.insert(key_optional.unwrap(), value_optional.unwrap());
+                } else {
+                    if !key_optional.is_some() {
+                        warnings.push(crate::parse::kvp::KVPGenericWarning{
+                            span: field.span,
+                            kind: crate::parse::kvp::KVPGenericWarningKind::UnknownField {
+                                name: String::from(key),
+                            }
+                        })
+                    }
+                    if !value_optional.is_some() {
+                        warnings.push(crate::parse::kvp::KVPGenericWarning{
+                            span: field.span,
+                            kind: crate::parse::kvp::KVPGenericWarningKind::InvalidValue {
+                                value: String::from(value),
+                            }
+                        })
+                    }
+                }
+
+                #bare_operation
+            }},
             FieldKind::Normal => quote! {{
                 let optional = <#ty as crate::parse::kvp::FromKVPValue>::from_kvp_value(value);
                 if let Some(inner) = optional {
@@ -304,7 +343,6 @@ pub fn kvp_section(item: TokenStream) -> TokenStream {
                 };
                 #bare_operation
             }},
-            _ => unreachable!(),
         };
         // Hey look ma, a match arm
         quote! {
