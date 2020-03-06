@@ -40,6 +40,12 @@ pub fn parse_loose_numeric_bool(input: &str) -> Option<LooseNumericBool> {
 
     let mut filtered: String = input.chars().filter(|c| !c.is_whitespace()).collect();
 
+    match filtered.as_str() {
+        s if s[0..1] == 't' || s[0..1] == 'T' => return Some(LooseNumericBool(true)),
+        s if s[0..1] == 'f' || s[0..1] == 'F' => return Some(LooseNumericBool(false)),
+        _ => {}
+    }
+
     while !filtered.is_empty() {
         let parsed: Result<i64, _> = filtered.parse();
         match parsed {
