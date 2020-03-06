@@ -40,6 +40,13 @@ pub fn parse_loose_numeric_bool(input: &str) -> Option<LooseNumericBool> {
 
     let mut filtered: String = input.chars().filter(|c| !c.is_whitespace()).collect();
 
+    let first_letter = filtered.chars().next().as_ref().map(char::to_ascii_lowercase);
+    match first_letter {
+        Some('t') => return Some(LooseNumericBool(true)),
+        Some('f') => return Some(LooseNumericBool(false)),
+        _ => {}
+    }
+
     while !filtered.is_empty() {
         let parsed: Result<i64, _> = filtered.parse();
         match parsed {
@@ -57,7 +64,7 @@ pub fn parse_loose_numeric_bool(input: &str) -> Option<LooseNumericBool> {
 
 #[cfg(test)]
 mod test {
-    use crate::parse::util::LooseNumericBool;
+    use crate::parse::util::{parse_loose_numeric_bool, LooseNumericBool};
     use serde_test::{assert_de_tokens, Token};
 
     #[bve_derive::bve_test]
@@ -71,5 +78,10 @@ mod test {
         assert_de_tokens(&b, &[Token::Str("1")]);
         assert_de_tokens(&b, &[Token::Str("1xxxx0")]);
         assert_de_tokens(&b, &[Token::Str("1.1")]);
+        assert_eq!(parse_loose_numeric_bool(""), None);
+        assert_eq!(parse_loose_numeric_bool("True"), Some(LooseNumericBool(true)));
+        assert_eq!(parse_loose_numeric_bool("False"), Some(LooseNumericBool(false)));
+        assert_eq!(parse_loose_numeric_bool("t"), Some(LooseNumericBool(true)));
+        assert_eq!(parse_loose_numeric_bool("f"), Some(LooseNumericBool(false)));
     }
 }

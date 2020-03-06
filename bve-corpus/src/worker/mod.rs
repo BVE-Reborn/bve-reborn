@@ -2,6 +2,7 @@ use crate::panic::{PANIC, USE_DEFAULT_PANIC_HANLDER};
 use crate::{File, FileKind, FileResult, ParseResult, SharedData};
 use bve::filesystem::read_convert_utf8;
 use bve::parse::animated::parse_animated_file;
+use bve::parse::extensions_cfg::parse_extensions_cfg;
 use bve::parse::kvp::parse_kvp_file;
 use bve::parse::mesh::{mesh_from_str, FileType, MeshErrorKind, ParsedStaticObject};
 use bve::parse::train_dat::parse_train_dat;
@@ -120,6 +121,13 @@ fn processing_loop(
                 let (_parsed, warnings) = parse_train_dat(&file_contents);
 
                 shared.train_dat.finished.fetch_add(1, Ordering::AcqRel);
+
+                success_or_errors(warnings)
+            }
+            FileKind::ExtensionsCfg => {
+                let (_parsed, warnings) = parse_extensions_cfg(&file_contents);
+
+                shared.extensions_cfg.finished.fetch_add(1, Ordering::AcqRel);
 
                 success_or_errors(warnings)
             }
