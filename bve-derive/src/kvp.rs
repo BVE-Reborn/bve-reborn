@@ -67,10 +67,10 @@ fn parse_fields(item: &ItemStruct) -> Vec<Field> {
                         PathArguments::AngleBracketed(angled) => {
                             match angled.args.first().expect("Generic must have args") {
                                 GenericArgument::Type(ty) => field.ty = ty.clone(),
-                                _ => unimplemented!(),
+                                _ => unreachable!("Vec takes a single type argument"),
                             }
                         }
-                        _ => unimplemented!(),
+                        _ => unreachable!("Vec takes a single angle bracketed argument"),
                     }
                 }
                 if last_path_str == "HashMap" {
@@ -79,10 +79,10 @@ fn parse_fields(item: &ItemStruct) -> Vec<Field> {
                         PathArguments::AngleBracketed(angled) => {
                             match angled.args.last().expect("Generic must have args") {
                                 GenericArgument::Type(ty) => field.ty = ty.clone(),
-                                _ => unimplemented!(),
+                                _ => unreachable!("HashMap takes two type arguments"),
                             }
                         }
-                        _ => unimplemented!(),
+                        _ => unreachable!("HashMap takes two angle bracketed arguments"),
                     }
                 }
             };
@@ -250,7 +250,7 @@ pub fn kvp_section(item: TokenStream) -> TokenStream {
                 } else if field.kind == FieldKind::Normal {
                     quote! {crate::parse::kvp::ValueData::Value{ value } if bare_counter == #bare_field_counter}
                 } else {
-                    unreachable!();
+                    unreachable!("Only regular and Vec fields are allowed to be bare");
                 };
                 bare_field_counter += 1;
                 ts
