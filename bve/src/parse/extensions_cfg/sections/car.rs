@@ -3,7 +3,7 @@ use bve_derive::{FromKVPSection, FromKVPValue};
 #[derive(Debug, Default, Clone, PartialEq, FromKVPSection)]
 pub struct CarSection {
     #[kvp(rename = "object")]
-    pub object_filename: String,
+    pub object_filename: Option<String>,
     pub length: f32,
     #[kvp(rename = "axles")]
     pub axle_positions: AxlePositions,

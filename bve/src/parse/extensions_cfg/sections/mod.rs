@@ -12,5 +12,5 @@ pub struct ParsedExtensionsCfg {
     #[kvp(rename = "coupler")]
     pub couplers: HashMap<u64, coupler::CouplerSection>,
     #[kvp(rename = "exterior")]
-    pub exteriors: HashMap<u64, exterior::ExteriorSection>,
+    pub exteriors: exterior::ExteriorSection,
 }
