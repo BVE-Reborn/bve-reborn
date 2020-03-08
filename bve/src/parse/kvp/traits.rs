@@ -13,6 +13,7 @@ pub struct KVPGenericWarning {
 pub enum KVPGenericWarningKind {
     UnknownSection { name: String },
     UnknownField { name: String },
+    TooManyFields { idx: u64, max: u64 },
     InvalidValue { value: String },
 }
 

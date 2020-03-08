@@ -385,9 +385,7 @@ fn unknown_field() {
         warnings,
         vec![KVPGenericWarning {
             span: Span::from_line(1),
-            kind: KVPGenericWarningKind::UnknownField {
-                name: String::from("<bare field 1 greater than 0 field count>"),
-            }
+            kind: KVPGenericWarningKind::TooManyFields { idx: 0, max: 0 }
         }]
     );
 
