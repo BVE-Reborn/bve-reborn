@@ -22,7 +22,6 @@ pub fn load_locale(language: Language) -> BVELocale {
     BVELocale { language, bundle }
 }
 
-#[must_use]
 fn load_resources(language: Language) -> impl Iterator<Item = FluentResource> {
     enumerate_language_files(language).iter().map(|file| {
         FluentResource::try_new(String::from(

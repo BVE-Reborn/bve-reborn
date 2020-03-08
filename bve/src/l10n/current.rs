@@ -7,18 +7,18 @@ pub fn get_current_language() -> Language {
 
     // Look for the message language
     if let Some((_category, range)) = locale.tags().find(|(c, _)| *c == Some("messages")) {
-        parse_language_range(range)
+        parse_language_range(&range)
     } else {
         // If it's not there, just grab the first one.
         if let Some((_category, range)) = locale.tags().next() {
-            parse_language_range(range)
+            parse_language_range(&range)
         } else {
             Language::EN
         }
     }
 }
 
-fn parse_language_range(range: LanguageRange<'_>) -> Language {
+fn parse_language_range(range: &LanguageRange<'_>) -> Language {
     let range_str = range.to_string();
 
     if range_str.is_empty() {
@@ -27,8 +27,5 @@ fn parse_language_range(range: LanguageRange<'_>) -> Language {
 
     let locale = unic_locale::Locale::from_bytes(range_str.as_bytes()).expect("Unable to parse locale");
 
-    match locale.langid.language() {
-        "de" => Language::DE,
-        "en" | _ => Language::EN,
-    }
+    Language::from_code(locale.langid.language())
 }

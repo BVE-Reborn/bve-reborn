@@ -25,6 +25,13 @@ pub enum Language {
 }
 
 impl Language {
+    pub fn from_code(code: &str) -> Self {
+        match code {
+            "de" => Self::DE,
+            _ => Self::EN,
+        }
+    }
+
     #[must_use]
     pub fn get_identifier(self) -> LanguageIdentifier {
         match self {
