@@ -61,6 +61,10 @@ pub fn get_current_language() -> Language {
 fn parse_language_range(range: LanguageRange<'_>) -> Language {
     let range_str = range.to_string();
 
+    if range_str.is_empty() {
+        return Language::EN;
+    }
+
     let locale = unic_locale::Locale::from_bytes(range_str.as_bytes()).expect("Unable to parse locale");
 
     match locale.langid.language() {
