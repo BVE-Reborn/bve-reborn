@@ -1,28 +1,29 @@
 use crate::data::DATA;
-use crate::l10n::{BVELocale, Language};
+use crate::l10n::{BVELanguage, BVELocale, BVELocaleBundle};
 use fluent::{FluentBundle, FluentResource};
 use include_dir::File;
 
 #[must_use]
-pub fn load_locale(language: Language) -> BVELocale {
-    let mut bundle = FluentBundle::new(&[language.get_identifier(), Language::EN.get_identifier()]);
+pub fn load_locale_bundle(language: BVELocale) -> BVELocaleBundle {
+    let english_locale = BVELocale::from_language(BVELanguage::EN);
+    let mut bundle = FluentBundle::new(&[language.langid.clone(), english_locale.langid.clone()]);
 
     // First load english as a baseline
-    for x in load_resources(Language::EN) {
+    for x in load_resources(&english_locale) {
         bundle.add_resource(x).expect("Failed to add FTL resources to bundle")
     }
 
     // Then load other language
-    if language != Language::EN {
-        for x in load_resources(language) {
+    if language.lang != BVELanguage::EN {
+        for x in load_resources(&language) {
             bundle.add_resource_overriding(x);
         }
     }
 
-    BVELocale { language, bundle }
+    BVELocaleBundle { language, bundle }
 }
 
-fn load_resources(language: Language) -> impl Iterator<Item = FluentResource> {
+fn load_resources(language: &BVELocale) -> impl Iterator<Item = FluentResource> {
     enumerate_language_files(language).iter().map(|file| {
         FluentResource::try_new(String::from(
             file.contents_utf8()
@@ -33,8 +34,8 @@ fn load_resources(language: Language) -> impl Iterator<Item = FluentResource> {
 }
 
 #[must_use]
-pub fn enumerate_language_files(language: Language) -> &'static [File<'static>] {
-    DATA.get_dir(format!("l10n/{}", language))
-        .unwrap_or_else(|| panic!("Missing language dir {}", language))
+pub fn enumerate_language_files(language: &BVELocale) -> &'static [File<'static>] {
+    DATA.get_dir(format!("l10n/{}", language.lang))
+        .unwrap_or_else(|| panic!("Missing language dir {}", language.lang))
         .files()
 }

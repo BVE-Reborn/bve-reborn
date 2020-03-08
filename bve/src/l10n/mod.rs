@@ -10,43 +10,66 @@ use unic_langid::{langid, LanguageIdentifier};
 mod current;
 mod load;
 
-pub static CURRENT_BVE_LOCALE: Lazy<RwLock<BVELocale>> = Lazy::new(|| RwLock::new(load_locale(get_current_language())));
-pub static ENGLISH_LOCALE: Lazy<BVELocale> = Lazy::new(|| load_locale(Language::EN));
+pub static CURRENT_BVE_LOCALE: Lazy<RwLock<BVELocaleBundle>> =
+    Lazy::new(|| RwLock::new(load_locale_bundle(get_current_language())));
+pub static ENGLISH_LOCALE: Lazy<BVELocaleBundle> =
+    Lazy::new(|| load_locale_bundle(BVELocale::from_language(BVELanguage::EN)));
 
-pub struct BVELocale {
-    pub language: Language,
+pub struct BVELocaleBundle {
+    pub language: BVELocale,
     pub bundle: FluentBundle<FluentResource>,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct BVELocale {
+    pub langid: LanguageIdentifier,
+    pub lang: BVELanguage,
+}
+
 #[derive(Debug, Copy, Clone, PartialEq)]
-pub enum Language {
+pub enum BVELanguage {
     EN,
     DE,
 }
 
-impl Language {
-    pub fn from_code(code: &str) -> Self {
-        match code {
-            "de" => Self::DE,
-            _ => Self::EN,
-        }
+impl BVELocale {
+    #[must_use]
+    pub fn from_ident(langid: LanguageIdentifier) -> Self {
+        let lang = match langid.language() {
+            "de" => BVELanguage::DE,
+            _ => BVELanguage::EN,
+        };
+        Self { langid, lang }
     }
 
     #[must_use]
-    pub fn get_identifier(self) -> LanguageIdentifier {
+    pub fn from_language(lang: BVELanguage) -> Self {
+        let langid = match lang {
+            BVELanguage::EN => langid!("en-US"),
+            BVELanguage::DE => langid!("de-DE"),
+        };
+        Self { langid, lang }
+    }
+
+    #[must_use]
+    pub fn to_ident(&self) -> &'static str {
+        self.lang.to_ident()
+    }
+}
+
+impl BVELanguage {
+    #[must_use]
+    pub fn to_ident(self) -> &'static str {
         match self {
-            Self::EN => langid!("en-US"),
-            Self::DE => langid!("de-DE"),
+            Self::EN => "en",
+            Self::DE => "de",
         }
     }
 }
 
-impl Display for Language {
+impl Display for BVELanguage {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::EN => write!(f, "en"),
-            Self::DE => write!(f, "de"),
-        }
+        write!(f, "{}", self.to_ident())
     }
 }
 
@@ -93,7 +116,7 @@ macro_rules! localize {
 
 #[cfg(test)]
 mod test {
-    use crate::l10n::{load_locale, Language};
+    use crate::l10n::{load_locale_bundle, BVELanguage, BVELocale};
 
     macro_rules! loc_test {
         ($($tokens:tt)*) => {{
@@ -106,7 +129,7 @@ mod test {
         ($name:ident, $lang:ident) => {
             #[test]
             fn $name() {
-                let language = load_locale(Language::$lang);
+                let language = load_locale_bundle(BVELocale::from_language(BVELanguage::$lang));
                 loc_test!(language, "name");
                 loc_test!(language, "language-code");
                 loc_test!(language, "welcome", "name" -> "MyUsername");

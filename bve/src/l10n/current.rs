@@ -1,8 +1,8 @@
-use crate::l10n::Language;
+use crate::l10n::{BVELanguage, BVELocale};
 use locale_config::LanguageRange;
 
 #[must_use]
-pub fn get_current_language() -> Language {
+pub fn get_current_language() -> BVELocale {
     let locale = locale_config::Locale::user_default();
 
     // Look for the message language
@@ -13,19 +13,19 @@ pub fn get_current_language() -> Language {
         if let Some((_category, range)) = locale.tags().next() {
             parse_language_range(&range)
         } else {
-            Language::EN
+            BVELocale::from_language(BVELanguage::EN)
         }
     }
 }
 
-fn parse_language_range(range: &LanguageRange<'_>) -> Language {
+fn parse_language_range(range: &LanguageRange<'_>) -> BVELocale {
     let range_str = range.to_string();
 
     if range_str.is_empty() {
-        return Language::EN;
+        return BVELocale::from_language(BVELanguage::EN);
     }
 
     let locale = unic_locale::Locale::from_bytes(range_str.as_bytes()).expect("Unable to parse locale");
 
-    Language::from_code(locale.langid.language())
+    BVELocale::from_ident(locale.langid)
 }
