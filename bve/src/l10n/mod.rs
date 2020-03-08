@@ -42,12 +42,13 @@ impl Display for Language {
     }
 }
 
+#[macro_export]
 macro_rules! localize {
     ($name:literal, $($key:literal -> $value:literal),+ $(,)*) => {
-        localize!(crate::l10n::CURRENT_BVE_LOCALE.read().expect("Unable to lock LocaleMutex"), $name, $($key -> $value),+)
+        $crate::localize!($crate::l10n::CURRENT_BVE_LOCALE.read().expect("Unable to lock LocaleMutex"), $name, $($key -> $value),+)
     };
     ($name:literal) => {
-        localize!(crate::l10n::CURRENT_BVE_LOCALE.read().expect("Unable to lock LocaleMutex"), $name)
+        $crate::localize!($crate::l10n::CURRENT_BVE_LOCALE.read().expect("Unable to lock LocaleMutex"), $name)
     };
     ($locale:expr, $name:literal, $($key:literal -> $value:literal),+ $(,)*) => {{
         let mut errors = std::vec::Vec::new();
