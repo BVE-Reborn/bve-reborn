@@ -1,6 +1,9 @@
 name: build
 on: [push, pull_request]
 
+env:
+  RUST_BACKTRACE: full
+
 jobs:
   build:
     name: ${{ matrix.name }}
