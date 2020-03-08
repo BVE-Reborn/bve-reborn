@@ -1,3 +1,5 @@
 name = BVE-Reborn
 
-langauge-code = de
+language-code = de
+
+welcome = Willkommen bei {name} mit der Sprache "{language-code}", {$name}
