@@ -153,7 +153,7 @@ dependencies = [
 
 [[package]]
 name = "bve"
-version = "0.0.0-Placeholder"
+version = "0.0.1"
 dependencies = [
  "bincode",
  "bve-derive",
@@ -187,7 +187,7 @@ dependencies = [
 
 [[package]]
 name = "bve-build"
-version = "0.0.0-Placeholder"
+version = "0.1.0"
 dependencies = [
  "cbindgen",
  "structopt",
@@ -195,7 +195,7 @@ dependencies = [
 
 [[package]]
 name = "bve-client"
-version = "0.0.0-Placeholder"
+version = "0.0.1"
 dependencies = [
  "bve",
  "bve-rex",
@@ -204,7 +204,7 @@ dependencies = [
 
 [[package]]
 name = "bve-corpus"
-version = "0.0.0-Placeholder"
+version = "0.1.0"
 dependencies = [
  "anyhow",
  "backtrace",
@@ -225,7 +225,7 @@ dependencies = [
 
 [[package]]
 name = "bve-derive"
-version = "0.0.0-Placeholder"
+version = "0.0.1"
 dependencies = [
  "darling",
  "itertools",
@@ -236,7 +236,7 @@ dependencies = [
 
 [[package]]
 name = "bve-fuzz"
-version = "0.0.0-Placeholder"
+version = "0.0.1"
 dependencies = [
  "bve",
  "honggfuzz",
@@ -244,7 +244,7 @@ dependencies = [
 
 [[package]]
 name = "bve-native"
-version = "0.0.0-Placeholder"
+version = "0.0.1"
 dependencies = [
  "backtrace",
  "bve",
@@ -254,7 +254,7 @@ dependencies = [
 
 [[package]]
 name = "bve-rex"
-version = "0.0.0-Placeholder"
+version = "0.0.1"
 dependencies = [
  "bve-derive",
  "bve-rex-sys",
@@ -262,7 +262,7 @@ dependencies = [
 
 [[package]]
 name = "bve-rex-sys"
-version = "0.0.0-Placeholder"
+version = "0.0.1"
 dependencies = [
  "bindgen",
  "bve-derive",

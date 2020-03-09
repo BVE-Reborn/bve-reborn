@@ -1,10 +1,11 @@
 [package]
 name = "bve-native"
-version = "0.0.0-Placeholder"
+version = "0.0.1"
 description = "Remaking OpenBVE using a modern architecture, using Unity and Rust. C API."
 license = "MPL-2.0"
 authors = ["Connor Fitzgerald <connorwadefitzgerald@gmail.com>"]
 edition = "2018"
+publish = false
 
 repository = "https://gitlab.bvereborn.com/bve-reborn/bve-reborn"
 readme = "README.md"
@@ -18,6 +19,6 @@ crate-type = ["cdylib"]
 
 [dependencies]
 backtrace = "0.3.42"
-bve = { version = "0.0.0-Placeholder", path = "../bve" }
-bve-derive = { version = "0.0.0-Placeholder", path = "../bve-derive" }
+bve = { version = "0.0.1", path = "../bve" }
+bve-derive = { version = "0.0.1", path = "../bve-derive" }
 libc = "0.2.66"
