@@ -18,72 +18,13 @@ jobs:
       matrix:
         rust: [nightly-2020-02-05]
         tool: [clippy, rustfmt, deny]
-    runs-on: ubuntu-18.04
+    container: cwfitzgerald/bve-dev-env:latest
 
     steps:
-      - name: Set Env (nix)
-        run: echo "::add-path::$HOME/.cargo/bin"
-        shell: bash
-
       - name: Checkout repository
         uses: actions/checkout@v1
         with:
           submodules: true
-
-      - name: Cache cargo registry
-        uses: actions/cache@v1
-        with:
-          path: ~/.cargo/registry
-          key: repostate-${{ matrix.tool }}-cargo-registry
-
-      - name: Cache cargo index
-        uses: actions/cache@v1
-        with:
-          path: ~/.cargo/git
-          key: repostate-${{ matrix.tool }}-cargo-index
-
-      - name: Cache Binaries
-        uses: actions/cache@v1
-        with:
-          path: ~/.cargo/bin
-          key: repostate-${{ matrix.tool }}-binary
-
-      - name: Cache AdvisoryDB
-        uses: actions/cache@v1
-        with:
-          path: ~/.cargo/bin
-          key: repostate-${{ matrix.tool }}-advisorydb
-        if: matrix.tool == 'deny'
-
-      - name: Update Rustup
-        run: |
-          rustup self update
-          rustup set profile minimal
-        shell: bash
-
-      - name: Install Rust ${{ matrix.rust }}
-        run: |
-          rustup toolchain install ${{ matrix.rust }}
-        shell: bash
-
-      - name: Install Clippy
-        if: matrix.tool == 'clippy'
-        run: |
-          rustup component add clippy --toolchain ${{ matrix.rust }}
-        shell: bash
-
-      - name: Install Rustfmt
-        if: matrix.tool == 'rustfmt'
-        run: |
-          rustup component add rustfmt --toolchain ${{ matrix.rust }}
-        shell: bash
-
-      - name: Install Cargo Deny
-        if: matrix.tool == 'deny'
-        run: |
-          hash cargo-install-update || cargo "+${{ matrix.rust }}" install cargo-update
-          cargo install-update -a -i cargo-deny
-        shell: bash
 
       - name: Run Clippy
         if: matrix.tool == 'clippy'
