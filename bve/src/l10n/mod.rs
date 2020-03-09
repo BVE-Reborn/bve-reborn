@@ -11,7 +11,7 @@ mod current;
 mod load;
 
 pub static CURRENT_BVE_LOCALE: Lazy<RwLock<BVELocaleBundle>> =
-    Lazy::new(|| RwLock::new(load_locale_bundle(get_current_language())));
+    Lazy::new(|| RwLock::new(load_locale_bundle(get_current_locale())));
 pub static ENGLISH_LOCALE: Lazy<BVELocaleBundle> =
     Lazy::new(|| load_locale_bundle(BVELocale::from_language(BVELanguage::EN)));
 

@@ -2,7 +2,7 @@ use crate::l10n::{BVELanguage, BVELocale};
 use locale_config::LanguageRange;
 
 #[must_use]
-pub fn get_current_language() -> BVELocale {
+pub fn get_current_locale() -> BVELocale {
     let locale = locale_config::Locale::user_default();
 
     // Look for the message language
