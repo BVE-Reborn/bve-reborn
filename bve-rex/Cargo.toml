@@ -1,10 +1,11 @@
 [package]
 name = "bve-rex"
-version = "0.0.0-Placeholder"
+version = "0.0.1"
 description = "Rusty Interface to BVE's fork of Rex"
 license = "MPL-2.0"
 authors = ["Connor Fitzgerald <connorwadefitzgerald@gmail.com>"]
 edition = "2018"
+publish = false
 
 repository = "https://gitlab.bvereborn.com/bve-reborn/bve-reborn"
 readme = "README.md"
@@ -14,5 +15,5 @@ keywords = ["bve", "rex", "engine"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bve-derive = { version = "0.0.0-Placeholder", path = "../bve-derive" }
-bve-rex-sys = { version = "0.0.0-Placeholder", path = "../bve-rex-sys" }
+bve-derive = { version = "0.0.1", path = "../bve-derive" }
+bve-rex-sys = { version = "0.0.1", path = "../bve-rex-sys" }

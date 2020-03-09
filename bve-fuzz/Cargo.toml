@@ -1,10 +1,11 @@
 [package]
 name = "bve-fuzz"
-version = "0.0.0-Placeholder"
+version = "0.0.1"
 description = "Remaking OpenBVE using a modern architecture, using Unity and Rust."
 license = "MPL-2.0"
 authors = ["Connor Fitzgerald <connorwadefitzgerald@gmail.com>"]
 edition = "2018"
+publish = false
 
 repository = "https://gitlab.bvereborn.com/bve-reborn/bve-reborn"
 readme = "README.md"
@@ -14,7 +15,7 @@ keywords = ["bve", "serialization", "simulation"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bve = { version = "0.0.0-Placeholder", path = "../bve" }
+bve = { version = "0.0.1", path = "../bve" }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 honggfuzz = "0.5.45"

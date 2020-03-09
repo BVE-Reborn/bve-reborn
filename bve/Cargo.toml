@@ -1,6 +1,6 @@
 [package]
 name = "bve"
-version = "0.0.0-Placeholder"
+version = "0.0.1"
 description = "Remaking OpenBVE using a modern architecture, using Unity and Rust."
 license = "MPL-2.0"
 authors = ["Connor Fitzgerald <connorwadefitzgerald@gmail.com>"]
@@ -15,7 +15,7 @@ keywords = ["bve", "serialization", "simulation"]
 
 [dependencies]
 bincode = "1.2.1"
-bve-derive = { version = "0.0.0-Placeholder", path = "../bve-derive" }
+bve-derive = { version = "0.0.1", path = "../bve-derive" }
 cgmath = { version = "0.17", features = ["serde"] }
 chardetng = "0.1.3"
 crossbeam = "0.7.3"

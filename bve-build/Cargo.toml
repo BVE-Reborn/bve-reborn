@@ -1,6 +1,6 @@
 [package]
 name = "bve-build"
-version = "0.0.0-Placeholder"
+version = "0.1.0"
 description = "Remaking OpenBVE using a modern architecture, using Unity and Rust."
 license = "MPL-2.0"
 authors = ["Connor Fitzgerald <connorwadefitzgerald@gmail.com>"]

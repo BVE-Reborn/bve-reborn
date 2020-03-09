@@ -1,10 +1,11 @@
 [package]
 name = "bve-corpus"
-version = "0.0.0-Placeholder"
+version = "0.1.0"
 description = "Program to run bve parsers against the entire corpus"
 license = "MPL-2.0"
 authors = ["Connor Fitzgerald <connorwadefitzgerald@gmail.com>"]
 edition = "2018"
+publish = false
 
 repository = "https://gitlab.bvereborn.com/bve-reborn/bve-reborn"
 readme = "README.md"
@@ -16,7 +17,7 @@ keywords = ["bve", "serialization", "simulation"]
 [dependencies]
 anyhow = "1.0.26"
 backtrace = "0.3.42"
-bve = { version = "0.0.0-Placeholder", path = "../bve" }
+bve = { version = "0.0.1", path = "../bve" }
 clap = "2.33.0"
 crossbeam = "0.7.3"
 indicatif = "0.14.0"
