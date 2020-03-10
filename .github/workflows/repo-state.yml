@@ -19,7 +19,10 @@ jobs:
         rust: [nightly-2020-02-05]
         tool: [clippy, rustfmt, deny]
     runs-on: ubuntu-18.04
-    container: cwfitzgerald/bve-dev-env:latest
+    container:
+      image: cwfitzgerald/bve-dev-env:latest
+      env:
+        HOME: /root/
 
     steps:
       - name: Checkout repository
