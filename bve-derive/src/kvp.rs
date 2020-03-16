@@ -491,14 +491,14 @@ pub fn kvp_enum_numbers(item: TokenStream) -> TokenStream {
                 quote! {
                     #idx => Self::#ident,
                 },
-                if !variant.alias.is_empty() {
+                if variant.alias.is_empty() {
+                    TokenStream2::new()
+                } else {
                     let conditions =
                         combine_token_streams(variant.alias.iter().map(|s| quote! { #s }).intersperse(quote! {|}));
                     quote! {
                         #conditions => #idx,
                     }
-                } else {
-                    TokenStream2::new()
                 },
             )
         })

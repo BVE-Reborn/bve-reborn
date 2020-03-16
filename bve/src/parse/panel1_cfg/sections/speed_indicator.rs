@@ -28,7 +28,7 @@ pub struct SpeedIndicatorSection {
 
 impl Default for SpeedIndicatorSection {
     fn default() -> Self {
-        SpeedIndicatorSection {
+        Self {
             indicator_type: IndicatorType::default(),
             center: Vector2::from_value(0.0),
             radius: 16.0,

@@ -30,7 +30,7 @@ pub struct PressureIndicatorSection {
 
 impl Default for PressureIndicatorSection {
     fn default() -> Self {
-        PressureIndicatorSection {
+        Self {
             indicator_type: IndicatorType::default(),
             lower_needle: Needle::default(),
             upper_needle: Needle::default(),
