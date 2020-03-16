@@ -6,11 +6,14 @@ pub mod panel;
 pub mod pilot_lamp;
 pub mod pressure_indicator;
 pub mod speed_indicator;
+pub mod version;
 pub mod view;
 pub mod watch;
 
 #[derive(Debug, Default, Clone, PartialEq, FromKVPFile)]
 pub struct ParsedPanel1Cfg {
+    #[kvp(bare)]
+    pub version: version::VersionSection,
     pub panel: panel::PanelSection,
     pub view: view::ViewSection,
     #[kvp(rename = "PressureIndicator", alias = "PressureGauge; PressureMeter; 圧力計")]
