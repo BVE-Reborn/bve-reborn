@@ -1,5 +1,6 @@
+use crate::parse::kvp::FromKVPValue;
 use crate::parse::panel1_cfg::sections::IndicatorType;
-use bve_derive::{FromKVPSection, FromKVPValue, FromKVPValueEnumNumbers};
+use bve_derive::{FromKVPSection, FromKVPValueEnumNumbers};
 use cgmath::{Array, Vector2};
 
 #[derive(Debug, Clone, PartialEq, FromKVPSection)]
@@ -46,12 +47,24 @@ impl Default for PressureIndicatorSection {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, FromKVPValue)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Needle {
     subject: Subject,
     red: u8,
     green: u8,
     blue: u8,
+}
+
+impl FromKVPValue for Needle {
+    fn from_kvp_value(value: &str) -> Option<Self> {
+        let mut iterator = value.split(",").flat_map(|v| v.split(":")).map(str::trim);
+        Some(Self {
+            subject: Subject::from_kvp_value(iterator.next()?)?,
+            red: u8::from_kvp_value(iterator.next()?)?,
+            green: u8::from_kvp_value(iterator.next()?)?,
+            blue: u8::from_kvp_value(iterator.next()?)?,
+        })
+    }
 }
 
 impl Default for Needle {
