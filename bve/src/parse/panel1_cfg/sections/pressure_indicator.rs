@@ -57,7 +57,7 @@ pub struct Needle {
 
 impl FromKVPValue for Needle {
     fn from_kvp_value(value: &str) -> Option<Self> {
-        let mut iterator = value.split(",").flat_map(|v| v.split(":")).map(str::trim);
+        let mut iterator = value.split(',').flat_map(|v| v.split(':')).map(str::trim);
         Some(Self {
             subject: Subject::from_kvp_value(iterator.next()?)?,
             red: u8::from_kvp_value(iterator.next()?)?,
