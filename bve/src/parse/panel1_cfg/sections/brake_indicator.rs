@@ -11,7 +11,7 @@ pub struct BrakeIndicatorSection {
 impl Default for BrakeIndicatorSection {
     fn default() -> Self {
         Self {
-            file: String::default(),
+            image: String::default(),
             corner: Vector2::from_value(0.0),
             width: 0.0,
         }

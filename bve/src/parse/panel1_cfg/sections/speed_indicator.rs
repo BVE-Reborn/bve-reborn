@@ -32,6 +32,7 @@ impl Default for SpeedIndicatorSection {
     fn default() -> Self {
         Self {
             indicator_type: IndicatorType::default(),
+            needle: Needle::default(),
             center: Vector2::from_value(0.0),
             radius: 16.0,
             background: String::default(),
