@@ -2,6 +2,7 @@ use crate::panic::{PANIC, USE_DEFAULT_PANIC_HANLDER};
 use crate::{File, FileKind, FileResult, ParseResult, SharedData};
 use bve::filesystem::read_convert_utf8;
 use bve::parse::animated::parse_animated_file;
+use bve::parse::ats_cfg::parse_ats_cfg;
 use bve::parse::extensions_cfg::parse_extensions_cfg;
 use bve::parse::kvp::parse_kvp_file;
 use bve::parse::mesh::{mesh_from_str, FileType, MeshErrorKind, ParsedStaticObject};
@@ -96,6 +97,13 @@ fn processing_loop(
 
         USE_DEFAULT_PANIC_HANLDER.with(|v| *v.borrow_mut() = false);
         let panicked = std::panic::catch_unwind(|| match &file_ref.kind {
+            FileKind::AtsCfg => {
+                let (_animated, warnings) = parse_ats_cfg(&file_contents);
+
+                shared.ats_cfg.finished.fetch_add(1, Ordering::AcqRel);
+
+                success_or_errors(warnings)
+            }
             FileKind::ModelCsv => {
                 let ParsedStaticObject { errors, .. } = mesh_from_str(&file_contents, FileType::CSV);
 

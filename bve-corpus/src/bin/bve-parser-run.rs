@@ -1,5 +1,6 @@
 use bve::filesystem::read_convert_utf8;
 use bve::parse::animated::parse_animated_file;
+use bve::parse::ats_cfg::parse_ats_cfg;
 use bve::parse::extensions_cfg::parse_extensions_cfg;
 use bve::parse::mesh::mesh_from_str;
 use bve::parse::train_dat::parse_train_dat;
@@ -11,6 +12,7 @@ use structopt::StructOpt;
 arg_enum! {
     #[derive(Debug, Clone)]
     enum FileType {
+        AtsCfg,
         B3D,
         CSV,
         Animated,
@@ -138,10 +140,34 @@ fn parse_config_extensions_cfg(file: impl AsRef<Path>, options: &Options) {
     }
 }
 
+fn parse_config_ats_cfg(file: impl AsRef<Path>, options: &Options) {
+    let contents = read_convert_utf8(file).expect("Must be able to read file");
+
+    let start = Instant::now();
+    let (parsed, warnings) = parse_ats_cfg(&contents);
+    let duration = Instant::now() - start;
+
+    println!("Duration: {:.4}", duration.as_secs_f32());
+
+    if options.print_result {
+        println!("{:#?}", parsed);
+    }
+
+    if options.errors {
+        println!("Warnings:");
+        for e in &warnings {
+            println!("\t{} {:?}", e.span.line.map(|v| v as i64).unwrap_or(-1), e.kind)
+        }
+    } else {
+        println!("Warnings: {}", warnings.len());
+    }
+}
+
 fn main() {
     let options: Options = Options::from_args();
 
     match options.file_type {
+        FileType::AtsCfg => parse_config_ats_cfg(&options.source_file, &options),
         FileType::B3D => parse_mesh_b3d_csv(&options.source_file, &options, true),
         FileType::CSV => parse_mesh_b3d_csv(&options.source_file, &options, false),
         FileType::Animated => parse_mesh_animated(&options.source_file, &options),
