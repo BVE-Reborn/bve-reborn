@@ -19,8 +19,12 @@ fn split_aliases(input: String) -> Vec<String> {
     if input.is_empty() {
         vec![]
     } else {
-        input.split(';').map(str::trim).map(String::from).collect()
+        input.split(';').map(str::trim).map(str::to_lowercase).collect()
     }
+}
+
+fn lowercase(input: Option<String>) -> Option<String> {
+    input.map(|s| s.to_lowercase())
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
@@ -48,7 +52,7 @@ struct Field {
     bare: bool,
     #[darling(default)]
     variadic: bool,
-    #[darling(default)]
+    #[darling(map = "lowercase", default)]
     rename: Option<String>,
     #[darling(map = "split_aliases", default)]
     alias: Vec<String>,
