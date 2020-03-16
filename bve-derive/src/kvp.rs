@@ -9,6 +9,7 @@
 
 use crate::helpers::combine_token_streams;
 use darling::{FromField, FromVariant};
+use itertools::Itertools;
 use proc_macro2::Ident;
 use quote::quote;
 use syn::export::{TokenStream, TokenStream2};
@@ -432,6 +433,8 @@ struct Variant {
     ident: Ident,
     #[darling(default)]
     default: bool,
+    #[darling(map = "split_aliases", default)]
+    alias: Vec<String>,
     #[darling(default)]
     index: Option<i64>,
 }
@@ -472,27 +475,46 @@ pub fn kvp_enum_numbers(item: TokenStream) -> TokenStream {
 
     let mut idx = 0_i64;
 
-    let matches = combine_token_streams(fields.iter().map(|variant| {
-        let ident = variant.ident.clone();
+    let per_field_tokens: Vec<_> = fields
+        .iter()
+        .map(|variant| {
+            let ident = variant.ident.clone();
 
-        if let Some(replacement_idx) = variant.index {
-            idx = replacement_idx;
-        }
+            if let Some(replacement_idx) = variant.index {
+                idx = replacement_idx;
+            }
 
-        let new_idx = idx + 1;
-        let idx = std::mem::replace(&mut idx, new_idx);
+            let new_idx = idx + 1;
+            let idx = std::mem::replace(&mut idx, new_idx);
 
-        quote! {
-            #idx => Self::#ident,
-        }
-    }));
+            (
+                quote! {
+                    #idx => Self::#ident,
+                },
+                if !variant.alias.is_empty() {
+                    let conditions =
+                        combine_token_streams(variant.alias.iter().map(|s| quote! { #s }).intersperse(quote! {|}));
+                    quote! {
+                        #conditions => #idx,
+                    }
+                } else {
+                    TokenStream2::new()
+                },
+            )
+        })
+        .collect();
+    let matches = combine_token_streams(per_field_tokens.iter().map(|(m, _)| m.clone()));
+    let recovery = combine_token_streams(per_field_tokens.into_iter().map(|(_, r)| r));
 
     quote! (
         #[automatically_derived]
-        #[allow(clippy::used_underscore_binding)]
+        #[allow(clippy::used_underscore_binding, unreachable_code)]
         impl crate::parse::kvp::FromKVPValue for #ident {
             fn from_kvp_value(value: &str) -> Option<Self> {
-                let number = <i64 as crate::parse::kvp::FromKVPValue>::from_kvp_value(value)?;
+                let number = <i64 as crate::parse::kvp::FromKVPValue>::from_kvp_value(value).or_else(|| Some(match value {
+                    #recovery
+                    _ => return None,
+                }))?;
 
                 Some(match number {
                     #matches
