@@ -49,10 +49,10 @@ impl Default for PressureIndicatorSection {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Needle {
-    subject: Subject,
-    red: u8,
-    green: u8,
-    blue: u8,
+    pub subject: Subject,
+    pub red: u8,
+    pub green: u8,
+    pub blue: u8,
 }
 
 impl FromKVPValue for Needle {
