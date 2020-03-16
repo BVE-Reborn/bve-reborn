@@ -3,7 +3,7 @@ use cgmath::{Array, Vector2};
 
 #[derive(Debug, Clone, PartialEq, FromKVPSection)]
 pub struct BrakeIndicatorSection {
-    pub file: String,
+    pub image: String,
     pub corner: Vector2<f32>,
     pub width: f32,
 }

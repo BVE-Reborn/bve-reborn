@@ -6,6 +6,8 @@ use cgmath::{Array, Vector2};
 pub struct SpeedIndicatorSection {
     #[kvp(rename = "type", alias = "形態")]
     pub indicator_type: IndicatorType,
+    #[kvp(alias = "Hand; 針")]
+    pub needle: Needle,
     #[kvp(alias = "中心")]
     pub center: Vector2<f32>,
     #[kvp(alias = "半径")]
