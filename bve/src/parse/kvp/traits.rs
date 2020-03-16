@@ -1,7 +1,9 @@
 use crate::parse::kvp::{KVPFile, KVPSection};
 use crate::parse::util::{parse_loose_number, parse_loose_numeric_bool};
 use crate::parse::Span;
+use crate::{HexColor3, HexColor4};
 use cgmath::{Vector1, Vector2, Vector3, Vector4};
+use std::str::FromStr;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct KVPGenericWarning {
@@ -128,5 +130,17 @@ where
             split.get(2).and_then(|v| T::from_kvp_value(v)).unwrap_or_default(),
             split.get(3).and_then(|v| T::from_kvp_value(v)).unwrap_or_default(),
         ))
+    }
+}
+
+impl FromKVPValue for HexColor3 {
+    fn from_kvp_value(value: &str) -> Option<Self> {
+        Self::from_str(value).ok()
+    }
+}
+
+impl FromKVPValue for HexColor4 {
+    fn from_kvp_value(value: &str) -> Option<Self> {
+        Self::from_str(value).ok()
     }
 }
