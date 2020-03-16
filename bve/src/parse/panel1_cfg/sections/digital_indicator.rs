@@ -23,9 +23,9 @@ impl Default for DigitalIndicatorSection {
 #[derive(Debug, Clone, PartialEq, FromKVPValueEnumNumbers)]
 pub enum Unit {
     #[kvp(default, alias = "km/h")]
-    Kph,
+    KilometersPerHour,
     #[kvp(alias = "mph")]
-    Mph,
+    MilesPerHour,
     #[kvp(alias = "m/s")]
-    Ms,
+    MetersPerSecond,
 }
