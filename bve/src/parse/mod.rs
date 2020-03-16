@@ -7,6 +7,7 @@ pub mod function_scripts;
 pub mod kvp;
 pub mod mesh;
 pub mod panel1_cfg;
+pub mod panel2_cfg;
 pub mod train_dat;
 mod util;
 
