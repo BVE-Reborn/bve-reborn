@@ -16,7 +16,7 @@ impl FromKVPValue for Subject {
     fn from_kvp_value(value: &str) -> Option<Self> {
         match parse_subject(value) {
             Ok(("", o)) => Some(o),
-            Ok(..) | Err(..) => None,
+            _ => None,
         }
     }
 }
