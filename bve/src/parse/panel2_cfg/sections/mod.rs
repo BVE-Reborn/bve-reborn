@@ -9,9 +9,12 @@ pub mod pilot_lamp;
 mod subject;
 pub mod this;
 pub mod timetable;
+pub mod version;
 
 #[derive(Debug, Default, Clone, PartialEq, FromKVPFile)]
 pub struct ParsedPanel2Cfg {
+    #[kvp(bare)]
+    pub version: version::VersionSection,
     pub this: this::ThisSection,
     #[kvp(rename = "PilotLamp")]
     pub pilot_lamps: Vec<pilot_lamp::PilotLampSection>,
