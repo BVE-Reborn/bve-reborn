@@ -31,6 +31,18 @@ pub trait FromKVPSection: Default {
     fn from_kvp_section(section: &KVPSection<'_>) -> (Self, Vec<Self::Warnings>);
 }
 
+impl<T> FromKVPSection for Option<T>
+where
+    T: FromKVPSection,
+{
+    type Warnings = T::Warnings;
+
+    fn from_kvp_section(section: &KVPSection<'_>) -> (Self, Vec<Self::Warnings>) {
+        let (o, e) = T::from_kvp_section(section);
+        (Some(o), e)
+    }
+}
+
 pub trait FromKVPValue {
     #[must_use]
     fn from_kvp_value(value: &str) -> Option<Self>
