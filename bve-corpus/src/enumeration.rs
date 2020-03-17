@@ -52,19 +52,19 @@ pub fn enumerate_all_files(options: &Options, file_sink: &Sender<File>, shared: 
             p if p == Some("panel.cfg".into()) => add_file(
                 file_sink,
                 shared,
-                &shared.panel_cfg,
+                &shared.panel1_cfg,
                 File {
                     path,
-                    kind: FileKind::PanelCfg,
+                    kind: FileKind::Panel1Cfg,
                 },
             ),
             p if p == Some("panel2.cfg".into()) => add_file(
                 file_sink,
                 shared,
-                &shared.panel_cfg2,
+                &shared.panel2_cfg,
                 File {
                     path,
-                    kind: FileKind::PanelCfg2,
+                    kind: FileKind::Panel2Cfg,
                 },
             ),
             p if p == Some("sound.cfg".into()) => add_file(
