@@ -12,6 +12,13 @@ pub struct Subject {
     pub digit: Option<u64>,
 }
 
+impl Subject {
+    #[must_use]
+    pub const fn from_target(target: SubjectTarget) -> Self {
+        Self { target, digit: None }
+    }
+}
+
 impl FromKVPValue for Subject {
     fn from_kvp_value(value: &str) -> Option<Self> {
         match parse_subject(value) {
