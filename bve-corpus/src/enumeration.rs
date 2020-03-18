@@ -150,7 +150,7 @@ pub fn enumerate_all_files(options: &Options, file_sink: &Sender<File>, shared: 
 
     enumerate(path, |path: PathBuf, _entry| {
         match path.extension().map(|v| v.to_string_lossy().to_lowercase()) {
-            ext if ext == Some("csv".into()) => add_file(
+            ext if ext == Some("csv".into()) && false => add_file(
                 file_sink,
                 shared,
                 &shared.route_csv,
@@ -159,7 +159,7 @@ pub fn enumerate_all_files(options: &Options, file_sink: &Sender<File>, shared: 
                     kind: FileKind::RouteCsv,
                 },
             ),
-            ext if ext == Some("rw".into()) => add_file(
+            ext if ext == Some("rw".into()) && false => add_file(
                 file_sink,
                 shared,
                 &shared.route_rw,
