@@ -1,6 +1,6 @@
 use crate::parse::kvp::{KVPFile, KVPSection};
 use crate::parse::util::{parse_loose_number, parse_loose_numeric_bool};
-use crate::parse::Span;
+use crate::parse::{Span, UserError};
 use crate::{HexColorRGB, HexColorRGBA};
 use cgmath::{Vector1, Vector2, Vector3, Vector4};
 use std::str::FromStr;
@@ -11,6 +11,8 @@ pub struct KVPGenericWarning {
     pub kind: KVPGenericWarningKind,
 }
 
+impl UserError for KVPGenericWarning {}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum KVPGenericWarningKind {
     UnknownSection { name: String },
@@ -20,13 +22,13 @@ pub enum KVPGenericWarningKind {
 }
 
 pub trait FromKVPFile: Default {
-    type Warnings;
+    type Warnings: UserError;
     #[must_use]
     fn from_kvp_file(k: &KVPFile<'_>) -> (Self, Vec<Self::Warnings>);
 }
 
 pub trait FromKVPSection: Default {
-    type Warnings;
+    type Warnings: UserError;
     #[must_use]
     fn from_kvp_section(section: &KVPSection<'_>) -> (Self, Vec<Self::Warnings>);
 }
