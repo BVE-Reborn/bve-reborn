@@ -16,11 +16,11 @@ pub struct ParsedSoundCfg {
     pub door: DoorSection,
     pub ats: AtsSection,
     pub buzzer: BuzzerSection,
-    #[kvp(rename = "Pilot Lamp")]
+    #[kvp(alias = "Pilot Lamp")]
     pub pilot_lamp: PilotLampSection,
-    #[kvp(rename = "Brake Handle")]
+    #[kvp(alias = "Brake Handle")]
     pub brake_handle: BrakeHandleSection,
-    #[kvp(rename = "Master Controller")]
+    #[kvp(alias = "Master Controller")]
     pub master_controller: MasterControllerSection,
     pub reverser: ReverserSection,
     pub breaker: BreakerSection,
@@ -55,21 +55,21 @@ pub struct SwitchSection {
 
 #[derive(Debug, Default, Clone, PartialEq, FromKVPSection)]
 pub struct BrakeSection {
-    #[kvp(rename = "BC Release High")]
+    #[kvp(alias = "BC Release High")]
     pub brake_cylinder_release_high: String,
-    #[kvp(rename = "BC Release")]
+    #[kvp(alias = "BC Release")]
     pub brake_cylinder_release: String,
-    #[kvp(rename = "BC Release Full")]
+    #[kvp(alias = "BC Release Full")]
     pub brake_cylinder_release_full: String,
     pub emergency: String,
-    #[kvp(rename = "BP Decomp")]
+    #[kvp(alias = "BP Decomp")]
     pub brake_pipe_decompression: String,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, FromKVPSection)]
 pub struct CompressorSection {
     pub attack: String,
-    #[kvp(rename = "Loop")]
+    #[kvp(alias = "Loop")]
     pub loop_sound: String,
     pub release: String,
 }
@@ -98,13 +98,13 @@ pub struct HornSection {
 
 #[derive(Debug, Default, Clone, PartialEq, FromKVPSection)]
 pub struct DoorSection {
-    #[kvp(rename = "Open Left")]
+    #[kvp(alias = "Open Left")]
     pub open_left: String,
-    #[kvp(rename = "Open Right")]
+    #[kvp(alias = "Open Right")]
     pub open_right: String,
-    #[kvp(rename = "Close Left")]
+    #[kvp(alias = "Close Left")]
     pub close_left: String,
-    #[kvp(rename = "Close Right")]
+    #[kvp(alias = "Close Right")]
     pub close_right: String,
 }
 
