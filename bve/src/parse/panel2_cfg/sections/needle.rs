@@ -1,5 +1,5 @@
 use crate::parse::panel2_cfg::{Subject, SubjectTarget};
-use crate::HexColor3;
+use crate::HexColorRGB;
 use bve_derive::FromKVPSection;
 use cgmath::{Array, Vector2};
 
@@ -10,9 +10,9 @@ pub struct NeedleSection {
     pub radius: Option<f32>,
     pub daytime_image: String,
     pub nighttime_image: String,
-    pub color: HexColor3,
+    pub color: HexColorRGB,
     #[kvp(alias = "Transparent")]
-    pub transparent_color: HexColor3,
+    pub transparent_color: HexColorRGB,
     pub origin: Option<Vector2<f32>>,
     pub initial_angle: f32,
     pub last_angle: f32,
@@ -31,8 +31,8 @@ impl Default for NeedleSection {
             radius: None,
             daytime_image: String::default(),
             nighttime_image: String::default(),
-            color: HexColor3::new(255, 255, 255),
-            transparent_color: HexColor3::new(0, 0, 255),
+            color: HexColorRGB::new(255, 255, 255),
+            transparent_color: HexColorRGB::new(0, 0, 255),
             origin: None,
             initial_angle: -120.0,
             last_angle: 120.0,

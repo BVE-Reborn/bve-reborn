@@ -1,7 +1,7 @@
 use crate::parse::kvp::{KVPFile, KVPSection};
 use crate::parse::util::{parse_loose_number, parse_loose_numeric_bool};
 use crate::parse::Span;
-use crate::{HexColor3, HexColor4};
+use crate::{HexColorRGB, HexColorRGBA};
 use cgmath::{Vector1, Vector2, Vector3, Vector4};
 use std::str::FromStr;
 
@@ -145,13 +145,13 @@ where
     }
 }
 
-impl FromKVPValue for HexColor3 {
+impl FromKVPValue for HexColorRGB {
     fn from_kvp_value(value: &str) -> Option<Self> {
         Self::from_str(value).ok()
     }
 }
 
-impl FromKVPValue for HexColor4 {
+impl FromKVPValue for HexColorRGBA {
     fn from_kvp_value(value: &str) -> Option<Self> {
         Self::from_str(value).ok()
     }
