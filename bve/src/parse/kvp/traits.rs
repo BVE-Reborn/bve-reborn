@@ -1,7 +1,9 @@
 use crate::parse::kvp::{KVPFile, KVPSection};
 use crate::parse::util::{parse_loose_number, parse_loose_numeric_bool};
 use crate::parse::Span;
+use crate::{HexColorRGB, HexColorRGBA};
 use cgmath::{Vector1, Vector2, Vector3, Vector4};
+use std::str::FromStr;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct KVPGenericWarning {
@@ -27,6 +29,18 @@ pub trait FromKVPSection: Default {
     type Warnings;
     #[must_use]
     fn from_kvp_section(section: &KVPSection<'_>) -> (Self, Vec<Self::Warnings>);
+}
+
+impl<T> FromKVPSection for Option<T>
+where
+    T: FromKVPSection,
+{
+    type Warnings = T::Warnings;
+
+    fn from_kvp_section(section: &KVPSection<'_>) -> (Self, Vec<Self::Warnings>) {
+        let (o, e) = T::from_kvp_section(section);
+        (Some(o), e)
+    }
 }
 
 pub trait FromKVPValue {
@@ -128,5 +142,17 @@ where
             split.get(2).and_then(|v| T::from_kvp_value(v)).unwrap_or_default(),
             split.get(3).and_then(|v| T::from_kvp_value(v)).unwrap_or_default(),
         ))
+    }
+}
+
+impl FromKVPValue for HexColorRGB {
+    fn from_kvp_value(value: &str) -> Option<Self> {
+        Self::from_str(value).ok()
+    }
+}
+
+impl FromKVPValue for HexColorRGBA {
+    fn from_kvp_value(value: &str) -> Option<Self> {
+        Self::from_str(value).ok()
     }
 }

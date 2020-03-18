@@ -1,12 +1,9 @@
+pub(crate) use as_u32::*;
 use cgmath::{Vector1, Vector2, Vector3, Vector4};
+pub use hex::*;
 
-/// Reinterprets a vector as an integer.
-///
-/// Used for sorting vectors where the actual order doesn't matter, but _an_ order needs to be made.
-pub(crate) trait Asu32 {
-    #[must_use]
-    fn as_u32(self) -> u32;
-}
+mod as_u32;
+mod hex;
 
 /// R color: Unsigned 8-bit integer per channel
 pub type ColorU8R = Vector1<u8>;
@@ -16,34 +13,6 @@ pub type ColorU8RG = Vector2<u8>;
 pub type ColorU8RGB = Vector3<u8>;
 /// RGBA color: Unsigned 8-bit integer per channel
 pub type ColorU8RGBA = Vector4<u8>;
-
-impl Asu32 for ColorU8R {
-    #[must_use]
-    fn as_u32(self) -> u32 {
-        u32::from(self.x)
-    }
-}
-
-impl Asu32 for ColorU8RG {
-    #[must_use]
-    fn as_u32(self) -> u32 {
-        u32::from(self.y) << 8 | u32::from(self.x)
-    }
-}
-
-impl Asu32 for ColorU8RGB {
-    #[must_use]
-    fn as_u32(self) -> u32 {
-        u32::from(self.z) << 16 | u32::from(self.y) << 8 | u32::from(self.x)
-    }
-}
-
-impl Asu32 for ColorU8RGBA {
-    #[must_use]
-    fn as_u32(self) -> u32 {
-        u32::from(self.w) << 24 | u32::from(self.z) << 16 | u32::from(self.y) << 8 | u32::from(self.x)
-    }
-}
 
 /// R color: Unsigned 16-bit integer per channel
 pub type ColorU16R = Vector1<u16>;
