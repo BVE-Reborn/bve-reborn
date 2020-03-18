@@ -104,11 +104,12 @@ fn parse_subject<'a>(input: &'a str) -> IResult<&'a str, Subject> {
             variant!('a, "brake", Brake),
             variant!('a, "locobrake", LocoBrake),
             variant!('a, "csc", ConstSpeedSystem),
-            variant!('a, "door", Door),
+            // These 4 must come before door, as door is a prefix for them and will partially parse, then fail
             variant_index!('a, "doorl", DoorLeft),
             variant_index!('a, "doorr", DoorRight),
             variant!('a, "doorbuttonl", DoorButtonLeft),
             variant!('a, "doorbuttonr", DoorButtonRight),
+            variant!('a, "door", Door),
             variant!('a, "er", EqualizingReservoir),
             variant!('a, "hour", Hour),
         )),
@@ -194,6 +195,19 @@ mod test {
             Subject {
                 target: SubjectTarget::Ats(232),
                 digit: Some(3)
+            }
+        )
+    }
+
+    #[test]
+    fn door_parsing_order() {
+        let (input, output) = parse_subject("doorl232").expect("Failed to parse");
+        assert!(input.is_empty());
+        assert_eq!(
+            output,
+            Subject {
+                target: SubjectTarget::DoorLeft(232),
+                digit: None
             }
         )
     }
