@@ -29,6 +29,7 @@ pub struct ParsedSoundCfg {
 
 #[derive(Debug, Default, Clone, PartialEq, FromKVPSection)]
 pub struct VersionSection {
+    #[kvp(bare)]
     pub version: String,
 }
 
