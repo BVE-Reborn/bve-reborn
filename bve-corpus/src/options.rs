@@ -15,6 +15,7 @@ arg_enum! {
         ExtensionsCfg,
         PanelCfg,
         Panel2Cfg,
+        SoundCfg
     }
 }
 

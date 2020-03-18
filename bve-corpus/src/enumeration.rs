@@ -77,7 +77,7 @@ pub fn enumerate_all_files(options: &Options, file_sink: &Sender<File>, shared: 
                     kind: FileKind::Panel2Cfg,
                 },
             ),
-            p if p == Some("sound.cfg".into()) && false => add_file(
+            p if p == Some("sound.cfg".into()) && should_add_file(options.file, FileType::SoundCfg) => add_file(
                 file_sink,
                 shared,
                 &shared.sound_cfg,

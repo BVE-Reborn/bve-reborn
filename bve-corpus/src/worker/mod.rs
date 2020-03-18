@@ -8,6 +8,7 @@ use bve::parse::kvp::parse_kvp_file;
 use bve::parse::mesh::{mesh_from_str, FileType, MeshErrorKind, ParsedStaticObject};
 use bve::parse::panel1_cfg::parse_panel1_cfg;
 use bve::parse::panel2_cfg::parse_panel2_cfg;
+use bve::parse::sound_cfg::parse_sound_cfg;
 use bve::parse::train_dat::parse_train_dat;
 use core::panicking::panic;
 use crossbeam::atomic::AtomicCell;
@@ -152,6 +153,13 @@ fn processing_loop(
                 let (_parsed, warnings) = parse_panel2_cfg(&file_contents);
 
                 shared.panel2_cfg.finished.fetch_add(1, Ordering::AcqRel);
+
+                success_or_errors(warnings)
+            }
+            FileKind::SoundCfg => {
+                let (_parsed, warnings) = parse_sound_cfg(&file_contents);
+
+                shared.sound_cfg.finished.fetch_add(1, Ordering::AcqRel);
 
                 success_or_errors(warnings)
             }

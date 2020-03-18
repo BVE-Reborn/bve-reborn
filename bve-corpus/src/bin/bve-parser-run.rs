@@ -5,6 +5,7 @@ use bve::parse::extensions_cfg::parse_extensions_cfg;
 use bve::parse::mesh::mesh_from_str;
 use bve::parse::panel1_cfg::parse_panel1_cfg;
 use bve::parse::panel2_cfg::parse_panel2_cfg;
+use bve::parse::sound_cfg::parse_sound_cfg;
 use bve::parse::train_dat::parse_train_dat;
 use clap::arg_enum;
 use std::path::{Path, PathBuf};
@@ -22,6 +23,7 @@ arg_enum! {
         ExtensionsCfg,
         PanelCfg,
         Panel2Cfg,
+        SoundCfg,
     }
 }
 
@@ -213,6 +215,29 @@ fn parse_config_panel2_cfg(file: impl AsRef<Path>, options: &Options) {
     }
 }
 
+fn parse_config_sound_cfg(file: impl AsRef<Path>, options: &Options) {
+    let contents = read_convert_utf8(file).expect("Must be able to read file");
+
+    let start = Instant::now();
+    let (parsed, warnings) = parse_sound_cfg(&contents);
+    let duration = Instant::now() - start;
+
+    println!("Duration: {:.4}", duration.as_secs_f32());
+
+    if options.print_result {
+        println!("{:#?}", parsed);
+    }
+
+    if options.errors {
+        println!("Warnings:");
+        for e in &warnings {
+            println!("\t{} {:?}", e.span.line.map(|v| v as i64).unwrap_or(-1), e.kind)
+        }
+    } else {
+        println!("Warnings: {}", warnings.len());
+    }
+}
+
 fn main() {
     let options: Options = Options::from_args();
 
@@ -225,5 +250,6 @@ fn main() {
         FileType::ExtensionsCfg => parse_config_extensions_cfg(&options.source_file, &options),
         FileType::PanelCfg => parse_config_panel1_cfg(&options.source_file, &options),
         FileType::Panel2Cfg => parse_config_panel2_cfg(&options.source_file, &options),
+        FileType::SoundCfg => parse_config_sound_cfg(&options.source_file, &options),
     }
 }
