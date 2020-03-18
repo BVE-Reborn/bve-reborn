@@ -7,6 +7,7 @@ pub struct TimetableSection {
     pub location: Vector2<f32>,
     pub width: f32,
     pub height: f32,
+    #[kvp(alias = "Transparent")]
     pub transparent_color: HexColor3,
     pub layer: i64,
 }

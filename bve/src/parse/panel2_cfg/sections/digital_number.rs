@@ -9,6 +9,7 @@ pub struct DigitalNumberSection {
     pub location: Vector2<f32>,
     pub daytime_image: String,
     pub nighttime_image: String,
+    #[kvp(alias = "Transparent")]
     pub transparent_color: HexColor3,
     pub interval: f32,
     pub layer: i64,

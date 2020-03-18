@@ -11,6 +11,7 @@ pub struct ThisSection {
     pub bottom: f32,
     pub daytime_image: String,
     pub nighttime_image: String,
+    #[kvp(alias = "Transparent")]
     pub transparent_color: HexColor3,
     pub center: Vector2<f32>,
     pub origin: Vector2<f32>,

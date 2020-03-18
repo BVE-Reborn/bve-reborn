@@ -11,6 +11,7 @@ pub struct NeedleSection {
     pub daytime_image: String,
     pub nighttime_image: String,
     pub color: HexColor3,
+    #[kvp(alias = "Transparent")]
     pub transparent_color: HexColor3,
     pub origin: Option<Vector2<f32>>,
     pub initial_angle: f32,
