@@ -10,6 +10,6 @@ pub trait UserError {
 
 impl UserError for () {
     fn print(&self) -> String {
-        unreachable!()
+        unreachable!("Types that have () as their error/warning type should return only empty vectors of them.");
     }
 }
