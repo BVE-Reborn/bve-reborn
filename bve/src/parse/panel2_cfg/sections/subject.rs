@@ -1,9 +1,11 @@
 use crate::parse::kvp::FromKVPValue;
+use crate::parse::{util, PrettyPrintResult};
 use nom::branch::alt;
 use nom::bytes::complete::{tag, take_while};
 use nom::combinator::{map_res, opt};
 use nom::sequence::preceded;
 use nom::IResult;
+use std::io;
 use std::str::FromStr;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -25,6 +27,58 @@ impl FromKVPValue for Subject {
             Ok(("", o)) => Some(o),
             _ => None,
         }
+    }
+}
+
+impl PrettyPrintResult for Subject {
+    fn fmt(&self, indent: usize, out: &mut dyn io::Write) -> io::Result<()> {
+        util::indent(indent + 1, out)?;
+        write!(out, "Target: ")?;
+        writeln!(
+            out,
+            "{}",
+            match self.target {
+                SubjectTarget::Acceleration => "Acceleration",
+                SubjectTarget::Ats(i) => return write!(out, "Ats #{}", i),
+                SubjectTarget::LocoBrakeCylinder => "Loco Brake Cylinder",
+                SubjectTarget::BrakeCylinder => "Brake Cylinder",
+                SubjectTarget::LocoBrakePipe => "Loco Brake Pipe",
+                SubjectTarget::BrakePipe => "Brake Pipe",
+                SubjectTarget::Brake => "Brake",
+                SubjectTarget::LocoBrake => "Loco Brake",
+                SubjectTarget::ConstSpeedSystem => "Const Speed System",
+                SubjectTarget::Door => "Door",
+                SubjectTarget::DoorLeft(i) => return write!(out, "Left Door #{}", i),
+                SubjectTarget::DoorRight(i) => return write!(out, "Right Door #{}", i),
+                SubjectTarget::DoorButtonLeft => "Left Door Button",
+                SubjectTarget::DoorButtonRight => "Right Door Button",
+                SubjectTarget::EqualizingReservoir => "Equalizing Reservoir",
+                SubjectTarget::Hour => "Hours",
+                SubjectTarget::KilometersPerHour => "Speed (kph)",
+                SubjectTarget::Minute => "Minutes",
+                SubjectTarget::MotorAcceleration => "Motor Acceleration",
+                SubjectTarget::MilesPerHour => "Speed (mph)",
+                SubjectTarget::MainReservoir => "Main Reservoir",
+                SubjectTarget::MetersPerSecond => "Speed (m/s)",
+                SubjectTarget::PowerNotch => "Power Notch",
+                SubjectTarget::Reverser => "Reverser",
+                SubjectTarget::StraightAirPipe => "Straight Air Pipe",
+                SubjectTarget::Second => "Seconds",
+                SubjectTarget::True => "True",
+                SubjectTarget::Klaxon => "Klaxon",
+                SubjectTarget::PrimaryKlaxon => "Primary Klaxon",
+                SubjectTarget::SecondaryKlaxon => "SecondaryKlaxon",
+                SubjectTarget::MusicKlaxon => "Music Klaxon",
+                SubjectTarget::PassAlarm => "Pass Alarm",
+                SubjectTarget::PilotLamp => "Pilot Lamp",
+                SubjectTarget::StationAdjustAlarm => "StationAdjustAlarm",
+            },
+        )?;
+        if let Some(d) = self.digit {
+            util::indent(indent + 1, out)?;
+            write!(out, "Digit: {}", d)?;
+        }
+        Ok(())
     }
 }
 

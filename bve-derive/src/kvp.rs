@@ -127,9 +127,9 @@ fn generate_pretty_print_impls<'a>(
         };
 
         quote! {
-            <str as crate::parse::PrettyPrintResult>::fmt_indent(#name_plus_colon, indent, out)?;
-            out.write(&[b'\n'])?;
-            <#real_ty as crate::parse::PrettyPrintResult>::fmt_indent(&self.#ident, indent + 1, out)?;
+            writeln!(out, #name_plus_colon)?;
+            crate::parse::util::indent(indent + 1, out)?;
+            <#real_ty as crate::parse::PrettyPrintResult>::fmt(&self.#ident, indent + 1, out)?;
         }
     }))
 }
@@ -252,8 +252,7 @@ pub fn kvp_file(item: TokenStream) -> TokenStream {
         #[automatically_derived]
         impl crate::parse::PrettyPrintResult for #ident {
             fn fmt(&self, indent: usize, out: &mut dyn ::std::io::Write) -> ::std::io::Result<()> {
-                <str as crate::parse::PrettyPrintResult>::fmt(#ident_str_colon, indent, out)?;
-                out.write(&[b'\n'])?;
+                writeln!(out, #ident_str_colon)?;
                 let indent = indent + 1;
                 #pretty_print
                 Ok(())
@@ -446,8 +445,7 @@ pub fn kvp_section(item: TokenStream) -> TokenStream {
         #[automatically_derived]
         impl crate::parse::PrettyPrintResult for #ident {
             fn fmt(&self, indent: usize, out: &mut dyn ::std::io::Write) -> ::std::io::Result<()> {
-                <str as crate::parse::PrettyPrintResult>::fmt(#ident_str_colon, indent, out)?;
-                out.write(&[b'\n'])?;
+                writeln!(out, #ident_str_colon)?;
                 let indent = indent + 1;
                 #pretty_print
                 Ok(())
@@ -493,8 +491,7 @@ pub fn kvp_value(item: TokenStream) -> TokenStream {
         #[automatically_derived]
         impl crate::parse::PrettyPrintResult for #ident {
             fn fmt(&self, indent: usize, out: &mut dyn ::std::io::Write) -> ::std::io::Result<()> {
-                <str as crate::parse::PrettyPrintResult>::fmt(#ident_str_colon, indent, out)?;
-                out.write(&[b'\n'])?;
+                writeln!(out, #ident_str_colon)?;
                 let indent = indent + 1;
                 #pretty_print
                 Ok(())
@@ -523,7 +520,7 @@ fn generate_pretty_print_impls_variant<'a>(iter: impl IntoIterator<Item = &'a Va
         let ident_str = ident.to_string();
 
         quote! {
-            Self::#ident => <str as crate::parse::PrettyPrintResult>::fmt(#ident_str, indent, out),
+            Self::#ident => writeln!(out, #ident_str),
         }
     }))
 }

@@ -1,3 +1,4 @@
+use crate::parse::util;
 use crate::{HexColorRGB, HexColorRGBA};
 use cgmath::{Vector2, Vector3};
 use itertools::Itertools;
@@ -11,7 +12,7 @@ pub trait PrettyPrintResult {
 
     /// Prints with an indent at the beginning
     fn fmt_indent(&self, indent: usize, out: &mut dyn io::Write) -> io::Result<()> {
-        out.write_all(&vec![b' '; indent * 4])?;
+        util::indent(indent, out)?;
         self.fmt(indent, out)
     }
 }
@@ -21,7 +22,7 @@ macro_rules! display_impl {
         $(
             impl PrettyPrintResult for $t
             {
-                fn fmt(&self, indent: usize, out: &mut dyn io::Write) -> io::Result<()> {
+                fn fmt(&self, _indent: usize, out: &mut dyn io::Write) -> io::Result<()> {
                     write!(out, "{}", self)
                 }
             }
@@ -32,6 +33,7 @@ macro_rules! display_impl {
 display_impl!(
     str,
     String,
+    bool,
     u8,
     u16,
     u32,
@@ -58,7 +60,7 @@ where
         if let Some(v) = self {
             v.fmt(indent, out)?;
         } else {
-            out.write("None".as_bytes())?;
+            write!(out, "None")?;
         }
         Ok(())
     }
@@ -71,7 +73,7 @@ where
     fn fmt(&self, indent: usize, out: &mut dyn io::Write) -> io::Result<()> {
         for element in self {
             element.fmt_indent(indent, out)?;
-            out.write(&[b'\n'])?;
+            writeln!(out)?;
         }
         Ok(())
     }
@@ -85,7 +87,7 @@ where
     fn fmt(&self, indent: usize, out: &mut dyn io::Write) -> io::Result<()> {
         for (key, value) in self.iter().sorted_by_key(|(k, _)| *k) {
             key.fmt_indent(indent, out)?;
-            out.write(" - ".as_bytes())?;
+            write!(out, " - ")?;
             value.fmt(indent, out)?;
         }
         Ok(())
@@ -98,7 +100,7 @@ where
 {
     fn fmt(&self, indent: usize, out: &mut dyn io::Write) -> io::Result<()> {
         self.x.fmt(indent, out)?;
-        out.write(", ".as_bytes())?;
+        write!(out, ", ")?;
         self.y.fmt(indent, out)?;
         Ok(())
     }
@@ -110,9 +112,9 @@ where
 {
     fn fmt(&self, indent: usize, out: &mut dyn io::Write) -> io::Result<()> {
         self.x.fmt(indent, out)?;
-        out.write(", ".as_bytes())?;
+        write!(out, ", ")?;
         self.y.fmt(indent, out)?;
-        out.write(", ".as_bytes())?;
+        write!(out, ", ")?;
         self.z.fmt(indent, out)?;
         Ok(())
     }

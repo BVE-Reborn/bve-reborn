@@ -1,8 +1,10 @@
 use crate::parse::function_scripts::ParsedFunctionScript;
 use crate::parse::kvp::FromKVPValue;
+use crate::parse::PrettyPrintResult;
 use bve_derive::{FromKVPFile, FromKVPSection, FromKVPValue};
 use cgmath::{Vector2, Vector3};
 use num_traits::identities::Zero;
+use std::io;
 
 #[derive(Debug, Default, Clone, PartialEq, FromKVPFile)]
 pub struct ParsedAnimatedObject {
@@ -187,6 +189,19 @@ impl FromKVPValue for TextureOverride {
     }
 }
 
+impl PrettyPrintResult for TextureOverride {
+    fn fmt(&self, _indent: usize, out: &mut dyn io::Write) -> io::Result<()> {
+        write!(
+            out,
+            "{}",
+            match self {
+                TextureOverride::None => "None",
+                TextureOverride::Timetable => "Timetable",
+            },
+        )
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum RefreshRate {
     EveryFrame,
@@ -202,6 +217,19 @@ impl Default for RefreshRate {
 impl FromKVPValue for RefreshRate {
     fn from_kvp_value(value: &str) -> Option<Self> {
         f32::from_kvp_value(value).map(|f| if f == 0.0 { Self::EveryFrame } else { Self::Seconds(f) })
+    }
+}
+
+impl PrettyPrintResult for RefreshRate {
+    fn fmt(&self, _indent: usize, out: &mut dyn io::Write) -> io::Result<()> {
+        write!(
+            out,
+            "{}",
+            match self {
+                Self::EveryFrame => "EveryFrame",
+                Self::Seconds(v) => return write!(out, "{}s", v),
+            }
+        )
     }
 }
 
@@ -228,5 +256,18 @@ impl FromKVPValue for PlayOn {
                 None
             }
         })
+    }
+}
+
+impl PrettyPrintResult for PlayOn {
+    fn fmt(&self, _indent: usize, out: &mut dyn io::Write) -> io::Result<()> {
+        write!(
+            out,
+            "{}",
+            match self {
+                PlayOn::Silent => "Silent",
+                PlayOn::Play => "Play",
+            },
+        )
     }
 }

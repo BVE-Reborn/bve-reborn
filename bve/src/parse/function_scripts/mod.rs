@@ -2,7 +2,7 @@ mod ir;
 mod parser;
 
 use crate::parse::kvp::FromKVPValue;
-use crate::parse::PrettyPrintResult;
+use crate::parse::{util, PrettyPrintResult};
 pub use ir::*;
 pub use parser::*;
 use std::io;
@@ -26,11 +26,13 @@ impl FromKVPValue for ParsedFunctionScript {
 
 impl PrettyPrintResult for ParsedFunctionScript {
     fn fmt(&self, indent: usize, out: &mut dyn io::Write) -> io::Result<()> {
-        out.write_all("\n".as_bytes())?;
+        writeln!(out)?;
         for (idx, instruction) in self.instructions.iter().enumerate() {
-            out.write_all(&vec![b' '; indent * 4])?;
-            out.write_all(format!("{} - ", idx).as_bytes())?;
-            out.write_all(
+            util::indent(indent, out)?;
+            write!(out, "{} - ", idx)?;
+            writeln!(
+                out,
+                "{}",
                 match instruction {
                     Instruction::Addition => "Addition",
                     Instruction::Subtraction => "Subtraction",
@@ -48,15 +50,13 @@ impl PrettyPrintResult for ParsedFunctionScript {
                     Instruction::LessEqual => "LessEqual",
                     Instruction::GreaterEqual => "GreaterEqual",
                     Instruction::FunctionCall { name, arg_count } => {
-                        format!("{}({} arguments)", name, arg_count).as_str()
+                        return write!(out, "{}({} arguments)", name, arg_count);
                     }
 
-                    Instruction::Variable { name } => format!("Variable: {}", name).as_str(),
-                    Instruction::Number { value } => format!("{}", value),
-                }
-                .as_bytes(),
+                    Instruction::Variable { name } => return write!(out, "Variable: {}", name),
+                    Instruction::Number { value } => return write!(out, "{}", value),
+                },
             )?;
-            out.write_all("\n".as_bytes());
         }
         Ok(())
     }
