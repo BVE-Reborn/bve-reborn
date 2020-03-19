@@ -98,10 +98,48 @@ fn parse_fields(item: &ItemStruct) -> Vec<Field> {
     fields
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+enum DeriveType {
+    File,
+    Section,
+    Value,
+}
+
+fn generate_pretty_print_impls<'a>(
+    iter: impl IntoIterator<Item = &'a Field> + 'a,
+    derive_type: DeriveType,
+) -> TokenStream2 {
+    combine_token_streams(iter.into_iter().map(|field| {
+        let ident = field.ident.clone().expect("Fields must have names");
+        let name_plus_colon: String = field.rename.as_ref().map_or_else(
+            || ident.to_string().chars().filter(|&c| c != '_').collect(),
+            String::clone,
+        ) + ":";
+
+        let ty = field.ty.clone();
+
+        let real_ty = match field.kind {
+            FieldKind::Normal => quote! {#ty},
+            FieldKind::Vec => quote! {Vec<#ty>},
+            FieldKind::Hash => {
+                quote! {std::collections::HashMap<u64, #ty>}
+            }
+        };
+
+        quote! {
+            <str as crate::parse::PrettyPrintResult>::fmt_indent(#name_plus_colon, indent, out)?;
+            out.write(&[b'\n'])?;
+            <#real_ty as crate::parse::PrettyPrintResult>::fmt_indent(&self.#ident, indent + 1, out)?;
+        }
+    }))
+}
+
 pub fn kvp_file(item: TokenStream) -> TokenStream {
     let item = syn::parse_macro_input!(item as ItemStruct);
 
     let ident = &item.ident;
+    let ident_str = ident.to_string();
+    let ident_str_colon = ident_str + ":";
 
     let fields = parse_fields(&item);
 
@@ -172,6 +210,8 @@ pub fn kvp_file(item: TokenStream) -> TokenStream {
         }
     }));
 
+    let pretty_print = generate_pretty_print_impls(fields.iter(), DeriveType::File);
+
     quote! (
         #[automatically_derived]
         #[allow(clippy::used_underscore_binding)]
@@ -209,6 +249,16 @@ pub fn kvp_file(item: TokenStream) -> TokenStream {
                 (parsed, warnings)
             }
         }
+        #[automatically_derived]
+        impl crate::parse::PrettyPrintResult for #ident {
+            fn fmt(&self, indent: usize, out: &mut dyn ::std::io::Write) -> ::std::io::Result<()> {
+                <str as crate::parse::PrettyPrintResult>::fmt(#ident_str_colon, indent, out)?;
+                out.write(&[b'\n'])?;
+                let indent = indent + 1;
+                #pretty_print
+                Ok(())
+            }
+        }
     )
     .into()
 }
@@ -217,6 +267,8 @@ pub fn kvp_section(item: TokenStream) -> TokenStream {
     let item = syn::parse_macro_input!(item as ItemStruct);
 
     let ident = &item.ident;
+    let ident_str = ident.to_string();
+    let ident_str_colon = ident_str + ":";
 
     let fields = parse_fields(&item);
 
@@ -354,6 +406,8 @@ pub fn kvp_section(item: TokenStream) -> TokenStream {
         }
     }));
 
+    let pretty_print = generate_pretty_print_impls(fields.iter(), DeriveType::Section);
+
     quote! (
         #[automatically_derived]
         #[allow(clippy::used_underscore_binding)]
@@ -389,6 +443,16 @@ pub fn kvp_section(item: TokenStream) -> TokenStream {
                 (parsed, warnings)
             }
         }
+        #[automatically_derived]
+        impl crate::parse::PrettyPrintResult for #ident {
+            fn fmt(&self, indent: usize, out: &mut dyn ::std::io::Write) -> ::std::io::Result<()> {
+                <str as crate::parse::PrettyPrintResult>::fmt(#ident_str_colon, indent, out)?;
+                out.write(&[b'\n'])?;
+                let indent = indent + 1;
+                #pretty_print
+                Ok(())
+            }
+        }
     )
     .into()
 }
@@ -397,18 +461,22 @@ pub fn kvp_value(item: TokenStream) -> TokenStream {
     let item = syn::parse_macro_input!(item as ItemStruct);
 
     let ident = &item.ident;
+    let ident_str = ident.to_string();
+    let ident_str_colon = ident_str + ":";
 
     // Strictly speaking, we don't need that much functionality, but it gets us the core info we need
     let fields = parse_fields(&item);
 
-    let conversion = combine_token_streams(fields.into_iter().map(|field| {
+    let conversion = combine_token_streams(fields.iter().map(|field| {
         let ident = field.ident.clone().expect("Fields must have names");
-        let ty = field.ty;
+        let ty = field.ty.clone();
 
         quote! {
             #ident: <#ty as crate::parse::kvp::FromKVPValue>::from_kvp_value(iterator.next()?)?,
         }
     }));
+
+    let pretty_print = generate_pretty_print_impls(fields.iter(), DeriveType::Value);
 
     quote! (
         #[automatically_derived]
@@ -420,6 +488,16 @@ pub fn kvp_value(item: TokenStream) -> TokenStream {
                 Some(#ident {
                     #conversion
                 })
+            }
+        }
+        #[automatically_derived]
+        impl crate::parse::PrettyPrintResult for #ident {
+            fn fmt(&self, indent: usize, out: &mut dyn ::std::io::Write) -> ::std::io::Result<()> {
+                <str as crate::parse::PrettyPrintResult>::fmt(#ident_str_colon, indent, out)?;
+                out.write(&[b'\n'])?;
+                let indent = indent + 1;
+                #pretty_print
+                Ok(())
             }
         }
     )
@@ -437,6 +515,17 @@ struct Variant {
     alias: Vec<String>,
     #[darling(default)]
     index: Option<i64>,
+}
+
+fn generate_pretty_print_impls_variant<'a>(iter: impl IntoIterator<Item = &'a Variant> + 'a) -> TokenStream2 {
+    combine_token_streams(iter.into_iter().map(|variant| {
+        let ident = variant.ident.clone();
+        let ident_str = ident.to_string();
+
+        quote! {
+            Self::#ident => <str as crate::parse::PrettyPrintResult>::fmt(#ident_str, indent, out),
+        }
+    }))
 }
 
 pub fn kvp_enum_numbers(item: TokenStream) -> TokenStream {
@@ -506,6 +595,8 @@ pub fn kvp_enum_numbers(item: TokenStream) -> TokenStream {
     let matches = combine_token_streams(per_field_tokens.iter().map(|(m, _)| m.clone()));
     let recovery = combine_token_streams(per_field_tokens.into_iter().map(|(_, r)| r));
 
+    let pretty_print = generate_pretty_print_impls_variant(fields.iter());
+
     quote! (
         #[automatically_derived]
         #[allow(clippy::used_underscore_binding, unreachable_code)]
@@ -524,6 +615,17 @@ pub fn kvp_enum_numbers(item: TokenStream) -> TokenStream {
         }
 
         #default_impl
+
+
+        #[automatically_derived]
+        impl crate::parse::PrettyPrintResult for #ident {
+            fn fmt(&self, indent: usize, out: &mut dyn ::std::io::Write) -> ::std::io::Result<()> {
+                match self {
+                    #pretty_print
+                }?;
+                Ok(())
+            }
+        }
     )
     .into()
 }
