@@ -98,17 +98,7 @@ fn parse_fields(item: &ItemStruct) -> Vec<Field> {
     fields
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-enum DeriveType {
-    File,
-    Section,
-    Value,
-}
-
-fn generate_pretty_print_impls<'a>(
-    iter: impl IntoIterator<Item = &'a Field> + 'a,
-    derive_type: DeriveType,
-) -> TokenStream2 {
+fn generate_pretty_print_impls<'a>(iter: impl IntoIterator<Item = &'a Field> + 'a) -> TokenStream2 {
     combine_token_streams(iter.into_iter().map(|field| {
         let ident = field.ident.clone().expect("Fields must have names");
         let name_plus_colon: String = field.rename.as_ref().map_or_else(
@@ -210,7 +200,7 @@ pub fn kvp_file(item: TokenStream) -> TokenStream {
         }
     }));
 
-    let pretty_print = generate_pretty_print_impls(fields.iter(), DeriveType::File);
+    let pretty_print = generate_pretty_print_impls(fields.iter());
 
     quote! (
         #[automatically_derived]
@@ -405,7 +395,7 @@ pub fn kvp_section(item: TokenStream) -> TokenStream {
         }
     }));
 
-    let pretty_print = generate_pretty_print_impls(fields.iter(), DeriveType::Section);
+    let pretty_print = generate_pretty_print_impls(fields.iter());
 
     quote! (
         #[automatically_derived]
@@ -474,7 +464,7 @@ pub fn kvp_value(item: TokenStream) -> TokenStream {
         }
     }));
 
-    let pretty_print = generate_pretty_print_impls(fields.iter(), DeriveType::Value);
+    let pretty_print = generate_pretty_print_impls(fields.iter());
 
     quote! (
         #[automatically_derived]
