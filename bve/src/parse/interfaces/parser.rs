@@ -1,11 +1,10 @@
 use crate::parse::kvp::{parse_kvp_file, FromKVPFile, KVPSymbols};
 use crate::parse::util::strip_comments;
-use crate::parse::UserError;
-use std::fmt::Display;
+use crate::parse::{PrettyPrintResult, UserError};
 
 /// Types that implement this trait can be parsed from a single input.
 pub trait FileParser {
-    type Output: Display;
+    type Output: PrettyPrintResult;
     type Warnings: UserError;
     type Errors: UserError;
 
@@ -16,7 +15,7 @@ pub trait FileParser {
 /// The result of applying a parser to an input file.
 pub struct ParserResult<Output, Warnings, Errors>
 where
-    Output: Display,
+    Output: PrettyPrintResult,
     Warnings: UserError,
     Errors: UserError,
 {
@@ -30,7 +29,7 @@ where
 /// Only the two constants are needed to correctly implement this.
 ///
 /// Contains a blanket [`FileParser`] impl for all traits that implement this trait.
-pub trait KVPFileParser: FromKVPFile + Display {
+pub trait KVPFileParser: FromKVPFile + PrettyPrintResult {
     const SYMBOLS: KVPSymbols;
     const COMMENT: char;
 
