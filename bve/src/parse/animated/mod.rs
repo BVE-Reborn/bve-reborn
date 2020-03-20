@@ -1,8 +1,8 @@
 use crate::parse::kvp::{KVPSymbols, ANIMATED_LIKE};
 use crate::parse::KVPFileParser;
-pub use structs::*;
+pub use sections::*;
 
-mod structs;
+mod sections;
 
 impl KVPFileParser for ParsedAnimatedObject {
     const SYMBOLS: KVPSymbols = ANIMATED_LIKE;
