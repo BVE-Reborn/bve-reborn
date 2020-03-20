@@ -104,7 +104,7 @@ fn generate_pretty_print_impls<'a>(iter: impl IntoIterator<Item = &'a Field> + '
         let name_plus_colon: String = field.rename.as_ref().map_or_else(
             || ident.to_string().chars().filter(|&c| c != '_').collect(),
             String::clone,
-        ) + ":";
+        ) + ": ";
 
         let ty = field.ty.clone();
 
@@ -117,8 +117,8 @@ fn generate_pretty_print_impls<'a>(iter: impl IntoIterator<Item = &'a Field> + '
         };
 
         quote! {
-            writeln!(out, #name_plus_colon)?;
-            crate::parse::util::indent(indent + 1, out)?;
+            crate::parse::util::indent(indent, out)?;
+            write!(out, #name_plus_colon)?;
             <#real_ty as crate::parse::PrettyPrintResult>::fmt(&self.#ident, indent + 1, out)?;
         }
     }))
@@ -256,8 +256,6 @@ pub fn kvp_section(item: TokenStream) -> TokenStream {
     let item = syn::parse_macro_input!(item as ItemStruct);
 
     let ident = &item.ident;
-    let ident_str = ident.to_string();
-    let ident_str_colon = ident_str + ":";
 
     let fields = parse_fields(&item);
 
@@ -435,8 +433,7 @@ pub fn kvp_section(item: TokenStream) -> TokenStream {
         #[automatically_derived]
         impl crate::parse::PrettyPrintResult for #ident {
             fn fmt(&self, indent: usize, out: &mut dyn ::std::io::Write) -> ::std::io::Result<()> {
-                writeln!(out, #ident_str_colon)?;
-                let indent = indent + 1;
+                writeln!(out)?;
                 #pretty_print
                 Ok(())
             }
@@ -449,8 +446,6 @@ pub fn kvp_value(item: TokenStream) -> TokenStream {
     let item = syn::parse_macro_input!(item as ItemStruct);
 
     let ident = &item.ident;
-    let ident_str = ident.to_string();
-    let ident_str_colon = ident_str + ":";
 
     // Strictly speaking, we don't need that much functionality, but it gets us the core info we need
     let fields = parse_fields(&item);
@@ -481,8 +476,7 @@ pub fn kvp_value(item: TokenStream) -> TokenStream {
         #[automatically_derived]
         impl crate::parse::PrettyPrintResult for #ident {
             fn fmt(&self, indent: usize, out: &mut dyn ::std::io::Write) -> ::std::io::Result<()> {
-                writeln!(out, #ident_str_colon)?;
-                let indent = indent + 1;
+                writeln!(out)?;
                 #pretty_print
                 Ok(())
             }

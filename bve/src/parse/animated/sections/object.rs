@@ -108,7 +108,7 @@ impl FromKVPValue for TextureOverride {
 
 impl PrettyPrintResult for TextureOverride {
     fn fmt(&self, _indent: usize, out: &mut dyn io::Write) -> io::Result<()> {
-        write!(
+        writeln!(
             out,
             "{}",
             match self {
@@ -139,13 +139,9 @@ impl FromKVPValue for RefreshRate {
 
 impl PrettyPrintResult for RefreshRate {
     fn fmt(&self, _indent: usize, out: &mut dyn io::Write) -> io::Result<()> {
-        write!(
-            out,
-            "{}",
-            match self {
-                Self::EveryFrame => "EveryFrame",
-                Self::Seconds(v) => return write!(out, "{}s", v),
-            }
-        )
+        match self {
+            Self::EveryFrame => writeln!(out, "Every Frame"),
+            Self::Seconds(v) => writeln!(out, "{}s", v),
+        }
     }
 }

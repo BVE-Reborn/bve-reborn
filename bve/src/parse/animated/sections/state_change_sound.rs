@@ -60,7 +60,7 @@ impl FromKVPValue for PlayOn {
 
 impl PrettyPrintResult for PlayOn {
     fn fmt(&self, _indent: usize, out: &mut dyn io::Write) -> io::Result<()> {
-        write!(
+        writeln!(
             out,
             "{}",
             match self {

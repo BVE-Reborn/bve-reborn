@@ -83,25 +83,22 @@ impl Default for Needle {
 impl PrettyPrintResult for Needle {
     fn fmt(&self, indent: usize, out: &mut dyn io::Write) -> io::Result<()> {
         writeln!(out)?;
+
         util::indent(indent + 1, out)?;
         write!(out, "Subject: ")?;
         self.subject.fmt(indent, out)?;
-        writeln!(out)?;
 
         util::indent(indent + 1, out)?;
         writeln!(out, "Red: ")?;
         self.red.fmt(indent, out)?;
-        writeln!(out)?;
 
         util::indent(indent + 1, out)?;
         writeln!(out, "Green: ")?;
         self.green.fmt(indent, out)?;
-        writeln!(out)?;
 
         util::indent(indent + 1, out)?;
         writeln!(out, "Blue: ")?;
         self.blue.fmt(indent, out)?;
-        writeln!(out)?;
 
         Ok(())
     }

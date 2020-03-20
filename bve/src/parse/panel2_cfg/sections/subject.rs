@@ -32,11 +32,9 @@ impl FromKVPValue for Subject {
 
 impl PrettyPrintResult for Subject {
     fn fmt(&self, indent: usize, out: &mut dyn io::Write) -> io::Result<()> {
-        util::indent(indent + 1, out)?;
-        write!(out, "Target: ")?;
         writeln!(
             out,
-            "{}",
+            "Target: {}",
             match self.target {
                 SubjectTarget::Acceleration => "Acceleration",
                 SubjectTarget::Ats(i) => return write!(out, "Ats #{}", i),
