@@ -53,6 +53,7 @@ use crate::panic::setup_panic_hook;
 use crate::worker::create_worker_thread;
 use anyhow::Result;
 use bve::log::{run_with_global_logger, set_global_logger, Level, SerializationMethod, Subscriber};
+use bve::parse::UserErrorData;
 use crossbeam::channel::unbounded;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 pub use options::*;
@@ -108,8 +109,14 @@ pub struct FileResult {
 enum ParseResult {
     Finish,
     Success,
-    Errors { count: u64, error: anyhow::Error },
-    Panic { cause: String },
+    Issues {
+        count: u64,
+        warnings: Vec<UserErrorData>,
+        error: Vec<UserErrorData>,
+    },
+    Panic {
+        cause: String,
+    },
 }
 
 #[derive(Debug, Default)]

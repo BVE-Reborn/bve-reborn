@@ -1,15 +1,7 @@
 use crate::panic::{PANIC, USE_DEFAULT_PANIC_HANLDER};
 use crate::{File, FileKind, FileResult, ParseResult, SharedData};
 use bve::filesystem::read_convert_utf8;
-use bve::parse::animated::parse_animated_file;
-use bve::parse::ats_cfg::parse_ats_cfg;
-use bve::parse::extensions_cfg::parse_extensions_cfg;
-use bve::parse::kvp::parse_kvp_file;
 use bve::parse::mesh::{mesh_from_str, FileType, MeshErrorKind, ParsedStaticObject};
-use bve::parse::panel1_cfg::parse_panel1_cfg;
-use bve::parse::panel2_cfg::parse_panel2_cfg;
-use bve::parse::sound_cfg::parse_sound_cfg;
-use bve::parse::train_dat::parse_train_dat;
 use core::panicking::panic;
 use crossbeam::atomic::AtomicCell;
 use crossbeam::channel::{Receiver, Sender};
