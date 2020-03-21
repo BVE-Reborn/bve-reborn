@@ -15,6 +15,12 @@ pub static CURRENT_BVE_LOCALE: Lazy<RwLock<BVELocaleBundle>> =
 pub static ENGLISH_LOCALE: Lazy<BVELocaleBundle> =
     Lazy::new(|| load_locale_bundle(BVELocale::from_language(BVELanguage::EN)));
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum ForceEnglish {
+    English,
+    Local,
+}
+
 pub struct BVELocaleBundle {
     pub language: BVELocale,
     pub bundle: FluentBundle<FluentResource>,
@@ -76,21 +82,29 @@ impl Display for BVELanguage {
 #[macro_export]
 macro_rules! localize {
     // Localize in english for logging
-    (@en $name:literal, $($key:literal -> $value:literal),+ $(,)*) => {
-        $crate::localize!($crate::l10n::ENGLISH_LOCALE, $name, $($key -> $value),+)
+    (@$cond:expr, $name:literal, $($key:literal -> $value:expr),+ $(,)*) => {
+        if $cond == $crate::l10n::ForceEnglish::English {
+            $crate::localize!($crate::l10n::ENGLISH_LOCALE, $name, $($key -> $value),+)
+        } else {
+            $crate::localize!($name, $($key -> $value),+)
+        }
     };
-    (@en $name:literal) => {
-        $crate::localize!($crate::l10n::ENGLISH_LOCALE, $name)
+    (@$cond:expr, $name:literal) => {
+        if $cond == $crate::l10n::ForceEnglish::English {
+            $crate::localize!($crate::l10n::ENGLISH_LOCALE, $name)
+        } else {
+            $crate::localize!($name)
+        }
     };
     // Localize in the current locale
-    ($name:literal, $($key:literal -> $value:literal),+ $(,)*) => {
+    ($name:literal, $($key:literal -> $value:expr),+ $(,)*) => {
         $crate::localize!($crate::l10n::CURRENT_BVE_LOCALE.read().expect("Unable to lock LocaleMutex"), $name, $($key -> $value),+)
     };
     ($name:literal) => {
         $crate::localize!($crate::l10n::CURRENT_BVE_LOCALE.read().expect("Unable to lock LocaleMutex"), $name)
     };
     // Localize over the locale provided as first argument, taken by reference.
-    ($locale:expr, $name:literal, $($key:literal -> $value:literal),+ $(,)*) => {{
+    ($locale:expr, $name:literal, $($key:literal -> $value:expr),+ $(,)*) => {{
         let mut errors = std::vec::Vec::new();
         let mut args = std::collections::HashMap::new();
         $(
@@ -130,7 +144,7 @@ mod test {
             #[test]
             fn $name() {
                 let language = load_locale_bundle(BVELocale::from_language(BVELanguage::$lang));
-                loc_test!(language, "name");
+                loc_test!(language, "program-name");
                 loc_test!(language, "language-code");
                 loc_test!(language, "welcome", "name" -> "MyUsername");
             }
