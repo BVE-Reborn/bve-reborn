@@ -147,6 +147,11 @@ mod test {
                 loc_test!(language, "program-name");
                 loc_test!(language, "language-code");
                 loc_test!(language, "welcome", "name" -> "MyUsername");
+
+                loc_test!(language, "kvp-unknown-section", "section" -> "whoops");
+                loc_test!(language, "kvp-unknown-field", "field" -> "whoops");
+                loc_test!(language, "kvp-too-many-fields", "number" -> 1, "total" -> 0);
+                loc_test!(language, "kvp-invalid-value", "value" -> "whoops");
             }
         };
     }

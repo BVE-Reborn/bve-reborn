@@ -1,6 +1,8 @@
+use crate::l10n::ForceEnglish;
+use crate::localize;
 use crate::parse::kvp::{KVPFile, KVPSection};
 use crate::parse::util::{parse_loose_number, parse_loose_numeric_bool};
-use crate::parse::{Span, UserError};
+use crate::parse::{Span, UserError, UserErrorCategory};
 use crate::{HexColorRGB, HexColorRGBA};
 use cgmath::{Vector1, Vector2, Vector3, Vector4};
 use std::str::FromStr;
@@ -11,7 +13,32 @@ pub struct KVPGenericWarning {
     pub kind: KVPGenericWarningKind,
 }
 
-impl UserError for KVPGenericWarning {}
+impl UserError for KVPGenericWarning {
+    fn category(&self) -> UserErrorCategory {
+        UserErrorCategory::Warning
+    }
+
+    fn line(&self) -> u64 {
+        self.span.line.unwrap_or(0)
+    }
+
+    fn description(&self, en: ForceEnglish) -> String {
+        match &self.kind {
+            KVPGenericWarningKind::UnknownSection { name } => {
+                localize!(@en, "kvp-unknown-section", "section" -> name.as_str())
+            }
+            KVPGenericWarningKind::UnknownField { name } => {
+                localize!(@en, "kvp-unknown-field", "field" -> name.as_str())
+            }
+            KVPGenericWarningKind::TooManyFields { idx, max } => {
+                localize!(@en, "kvp-too-many-fields", "number" -> idx + 1, "total" -> max)
+            }
+            KVPGenericWarningKind::InvalidValue { value } => {
+                localize!(@en, "kvp-invalid-value", "value" -> value.as_str())
+            }
+        }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum KVPGenericWarningKind {
