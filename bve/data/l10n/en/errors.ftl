@@ -10,6 +10,6 @@ kvp-invalid-value = Invalid Value: "{$value}"
 
 mesh-warning-useless-instruction = Instruction "{name}" has no effect
 mesh-error-utf8 = UTF-8 error on column {$column}
-mesh-error-out-of-bounds = Index {$idx} it out of bounds
+mesh-error-out-of-bounds = Index {$idx} is out of bounds
 mesh-error-unknown-instruction = Unrecognized instruction {$name}
 mesh-error-unknown-csv = Unknown error in csv-like parsing
