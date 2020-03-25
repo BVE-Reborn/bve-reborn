@@ -30,7 +30,7 @@ impl UserError for MeshWarning {
     fn description(&self, en: ForceEnglish) -> String {
         match &self.kind {
             MeshWarningKind::UselessInstruction { name } => {
-                localize!(@en, "mesh-warning-useless-instruction", "name" -> name)
+                localize!(@en, "mesh-warning-useless-instruction", "name" -> name.as_str())
             }
         }
     }
@@ -82,17 +82,13 @@ impl UserError for MeshError {
 
     fn description(&self, en: ForceEnglish) -> String {
         match &self.kind {
-            MeshErrorKind::UTF8 { column } => localize!(@en, "mesh-error-utf8", "column" -> column),
-            MeshErrorKind::OutOfBounds { idx } => localize!(@en, "mesh-error-out-of-bounds", "idx" -> idx),
+            MeshErrorKind::UTF8 { column } => localize!(@en, "mesh-error-utf8", "column" -> column.unwrap_or(0)),
+            MeshErrorKind::OutOfBounds { idx } => localize!(@en, "mesh-error-out-of-bounds", "idx" -> *idx),
             MeshErrorKind::UnknownInstruction { name } => {
-                localize!(@en, "mesh-error-unknown-instruction", "name" -> name)
+                localize!(@en, "mesh-error-unknown-instruction", "name" -> name.as_str())
             }
             MeshErrorKind::GenericCSV { msg, msg_english } => {
-                if en == ForceEnglish::English {
-                    msg_english
-                } else {
-                    msg
-                }
+                if en == ForceEnglish::English { msg_english } else { msg }.clone()
             }
             MeshErrorKind::UnknownCSV => localize!(@en, "mesh-unknown-csv"),
         }
@@ -130,9 +126,10 @@ impl From<csv::Error> for MeshError {
                     let column = deserialize_error
                         .field()
                         .map_or_else(|| "?".into(), |f| (f + 1).to_string());
-                    let msg = localize!("csv-float-parsing-error", "error" -> f_err, "column" -> column);
+                    let formatted_err = format!("{}", f_err);
+                    let msg = localize!("csv-float-parsing-error", "error" -> formatted_err.clone(), "column" -> column.clone());
                     let msg_english =
-                        localize!(english, "csv-float-parsing-error", "error" -> f_err, "column" -> column);
+                        localize!(english, "csv-float-parsing-error", "error" -> formatted_err, "column" -> column);
 
                     Self {
                         kind: MeshErrorKind::GenericCSV { msg, msg_english },
@@ -143,8 +140,10 @@ impl From<csv::Error> for MeshError {
                     let column = deserialize_error
                         .field()
                         .map_or_else(|| "?".into(), |f| (f + 1).to_string());
-                    let msg = localize!("csv-int-parsing-error", "error" -> i_err, "column" -> column);
-                    let msg_english = localize!(english, "csv-int-parsing-error", "error" -> i_err, "column" -> column);
+                    let formatted_err = format!("{}", i_err);
+                    let msg = localize!("csv-int-parsing-error", "error" -> formatted_err.clone(), "column" -> column.clone());
+                    let msg_english =
+                        localize!(english, "csv-int-parsing-error", "error" -> formatted_err, "column" -> column);
 
                     Self {
                         kind: MeshErrorKind::GenericCSV { msg, msg_english },
@@ -155,9 +154,10 @@ impl From<csv::Error> for MeshError {
                     let column = deserialize_error
                         .field()
                         .map_or_else(|| "?".into(), |f| (f + 1).to_string());
-                    let msg = localize!("csv-bool-parsing-error", "error" -> b_err, "column" -> column);
+                    let formatted_err = format!("{}", b_err);
+                    let msg = localize!("csv-bool-parsing-error", "error" -> formatted_err.clone(), "column" -> column.clone());
                     let msg_english =
-                        localize!(english, "csv-bool-parsing-error", "error" -> b_err, "column" -> column);
+                        localize!(english, "csv-bool-parsing-error", "error" -> formatted_err, "column" -> column);
 
                     Self {
                         kind: MeshErrorKind::GenericCSV { msg, msg_english },

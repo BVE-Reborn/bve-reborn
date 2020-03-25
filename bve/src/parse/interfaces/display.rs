@@ -1,6 +1,6 @@
 use crate::parse::util;
 use crate::{HexColorRGB, HexColorRGBA};
-use cgmath::{Vector2, Vector3};
+use cgmath::{Vector2, Vector3, Vector4};
 use itertools::Itertools;
 use std::collections::HashMap;
 use std::fmt::Display;
@@ -183,6 +183,16 @@ where
 {
     fn fmt(&self, _indent: usize, out: &mut dyn io::Write) -> io::Result<()> {
         writeln!(out, "{}, {}, {}", self.x, self.y, self.z)?;
+        Ok(())
+    }
+}
+
+impl<T> PrettyPrintResult for Vector4<T>
+where
+    T: Display,
+{
+    fn fmt(&self, _indent: usize, out: &mut dyn io::Write) -> io::Result<()> {
+        writeln!(out, "{}, {}, {}, {}", self.x, self.y, self.z, self.w)?;
         Ok(())
     }
 }

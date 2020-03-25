@@ -1,7 +1,11 @@
-use crate::parse::mesh::{BlendMode, Glow, GlowAttenuationMode, MeshError, MeshWarning};
+use crate::filesystem::read_convert_utf8;
+use crate::load::mesh::execution::generate_meshes;
+use crate::parse::mesh::instructions::{create_instructions, post_process};
+use crate::parse::mesh::{BlendMode, FileType, Glow, GlowAttenuationMode, MeshError, MeshWarning};
 use crate::{ColorU8RGB, ColorU8RGBA};
 use cgmath::{Array, Vector2, Vector3};
 use indexmap::IndexSet;
+use std::ffi::OsStr;
 use std::path::Path;
 
 mod execution;
@@ -177,6 +181,20 @@ impl Vertex {
     }
 }
 
-pub fn load_mesh_from_file(_file: impl AsRef<Path>) -> LoadedStaticMesh {
-    unimplemented!()
+pub fn load_mesh_from_file(file: impl AsRef<Path>) -> Option<LoadedStaticMesh> {
+    let path = file.as_ref();
+    let ext = path
+        .extension()
+        .map(OsStr::to_string_lossy)
+        .as_deref()
+        .map(str::to_lowercase);
+    let file_type = match ext.as_deref() {
+        Some("b3d") => FileType::B3D,
+        Some("csv") => FileType::CSV,
+        _ => return None, // TODO: Use result not option
+    };
+
+    let result = read_convert_utf8(path).ok()?; // TODO: Use result not option
+
+    Some(generate_meshes(post_process(create_instructions(&result, file_type))))
 }

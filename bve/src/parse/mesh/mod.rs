@@ -9,9 +9,10 @@
 //! who cares.
 
 use crate::parse::mesh::instructions::{create_instructions, post_process, InstructionList};
-use crate::parse::{FileParser, ParserResult};
+use crate::parse::{FileParser, ParserResult, PrettyPrintResult};
 pub use errors::*;
 use serde::Deserialize;
+use std::io;
 
 mod errors;
 pub mod instructions;
@@ -34,10 +35,36 @@ impl FileParser for ParsedStaticObjectB3D {
         } = post_process(create_instructions(input, FileType::B3D));
 
         ParserResult {
-            output: instructions,
+            output: ParsedStaticObject(instructions),
             warnings,
             errors,
         }
+    }
+}
+
+impl FileParser for ParsedStaticObjectCSV {
+    type Output = ParsedStaticObject;
+    type Warnings = MeshWarning;
+    type Errors = MeshError;
+
+    fn parse_from(input: &str) -> ParserResult<Self::Output, Self::Warnings, Self::Errors> {
+        let InstructionList {
+            instructions,
+            warnings,
+            errors,
+        } = post_process(create_instructions(input, FileType::CSV));
+
+        ParserResult {
+            output: ParsedStaticObject(instructions),
+            warnings,
+            errors,
+        }
+    }
+}
+
+impl PrettyPrintResult for ParsedStaticObject {
+    fn fmt(&self, indent: usize, out: &mut dyn io::Write) -> io::Result<()> {
+        self.0.fmt(indent, out)
     }
 }
 
@@ -71,6 +98,15 @@ pub enum BlendMode {
     Additive,
 }
 
+impl PrettyPrintResult for BlendMode {
+    fn fmt(&self, _indent: usize, out: &mut dyn io::Write) -> io::Result<()> {
+        match self {
+            Self::Normal => writeln!(out, "Normal"),
+            Self::Additive => writeln!(out, "Additive"),
+        }
+    }
+}
+
 /// No idea what this does, but every mesh has one or the other.
 #[repr(C)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Deserialize)]
@@ -78,4 +114,13 @@ pub enum BlendMode {
 pub enum GlowAttenuationMode {
     DivideExponent2,
     DivideExponent4,
+}
+
+impl PrettyPrintResult for GlowAttenuationMode {
+    fn fmt(&self, _indent: usize, out: &mut dyn io::Write) -> io::Result<()> {
+        match self {
+            Self::DivideExponent2 => writeln!(out, "Divide Exponent 2"),
+            Self::DivideExponent4 => writeln!(out, "Divide Exponent 4"),
+        }
+    }
 }

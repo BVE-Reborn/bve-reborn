@@ -15,12 +15,13 @@
 //! [`bve-derive::serde_vector_proxy`](../../../../bve_derive/attr.serde_vector_proxy.html)
 
 use crate::parse::mesh::{BlendMode, GlowAttenuationMode, MeshError, MeshWarning};
-use crate::parse::{util, Span};
+use crate::parse::{util, PrettyPrintResult, Span};
 use crate::{ColorU8RGB, ColorU8RGBA};
 use cgmath::{Vector2, Vector3};
 pub use creation::*;
 pub use post_processing::*;
 use serde::Deserialize;
+use std::io;
 
 mod creation;
 mod post_processing;
@@ -106,6 +107,29 @@ pub enum InstructionData {
     LoadTexture(LoadTexture),
     SetDecalTransparentColor(SetDecalTransparentColor),
     SetTextureCoordinates(SetTextureCoordinates),
+}
+
+impl PrettyPrintResult for Instruction {
+    fn fmt(&self, indent: usize, out: &mut dyn io::Write) -> io::Result<()> {
+        match &self.data {
+            InstructionData::CreateMeshBuilder(inner) => inner.fmt(indent, out),
+            InstructionData::AddVertex(inner) => inner.fmt(indent, out),
+            InstructionData::AddFace(inner) => inner.fmt(indent, out),
+            InstructionData::Cube(inner) => inner.fmt(indent, out),
+            InstructionData::Cylinder(inner) => inner.fmt(indent, out),
+            InstructionData::Translate(inner) => inner.fmt(indent, out),
+            InstructionData::Scale(inner) => inner.fmt(indent, out),
+            InstructionData::Rotate(inner) => inner.fmt(indent, out),
+            InstructionData::Shear(inner) => inner.fmt(indent, out),
+            InstructionData::Mirror(inner) => inner.fmt(indent, out),
+            InstructionData::SetColor(inner) => inner.fmt(indent, out),
+            InstructionData::SetEmissiveColor(inner) => inner.fmt(indent, out),
+            InstructionData::SetBlendMode(inner) => inner.fmt(indent, out),
+            InstructionData::LoadTexture(inner) => inner.fmt(indent, out),
+            InstructionData::SetDecalTransparentColor(inner) => inner.fmt(indent, out),
+            InstructionData::SetTextureCoordinates(inner) => inner.fmt(indent, out),
+        }
+    }
 }
 
 #[bve_derive::serde_proxy]
@@ -263,6 +287,16 @@ impl Default for Sides {
     }
 }
 
+impl PrettyPrintResult for Sides {
+    fn fmt(&self, _indent: usize, out: &mut dyn io::Write) -> io::Result<()> {
+        match self {
+            Self::Unset => writeln!(out, "Unset"),
+            Self::One => writeln!(out, "Single Sided"),
+            Self::Two => writeln!(out, "Double Sided"),
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ApplyTo {
     Unset,
@@ -274,5 +308,15 @@ impl Default for ApplyTo {
     #[must_use]
     fn default() -> Self {
         Self::Unset
+    }
+}
+
+impl PrettyPrintResult for ApplyTo {
+    fn fmt(&self, _indent: usize, out: &mut dyn io::Write) -> io::Result<()> {
+        match self {
+            Self::Unset => writeln!(out, "Unset"),
+            Self::SingleMesh => writeln!(out, "Single Mesh"),
+            Self::AllMeshes => writeln!(out, "All Meshes"),
+        }
     }
 }
