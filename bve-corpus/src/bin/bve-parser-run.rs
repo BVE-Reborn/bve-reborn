@@ -2,7 +2,7 @@ use bve::filesystem::read_convert_utf8;
 use bve::parse::animated::ParsedAnimatedObject;
 use bve::parse::ats_cfg::ParsedAtsConfig;
 use bve::parse::extensions_cfg::ParsedExtensionsCfg;
-use bve::parse::mesh::mesh_from_str;
+use bve::parse::mesh::{ParsedStaticObjectB3D, ParsedStaticObjectCSV};
 use bve::parse::panel1_cfg::ParsedPanel1Cfg;
 use bve::parse::panel2_cfg::ParsedPanel2Cfg;
 use bve::parse::sound_cfg::ParsedSoundCfg;
@@ -46,39 +46,6 @@ struct Options {
     source_file: PathBuf,
 }
 
-fn parse_mesh_b3d_csv(file: impl AsRef<Path>, options: &Options, b3d: bool) {
-    let contents = read_convert_utf8(file).expect("Must be able to read file");
-
-    let file_type = if b3d {
-        bve::parse::mesh::FileType::B3D
-    } else {
-        bve::parse::mesh::FileType::CSV
-    };
-
-    let start = Instant::now();
-    let parsed = mesh_from_str(&contents, file_type);
-    let duration = Instant::now() - start;
-
-    println!("Duration: {:.4}", duration.as_secs_f32());
-
-    if options.print_result {
-        println!("{:#?}", &parsed);
-    }
-
-    if options.errors {
-        println!("Warnings:");
-        for e in &parsed.warnings {
-            println!("\t{} {:?}", e.location.line.map(|v| v as i64).unwrap_or(-1), e.kind)
-        }
-        println!("Errors:");
-        for e in &parsed.errors {
-            println!("\t{} {:?}", e.location.line.map(|v| v as i64).unwrap_or(-1), e.kind)
-        }
-    } else {
-        println!("Errors: {}", parsed.errors.len());
-    }
-}
-
 fn parse_file<T: FileParser>(source: &Path, options: &Options) {
     let contents = read_convert_utf8(source).expect("Must be able to read file");
 
@@ -118,8 +85,8 @@ fn main() {
 
     match options.file_type {
         FileType::AtsCfg => parse_file::<ParsedAtsConfig>(&options.source_file, &options),
-        FileType::B3D => parse_mesh_b3d_csv(&options.source_file, &options, true),
-        FileType::CSV => parse_mesh_b3d_csv(&options.source_file, &options, false),
+        FileType::B3D => parse_file::<ParsedStaticObjectB3D>(&options.source_file, &options),
+        FileType::CSV => parse_file::<ParsedStaticObjectCSV>(&options.source_file, &options),
         FileType::Animated => parse_file::<ParsedAnimatedObject>(&options.source_file, &options),
         FileType::TrainDat => parse_file::<ParsedTrainDat>(&options.source_file, &options),
         FileType::ExtensionsCfg => parse_file::<ParsedExtensionsCfg>(&options.source_file, &options),

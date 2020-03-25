@@ -4,7 +4,7 @@ use bve::filesystem::read_convert_utf8;
 use bve::parse::animated::ParsedAnimatedObject;
 use bve::parse::ats_cfg::ParsedAtsConfig;
 use bve::parse::extensions_cfg::ParsedExtensionsCfg;
-use bve::parse::mesh::{mesh_from_str, FileType, MeshErrorKind, ParsedStaticObject};
+use bve::parse::mesh::{FileType, MeshErrorKind, ParsedStaticObject, ParsedStaticObjectB3D, ParsedStaticObjectCSV};
 use bve::parse::panel1_cfg::ParsedPanel1Cfg;
 use bve::parse::panel2_cfg::ParsedPanel2Cfg;
 use bve::parse::sound_cfg::ParsedSoundCfg;
@@ -102,20 +102,8 @@ fn processing_loop(
         USE_DEFAULT_PANIC_HANLDER.with(|v| *v.borrow_mut() = false);
         let panicked = std::panic::catch_unwind(|| match &file_ref.kind {
             FileKind::AtsCfg => run_parser::<ParsedAtsConfig>(&file_contents, &shared.ats_cfg.finished),
-            FileKind::ModelCsv => {
-                let ParsedStaticObject { .. } = mesh_from_str(&file_contents, FileType::CSV);
-
-                shared.model_csv.finished.fetch_add(1, Ordering::AcqRel);
-
-                ParseResult::Success // TODO: fix
-            }
-            FileKind::ModelB3d => {
-                let ParsedStaticObject { .. } = mesh_from_str(&file_contents, FileType::B3D);
-
-                shared.model_b3d.finished.fetch_add(1, Ordering::AcqRel);
-
-                ParseResult::Success // TODO: fix
-            }
+            FileKind::ModelCsv => run_parser::<ParsedStaticObjectCSV>(&file_contents, &shared.model_csv.finished),
+            FileKind::ModelB3d => run_parser::<ParsedStaticObjectB3D>(&file_contents, &shared.model_b3d.finished),
             FileKind::ModelAnimated => {
                 run_parser::<ParsedAnimatedObject>(&file_contents, &shared.model_animated.finished)
             }
