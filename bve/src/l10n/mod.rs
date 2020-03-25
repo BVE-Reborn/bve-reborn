@@ -82,6 +82,12 @@ impl Display for BVELanguage {
 #[macro_export]
 macro_rules! localize {
     // Localize in english for logging
+    (english, $name:literal, $($key:literal -> $value:expr),+ $(,)*) => {
+        $crate::localize!($crate::l10n::ENGLISH_LOCALE, $name, $($key -> $value),+)
+    };
+    (english, $name:literal) => {
+        $crate::localize!($crate::l10n::ENGLISH_LOCALE, $name)
+    };
     (@$cond:expr, $name:literal, $($key:literal -> $value:expr),+ $(,)*) => {
         if $cond == $crate::l10n::ForceEnglish::English {
             $crate::localize!($crate::l10n::ENGLISH_LOCALE, $name, $($key -> $value),+)
@@ -147,11 +153,6 @@ mod test {
                 loc_test!(language, "program-name");
                 loc_test!(language, "language-code");
                 loc_test!(language, "welcome", "name" -> "MyUsername");
-
-                loc_test!(language, "kvp-unknown-section", "section" -> "whoops");
-                loc_test!(language, "kvp-unknown-field", "field" -> "whoops");
-                loc_test!(language, "kvp-too-many-fields", "number" -> 1, "total" -> 0);
-                loc_test!(language, "kvp-invalid-value", "value" -> "whoops");
             }
         };
     }
