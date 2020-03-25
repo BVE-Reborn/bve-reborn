@@ -16,7 +16,8 @@ struct ResultCollection {
 #[derive(Debug, Default, Clone, Serialize)]
 struct SingleFileCollection {
     successes: Vec<PathBuf>,
-    failures: Vec<Failure>,
+    warnings: Vec<Failure>,
+    errors: Vec<Failure>,
     panics: Vec<Panic>,
 }
 
@@ -24,7 +25,7 @@ struct SingleFileCollection {
 struct Failure {
     count: u64,
     path: PathBuf,
-    error: String,
+    issues: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -40,11 +41,28 @@ pub fn receive_results(options: &Options, result_source: Receiver<FileResult>) {
         let single_file_result = results.file_types.entry(result.kind).or_default();
         match result.result {
             ParseResult::Success => single_file_result.successes.push(result.path),
-            ParseResult::Errors { count, error } => single_file_result.failures.push(Failure {
-                error: error.to_string(),
-                count,
-                path: result.path,
-            }),
+            ParseResult::Issues { warnings, errors } => {
+                if !warnings.is_empty() {
+                    single_file_result.warnings.push(Failure {
+                        count: warnings.len() as u64,
+                        path: result.path.clone(),
+                        issues: warnings
+                            .into_iter()
+                            .map(|err| format!("{} - {}", err.line, err.description_english))
+                            .collect(),
+                    })
+                }
+                if !errors.is_empty() {
+                    single_file_result.errors.push(Failure {
+                        count: errors.len() as u64,
+                        path: result.path.clone(),
+                        issues: errors
+                            .into_iter()
+                            .map(|err| format!("{} - {}", err.line, err.description_english))
+                            .collect(),
+                    })
+                }
+            }
             ParseResult::Panic { cause } => single_file_result.panics.push(Panic {
                 cause,
                 path: result.path,
@@ -56,22 +74,32 @@ pub fn receive_results(options: &Options, result_source: Receiver<FileResult>) {
         }
     }
 
-    let (panics, failures, successes) = results
+    let (panics, warnings, errors, successes) = results
         .file_types
         .values_mut()
         .map(|single| {
             single
-                .failures
+                .warnings
                 .sort_by_cached_key(|v| Reverse((v.count, v.path.clone())));
+            single.errors.sort_by_cached_key(|v| Reverse((v.count, v.path.clone())));
 
-            (single.panics.len(), single.failures.len(), single.successes.len())
+            (
+                single.panics.len(),
+                single.warnings.iter().map(|f| f.count).sum(),
+                single.errors.iter().map(|f| f.count).sum(),
+                single.successes.len(),
+            )
         })
-        .fold((0, 0, 0), |(acc_p, acc_f, acc_s), (p, f, s)| {
-            (acc_p + p, acc_f + f, acc_s + s)
-        });
+        .fold(
+            (0, 0, 0, 0),
+            |(acc_p, acc_w, acc_e, acc_s): (usize, u64, u64, usize), (p, w, e, s): (usize, u64, u64, usize)| {
+                (acc_p + p, acc_w + w, acc_e + e, acc_s + s)
+            },
+        );
 
     println!("Panics: {}", panics);
-    println!("Failures: {}", failures);
+    println!("Warnings: {}", warnings);
+    println!("Errors: {}", errors);
     println!("Successes: {}", successes);
 
     if let Some(output) = &options.output {

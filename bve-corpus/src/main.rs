@@ -110,9 +110,8 @@ enum ParseResult {
     Finish,
     Success,
     Issues {
-        count: u64,
         warnings: Vec<UserErrorData>,
-        error: Vec<UserErrorData>,
+        errors: Vec<UserErrorData>,
     },
     Panic {
         cause: String,
