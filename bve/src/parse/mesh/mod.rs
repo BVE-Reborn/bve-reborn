@@ -1,12 +1,4 @@
 //! B3D/CSV Static Meshes
-//!
-//! There are two ways to make a mesh from a file. First is to directly
-//! call [`mesh_from_str`]. This is often the easiest as it takes care of
-//! parsing, post processing, and execution automatically. The other way is by
-//! manually calling the functions in [`instructions`].
-//!
-//! There is currently no way to stream from disk but these files are so small
-//! who cares.
 
 use crate::parse::mesh::instructions::{create_instructions, post_process, InstructionList};
 use crate::parse::{FileParser, ParserResult, PrettyPrintResult};

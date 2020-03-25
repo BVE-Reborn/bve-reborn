@@ -7,7 +7,7 @@
 //! - [`create_instructions`] takes a `&str` and parses it to instructions using a custom serde routine.
 //! - [`post_process`] postprocesses away difficult to execute instructions. Must be called before execution of the
 //!   instructions.
-//! - [`generate_meshes`] executes the instructions to create a mesh.
+//! - [`crate::load::mesh::generate_meshes`] executes the instructions to create a mesh.
 //!
 //! The rest of the module is various data structures to support that.
 //!
