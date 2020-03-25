@@ -112,8 +112,8 @@ impl PrettyPrintResult for TextureOverride {
             out,
             "{}",
             match self {
-                TextureOverride::None => "None",
-                TextureOverride::Timetable => "Timetable",
+                Self::None => "None",
+                Self::Timetable => "Timetable",
             },
         )
     }

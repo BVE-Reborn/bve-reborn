@@ -240,6 +240,7 @@ pub fn kvp_file(item: TokenStream) -> TokenStream {
             }
         }
         #[automatically_derived]
+        #[allow(clippy::used_underscore_binding)]
         impl crate::parse::PrettyPrintResult for #ident {
             fn fmt(&self, indent: usize, out: &mut dyn ::std::io::Write) -> ::std::io::Result<()> {
                 writeln!(out, #ident_str_colon)?;
@@ -431,6 +432,7 @@ pub fn kvp_section(item: TokenStream) -> TokenStream {
             }
         }
         #[automatically_derived]
+        #[allow(clippy::used_underscore_binding)]
         impl crate::parse::PrettyPrintResult for #ident {
             fn fmt(&self, indent: usize, out: &mut dyn ::std::io::Write) -> ::std::io::Result<()> {
                 writeln!(out)?;
@@ -474,6 +476,7 @@ pub fn kvp_value(item: TokenStream) -> TokenStream {
             }
         }
         #[automatically_derived]
+        #[allow(clippy::used_underscore_binding)]
         impl crate::parse::PrettyPrintResult for #ident {
             fn fmt(&self, indent: usize, out: &mut dyn ::std::io::Write) -> ::std::io::Result<()> {
                 writeln!(out)?;
@@ -599,6 +602,7 @@ pub fn kvp_enum_numbers(item: TokenStream) -> TokenStream {
 
 
         #[automatically_derived]
+        #[allow(clippy::used_underscore_binding)]
         impl crate::parse::PrettyPrintResult for #ident {
             fn fmt(&self, indent: usize, out: &mut dyn ::std::io::Write) -> ::std::io::Result<()> {
                 match self {

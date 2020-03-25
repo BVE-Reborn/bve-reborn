@@ -42,6 +42,7 @@
 #![allow(clippy::result_expect_used)]
 #![allow(clippy::shadow_reuse)]
 #![allow(clippy::shadow_same)]
+#![allow(clippy::string_add)]
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unimplemented)] // Specific use case proc macro, lots of holes
 #![allow(clippy::unreachable)]

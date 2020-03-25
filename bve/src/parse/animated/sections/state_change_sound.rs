@@ -64,8 +64,8 @@ impl PrettyPrintResult for PlayOn {
             out,
             "{}",
             match self {
-                PlayOn::Silent => "Silent",
-                PlayOn::Play => "Play",
+                Self::Silent => "Silent",
+                Self::Play => "Play",
             },
         )
     }

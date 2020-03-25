@@ -454,6 +454,7 @@ struct VectorProxyField {
     conversion: TokenStream2,
 }
 
+#[allow(clippy::fallible_impl_from)]
 impl From<VectorProxyField> for PrettyPrintField {
     fn from(f: VectorProxyField) -> Self {
         Self {

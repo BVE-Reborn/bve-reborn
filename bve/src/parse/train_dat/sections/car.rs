@@ -75,8 +75,8 @@ impl FromKVPValue for FrontalArea {
 impl PrettyPrintResult for FrontalArea {
     fn fmt(&self, _indent: usize, out: &mut dyn io::Write) -> io::Result<()> {
         match self {
-            FrontalArea::Calculated => write!(out, "Calculated"),
-            FrontalArea::Constant(v) => write!(out, "Constant: {}", v),
+            Self::Calculated => write!(out, "Calculated"),
+            Self::Constant(v) => write!(out, "Constant: {}", v),
         }
     }
 }

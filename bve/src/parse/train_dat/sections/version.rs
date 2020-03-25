@@ -41,15 +41,16 @@ impl FromKVPValue for Version {
 
 impl PrettyPrintResult for Version {
     fn fmt(&self, _indent: usize, out: &mut dyn io::Write) -> io::Result<()> {
-        out.write(
+        write!(
+            out,
+            "{}",
             match self {
-                Version::BVE120 => "BVE1200000",
-                Version::BVE121 => "BVE1210000",
-                Version::BVE122 => "BVE1220000",
-                Version::BVE2 => "BVE2000000",
-                Version::OpenBVE { version } => version.as_str(),
+                Self::BVE120 => "BVE1200000",
+                Self::BVE121 => "BVE1210000",
+                Self::BVE122 => "BVE1220000",
+                Self::BVE2 => "BVE2000000",
+                Self::OpenBVE { version } => version.as_str(),
             }
-            .as_bytes(),
         )?;
         Ok(())
     }

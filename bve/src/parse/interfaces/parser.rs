@@ -52,7 +52,7 @@ where
     T: KVPFileParser,
 {
     type Output = Self;
-    type Warnings = T::Warnings;
+    type Warnings = <Self as FromKVPFile>::Warnings;
     type Errors = ();
 
     fn parse_from(input: &str) -> ParserResult<Self::Output, Self::Warnings, Self::Errors> {

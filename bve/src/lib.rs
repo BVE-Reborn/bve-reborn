@@ -22,6 +22,7 @@
 #![allow(clippy::as_conversions)]
 #![allow(clippy::decimal_literal_representation)]
 #![allow(clippy::else_if_without_else)]
+#![allow(clippy::fallible_impl_from)] // This fails horribly when you try to panic in a macro inside a From impl
 #![allow(clippy::float_arithmetic)]
 #![allow(clippy::float_cmp_const)]
 #![allow(clippy::implicit_return)]
@@ -40,6 +41,7 @@
 #![allow(clippy::result_expect_used)]
 #![allow(clippy::shadow_reuse)]
 #![allow(clippy::shadow_same)]
+#![allow(clippy::string_add)]
 #![allow(clippy::unreachable)]
 #![allow(clippy::wildcard_enum_match_arm)]
 // CLion is having a fit about panic not existing

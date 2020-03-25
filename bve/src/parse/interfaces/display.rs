@@ -4,6 +4,7 @@ use cgmath::{Vector2, Vector3, Vector4};
 use itertools::Itertools;
 use std::collections::HashMap;
 use std::fmt::Display;
+use std::hash::BuildHasher;
 use std::io;
 
 /// A display trait for printing BVE Files in a Human Readable format.
@@ -44,7 +45,7 @@ use std::io;
 /// \v1 \v1 \v1 1: Blah \v1
 /// ```
 ///
-/// A typical PrettyPrintResult implementation looks like this:
+/// A typical `PrettyPrintResult` implementation looks like this:
 /// 1. If you are the top level object, you need to print your own label (i.e. `ParsedFile:`), and a new line.
 /// 2. Depending on the type of object you are, you'll do one of three things:
 ///   a. If you want to use multiple lines, print a newline.
@@ -56,9 +57,17 @@ use std::io;
 ///   c. Immediately dispatch to subobject's impl with an increased indent
 pub trait PrettyPrintResult {
     /// Prints as is, no indent handling
+    ///
+    /// # Errors
+    ///
+    /// Errors when any of the write operations to the `out` parameter fail.
     fn fmt(&self, indent: usize, out: &mut dyn io::Write) -> io::Result<()>;
 
     /// Prints with an indent at the beginning
+    ///
+    /// # Errors
+    ///
+    /// Errors when any of the write operations to the `out` parameter fail.
     fn fmt_indent(&self, indent: usize, out: &mut dyn io::Write) -> io::Result<()> {
         util::indent(indent, out)?;
         self.fmt(indent, out)
@@ -148,7 +157,7 @@ where
     }
 }
 
-impl<V> PrettyPrintResult for HashMap<u64, V>
+impl<V, H: BuildHasher> PrettyPrintResult for HashMap<u64, V, H>
 where
     V: PrettyPrintResult,
 {

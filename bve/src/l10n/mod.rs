@@ -111,26 +111,32 @@ macro_rules! localize {
     };
     // Localize over the locale provided as first argument, taken by reference.
     ($locale:expr, $name:literal, $($key:literal -> $value:expr),+ $(,)*) => {{
-        let mut errors = std::vec::Vec::new();
-        let mut args = std::collections::HashMap::new();
-        $(
-            args.insert($key, fluent::FluentValue::from($value));
-        )*
-        let guard = &$locale;
-        let msg = guard.bundle.get_message($name).expect("Missing translation name");
-        let pattern = msg.value.expect("Message has no pattern");
-        let formatted: std::string::String = guard.bundle.format_pattern(&pattern, Some(&args), &mut errors).to_string();
-        assert_eq!(errors, std::vec::Vec::new());
-        formatted
+        #[allow(clippy::fallible_impl_from)]
+        {
+            let mut errors = std::vec::Vec::new();
+            let mut args = std::collections::HashMap::new();
+            $(
+                args.insert($key, fluent::FluentValue::from($value));
+            )*
+            let guard = &$locale;
+            let msg = guard.bundle.get_message($name).expect("Missing translation name");
+            let pattern = msg.value.expect("Message has no pattern");
+            let formatted: std::string::String = guard.bundle.format_pattern(&pattern, Some(&args), &mut errors).to_string();
+            assert_eq!(errors, std::vec::Vec::new());
+            formatted
+        }
     }};
     ($locale:expr, $name:literal) => {{
-        let mut errors = std::vec::Vec::new();
-        let guard = &$locale;
-        let msg = guard.bundle.get_message($name).expect("Missing translation name");
-        let pattern = msg.value.expect("Message has no pattern");
-        let formatted: std::string::String = guard.bundle.format_pattern(&pattern, None, &mut errors).to_string();
-        assert_eq!(errors, std::vec::Vec::new());
-        formatted
+        #[allow(clippy::fallible_impl_from)]
+        {
+            let mut errors = std::vec::Vec::new();
+            let guard = &$locale;
+            let msg = guard.bundle.get_message($name).expect("Missing translation name");
+            let pattern = msg.value.expect("Message has no pattern");
+            let formatted: std::string::String = guard.bundle.format_pattern(&pattern, None, &mut errors).to_string();
+            assert_eq!(errors, std::vec::Vec::new());
+            formatted
+        }
     }};
 }
 
