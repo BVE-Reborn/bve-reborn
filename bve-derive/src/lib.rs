@@ -47,8 +47,6 @@
 #![allow(clippy::unimplemented)] // Specific use case proc macro, lots of holes
 #![allow(clippy::unreachable)]
 #![allow(clippy::wildcard_enum_match_arm)]
-// CLion is having a fit about panic not existing
-#![feature(core_panic)]
 
 extern crate proc_macro;
 
