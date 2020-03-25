@@ -19,15 +19,11 @@ use crate::parse::{util, Span};
 use crate::{ColorU8RGB, ColorU8RGBA};
 use cgmath::{Vector2, Vector3};
 pub use creation::*;
-pub use execution::*;
 pub use post_processing::*;
 use serde::Deserialize;
 
 mod creation;
-mod execution;
 mod post_processing;
-#[cfg(test)]
-mod tests;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct InstructionList {

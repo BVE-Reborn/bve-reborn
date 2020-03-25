@@ -53,5 +53,6 @@ mod datatypes;
 pub mod filesystem;
 mod iter;
 pub mod l10n;
+pub mod load;
 pub mod log;
 pub mod parse;
