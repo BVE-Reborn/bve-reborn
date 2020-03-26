@@ -17,6 +17,7 @@ pub trait UserError {
     fn description(&self, en: ForceEnglish) -> String;
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct UserErrorData {
     pub category: UserErrorCategory,
     pub line: u64,
@@ -24,6 +25,8 @@ pub struct UserErrorData {
     pub description_english: String,
 }
 
+#[repr(C)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum UserErrorCategory {
     Warning,
     Error,

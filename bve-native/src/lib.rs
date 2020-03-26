@@ -86,6 +86,7 @@
 #![allow(clippy::wildcard_enum_match_arm)]
 
 pub mod filesystem;
+pub mod interfaces;
 pub mod load;
 pub mod panic;
 pub mod parse;
@@ -101,6 +102,7 @@ use std::ptr::null_mut;
 ///
 /// Reading from the `value` member is undefined behavior if `exists` is false. In practice it is zeroed.
 #[repr(C)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct COption<T> {
     /// Actual value inside the option. Reading this is undefined behavior if exists is false.
     pub value: T,
@@ -197,8 +199,13 @@ pub extern "C" fn bve_init() {
     panic::init_panic_handler();
 }
 
+/// Converts a given owning string to a owning C pointer
+fn string_to_owned_ptr(input: String) -> *mut c_char {
+    CString::new(input).map(CString::into_raw).unwrap_or(null_mut())
+}
+
 /// Converts a given non-owning slice to a owning C pointer
-fn string_to_owned_ptr(input: &str) -> *mut c_char {
+fn str_to_owned_ptr(input: &str) -> *mut c_char {
     CString::new(input).map(CString::into_raw).unwrap_or(null_mut())
 }
 
@@ -221,6 +228,20 @@ unsafe fn owned_ptr_to_string(input: *const c_char) -> String {
 /// - `input` must be a valid pointer. It must be zero terminated.
 unsafe fn unowned_ptr_to_str(input: &*const c_char) -> Cow<'_, str> {
     CStr::from_ptr(*input).to_string_lossy()
+}
+
+/// Copies a non-owning pointer to a new owning pointer. Does not need to be utf-8, but needs to be
+/// null terminated.
+///
+/// # Safety
+///
+/// - `input` must be a valid null-terminated string. May be nullptr.
+/// - Returned string must be deallocated by [`bve_delete_string`] or equivalent
+unsafe fn copy_string(input: *const c_char) -> *mut c_char {
+    if input.is_null() {
+        return null_mut();
+    }
+    CStr::from_ptr(input).to_owned().into_raw()
 }
 
 /// Takes an owning pointer to a rust-generated string and deletes it.

@@ -6,6 +6,7 @@ pub mod mesh;
 
 /// C safe wrapper for [`Span`](bve::parse::Span).
 #[repr(C)]
+#[derive(Debug, Copy, Clone)]
 pub struct Span {
     pub line: COption<u64>,
 }

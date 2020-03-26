@@ -1,5 +1,5 @@
 use crate::parse::mesh::{BlendMode, Glow, Mesh_Error, Mesh_Warning};
-use crate::{string_to_owned_ptr, unowned_ptr_to_str, COption, CVector};
+use crate::{str_to_owned_ptr, unowned_ptr_to_str, COption, CVector};
 use bve::load::mesh;
 use bve::{ColorU8RGB, ColorU8RGBA};
 use bve_derive::c_interface;
@@ -54,7 +54,7 @@ impl Into<mesh::LoadedStaticMesh> for Loaded_Static_Mesh {
 ///   invariants of all of rust's equivalent datastructure must be upheld.
 #[c_interface]
 pub unsafe extern "C" fn bve_delete_loaded_static_mesh(object: *mut Loaded_Static_Mesh) {
-    if object != null_mut() {
+    if object.is_null() {
         let _reassembled: mesh::LoadedStaticMesh = (*Box::from_raw(object)).into();
         // Object safely deleted
     }
@@ -126,7 +126,7 @@ pub unsafe extern "C" fn BVE_Texture_Set_add(ptr: *mut Texture_Set, value: *cons
 pub unsafe extern "C" fn BVE_Texture_Set_lookup(ptr: *const Texture_Set, idx: libc::size_t) -> *const c_char {
     let result = (*ptr).inner.lookup(idx);
     match result {
-        Some(s) => string_to_owned_ptr(s),
+        Some(s) => str_to_owned_ptr(s),
         None => null(),
     }
 }
