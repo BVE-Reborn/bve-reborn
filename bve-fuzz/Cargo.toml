@@ -1,7 +1,7 @@
 [package]
 name = "bve-fuzz"
 version = "0.0.1"
-description = "Remaking OpenBVE using a modern architecture, using Unity and Rust."
+description = "Remaking OpenBVE using a modern architecture, using Rust."
 license = "MPL-2.0"
 authors = ["Connor Fitzgerald <connorwadefitzgerald@gmail.com>"]
 edition = "2018"

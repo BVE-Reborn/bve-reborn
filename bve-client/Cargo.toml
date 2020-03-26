@@ -16,3 +16,4 @@ keywords = ["bve", "rex", "engine"]
 
 [dependencies]
 bve = { version = "0.0.1", path = "../bve" }
+bve-render = { version = "0.0.1", path = "../bve-render" }
