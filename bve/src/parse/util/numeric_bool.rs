@@ -1,8 +1,5 @@
-use serde::de;
-use serde::de::Visitor;
-use serde::{Deserialize, Deserializer};
-use std::fmt;
-use std::fmt::Formatter;
+use serde::{de, de::Visitor, Deserialize, Deserializer};
+use std::{fmt, fmt::Formatter};
 
 #[derive(Debug, Copy, Clone, PartialOrd, PartialEq, Default)]
 pub struct LooseNumericBool(pub bool);

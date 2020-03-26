@@ -1,10 +1,10 @@
 use num_traits::Zero;
-use serde::de::Visitor;
-use serde::export::PhantomData;
-use serde::{Deserialize, Deserializer};
-use std::fmt;
-use std::fmt::{Display, Formatter};
-use std::str::FromStr;
+use serde::{de::Visitor, export::PhantomData, Deserialize, Deserializer};
+use std::{
+    fmt,
+    fmt::{Display, Formatter},
+    str::FromStr,
+};
 
 #[derive(Debug, Copy, Clone, PartialOrd, PartialEq, Default)]
 #[repr(transparent)]

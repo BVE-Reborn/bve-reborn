@@ -4,6 +4,7 @@ pub use comment_strip::*;
 pub use loose_numbers::*;
 pub use numeric_bool::*;
 pub use span::*;
+use std::io;
 
 mod comment_strip;
 mod loose_numbers;
@@ -44,4 +45,8 @@ pub(in crate::parse) const fn some_one_f32() -> Option<LooseNumber<f32>> {
 
 pub(in crate::parse) fn some_string() -> Option<String> {
     Some(String::new())
+}
+
+pub(in crate::parse) fn indent(count: usize, out: &mut dyn io::Write) -> io::Result<()> {
+    out.write_all(&vec![b' '; count * 4])
 }

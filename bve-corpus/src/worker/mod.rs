@@ -1,28 +1,40 @@
-use crate::panic::{PANIC, USE_DEFAULT_PANIC_HANLDER};
-use crate::{File, FileKind, FileResult, ParseResult, SharedData};
-use bve::filesystem::read_convert_utf8;
-use bve::parse::animated::parse_animated_file;
-use bve::parse::ats_cfg::parse_ats_cfg;
-use bve::parse::extensions_cfg::parse_extensions_cfg;
-use bve::parse::kvp::parse_kvp_file;
-use bve::parse::mesh::{mesh_from_str, FileType, MeshErrorKind, ParsedStaticObject};
-use bve::parse::panel1_cfg::parse_panel1_cfg;
-use bve::parse::panel2_cfg::parse_panel2_cfg;
-use bve::parse::sound_cfg::parse_sound_cfg;
-use bve::parse::train_dat::parse_train_dat;
+use crate::{
+    panic::{PANIC, USE_DEFAULT_PANIC_HANLDER},
+    File, FileKind, FileResult, ParseResult, SharedData,
+};
+use bve::{
+    filesystem::read_convert_utf8,
+    parse::{
+        animated::ParsedAnimatedObject,
+        ats_cfg::ParsedAtsConfig,
+        extensions_cfg::ParsedExtensionsCfg,
+        mesh::{FileType, MeshErrorKind, ParsedStaticObject, ParsedStaticObjectB3D, ParsedStaticObjectCSV},
+        panel1_cfg::ParsedPanel1Cfg,
+        panel2_cfg::ParsedPanel2Cfg,
+        sound_cfg::ParsedSoundCfg,
+        train_dat::ParsedTrainDat,
+        FileParser, ParserResult, UserError,
+    },
+};
 use core::panicking::panic;
-use crossbeam::atomic::AtomicCell;
-use crossbeam::channel::{Receiver, Sender};
+use crossbeam::{
+    atomic::AtomicCell,
+    channel::{Receiver, Sender},
+};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use itertools::Itertools;
-use std::fmt::Debug;
-use std::fs::read_to_string;
-use std::io::Write;
-use std::path::{Path, PathBuf};
-use std::sync::atomic::Ordering;
-use std::sync::{Arc, Mutex};
-use std::thread::JoinHandle;
-use std::time::Instant;
+use std::{
+    fmt::Debug,
+    fs::read_to_string,
+    io::Write,
+    path::{Path, PathBuf},
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc, Mutex,
+    },
+    thread::JoinHandle,
+    time::Instant,
+};
 
 pub struct WorkerThread {
     pub handle: JoinHandle<()>,
@@ -62,16 +74,17 @@ fn read_from_file(filename: impl AsRef<Path>) -> String {
     }
 }
 
-fn success_or_errors<E>(errors: Vec<E>) -> ParseResult
-where
-    E: Debug,
-{
-    if errors.is_empty() {
+fn run_parser<P: FileParser>(input: &str, counter: &AtomicU64) -> ParseResult {
+    let ParserResult { warnings, errors, .. } = P::parse_from(input);
+
+    counter.fetch_add(1, Ordering::AcqRel);
+
+    if warnings.is_empty() && errors.is_empty() {
         ParseResult::Success
     } else {
-        ParseResult::Errors {
-            count: errors.len() as u64,
-            error: anyhow::Error::msg(errors.into_iter().map(|v| format!("{:?}", v)).join(",")),
+        ParseResult::Issues {
+            warnings: warnings.iter().map(UserError::to_data).collect(),
+            errors: errors.iter().map(UserError::to_data).collect(),
         }
     }
 }
@@ -100,69 +113,19 @@ fn processing_loop(
 
         USE_DEFAULT_PANIC_HANLDER.with(|v| *v.borrow_mut() = false);
         let panicked = std::panic::catch_unwind(|| match &file_ref.kind {
-            FileKind::AtsCfg => {
-                let (_animated, warnings) = parse_ats_cfg(&file_contents);
-
-                shared.ats_cfg.finished.fetch_add(1, Ordering::AcqRel);
-
-                success_or_errors(warnings)
-            }
-            FileKind::ModelCsv => {
-                let ParsedStaticObject { errors, .. } = mesh_from_str(&file_contents, FileType::CSV);
-
-                shared.model_csv.finished.fetch_add(1, Ordering::AcqRel);
-
-                success_or_errors(errors)
-            }
-            FileKind::ModelB3d => {
-                let ParsedStaticObject { errors, .. } = mesh_from_str(&file_contents, FileType::B3D);
-
-                shared.model_b3d.finished.fetch_add(1, Ordering::AcqRel);
-
-                success_or_errors(errors)
-            }
+            FileKind::AtsCfg => run_parser::<ParsedAtsConfig>(&file_contents, &shared.ats_cfg.finished),
+            FileKind::ModelCsv => run_parser::<ParsedStaticObjectCSV>(&file_contents, &shared.model_csv.finished),
+            FileKind::ModelB3d => run_parser::<ParsedStaticObjectB3D>(&file_contents, &shared.model_b3d.finished),
             FileKind::ModelAnimated => {
-                let (_animated, warnings) = parse_animated_file(&file_contents);
-
-                shared.model_animated.finished.fetch_add(1, Ordering::AcqRel);
-
-                success_or_errors(warnings)
+                run_parser::<ParsedAnimatedObject>(&file_contents, &shared.model_animated.finished)
             }
-            FileKind::TrainDat => {
-                let (_parsed, warnings) = parse_train_dat(&file_contents);
-
-                shared.train_dat.finished.fetch_add(1, Ordering::AcqRel);
-
-                success_or_errors(warnings)
-            }
+            FileKind::TrainDat => run_parser::<ParsedTrainDat>(&file_contents, &shared.train_dat.finished),
             FileKind::ExtensionsCfg => {
-                let (_parsed, warnings) = parse_extensions_cfg(&file_contents);
-
-                shared.extensions_cfg.finished.fetch_add(1, Ordering::AcqRel);
-
-                success_or_errors(warnings)
+                run_parser::<ParsedExtensionsCfg>(&file_contents, &shared.extensions_cfg.finished)
             }
-            FileKind::Panel1Cfg => {
-                let (_parsed, warnings) = parse_panel1_cfg(&file_contents);
-
-                shared.panel1_cfg.finished.fetch_add(1, Ordering::AcqRel);
-
-                success_or_errors(warnings)
-            }
-            FileKind::Panel2Cfg => {
-                let (_parsed, warnings) = parse_panel2_cfg(&file_contents);
-
-                shared.panel2_cfg.finished.fetch_add(1, Ordering::AcqRel);
-
-                success_or_errors(warnings)
-            }
-            FileKind::SoundCfg => {
-                let (_parsed, warnings) = parse_sound_cfg(&file_contents);
-
-                shared.sound_cfg.finished.fetch_add(1, Ordering::AcqRel);
-
-                success_or_errors(warnings)
-            }
+            FileKind::Panel1Cfg => run_parser::<ParsedPanel1Cfg>(&file_contents, &shared.panel1_cfg.finished),
+            FileKind::Panel2Cfg => run_parser::<ParsedPanel2Cfg>(&file_contents, &shared.panel2_cfg.finished),
+            FileKind::SoundCfg => run_parser::<ParsedSoundCfg>(&file_contents, &shared.sound_cfg.finished),
             _ => ParseResult::Success,
         });
         USE_DEFAULT_PANIC_HANLDER.with(|v| *v.borrow_mut() = true);

@@ -1,5 +1,6 @@
-use crate::parse::kvp::FromKVPValue;
+use crate::parse::{kvp::FromKVPValue, PrettyPrintResult};
 use bve_derive::{FromKVPSection, FromKVPValueEnumNumbers};
+use std::io;
 
 #[derive(Debug, Clone, PartialEq, FromKVPSection)]
 pub struct CarSection {
@@ -67,5 +68,14 @@ impl FromKVPValue for FrontalArea {
             Some(v) if v >= 0.0 => Self::Constant(v),
             _ => Self::Calculated,
         })
+    }
+}
+
+impl PrettyPrintResult for FrontalArea {
+    fn fmt(&self, _indent: usize, out: &mut dyn io::Write) -> io::Result<()> {
+        match self {
+            Self::Calculated => write!(out, "Calculated"),
+            Self::Constant(v) => write!(out, "Constant: {}", v),
+        }
     }
 }

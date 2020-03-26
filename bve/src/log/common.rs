@@ -1,10 +1,8 @@
-use serde::export::fmt::Error;
-use serde::export::Formatter;
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::fmt::Display;
-use std::thread::ThreadId;
-use std::time::Instant;
+use serde::{
+    export::{fmt::Error, Formatter},
+    Deserialize, Serialize,
+};
+use std::{collections::HashMap, fmt::Display, thread::ThreadId, time::Instant};
 use tracing::Id;
 use tracing_core::Metadata;
 

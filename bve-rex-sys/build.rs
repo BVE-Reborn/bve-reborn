@@ -43,9 +43,11 @@ impl FileTypes {
     pub fn c(&self) -> bool {
         (*self == Self::C) | (*self == Self::All)
     }
+
     pub fn cpp(&self) -> bool {
         (*self == Self::Cpp) | (*self == Self::All)
     }
+
     pub fn headers(&self) -> bool {
         *self == Self::All
     }

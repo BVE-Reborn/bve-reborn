@@ -1,4 +1,8 @@
-use crate::parse::Span;
+use crate::{
+    l10n::ForceEnglish,
+    localize,
+    parse::{Span, UserError, UserErrorCategory},
+};
 
 /// A warning in the parsing or evaluation of a mesh.
 #[derive(Debug, Clone, PartialEq)]
@@ -14,6 +18,24 @@ pub struct MeshWarning {
 pub enum MeshWarningKind {
     /// Instruction no longer does anything anymore
     UselessInstruction { name: String },
+}
+
+impl UserError for MeshWarning {
+    fn category(&self) -> UserErrorCategory {
+        UserErrorCategory::Warning
+    }
+
+    fn line(&self) -> u64 {
+        self.location.line.unwrap_or(0)
+    }
+
+    fn description(&self, en: ForceEnglish) -> String {
+        match &self.kind {
+            MeshWarningKind::UselessInstruction { name } => {
+                localize!(@en, "mesh-warning-useless-instruction", "name" -> name.as_str())
+            }
+        }
+    }
 }
 
 /// A single error in the parsing or evaluation of a mesh.
@@ -44,9 +66,35 @@ pub enum MeshErrorKind {
     GenericCSV {
         /// Message provided by CSV Library
         msg: String,
+        /// Message in english
+        msg_english: String,
     },
     /// Unknown csv error
     UnknownCSV,
+}
+
+impl UserError for MeshError {
+    fn category(&self) -> UserErrorCategory {
+        UserErrorCategory::Error
+    }
+
+    fn line(&self) -> u64 {
+        self.location.line.unwrap_or(0)
+    }
+
+    fn description(&self, en: ForceEnglish) -> String {
+        match &self.kind {
+            MeshErrorKind::UTF8 { column } => localize!(@en, "mesh-error-utf8", "column" -> column.unwrap_or(0)),
+            MeshErrorKind::OutOfBounds { idx } => localize!(@en, "mesh-error-out-of-bounds", "idx" -> *idx),
+            MeshErrorKind::UnknownInstruction { name } => {
+                localize!(@en, "mesh-error-unknown-instruction", "name" -> name.as_str())
+            }
+            MeshErrorKind::GenericCSV { msg, msg_english } => {
+                if en == ForceEnglish::English { msg_english } else { msg }.clone()
+            }
+            MeshErrorKind::UnknownCSV => localize!(@en, "mesh-unknown-csv"),
+        }
+    }
 }
 
 impl From<csv::Error> for MeshError {
@@ -63,54 +111,58 @@ impl From<csv::Error> for MeshError {
                     location: e.position().into(),
                 },
                 csv::DeserializeErrorKind::Message(msg) | csv::DeserializeErrorKind::Unsupported(msg) => Self {
-                    kind: MeshErrorKind::GenericCSV { msg: msg.clone() },
+                    kind: MeshErrorKind::GenericCSV {
+                        msg: msg.clone(),
+                        msg_english: msg.clone(),
+                    },
                     location: e.position().into(),
                 },
                 csv::DeserializeErrorKind::UnexpectedEndOfRow => Self {
                     kind: MeshErrorKind::GenericCSV {
-                        msg: "Not enough arguments".into(),
+                        msg: localize!("csv-unexpected-end-of-row"),
+                        msg_english: localize!(english, "csv-unexpected-end-of-row"),
                     },
                     location: e.position().into(),
                 },
-                csv::DeserializeErrorKind::ParseFloat(ferr) => {
-                    let message = format!(
-                        "Float parsing error \"{}\" in csv column {}",
-                        ferr,
-                        deserialize_error
-                            .field()
-                            .map_or_else(|| "?".into(), |f| (f + 1).to_string())
-                    );
+                csv::DeserializeErrorKind::ParseFloat(f_err) => {
+                    let column = deserialize_error
+                        .field()
+                        .map_or_else(|| "?".into(), |f| (f + 1).to_string());
+                    let formatted_err = format!("{}", f_err);
+                    let msg = localize!("csv-float-parsing-error", "error" -> formatted_err.clone(), "column" -> column.clone());
+                    let msg_english =
+                        localize!(english, "csv-float-parsing-error", "error" -> formatted_err, "column" -> column);
 
                     Self {
-                        kind: MeshErrorKind::GenericCSV { msg: message },
+                        kind: MeshErrorKind::GenericCSV { msg, msg_english },
                         location: e.position().into(),
                     }
                 }
-                csv::DeserializeErrorKind::ParseInt(ierr) => {
-                    let message = format!(
-                        "Int parsing error \"{}\" in csv column {}",
-                        ierr,
-                        deserialize_error
-                            .field()
-                            .map_or_else(|| "?".into(), |f| (f + 1).to_string())
-                    );
+                csv::DeserializeErrorKind::ParseInt(i_err) => {
+                    let column = deserialize_error
+                        .field()
+                        .map_or_else(|| "?".into(), |f| (f + 1).to_string());
+                    let formatted_err = format!("{}", i_err);
+                    let msg = localize!("csv-int-parsing-error", "error" -> formatted_err.clone(), "column" -> column.clone());
+                    let msg_english =
+                        localize!(english, "csv-int-parsing-error", "error" -> formatted_err, "column" -> column);
 
                     Self {
-                        kind: MeshErrorKind::GenericCSV { msg: message },
+                        kind: MeshErrorKind::GenericCSV { msg, msg_english },
                         location: e.position().into(),
                     }
                 }
-                csv::DeserializeErrorKind::ParseBool(berr) => {
-                    let message = format!(
-                        "Bool parsing error \"{}\" in csv column {}",
-                        berr,
-                        deserialize_error
-                            .field()
-                            .map_or_else(|| "?".into(), |f| (f + 1).to_string())
-                    );
+                csv::DeserializeErrorKind::ParseBool(b_err) => {
+                    let column = deserialize_error
+                        .field()
+                        .map_or_else(|| "?".into(), |f| (f + 1).to_string());
+                    let formatted_err = format!("{}", b_err);
+                    let msg = localize!("csv-bool-parsing-error", "error" -> formatted_err.clone(), "column" -> column.clone());
+                    let msg_english =
+                        localize!(english, "csv-bool-parsing-error", "error" -> formatted_err, "column" -> column);
 
                     Self {
-                        kind: MeshErrorKind::GenericCSV { msg: message },
+                        kind: MeshErrorKind::GenericCSV { msg, msg_english },
                         location: e.position().into(),
                     }
                 }

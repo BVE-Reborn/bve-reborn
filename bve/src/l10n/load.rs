@@ -1,5 +1,7 @@
-use crate::data::DATA;
-use crate::l10n::{BVELanguage, BVELocale, BVELocaleBundle};
+use crate::{
+    data::DATA,
+    l10n::{BVELanguage, BVELocale, BVELocaleBundle},
+};
 use fluent::{FluentBundle, FluentResource};
 use include_dir::File;
 

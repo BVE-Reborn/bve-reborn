@@ -3,20 +3,32 @@ use itertools::Itertools;
 use proc_macro::TokenStream;
 use proc_macro2::{Group, Ident, Literal};
 use quote::{format_ident, quote};
-use syn::export::{ToTokens, TokenStream2};
-use syn::{Attribute, ExprPath, GenericArgument, PathArguments, Type, TypePath, Visibility};
+use syn::{
+    export::{ToTokens, TokenStream2},
+    Attribute, ExprPath, GenericArgument, PathArguments, Type, TypePath, Visibility,
+};
 
-// clion having a fit
-#[allow(unused_imports)]
-use core::panicking::panic;
+struct PrettyPrintField {
+    name: Ident,
+    ty: TypePath,
+}
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Field {
     attributes: Vec<Attribute>,
     default: Option<Literal>,
     visibility: Visibility,
     name: Ident,
     ty: (Vec<String>, TypePath),
+}
+
+impl From<Field> for PrettyPrintField {
+    fn from(f: Field) -> Self {
+        Self {
+            name: f.name,
+            ty: f.ty.1,
+        }
+    }
 }
 
 fn combine_attributes(attributes: &[Attribute]) -> TokenStream2 {
@@ -354,6 +366,32 @@ fn find_primary_attribute(mut attributes: Vec<Attribute>) -> (bool, Vec<Attribut
     (found, attr_buffer)
 }
 
+fn generate_pretty_print(ident: &Ident, fields: &[impl Into<PrettyPrintField> + Clone]) -> TokenStream2 {
+    let members = combine_token_streams(fields.iter().map(|f| {
+        let f: PrettyPrintField = f.clone().into();
+        let name = f.name;
+        let name_str = name.to_string() + ": ";
+        let ty = f.ty;
+        quote! {
+            crate::parse::util::indent(indent + 1, out)?;
+            write!(out, #name_str)?;
+            <#ty as crate::parse::PrettyPrintResult>::fmt(&self.#name, indent + 1, out)?;
+        }
+    }));
+
+    quote! {
+        impl crate::parse::PrettyPrintResult for #ident {
+            fn fmt(&self, indent: usize, out: &mut dyn std::io::Write) -> std::io::Result<()> {
+                writeln!(out)?;
+
+                #members
+
+                Ok(())
+            }
+        }
+    }
+}
+
 pub fn serde_proxy(item: TokenStream) -> TokenStream {
     let mut parsed = syn::parse_macro_input!(item as syn::ItemStruct);
 
@@ -396,6 +434,7 @@ pub fn serde_proxy(item: TokenStream) -> TokenStream {
 
     let proxy = generate_proxy_object(&parsed.ident, &fields);
     let proxy_name = format!("{}SerdeProxy", &parsed.ident);
+    let pretty_print = generate_pretty_print(&parsed.ident, &fields);
 
     let current = quote!(
         #proxy
@@ -403,14 +442,31 @@ pub fn serde_proxy(item: TokenStream) -> TokenStream {
         #[derive(Debug, Clone, PartialEq, Deserialize)]
         #[serde(from = #proxy_name)]
         #parsed
+
+        #pretty_print
     );
 
     current.into()
 }
 
+#[derive(Debug, Clone)]
 struct VectorProxyField {
     name: Ident,
+    ty: Type,
     conversion: TokenStream2,
+}
+
+#[allow(clippy::fallible_impl_from)]
+impl From<VectorProxyField> for PrettyPrintField {
+    fn from(f: VectorProxyField) -> Self {
+        Self {
+            name: f.name,
+            ty: match f.ty {
+                Type::Path(p) => p,
+                _ => panic!("Why is is anything other than a Type::Path?"),
+            },
+        }
+    }
 }
 
 pub fn serde_vector_proxy(item: TokenStream) -> TokenStream {
@@ -437,29 +493,33 @@ pub fn serde_vector_proxy(item: TokenStream) -> TokenStream {
 
             VectorProxyField {
                 name: name.clone(),
+                ty: field.ty.clone(),
                 conversion: quote!(proxy #conversion),
             }
         } else if let Some(d) = default {
             VectorProxyField {
                 name,
+                ty: field.ty.clone(),
                 conversion: quote!(#d ()),
             }
         } else {
             VectorProxyField {
                 name,
+                ty: field.ty.clone(),
                 conversion: quote!(std::default::Default::default()),
             }
         });
     }
 
     let from_fields = combine_token_streams(parsed_fields.iter().map(|f| {
-        let VectorProxyField { name, conversion } = f;
+        let VectorProxyField { name, conversion, .. } = f;
 
         quote!(#name: #conversion,)
     }));
 
     let primary_type = primary_type.expect("Must be a type with the primary attribute");
     let primary_type_str = primary_type.to_string();
+    let pretty_print = generate_pretty_print(&parsed.ident, &parsed_fields);
 
     let result = quote! {
         #[derive(Debug, Clone, PartialEq, Deserialize)]
@@ -475,6 +535,8 @@ pub fn serde_vector_proxy(item: TokenStream) -> TokenStream {
                 }
             }
         }
+
+        #pretty_print
     };
 
     result.into()

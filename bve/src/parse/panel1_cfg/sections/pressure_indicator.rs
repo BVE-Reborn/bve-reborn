@@ -1,7 +1,7 @@
-use crate::parse::kvp::FromKVPValue;
-use crate::parse::panel1_cfg::sections::IndicatorType;
+use crate::parse::{kvp::FromKVPValue, panel1_cfg::sections::IndicatorType, util, PrettyPrintResult};
 use bve_derive::{FromKVPSection, FromKVPValueEnumNumbers};
 use cgmath::{Array, Vector2};
+use std::io;
 
 #[derive(Debug, Clone, PartialEq, FromKVPSection)]
 pub struct PressureIndicatorSection {
@@ -75,6 +75,30 @@ impl Default for Needle {
             green: 255,
             blue: 255,
         }
+    }
+}
+
+impl PrettyPrintResult for Needle {
+    fn fmt(&self, indent: usize, out: &mut dyn io::Write) -> io::Result<()> {
+        writeln!(out)?;
+
+        util::indent(indent + 1, out)?;
+        write!(out, "Subject: ")?;
+        self.subject.fmt(indent, out)?;
+
+        util::indent(indent + 1, out)?;
+        writeln!(out, "Red: ")?;
+        self.red.fmt(indent, out)?;
+
+        util::indent(indent + 1, out)?;
+        writeln!(out, "Green: ")?;
+        self.green.fmt(indent, out)?;
+
+        util::indent(indent + 1, out)?;
+        writeln!(out, "Blue: ")?;
+        self.blue.fmt(indent, out)?;
+
+        Ok(())
     }
 }
 

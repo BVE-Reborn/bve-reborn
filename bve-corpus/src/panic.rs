@@ -1,6 +1,4 @@
-use std::cell::RefCell;
-use std::io::Write;
-use std::panic::PanicInfo;
+use std::{cell::RefCell, io::Write, panic::PanicInfo};
 
 thread_local! {
     pub static PANIC: RefCell<Option<String>> = RefCell::new(Some(String::new()));

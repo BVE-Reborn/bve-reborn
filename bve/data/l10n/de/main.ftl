@@ -1,5 +1,5 @@
-name = BVE-Reborn
+program-name = BVE-Reborn
 
 language-code = de
 
-welcome = Willkommen bei {name} mit der Sprache "{language-code}", {$name}
+welcome = Willkommen bei {program-name} mit der Sprache "{language-code}", {$name}

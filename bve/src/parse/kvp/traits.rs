@@ -1,7 +1,13 @@
-use crate::parse::kvp::{KVPFile, KVPSection};
-use crate::parse::util::{parse_loose_number, parse_loose_numeric_bool};
-use crate::parse::Span;
-use crate::{HexColorRGB, HexColorRGBA};
+use crate::{
+    l10n::ForceEnglish,
+    localize,
+    parse::{
+        kvp::{KVPFile, KVPSection},
+        util::{parse_loose_number, parse_loose_numeric_bool},
+        Span, UserError, UserErrorCategory,
+    },
+    HexColorRGB, HexColorRGBA,
+};
 use cgmath::{Vector1, Vector2, Vector3, Vector4};
 use std::str::FromStr;
 
@@ -9,6 +15,33 @@ use std::str::FromStr;
 pub struct KVPGenericWarning {
     pub span: Span,
     pub kind: KVPGenericWarningKind,
+}
+
+impl UserError for KVPGenericWarning {
+    fn category(&self) -> UserErrorCategory {
+        UserErrorCategory::Warning
+    }
+
+    fn line(&self) -> u64 {
+        self.span.line.unwrap_or(0)
+    }
+
+    fn description(&self, en: ForceEnglish) -> String {
+        match &self.kind {
+            KVPGenericWarningKind::UnknownSection { name } => {
+                localize!(@en, "kvp-unknown-section", "section" -> name.as_str())
+            }
+            KVPGenericWarningKind::UnknownField { name } => {
+                localize!(@en, "kvp-unknown-field", "field" -> name.as_str())
+            }
+            KVPGenericWarningKind::TooManyFields { idx, max } => {
+                localize!(@en, "kvp-too-many-fields", "number" -> idx + 1, "total" -> max)
+            }
+            KVPGenericWarningKind::InvalidValue { value } => {
+                localize!(@en, "kvp-invalid-value", "value" -> value.as_str())
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -20,13 +53,13 @@ pub enum KVPGenericWarningKind {
 }
 
 pub trait FromKVPFile: Default {
-    type Warnings;
+    type Warnings: UserError;
     #[must_use]
     fn from_kvp_file(k: &KVPFile<'_>) -> (Self, Vec<Self::Warnings>);
 }
 
 pub trait FromKVPSection: Default {
-    type Warnings;
+    type Warnings: UserError;
     #[must_use]
     fn from_kvp_section(section: &KVPSection<'_>) -> (Self, Vec<Self::Warnings>);
 }

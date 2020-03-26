@@ -1,36 +1,8 @@
-use crate::parse::function_scripts::ParsedFunctionScript;
-use crate::parse::kvp::FromKVPValue;
-use bve_derive::{FromKVPFile, FromKVPSection, FromKVPValue};
+use crate::parse::{function_scripts::ParsedFunctionScript, kvp::FromKVPValue, PrettyPrintResult};
+use bve_derive::{FromKVPSection, FromKVPValue};
 use cgmath::{Vector2, Vector3};
-use num_traits::identities::Zero;
-
-#[derive(Debug, Default, Clone, PartialEq, FromKVPFile)]
-pub struct ParsedAnimatedObject {
-    #[kvp(rename = "include")]
-    pub includes: Vec<Includes>,
-    #[kvp(rename = "object")]
-    pub objects: Vec<AnimatedObject>,
-    #[kvp(rename = "sound")]
-    pub sounds: Vec<AnimatedSound>,
-    #[kvp(rename = "statechangesound")]
-    pub change_state_sounds: Vec<AnimatedStateChangeSound>,
-}
-
-#[derive(Debug, Clone, PartialEq, FromKVPSection)]
-pub struct Includes {
-    #[kvp(bare)]
-    pub files: Vec<String>,
-    pub position: Vector3<f32>,
-}
-
-impl Default for Includes {
-    fn default() -> Self {
-        Self {
-            files: Vec::default(),
-            position: Vector3::zero(),
-        }
-    }
-}
+use num_traits::Zero;
+use std::io;
 
 #[derive(Debug, Clone, PartialEq, FromKVPSection)]
 pub struct AnimatedObject {
@@ -104,61 +76,6 @@ impl Default for AnimatedObject {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, FromKVPSection)]
-pub struct AnimatedSound {
-    filename: String,
-    position: Vector3<f32>,
-    volume: f32,
-    volume_function: Option<ParsedFunctionScript>,
-    pitch: f32,
-    pitch_function: Option<ParsedFunctionScript>,
-    radius: f32,
-    track_follower_function: Option<ParsedFunctionScript>,
-}
-
-impl Default for AnimatedSound {
-    fn default() -> Self {
-        Self {
-            filename: String::new(),
-            position: Vector3::zero(),
-            volume: 1.0,
-            pitch: 1.0,
-            radius: 30.0,
-            volume_function: None,
-            pitch_function: None,
-            track_follower_function: None,
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, FromKVPSection)]
-pub struct AnimatedStateChangeSound {
-    filename: String,
-    #[kvp(variadic)]
-    filenames: Vec<String>,
-    position: Vector3<f32>,
-    volume: f32,
-    pitch: f32,
-    radius: f32,
-    play_on_show: PlayOn,
-    play_on_hide: PlayOn,
-}
-
-impl Default for AnimatedStateChangeSound {
-    fn default() -> Self {
-        Self {
-            filename: String::new(),
-            filenames: Vec::new(),
-            position: Vector3::zero(),
-            volume: 1.0,
-            pitch: 1.0,
-            radius: 30.0,
-            play_on_show: PlayOn::Silent,
-            play_on_hide: PlayOn::Silent,
-        }
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, FromKVPValue)]
 pub struct Damping {
     pub frequency: f32,
@@ -187,6 +104,15 @@ impl FromKVPValue for TextureOverride {
     }
 }
 
+impl PrettyPrintResult for TextureOverride {
+    fn fmt(&self, _indent: usize, out: &mut dyn io::Write) -> io::Result<()> {
+        writeln!(out, "{}", match self {
+            Self::None => "None",
+            Self::Timetable => "Timetable",
+        },)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum RefreshRate {
     EveryFrame,
@@ -205,28 +131,11 @@ impl FromKVPValue for RefreshRate {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum PlayOn {
-    Silent,
-    Play,
-}
-
-impl Default for PlayOn {
-    fn default() -> Self {
-        Self::Silent
-    }
-}
-
-impl FromKVPValue for PlayOn {
-    fn from_kvp_value(value: &str) -> Option<Self> {
-        i64::from_kvp_value(value).and_then(|i| {
-            if i == 0 {
-                Some(Self::Silent)
-            } else if i == 1 {
-                Some(Self::Play)
-            } else {
-                None
-            }
-        })
+impl PrettyPrintResult for RefreshRate {
+    fn fmt(&self, _indent: usize, out: &mut dyn io::Write) -> io::Result<()> {
+        match self {
+            Self::EveryFrame => writeln!(out, "Every Frame"),
+            Self::Seconds(v) => writeln!(out, "{}s", v),
+        }
     }
 }

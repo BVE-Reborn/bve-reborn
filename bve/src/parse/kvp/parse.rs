@@ -1,5 +1,7 @@
-use crate::parse::kvp::{KVPField, KVPFile, KVPSection, ValueData};
-use crate::parse::Span;
+use crate::parse::{
+    kvp::{KVPField, KVPFile, KVPSection, ValueData},
+    Span,
+};
 
 #[derive(Debug, Copy, Clone)]
 pub struct KVPSymbols {
@@ -38,14 +40,11 @@ pub fn parse_kvp_file(input: &str, symbols: KVPSymbols) -> KVPFile<'_> {
                     None => line[1..].trim(),
                 };
                 // Simultaneously push the previous section and create this new one
-                file.sections.push(std::mem::replace(
-                    &mut current_section,
-                    KVPSection {
-                        name: Some(name),
-                        span: Span::from_line(line_idx + 1),
-                        fields: Vec::default(),
-                    },
-                ));
+                file.sections.push(std::mem::replace(&mut current_section, KVPSection {
+                    name: Some(name),
+                    span: Span::from_line(line_idx + 1),
+                    fields: Vec::default(),
+                }));
             }
             Some(..) => {
                 // This is a piece of data
@@ -82,8 +81,10 @@ pub fn parse_kvp_file(input: &str, symbols: KVPSymbols) -> KVPFile<'_> {
 
 #[cfg(test)]
 mod test {
-    use crate::parse::kvp::{parse_kvp_file, KVPField, KVPFile, KVPSection, ValueData, ANIMATED_LIKE};
-    use crate::parse::Span;
+    use crate::parse::{
+        kvp::{parse_kvp_file, KVPField, KVPFile, KVPSection, ValueData, ANIMATED_LIKE},
+        Span,
+    };
     use indoc::indoc;
 
     #[test]
@@ -96,16 +97,13 @@ mod test {
             ),
             ANIMATED_LIKE,
         );
-        assert_eq!(
-            kvp,
-            KVPFile {
-                sections: vec![KVPSection {
-                    name: None,
-                    span: Span::from_line(0),
-                    fields: vec![]
-                }]
-            }
-        );
+        assert_eq!(kvp, KVPFile {
+            sections: vec![KVPSection {
+                name: None,
+                span: Span::from_line(0),
+                fields: vec![]
+            }]
+        });
     }
 
     #[test]
@@ -118,19 +116,16 @@ mod test {
             ),
             ANIMATED_LIKE,
         );
-        assert_eq!(
-            kvp,
-            KVPFile {
-                sections: vec![KVPSection {
-                    name: None,
-                    span: Span::from_line(0),
-                    fields: vec![KVPField {
-                        span: Span::from_line(1),
-                        data: ValueData::Value { value: "my_value" }
-                    }]
+        assert_eq!(kvp, KVPFile {
+            sections: vec![KVPSection {
+                name: None,
+                span: Span::from_line(0),
+                fields: vec![KVPField {
+                    span: Span::from_line(1),
+                    data: ValueData::Value { value: "my_value" }
                 }]
-            }
-        );
+            }]
+        });
     }
 
     #[test]
@@ -143,22 +138,19 @@ mod test {
             ),
             ANIMATED_LIKE,
         );
-        assert_eq!(
-            kvp,
-            KVPFile {
-                sections: vec![KVPSection {
-                    name: None,
-                    span: Span::from_line(0),
-                    fields: vec![KVPField {
-                        span: Span::from_line(1),
-                        data: ValueData::KeyValuePair {
-                            key: "my_key",
-                            value: "my_value",
-                        }
-                    }]
+        assert_eq!(kvp, KVPFile {
+            sections: vec![KVPSection {
+                name: None,
+                span: Span::from_line(0),
+                fields: vec![KVPField {
+                    span: Span::from_line(1),
+                    data: ValueData::KeyValuePair {
+                        key: "my_key",
+                        value: "my_value",
+                    }
                 }]
-            }
-        );
+            }]
+        });
     }
 
     #[test]
@@ -172,26 +164,23 @@ mod test {
             ),
             ANIMATED_LIKE,
         );
-        assert_eq!(
-            kvp,
-            KVPFile {
-                sections: vec![
-                    KVPSection {
-                        name: None,
-                        span: Span::from_line(0),
-                        fields: Vec::default(),
-                    },
-                    KVPSection {
-                        name: Some("my_section"),
-                        span: Span::from_line(1),
-                        fields: vec![KVPField {
-                            span: Span::from_line(2),
-                            data: ValueData::Value { value: "my_value" }
-                        }]
-                    }
-                ]
-            }
-        );
+        assert_eq!(kvp, KVPFile {
+            sections: vec![
+                KVPSection {
+                    name: None,
+                    span: Span::from_line(0),
+                    fields: Vec::default(),
+                },
+                KVPSection {
+                    name: Some("my_section"),
+                    span: Span::from_line(1),
+                    fields: vec![KVPField {
+                        span: Span::from_line(2),
+                        data: ValueData::Value { value: "my_value" }
+                    }]
+                }
+            ]
+        });
     }
 
     #[test]
@@ -205,29 +194,26 @@ mod test {
             ),
             ANIMATED_LIKE,
         );
-        assert_eq!(
-            kvp,
-            KVPFile {
-                sections: vec![
-                    KVPSection {
-                        name: None,
-                        span: Span::from_line(0),
-                        fields: Vec::default(),
-                    },
-                    KVPSection {
-                        name: Some("my_section"),
-                        span: Span::from_line(1),
-                        fields: vec![KVPField {
-                            span: Span::from_line(2),
-                            data: ValueData::KeyValuePair {
-                                key: "my_key",
-                                value: "my_value",
-                            }
-                        }]
-                    }
-                ]
-            }
-        );
+        assert_eq!(kvp, KVPFile {
+            sections: vec![
+                KVPSection {
+                    name: None,
+                    span: Span::from_line(0),
+                    fields: Vec::default(),
+                },
+                KVPSection {
+                    name: Some("my_section"),
+                    span: Span::from_line(1),
+                    fields: vec![KVPField {
+                        span: Span::from_line(2),
+                        data: ValueData::KeyValuePair {
+                            key: "my_key",
+                            value: "my_value",
+                        }
+                    }]
+                }
+            ]
+        });
     }
 
     #[test]
@@ -240,23 +226,20 @@ mod test {
             ),
             ANIMATED_LIKE,
         );
-        assert_eq!(
-            kvp,
-            KVPFile {
-                sections: vec![
-                    KVPSection {
-                        name: None,
-                        span: Span::from_line(0),
-                        fields: Vec::default(),
-                    },
-                    KVPSection {
-                        name: Some(""),
-                        span: Span::from_line(1),
-                        fields: Vec::default(),
-                    }
-                ]
-            }
-        );
+        assert_eq!(kvp, KVPFile {
+            sections: vec![
+                KVPSection {
+                    name: None,
+                    span: Span::from_line(0),
+                    fields: Vec::default(),
+                },
+                KVPSection {
+                    name: Some(""),
+                    span: Span::from_line(1),
+                    fields: Vec::default(),
+                }
+            ]
+        });
     }
 
     #[test]
@@ -269,22 +252,19 @@ mod test {
             ),
             ANIMATED_LIKE,
         );
-        assert_eq!(
-            kvp,
-            KVPFile {
-                sections: vec![
-                    KVPSection {
-                        name: None,
-                        span: Span::from_line(0),
-                        fields: Vec::default(),
-                    },
-                    KVPSection {
-                        name: Some("my_section"),
-                        span: Span::from_line(1),
-                        fields: Vec::default(),
-                    }
-                ]
-            }
-        );
+        assert_eq!(kvp, KVPFile {
+            sections: vec![
+                KVPSection {
+                    name: None,
+                    span: Span::from_line(0),
+                    fields: Vec::default(),
+                },
+                KVPSection {
+                    name: Some("my_section"),
+                    span: Span::from_line(1),
+                    fields: Vec::default(),
+                }
+            ]
+        });
     }
 }

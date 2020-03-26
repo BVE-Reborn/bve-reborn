@@ -42,12 +42,11 @@
 #![allow(clippy::result_expect_used)]
 #![allow(clippy::shadow_reuse)]
 #![allow(clippy::shadow_same)]
+#![allow(clippy::string_add)]
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unimplemented)] // Specific use case proc macro, lots of holes
 #![allow(clippy::unreachable)]
 #![allow(clippy::wildcard_enum_match_arm)]
-// CLion is having a fit about panic not existing
-#![feature(core_panic)]
 
 extern crate proc_macro;
 

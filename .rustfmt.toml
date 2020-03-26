@@ -1,11 +1,27 @@
-max_width = 120
-unstable_features = true
-comment_width = 120
-wrap_comments = true
-merge_imports = false
-normalize_comments = true
-use_field_init_shorthand = true
-use_try_shorthand = true
 edition = "2018"
 version = "Two"
+
+unstable_features = true
+max_width = 120
+
+comment_width = 120
+wrap_comments = true
+normalize_comments = true
 normalize_doc_attributes = true
+
+condense_wildcard_suffixes = true
+
+format_code_in_doc_comments = true
+format_macro_matchers = true
+format_macro_bodies = true
+format_strings = true
+
+merge_imports = true
+
+overflow_delimited_expr = true
+
+reorder_impl_items = true
+
+use_field_init_shorthand = true
+use_try_shorthand = true
+

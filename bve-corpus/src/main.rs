@@ -48,20 +48,25 @@
 #![allow(unused_imports)]
 use core::panicking::panic;
 
-use crate::enumeration::enumerate_all_files;
-use crate::panic::setup_panic_hook;
-use crate::worker::create_worker_thread;
+use crate::{enumeration::enumerate_all_files, panic::setup_panic_hook, worker::create_worker_thread};
 use anyhow::Result;
-use bve::log::{run_with_global_logger, set_global_logger, Level, SerializationMethod, Subscriber};
+use bve::{
+    log::{run_with_global_logger, set_global_logger, Level, SerializationMethod, Subscriber},
+    parse::UserErrorData,
+};
 use crossbeam::channel::unbounded;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 pub use options::*;
 use serde::Serialize;
-use std::panic::PanicInfo;
-use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::{
+    panic::PanicInfo,
+    path::{Path, PathBuf},
+    sync::{
+        atomic::{AtomicBool, AtomicU64, Ordering},
+        Arc,
+    },
+    time::{Duration, Instant},
+};
 use structopt::StructOpt;
 use walkdir::{DirEntry, WalkDir};
 
@@ -108,8 +113,13 @@ pub struct FileResult {
 enum ParseResult {
     Finish,
     Success,
-    Errors { count: u64, error: anyhow::Error },
-    Panic { cause: String },
+    Issues {
+        warnings: Vec<UserErrorData>,
+        errors: Vec<UserErrorData>,
+    },
+    Panic {
+        cause: String,
+    },
 }
 
 #[derive(Debug, Default)]
