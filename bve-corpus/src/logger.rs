@@ -3,10 +3,7 @@
 use crate::{FileKind, FileResult, Options, ParseResult};
 use crossbeam::channel::Receiver;
 use serde::Serialize;
-use std::cmp::Reverse;
-use std::collections::HashMap;
-use std::fs::write;
-use std::path::PathBuf;
+use std::{cmp::Reverse, collections::HashMap, fs::write, path::PathBuf};
 
 #[derive(Debug, Default, Clone, Serialize)]
 struct ResultCollection {

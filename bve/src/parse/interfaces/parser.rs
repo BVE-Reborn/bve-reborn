@@ -1,6 +1,8 @@
-use crate::parse::kvp::{parse_kvp_file, FromKVPFile, KVPSymbols};
-use crate::parse::util::strip_comments;
-use crate::parse::{PrettyPrintResult, UserError};
+use crate::parse::{
+    kvp::{parse_kvp_file, FromKVPFile, KVPSymbols},
+    util::strip_comments,
+    PrettyPrintResult, UserError,
+};
 
 /// Types that implement this trait can be parsed from a single input.
 pub trait FileParser {
@@ -51,9 +53,9 @@ impl<T> FileParser for T
 where
     T: KVPFileParser,
 {
+    type Errors = ();
     type Output = Self;
     type Warnings = <Self as FromKVPFile>::Warnings;
-    type Errors = ();
 
     fn parse_from(input: &str) -> ParserResult<Self::Output, Self::Warnings, Self::Errors> {
         Self::parse_from_kvp(input)

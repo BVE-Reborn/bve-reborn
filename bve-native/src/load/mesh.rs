@@ -1,11 +1,14 @@
-use crate::parse::mesh::{BlendMode, Glow, Mesh_Error, Mesh_Warning};
-use crate::{str_to_owned_ptr, unowned_ptr_to_str, COption, CVector};
-use bve::load::mesh;
-use bve::{ColorU8RGB, ColorU8RGBA};
+use crate::{
+    parse::mesh::{BlendMode, Glow, Mesh_Error, Mesh_Warning},
+    str_to_owned_ptr, unowned_ptr_to_str, COption, CVector,
+};
+use bve::{load::mesh, ColorU8RGB, ColorU8RGBA};
 use bve_derive::c_interface;
 use libc::c_char;
-use std::ffi::CStr;
-use std::ptr::{null, null_mut};
+use std::{
+    ffi::CStr,
+    ptr::{null, null_mut},
+};
 
 pub use mesh::Vertex;
 

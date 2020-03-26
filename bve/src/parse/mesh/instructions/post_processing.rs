@@ -1,6 +1,7 @@
-use crate::parse::mesh::instructions::*;
-use crate::parse::mesh::{MeshError, MeshErrorKind};
-use crate::parse::Span;
+use crate::parse::{
+    mesh::{instructions::*, MeshError, MeshErrorKind},
+    Span,
+};
 use cgmath::{Array, Vector2, Vector3};
 use std::f32::consts::PI;
 
@@ -131,14 +132,18 @@ fn process_compound(mesh: &[Instruction]) -> Vec<Instruction> {
 
                 let split = n.saturating_sub(1) as usize;
                 for i in 0..split {
-                    result.push(create_face(
-                        instruction,
-                        vec![vi + (2 * i + 2), vi + (2 * i + 3), vi + (2 * i + 1), vi + (2 * i + 0)],
-                    ));
-                    result.push(create_face(
-                        instruction,
-                        vec![vi + 0, vi + 1, vi + (2 * i + 1), vi + (2 * i + 0)],
-                    ));
+                    result.push(create_face(instruction, vec![
+                        vi + (2 * i + 2),
+                        vi + (2 * i + 3),
+                        vi + (2 * i + 1),
+                        vi + (2 * i + 0),
+                    ]));
+                    result.push(create_face(instruction, vec![
+                        vi + 0,
+                        vi + 1,
+                        vi + (2 * i + 1),
+                        vi + (2 * i + 0),
+                    ]));
                 }
 
                 tracing::trace!(starting_index = vi, "Processed Cylinder");

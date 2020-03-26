@@ -1,5 +1,4 @@
-use crate::parse::kvp::FromKVPValue;
-use crate::parse::PrettyPrintResult;
+use crate::parse::{kvp::FromKVPValue, PrettyPrintResult};
 use bve_derive::{FromKVPSection, FromKVPValueEnumNumbers};
 use std::io;
 

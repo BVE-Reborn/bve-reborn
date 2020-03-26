@@ -1,15 +1,10 @@
 //! C interface for [`bve::parse::mesh`] for parsing b3d/csv files.
 
-use crate::interfaces::User_Error_Data;
-use crate::parse::Span;
-use crate::*;
+use crate::{interfaces::User_Error_Data, parse::Span, *};
 use bve::parse::{mesh, UserError};
 use bve_derive::c_interface;
 
-pub use mesh::BlendMode;
-pub use mesh::FileType;
-pub use mesh::Glow;
-pub use mesh::GlowAttenuationMode;
+pub use mesh::{BlendMode, FileType, Glow, GlowAttenuationMode};
 
 /// C safe wrapper for [`MeshError`](bve::parse::mesh::MeshError).
 ///

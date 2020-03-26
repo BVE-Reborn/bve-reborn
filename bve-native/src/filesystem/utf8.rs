@@ -1,8 +1,6 @@
 use crate::unowned_ptr_to_str;
 use bve_derive::c_interface;
-use std::ffi::CString;
-use std::os::raw::c_char;
-use std::ptr::NonNull;
+use std::{ffi::CString, os::raw::c_char, ptr::NonNull};
 
 /// Reads the file at `filename` with [`bve::filesystem::read_convert_utf8`].
 ///

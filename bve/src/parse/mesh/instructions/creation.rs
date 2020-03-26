@@ -1,7 +1,8 @@
-use crate::parse::mesh::instructions::*;
-use crate::parse::mesh::{FileType, MeshError, MeshErrorKind, MeshWarning, MeshWarningKind};
-use crate::parse::util::strip_comments;
-use crate::parse::Span;
+use crate::parse::{
+    mesh::{instructions::*, FileType, MeshError, MeshErrorKind, MeshWarning, MeshWarningKind},
+    util::strip_comments,
+    Span,
+};
 use csv::{ReaderBuilder, StringRecord, Trim};
 use std::iter::FromIterator;
 
@@ -255,10 +256,13 @@ pub fn create_instructions(input: &str, file_type: FileType) -> InstructionList 
 
 #[cfg(test)]
 mod test {
-    use crate::parse::mesh::instructions::*;
-    use crate::parse::mesh::FileType;
-    use crate::parse::Span;
-    use crate::{ColorU8RGB, ColorU8RGBA};
+    use crate::{
+        parse::{
+            mesh::{instructions::*, FileType},
+            Span,
+        },
+        ColorU8RGB, ColorU8RGBA,
+    };
     use cgmath::{Vector2, Vector3};
 
     use crate::parse::mesh::instructions::b3d_to_csv_syntax;
@@ -293,7 +297,7 @@ mod test {
     }
 
     macro_rules! no_instruction_assert_no_errors {
-        ( $inputB3D:literal, $inputCSV:literal, $args:literal ) => {
+        ($inputB3D:literal, $inputCSV:literal, $args:literal) => {
             let result_a = create_instructions(concat!($inputB3D, " ", $args).into(), FileType::B3D);
             if !result_a.warnings.is_empty() {
                 panic!("WARNINGS!! {:#?}", result_a)
@@ -314,7 +318,7 @@ mod test {
     }
 
     macro_rules! no_instruction_assert_warnings {
-        ( $inputB3D:literal, $inputCSV:literal, $args:literal ) => {
+        ($inputB3D:literal, $inputCSV:literal, $args:literal) => {
             let result_a = create_instructions(concat!($inputB3D, " ", $args).into(), FileType::B3D);
             if result_a.warnings.is_empty() {
                 panic!("Missing Warnings: {:#?}", result_a)
@@ -336,7 +340,7 @@ mod test {
 
     #[allow(unused_macros)]
     macro_rules! no_instruction_assert_errors {
-        ( $inputB3D:literal, $inputCSV:literal, $args:literal ) => {
+        ($inputB3D:literal, $inputCSV:literal, $args:literal) => {
             let result_a = create_instructions(concat!($inputB3D, " ", $args).into(), FileType::B3D);
             if !result_a.warnings.is_empty() {
                 panic!("WARNINGS!! {:#?}", result_a)
@@ -357,7 +361,7 @@ mod test {
     }
 
     macro_rules! instruction_assert {
-        ( $inputB3D:literal, $inputCSV:literal, $args:literal, $data:expr ) => {
+        ($inputB3D:literal, $inputCSV:literal, $args:literal, $data:expr) => {
             let result_a = create_instructions(concat!($inputB3D, " ", $args).into(), FileType::B3D);
             if !result_a.warnings.is_empty() {
                 panic!("WARNINGS!! {:#?}", result_a)
@@ -365,13 +369,10 @@ mod test {
             if !result_a.errors.is_empty() {
                 panic!("ERRORS!! {:#?}", result_a)
             }
-            assert_eq!(
-                *result_a.instructions.get(0).unwrap(),
-                Instruction {
-                    data: $data,
-                    span: Span::from_line(1),
-                }
-            );
+            assert_eq!(*result_a.instructions.get(0).unwrap(), Instruction {
+                data: $data,
+                span: Span::from_line(1),
+            });
             let result_b = create_instructions(concat!($inputCSV, ",", $args).into(), FileType::CSV);
             if !result_b.warnings.is_empty() {
                 panic!("WARNINGS!! {:#?}", result_b)
@@ -379,18 +380,17 @@ mod test {
             if !result_b.errors.is_empty() {
                 panic!("ERRORS!! {:#?}", result_b)
             }
-            assert_eq!(
-                *result_b.instructions.get(0).unwrap(),
-                Instruction {
-                    data: $data,
-                    span: Span::from_line(1),
-                }
-            );
+            assert_eq!(*result_b.instructions.get(0).unwrap(), Instruction {
+                data: $data,
+                span: Span::from_line(1),
+            });
         };
     }
 
     macro_rules! instruction_assert_default {
-        ( $inputB3D:literal, $inputCSV:literal, $args:literal, $data:expr, $default_args:literal, $default_data:expr ) => {
+        (
+            $inputB3D:literal, $inputCSV:literal, $args:literal, $data:expr, $default_args:literal, $default_data:expr
+        ) => {
             instruction_assert!($inputB3D, $inputCSV, $args, $data);
             instruction_assert!($inputB3D, $inputCSV, $default_args, $default_data);
         };

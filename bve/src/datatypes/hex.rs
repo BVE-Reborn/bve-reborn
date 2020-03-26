@@ -1,6 +1,5 @@
 use crate::datatypes::*;
-use std::fmt;
-use std::str::FromStr;
+use std::{fmt, str::FromStr};
 
 /// A color that is specifically formatted using normal HTML hex notation.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

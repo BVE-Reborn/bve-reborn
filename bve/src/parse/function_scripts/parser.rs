@@ -1,11 +1,13 @@
 use crate::parse::function_scripts::{Instruction, ParsedFunctionScript};
-use nom::branch::alt;
-use nom::bytes::complete::{tag, take_while};
-use nom::character::complete::{char as char_f, one_of};
-use nom::combinator::{map_res, opt};
-use nom::multi::many0;
-use nom::sequence::{delimited, tuple};
-use nom::{AsChar, IResult, InputTakeAtPosition};
+use nom::{
+    branch::alt,
+    bytes::complete::{tag, take_while},
+    character::complete::{char as char_f, one_of},
+    combinator::{map_res, opt},
+    multi::many0,
+    sequence::{delimited, tuple},
+    AsChar, IResult, InputTakeAtPosition,
+};
 use std::num::ParseFloatError;
 
 /// Takes a parser and wraps it so it delimited with whitespace
@@ -266,8 +268,7 @@ fn digit(input: &str) -> IResult<&str, char> {
 
 #[cfg(test)]
 mod test {
-    use crate::parse::function_scripts::parser::parse_function_script;
-    use crate::parse::function_scripts::Instruction;
+    use crate::parse::function_scripts::{parser::parse_function_script, Instruction};
 
     macro_rules! function_script_assert {
         ($input:expr, $($result:expr),* ,) => {{

@@ -1,7 +1,9 @@
 //! B3D/CSV Static Meshes
 
-use crate::parse::mesh::instructions::{create_instructions, post_process, InstructionList};
-use crate::parse::{FileParser, ParserResult, PrettyPrintResult};
+use crate::parse::{
+    mesh::instructions::{create_instructions, post_process, InstructionList},
+    FileParser, ParserResult, PrettyPrintResult,
+};
 pub use errors::*;
 use serde::Deserialize;
 use std::io;
@@ -15,9 +17,9 @@ pub struct ParsedStaticObjectB3D;
 pub struct ParsedStaticObjectCSV;
 
 impl FileParser for ParsedStaticObjectB3D {
+    type Errors = MeshError;
     type Output = ParsedStaticObject;
     type Warnings = MeshWarning;
-    type Errors = MeshError;
 
     fn parse_from(input: &str) -> ParserResult<Self::Output, Self::Warnings, Self::Errors> {
         let InstructionList {
@@ -35,9 +37,9 @@ impl FileParser for ParsedStaticObjectB3D {
 }
 
 impl FileParser for ParsedStaticObjectCSV {
+    type Errors = MeshError;
     type Output = ParsedStaticObject;
     type Warnings = MeshWarning;
-    type Errors = MeshError;
 
     fn parse_from(input: &str) -> ParserResult<Self::Output, Self::Warnings, Self::Errors> {
         let InstructionList {

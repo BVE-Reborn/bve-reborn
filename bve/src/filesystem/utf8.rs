@@ -1,7 +1,5 @@
 use chardetng::EncodingDetector;
-use std::fs::read;
-use std::io::Result;
-use std::path::Path;
+use std::{fs::read, io::Result, path::Path};
 
 /// Reads a file, detects the encoding, and converts to utf8.
 ///

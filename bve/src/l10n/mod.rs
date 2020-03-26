@@ -2,9 +2,11 @@ pub use current::*;
 use fluent::{FluentBundle, FluentResource};
 pub use load::*;
 use once_cell::sync::Lazy;
-use std::fmt;
-use std::fmt::{Display, Formatter};
-use std::sync::RwLock;
+use std::{
+    fmt,
+    fmt::{Display, Formatter},
+    sync::RwLock,
+};
 use unic_langid::{langid, LanguageIdentifier};
 
 mod current;

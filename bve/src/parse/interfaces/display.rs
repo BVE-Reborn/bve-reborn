@@ -1,11 +1,7 @@
-use crate::parse::util;
-use crate::{HexColorRGB, HexColorRGBA};
+use crate::{parse::util, HexColorRGB, HexColorRGBA};
 use cgmath::{Vector2, Vector3, Vector4};
 use itertools::Itertools;
-use std::collections::HashMap;
-use std::fmt::Display;
-use std::hash::BuildHasher;
-use std::io;
+use std::{collections::HashMap, fmt::Display, hash::BuildHasher, io};
 
 /// A display trait for printing BVE Files in a Human Readable format.
 ///

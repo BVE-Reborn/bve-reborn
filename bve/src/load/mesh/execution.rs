@@ -1,7 +1,10 @@
-use crate::load::mesh::*;
-use crate::parse::mesh::instructions::*;
-use crate::parse::mesh::*;
-use crate::parse::Span;
+use crate::{
+    load::mesh::*,
+    parse::{
+        mesh::{instructions::*, *},
+        Span,
+    },
+};
 use cgmath::{Array, Basis3, ElementWise, InnerSpace, Rad, Rotation, Rotation3, Vector3, Zero};
 use itertools::Itertools;
 
@@ -326,15 +329,17 @@ pub fn generate_meshes(instructions: InstructionList) -> LoadedStaticMesh {
 
 #[cfg(test)]
 mod test {
-    use crate::load::mesh::execution::generate_meshes;
-    use crate::load::mesh::{BlendMode, Glow, GlowAttenuationMode};
-    use crate::parse::mesh::instructions::*;
-    use crate::parse::Span;
-    use crate::{ColorU8RGB, ColorU8RGBA};
+    use crate::{
+        load::mesh::{execution::generate_meshes, BlendMode, Glow, GlowAttenuationMode},
+        parse::{mesh::instructions::*, Span},
+        ColorU8RGB, ColorU8RGBA,
+    };
     use cgmath::{Array, Vector2, Vector3};
     use obj::{Obj, SimplePolygon};
-    use std::io::{BufReader, Cursor};
-    use std::iter::FromIterator;
+    use std::{
+        io::{BufReader, Cursor},
+        iter::FromIterator,
+    };
 
     pub const CUBE_SOURCE: &str = include_str!("cube.obj");
 
@@ -454,13 +459,10 @@ mod test {
         assert_eq!(mesh.indices, vec![0, 1, 2]);
         assert_eq!(mesh.blend_mode, BlendMode::Normal);
         assert_eq!(mesh.color, ColorU8RGBA::from_value(255));
-        assert_eq!(
-            mesh.glow,
-            Glow {
-                attenuation_mode: GlowAttenuationMode::DivideExponent4,
-                half_distance: 0,
-            }
-        );
+        assert_eq!(mesh.glow, Glow {
+            attenuation_mode: GlowAttenuationMode::DivideExponent4,
+            half_distance: 0,
+        });
         assert_eq!(result.textures.len(), 1);
         assert_eq!(result.textures.lookup(0), Some("day_tex"));
         assert_eq!(result.errors.len(), 0);
@@ -556,13 +558,10 @@ mod test {
         assert_eq!(mesh.color, ColorU8RGBA::new(21, 22, 23, 24));
         assert_eq!(mesh.texture.emission_color, ColorU8RGB::new(11, 12, 13));
         assert_eq!(mesh.texture.decal_transparent_color, Some(ColorU8RGB::new(31, 32, 33)));
-        assert_eq!(
-            mesh.glow,
-            Glow {
-                attenuation_mode: GlowAttenuationMode::DivideExponent2,
-                half_distance: 12,
-            }
-        );
+        assert_eq!(mesh.glow, Glow {
+            attenuation_mode: GlowAttenuationMode::DivideExponent2,
+            half_distance: 12,
+        });
 
         // Second Mesh
         let mesh = &result.meshes[1];
@@ -579,13 +578,10 @@ mod test {
         assert_eq!(mesh.indices, vec![0, 1, 2]);
         assert_eq!(mesh.blend_mode, BlendMode::Normal);
         assert_eq!(mesh.color, ColorU8RGBA::from_value(255));
-        assert_eq!(
-            mesh.glow,
-            Glow {
-                attenuation_mode: GlowAttenuationMode::DivideExponent4,
-                half_distance: 0,
-            }
-        );
+        assert_eq!(mesh.glow, Glow {
+            attenuation_mode: GlowAttenuationMode::DivideExponent4,
+            half_distance: 0,
+        });
         assert_eq!(result.textures.len(), 2);
         assert_eq!(result.textures.lookup(0), Some("day_tex"));
         assert_eq!(result.textures.lookup(1), Some("other_day_tex"));
@@ -650,13 +646,10 @@ mod test {
         assert_eq!(mesh.indices, vec![0, 1, 2]);
         assert_eq!(mesh.blend_mode, BlendMode::Normal);
         assert_eq!(mesh.color, ColorU8RGBA::from_value(255));
-        assert_eq!(
-            mesh.glow,
-            Glow {
-                attenuation_mode: GlowAttenuationMode::DivideExponent4,
-                half_distance: 0,
-            }
-        );
+        assert_eq!(mesh.glow, Glow {
+            attenuation_mode: GlowAttenuationMode::DivideExponent4,
+            half_distance: 0,
+        });
         assert_eq!(result.textures.len(), 1);
         assert_eq!(result.textures.lookup(0), Some("day_tex"));
         assert_eq!(result.errors.len(), 0);

@@ -1,8 +1,7 @@
 mod ir;
 mod parser;
 
-use crate::parse::kvp::FromKVPValue;
-use crate::parse::{util, PrettyPrintResult};
+use crate::parse::{kvp::FromKVPValue, util, PrettyPrintResult};
 pub use ir::*;
 pub use parser::*;
 use std::io;
@@ -30,33 +29,29 @@ impl PrettyPrintResult for ParsedFunctionScript {
         for (idx, instruction) in self.instructions.iter().enumerate() {
             util::indent(indent, out)?;
             write!(out, "{} - ", idx)?;
-            writeln!(
-                out,
-                "{}",
-                match instruction {
-                    Instruction::Addition => "Addition",
-                    Instruction::Subtraction => "Subtraction",
-                    Instruction::Multiplication => "Multiplication",
-                    Instruction::Division => "Division",
-                    Instruction::LogicalOr => "LogicalOr",
-                    Instruction::LogicalAnd => "LogicalAnd",
-                    Instruction::LogicalXor => "LogicalXor",
-                    Instruction::UnaryLogicalNot => "UnaryLogicalNot",
-                    Instruction::UnaryNegative => "UnaryNegative",
-                    Instruction::Equal => "Equals",
-                    Instruction::NotEqual => "NotEquals",
-                    Instruction::Less => "Less",
-                    Instruction::Greater => "Greater",
-                    Instruction::LessEqual => "LessEqual",
-                    Instruction::GreaterEqual => "GreaterEqual",
-                    Instruction::FunctionCall { name, arg_count } => {
-                        return write!(out, "{}({} arguments)", name, arg_count);
-                    }
+            writeln!(out, "{}", match instruction {
+                Instruction::Addition => "Addition",
+                Instruction::Subtraction => "Subtraction",
+                Instruction::Multiplication => "Multiplication",
+                Instruction::Division => "Division",
+                Instruction::LogicalOr => "LogicalOr",
+                Instruction::LogicalAnd => "LogicalAnd",
+                Instruction::LogicalXor => "LogicalXor",
+                Instruction::UnaryLogicalNot => "UnaryLogicalNot",
+                Instruction::UnaryNegative => "UnaryNegative",
+                Instruction::Equal => "Equals",
+                Instruction::NotEqual => "NotEquals",
+                Instruction::Less => "Less",
+                Instruction::Greater => "Greater",
+                Instruction::LessEqual => "LessEqual",
+                Instruction::GreaterEqual => "GreaterEqual",
+                Instruction::FunctionCall { name, arg_count } => {
+                    return write!(out, "{}({} arguments)", name, arg_count);
+                }
 
-                    Instruction::Variable { name } => return write!(out, "Variable: {}", name),
-                    Instruction::Number { value } => return write!(out, "{}", value),
-                },
-            )?;
+                Instruction::Variable { name } => return write!(out, "Variable: {}", name),
+                Instruction::Number { value } => return write!(out, "{}", value),
+            },)?;
         }
         Ok(())
     }

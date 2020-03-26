@@ -30,99 +30,65 @@ fn should_add_file(allowed: Option<FileType>, desired: FileType) -> bool {
 pub fn enumerate_all_files(options: &Options, file_sink: &Sender<File>, shared: &SharedData) {
     let mut entry_func = |path: PathBuf, _entry: DirEntry| {
         match path.file_name().map(|v| v.to_string_lossy().to_lowercase()) {
-            p if p == Some("train.dat".into()) && should_add_file(options.file, FileType::TrainDat) => add_file(
-                file_sink,
-                shared,
-                &shared.train_dat,
-                File {
+            p if p == Some("train.dat".into()) && should_add_file(options.file, FileType::TrainDat) => {
+                add_file(file_sink, shared, &shared.train_dat, File {
                     path,
                     kind: FileKind::TrainDat,
-                },
-            ),
-            p if p == Some("train.xml".into()) && false => add_file(
-                file_sink,
-                shared,
-                &shared.train_xml,
-                File {
-                    path,
-                    kind: FileKind::TrainXML,
-                },
-            ),
-            p if p == Some("extensions.cfg".into()) && should_add_file(options.file, FileType::ExtensionsCfg) => {
-                add_file(
-                    file_sink,
-                    shared,
-                    &shared.extensions_cfg,
-                    File {
-                        path,
-                        kind: FileKind::ExtensionsCfg,
-                    },
-                )
+                })
             }
-            p if p == Some("panel.cfg".into()) && should_add_file(options.file, FileType::PanelCfg) => add_file(
-                file_sink,
-                shared,
-                &shared.panel1_cfg,
-                File {
+            p if p == Some("train.xml".into()) && false => add_file(file_sink, shared, &shared.train_xml, File {
+                path,
+                kind: FileKind::TrainXML,
+            }),
+            p if p == Some("extensions.cfg".into()) && should_add_file(options.file, FileType::ExtensionsCfg) => {
+                add_file(file_sink, shared, &shared.extensions_cfg, File {
+                    path,
+                    kind: FileKind::ExtensionsCfg,
+                })
+            }
+            p if p == Some("panel.cfg".into()) && should_add_file(options.file, FileType::PanelCfg) => {
+                add_file(file_sink, shared, &shared.panel1_cfg, File {
                     path,
                     kind: FileKind::Panel1Cfg,
-                },
-            ),
-            p if p == Some("panel2.cfg".into()) && should_add_file(options.file, FileType::Panel2Cfg) => add_file(
-                file_sink,
-                shared,
-                &shared.panel2_cfg,
-                File {
+                })
+            }
+            p if p == Some("panel2.cfg".into()) && should_add_file(options.file, FileType::Panel2Cfg) => {
+                add_file(file_sink, shared, &shared.panel2_cfg, File {
                     path,
                     kind: FileKind::Panel2Cfg,
-                },
-            ),
-            p if p == Some("sound.cfg".into()) && should_add_file(options.file, FileType::SoundCfg) => add_file(
-                file_sink,
-                shared,
-                &shared.sound_cfg,
-                File {
+                })
+            }
+            p if p == Some("sound.cfg".into()) && should_add_file(options.file, FileType::SoundCfg) => {
+                add_file(file_sink, shared, &shared.sound_cfg, File {
                     path,
                     kind: FileKind::SoundCfg,
-                },
-            ),
-            p if p == Some("ats.cfg".into()) && should_add_file(options.file, FileType::AtsCfg) => add_file(
-                file_sink,
-                shared,
-                &shared.ats_cfg,
-                File {
+                })
+            }
+            p if p == Some("ats.cfg".into()) && should_add_file(options.file, FileType::AtsCfg) => {
+                add_file(file_sink, shared, &shared.ats_cfg, File {
                     path,
                     kind: FileKind::AtsCfg,
-                },
-            ),
+                })
+            }
             _ => match path.extension().map(|v| v.to_string_lossy().to_lowercase()) {
-                ext if ext == Some("b3d".into()) && should_add_file(options.file, FileType::B3D) => add_file(
-                    file_sink,
-                    shared,
-                    &shared.model_b3d,
-                    File {
+                ext if ext == Some("b3d".into()) && should_add_file(options.file, FileType::B3D) => {
+                    add_file(file_sink, shared, &shared.model_b3d, File {
                         path,
                         kind: FileKind::ModelB3d,
-                    },
-                ),
-                ext if ext == Some("csv".into()) && should_add_file(options.file, FileType::CSV) => add_file(
-                    file_sink,
-                    shared,
-                    &shared.model_csv,
-                    File {
+                    })
+                }
+                ext if ext == Some("csv".into()) && should_add_file(options.file, FileType::CSV) => {
+                    add_file(file_sink, shared, &shared.model_csv, File {
                         path,
                         kind: FileKind::ModelCsv,
-                    },
-                ),
-                ext if ext == Some("animated".into()) && should_add_file(options.file, FileType::Animated) => add_file(
-                    file_sink,
-                    shared,
-                    &shared.model_animated,
-                    File {
+                    })
+                }
+                ext if ext == Some("animated".into()) && should_add_file(options.file, FileType::Animated) => {
+                    add_file(file_sink, shared, &shared.model_animated, File {
                         path,
                         kind: FileKind::ModelAnimated,
-                    },
-                ),
+                    })
+                }
                 Some(_ext) => {
                     // unrecognized
                 }
@@ -151,24 +117,14 @@ pub fn enumerate_all_files(options: &Options, file_sink: &Sender<File>, shared: 
 
     enumerate(path, |path: PathBuf, _entry| {
         match path.extension().map(|v| v.to_string_lossy().to_lowercase()) {
-            ext if ext == Some("csv".into()) && false => add_file(
-                file_sink,
-                shared,
-                &shared.route_csv,
-                File {
-                    path,
-                    kind: FileKind::RouteCsv,
-                },
-            ),
-            ext if ext == Some("rw".into()) && false => add_file(
-                file_sink,
-                shared,
-                &shared.route_rw,
-                File {
-                    path,
-                    kind: FileKind::RouteRw,
-                },
-            ),
+            ext if ext == Some("csv".into()) && false => add_file(file_sink, shared, &shared.route_csv, File {
+                path,
+                kind: FileKind::RouteCsv,
+            }),
+            ext if ext == Some("rw".into()) && false => add_file(file_sink, shared, &shared.route_rw, File {
+                path,
+                kind: FileKind::RouteRw,
+            }),
             Some(_ext) => {
                 // unrecognized
             }

@@ -14,9 +14,13 @@
 //! Makes heavy use of [`bve-derive::serde_proxy`](../../../../bve_derive/attr.serde_proxy.html) and
 //! [`bve-derive::serde_vector_proxy`](../../../../bve_derive/attr.serde_vector_proxy.html)
 
-use crate::parse::mesh::{BlendMode, GlowAttenuationMode, MeshError, MeshWarning};
-use crate::parse::{util, PrettyPrintResult, Span};
-use crate::{ColorU8RGB, ColorU8RGBA};
+use crate::{
+    parse::{
+        mesh::{BlendMode, GlowAttenuationMode, MeshError, MeshWarning},
+        util, PrettyPrintResult, Span,
+    },
+    ColorU8RGB, ColorU8RGBA,
+};
 use cgmath::{Vector2, Vector3};
 pub use creation::*;
 pub use post_processing::*;
@@ -245,6 +249,7 @@ impl SetBlendMode {
     fn default_blend_mode() -> Option<BlendMode> {
         Some(BlendMode::Normal)
     }
+
     fn default_glow_attenuation_mode() -> Option<GlowAttenuationMode> {
         Some(GlowAttenuationMode::DivideExponent4)
     }

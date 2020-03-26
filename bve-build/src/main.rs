@@ -49,8 +49,7 @@
 use core::panicking::panic;
 
 use cbindgen::Language;
-use std::fs::read_to_string;
-use std::process::Command;
+use std::{fs::read_to_string, process::Command};
 use structopt::StructOpt;
 
 #[derive(StructOpt)]

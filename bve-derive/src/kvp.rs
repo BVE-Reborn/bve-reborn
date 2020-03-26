@@ -12,8 +12,10 @@ use darling::{FromField, FromVariant};
 use itertools::Itertools;
 use proc_macro2::Ident;
 use quote::quote;
-use syn::export::{TokenStream, TokenStream2};
-use syn::{GenericArgument, ItemEnum, ItemStruct, PathArguments, Type};
+use syn::{
+    export::{TokenStream, TokenStream2},
+    GenericArgument, ItemEnum, ItemStruct, PathArguments, Type,
+};
 
 #[allow(clippy::needless_pass_by_value)] // Needed for type deduction
 fn split_aliases(input: String) -> Vec<String> {

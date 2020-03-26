@@ -1,12 +1,12 @@
-use crate::parse::kvp::FromKVPValue;
-use crate::parse::{util, PrettyPrintResult};
-use nom::branch::alt;
-use nom::bytes::complete::{tag, take_while};
-use nom::combinator::{map_res, opt};
-use nom::sequence::preceded;
-use nom::IResult;
-use std::io;
-use std::str::FromStr;
+use crate::parse::{kvp::FromKVPValue, util, PrettyPrintResult};
+use nom::{
+    branch::alt,
+    bytes::complete::{tag, take_while},
+    combinator::{map_res, opt},
+    sequence::preceded,
+    IResult,
+};
+use std::{io, str::FromStr};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Subject {
@@ -32,46 +32,42 @@ impl FromKVPValue for Subject {
 
 impl PrettyPrintResult for Subject {
     fn fmt(&self, indent: usize, out: &mut dyn io::Write) -> io::Result<()> {
-        writeln!(
-            out,
-            "Target: {}",
-            match self.target {
-                SubjectTarget::Acceleration => "Acceleration",
-                SubjectTarget::Ats(i) => return write!(out, "Ats #{}", i),
-                SubjectTarget::LocoBrakeCylinder => "Loco Brake Cylinder",
-                SubjectTarget::BrakeCylinder => "Brake Cylinder",
-                SubjectTarget::LocoBrakePipe => "Loco Brake Pipe",
-                SubjectTarget::BrakePipe => "Brake Pipe",
-                SubjectTarget::Brake => "Brake",
-                SubjectTarget::LocoBrake => "Loco Brake",
-                SubjectTarget::ConstSpeedSystem => "Const Speed System",
-                SubjectTarget::Door => "Door",
-                SubjectTarget::DoorLeft(i) => return write!(out, "Left Door #{}", i),
-                SubjectTarget::DoorRight(i) => return write!(out, "Right Door #{}", i),
-                SubjectTarget::DoorButtonLeft => "Left Door Button",
-                SubjectTarget::DoorButtonRight => "Right Door Button",
-                SubjectTarget::EqualizingReservoir => "Equalizing Reservoir",
-                SubjectTarget::Hour => "Hours",
-                SubjectTarget::KilometersPerHour => "Speed (kph)",
-                SubjectTarget::Minute => "Minutes",
-                SubjectTarget::MotorAcceleration => "Motor Acceleration",
-                SubjectTarget::MilesPerHour => "Speed (mph)",
-                SubjectTarget::MainReservoir => "Main Reservoir",
-                SubjectTarget::MetersPerSecond => "Speed (m/s)",
-                SubjectTarget::PowerNotch => "Power Notch",
-                SubjectTarget::Reverser => "Reverser",
-                SubjectTarget::StraightAirPipe => "Straight Air Pipe",
-                SubjectTarget::Second => "Seconds",
-                SubjectTarget::True => "True",
-                SubjectTarget::Klaxon => "Klaxon",
-                SubjectTarget::PrimaryKlaxon => "Primary Klaxon",
-                SubjectTarget::SecondaryKlaxon => "SecondaryKlaxon",
-                SubjectTarget::MusicKlaxon => "Music Klaxon",
-                SubjectTarget::PassAlarm => "Pass Alarm",
-                SubjectTarget::PilotLamp => "Pilot Lamp",
-                SubjectTarget::StationAdjustAlarm => "StationAdjustAlarm",
-            },
-        )?;
+        writeln!(out, "Target: {}", match self.target {
+            SubjectTarget::Acceleration => "Acceleration",
+            SubjectTarget::Ats(i) => return write!(out, "Ats #{}", i),
+            SubjectTarget::LocoBrakeCylinder => "Loco Brake Cylinder",
+            SubjectTarget::BrakeCylinder => "Brake Cylinder",
+            SubjectTarget::LocoBrakePipe => "Loco Brake Pipe",
+            SubjectTarget::BrakePipe => "Brake Pipe",
+            SubjectTarget::Brake => "Brake",
+            SubjectTarget::LocoBrake => "Loco Brake",
+            SubjectTarget::ConstSpeedSystem => "Const Speed System",
+            SubjectTarget::Door => "Door",
+            SubjectTarget::DoorLeft(i) => return write!(out, "Left Door #{}", i),
+            SubjectTarget::DoorRight(i) => return write!(out, "Right Door #{}", i),
+            SubjectTarget::DoorButtonLeft => "Left Door Button",
+            SubjectTarget::DoorButtonRight => "Right Door Button",
+            SubjectTarget::EqualizingReservoir => "Equalizing Reservoir",
+            SubjectTarget::Hour => "Hours",
+            SubjectTarget::KilometersPerHour => "Speed (kph)",
+            SubjectTarget::Minute => "Minutes",
+            SubjectTarget::MotorAcceleration => "Motor Acceleration",
+            SubjectTarget::MilesPerHour => "Speed (mph)",
+            SubjectTarget::MainReservoir => "Main Reservoir",
+            SubjectTarget::MetersPerSecond => "Speed (m/s)",
+            SubjectTarget::PowerNotch => "Power Notch",
+            SubjectTarget::Reverser => "Reverser",
+            SubjectTarget::StraightAirPipe => "Straight Air Pipe",
+            SubjectTarget::Second => "Seconds",
+            SubjectTarget::True => "True",
+            SubjectTarget::Klaxon => "Klaxon",
+            SubjectTarget::PrimaryKlaxon => "Primary Klaxon",
+            SubjectTarget::SecondaryKlaxon => "SecondaryKlaxon",
+            SubjectTarget::MusicKlaxon => "Music Klaxon",
+            SubjectTarget::PassAlarm => "Pass Alarm",
+            SubjectTarget::PilotLamp => "Pilot Lamp",
+            SubjectTarget::StationAdjustAlarm => "StationAdjustAlarm",
+        },)?;
         if let Some(d) = self.digit {
             util::indent(indent + 1, out)?;
             write!(out, "Digit: {}", d)?;
@@ -203,64 +199,49 @@ mod test {
     fn no_suffix() {
         let (input, output) = parse_subject("rev").expect("Failed to parse");
         assert!(input.is_empty());
-        assert_eq!(
-            output,
-            Subject {
-                target: SubjectTarget::Reverser,
-                digit: None
-            }
-        )
+        assert_eq!(output, Subject {
+            target: SubjectTarget::Reverser,
+            digit: None
+        })
     }
 
     #[test]
     fn no_suffix_index() {
         let (input, output) = parse_subject("ats232").expect("Failed to parse");
         assert!(input.is_empty());
-        assert_eq!(
-            output,
-            Subject {
-                target: SubjectTarget::Ats(232),
-                digit: None
-            }
-        )
+        assert_eq!(output, Subject {
+            target: SubjectTarget::Ats(232),
+            digit: None
+        })
     }
 
     #[test]
     fn suffix() {
         let (input, output) = parse_subject("revd3").expect("Failed to parse");
         assert!(input.is_empty());
-        assert_eq!(
-            output,
-            Subject {
-                target: SubjectTarget::Reverser,
-                digit: Some(3)
-            }
-        )
+        assert_eq!(output, Subject {
+            target: SubjectTarget::Reverser,
+            digit: Some(3)
+        })
     }
 
     #[test]
     fn suffix_index() {
         let (input, output) = parse_subject("ats232d3").expect("Failed to parse");
         assert!(input.is_empty());
-        assert_eq!(
-            output,
-            Subject {
-                target: SubjectTarget::Ats(232),
-                digit: Some(3)
-            }
-        )
+        assert_eq!(output, Subject {
+            target: SubjectTarget::Ats(232),
+            digit: Some(3)
+        })
     }
 
     #[test]
     fn door_parsing_order() {
         let (input, output) = parse_subject("doorl232").expect("Failed to parse");
         assert!(input.is_empty());
-        assert_eq!(
-            output,
-            Subject {
-                target: SubjectTarget::DoorLeft(232),
-                digit: None
-            }
-        )
+        assert_eq!(output, Subject {
+            target: SubjectTarget::DoorLeft(232),
+            digit: None
+        })
     }
 }

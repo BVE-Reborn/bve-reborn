@@ -16,9 +16,11 @@ impl bve_rex::game::Game for Game {
     fn on_init(&mut self) -> bool {
         true
     }
+
     fn on_slice(&mut self, _input: &mut rx::input::input) -> rx::game_status {
         rx::game_status::k_shutdown
     }
+
     fn on_resize(&mut self, _dimensions: &rx::math::vec2z) {}
 }
 

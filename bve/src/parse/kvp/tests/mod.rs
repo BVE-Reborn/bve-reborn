@@ -2,9 +2,10 @@
 
 #![allow(clippy::shadow_unrelated)] // These are tests
 
-use crate::parse::kvp::traits::FromKVPFile;
-use crate::parse::kvp::{parse_kvp_file, KVPGenericWarning, KVPGenericWarningKind, ANIMATED_LIKE};
-use crate::parse::Span;
+use crate::parse::{
+    kvp::{parse_kvp_file, traits::FromKVPFile, KVPGenericWarning, KVPGenericWarningKind, ANIMATED_LIKE},
+    Span,
+};
 use bve_derive::{FromKVPFile, FromKVPSection};
 use indoc::indoc;
 
@@ -331,15 +332,12 @@ fn unknown_section() {
     let kvp = parse_kvp_file(file_lit, ANIMATED_LIKE);
     let (parsed, warnings) = File::from_kvp_file(&kvp);
     assert_eq!(parsed, File::default());
-    assert_eq!(
-        warnings,
-        vec![KVPGenericWarning {
-            span: Span::from_line(0),
-            kind: KVPGenericWarningKind::UnknownSection {
-                name: String::from("<file header>"),
-            }
-        }]
-    );
+    assert_eq!(warnings, vec![KVPGenericWarning {
+        span: Span::from_line(0),
+        kind: KVPGenericWarningKind::UnknownSection {
+            name: String::from("<file header>"),
+        }
+    }]);
 
     let file_lit = indoc!(
         r#"
@@ -350,15 +348,12 @@ fn unknown_section() {
     let kvp = parse_kvp_file(file_lit, ANIMATED_LIKE);
     let (parsed, warnings) = File::from_kvp_file(&kvp);
     assert_eq!(parsed, File::default());
-    assert_eq!(
-        warnings,
-        vec![KVPGenericWarning {
-            span: Span::from_line(1),
-            kind: KVPGenericWarningKind::UnknownSection {
-                name: String::from("unknown"),
-            }
-        }]
-    );
+    assert_eq!(warnings, vec![KVPGenericWarning {
+        span: Span::from_line(1),
+        kind: KVPGenericWarningKind::UnknownSection {
+            name: String::from("unknown"),
+        }
+    }]);
 }
 
 #[test]
@@ -381,13 +376,10 @@ fn unknown_field() {
     let kvp = parse_kvp_file(file_lit, ANIMATED_LIKE);
     let (parsed, warnings) = File::from_kvp_file(&kvp);
     assert_eq!(parsed, File::default());
-    assert_eq!(
-        warnings,
-        vec![KVPGenericWarning {
-            span: Span::from_line(1),
-            kind: KVPGenericWarningKind::TooManyFields { idx: 0, max: 0 }
-        }]
-    );
+    assert_eq!(warnings, vec![KVPGenericWarning {
+        span: Span::from_line(1),
+        kind: KVPGenericWarningKind::TooManyFields { idx: 0, max: 0 }
+    }]);
 
     let file_lit = indoc!(
         r#"
@@ -398,15 +390,12 @@ fn unknown_field() {
     let kvp = parse_kvp_file(file_lit, ANIMATED_LIKE);
     let (parsed, warnings) = File::from_kvp_file(&kvp);
     assert_eq!(parsed, File::default());
-    assert_eq!(
-        warnings,
-        vec![KVPGenericWarning {
-            span: Span::from_line(1),
-            kind: KVPGenericWarningKind::UnknownField {
-                name: String::from("unknown"),
-            }
-        }]
-    );
+    assert_eq!(warnings, vec![KVPGenericWarning {
+        span: Span::from_line(1),
+        kind: KVPGenericWarningKind::UnknownField {
+            name: String::from("unknown"),
+        }
+    }]);
 }
 
 #[test]
@@ -432,15 +421,12 @@ fn invalid_value() {
     let kvp = parse_kvp_file(file_lit, ANIMATED_LIKE);
     let (parsed, warnings) = File::from_kvp_file(&kvp);
     assert_eq!(parsed, File::default());
-    assert_eq!(
-        warnings,
-        vec![KVPGenericWarning {
-            span: Span::from_line(1),
-            kind: KVPGenericWarningKind::InvalidValue {
-                value: String::from("|62.3"),
-            }
-        }]
-    );
+    assert_eq!(warnings, vec![KVPGenericWarning {
+        span: Span::from_line(1),
+        kind: KVPGenericWarningKind::InvalidValue {
+            value: String::from("|62.3"),
+        }
+    }]);
 }
 
 #[test]
@@ -465,13 +451,10 @@ fn invalid_kvp_value() {
     let kvp = parse_kvp_file(file_lit, ANIMATED_LIKE);
     let (parsed, warnings) = File::from_kvp_file(&kvp);
     assert_eq!(parsed, File::default());
-    assert_eq!(
-        warnings,
-        vec![KVPGenericWarning {
-            span: Span::from_line(1),
-            kind: KVPGenericWarningKind::InvalidValue {
-                value: String::from("|62.3"),
-            }
-        }]
-    );
+    assert_eq!(warnings, vec![KVPGenericWarning {
+        span: Span::from_line(1),
+        kind: KVPGenericWarningKind::InvalidValue {
+            value: String::from("|62.3"),
+        }
+    }]);
 }

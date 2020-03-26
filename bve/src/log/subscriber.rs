@@ -1,20 +1,22 @@
-use crate::log::common::*;
-use crate::log::writer::run_writer;
-use crate::log::SerializationMethod;
+use crate::log::{common::*, writer::run_writer, SerializationMethod};
 use crossbeam::{bounded, Sender};
-use std::cell::RefCell;
-use std::collections::HashMap;
-use std::fmt::Debug;
-use std::io::Write;
-use std::mem::ManuallyDrop;
-use std::sync::atomic::AtomicU64;
-use std::sync::atomic::Ordering;
-use std::sync::{Arc, Mutex};
-use std::thread::JoinHandle;
-use tracing::span::{Attributes, Record};
-use tracing::Id;
-use tracing_core::field::Visit;
-use tracing_core::{Event, Field, Level, Metadata};
+use std::{
+    cell::RefCell,
+    collections::HashMap,
+    fmt::Debug,
+    io::Write,
+    mem::ManuallyDrop,
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc, Mutex,
+    },
+    thread::JoinHandle,
+};
+use tracing::{
+    span::{Attributes, Record},
+    Id,
+};
+use tracing_core::{field::Visit, Event, Field, Level, Metadata};
 
 thread_local! {
     static CURRENT_SPAN: RefCell<Option<Id>> = RefCell::new(None);

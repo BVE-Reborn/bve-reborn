@@ -1,17 +1,23 @@
-use bve::filesystem::read_convert_utf8;
-use bve::parse::animated::ParsedAnimatedObject;
-use bve::parse::ats_cfg::ParsedAtsConfig;
-use bve::parse::extensions_cfg::ParsedExtensionsCfg;
-use bve::parse::mesh::{ParsedStaticObjectB3D, ParsedStaticObjectCSV};
-use bve::parse::panel1_cfg::ParsedPanel1Cfg;
-use bve::parse::panel2_cfg::ParsedPanel2Cfg;
-use bve::parse::sound_cfg::ParsedSoundCfg;
-use bve::parse::train_dat::ParsedTrainDat;
-use bve::parse::{FileParser, ParserResult, PrettyPrintResult};
+use bve::{
+    filesystem::read_convert_utf8,
+    parse::{
+        animated::ParsedAnimatedObject,
+        ats_cfg::ParsedAtsConfig,
+        extensions_cfg::ParsedExtensionsCfg,
+        mesh::{ParsedStaticObjectB3D, ParsedStaticObjectCSV},
+        panel1_cfg::ParsedPanel1Cfg,
+        panel2_cfg::ParsedPanel2Cfg,
+        sound_cfg::ParsedSoundCfg,
+        train_dat::ParsedTrainDat,
+        FileParser, ParserResult, PrettyPrintResult,
+    },
+};
 use clap::arg_enum;
-use std::io::stdout;
-use std::path::{Path, PathBuf};
-use std::time::Instant;
+use std::{
+    io::stdout,
+    path::{Path, PathBuf},
+    time::Instant,
+};
 use structopt::StructOpt;
 
 arg_enum! {

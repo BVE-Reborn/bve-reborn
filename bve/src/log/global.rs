@@ -1,9 +1,6 @@
 use crate::log::{SerializationMethod, Subscriber};
-use std::io::Write;
-use std::sync::Mutex;
-use std::thread::JoinHandle;
-use tracing_core::dispatcher::with_default;
-use tracing_core::{Dispatch, Level};
+use std::{io::Write, sync::Mutex, thread::JoinHandle};
+use tracing_core::{dispatcher::with_default, Dispatch, Level};
 
 lazy_static::lazy_static! {
     static ref GLOBAL_LOGGER: Mutex<Option<Subscriber>> = Mutex::new(None);

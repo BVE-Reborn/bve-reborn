@@ -1,5 +1,4 @@
-use crate::parse::kvp::FromKVPValue;
-use crate::parse::PrettyPrintResult;
+use crate::parse::{kvp::FromKVPValue, PrettyPrintResult};
 use bve_derive::FromKVPSection;
 use std::io;
 
@@ -41,17 +40,13 @@ impl FromKVPValue for Version {
 
 impl PrettyPrintResult for Version {
     fn fmt(&self, _indent: usize, out: &mut dyn io::Write) -> io::Result<()> {
-        write!(
-            out,
-            "{}",
-            match self {
-                Self::BVE120 => "BVE1200000",
-                Self::BVE121 => "BVE1210000",
-                Self::BVE122 => "BVE1220000",
-                Self::BVE2 => "BVE2000000",
-                Self::OpenBVE { version } => version.as_str(),
-            }
-        )?;
+        write!(out, "{}", match self {
+            Self::BVE120 => "BVE1200000",
+            Self::BVE121 => "BVE1210000",
+            Self::BVE122 => "BVE1220000",
+            Self::BVE2 => "BVE2000000",
+            Self::OpenBVE { version } => version.as_str(),
+        })?;
         Ok(())
     }
 }

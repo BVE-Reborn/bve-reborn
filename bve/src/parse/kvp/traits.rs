@@ -1,9 +1,13 @@
-use crate::l10n::ForceEnglish;
-use crate::localize;
-use crate::parse::kvp::{KVPFile, KVPSection};
-use crate::parse::util::{parse_loose_number, parse_loose_numeric_bool};
-use crate::parse::{Span, UserError, UserErrorCategory};
-use crate::{HexColorRGB, HexColorRGBA};
+use crate::{
+    l10n::ForceEnglish,
+    localize,
+    parse::{
+        kvp::{KVPFile, KVPSection},
+        util::{parse_loose_number, parse_loose_numeric_bool},
+        Span, UserError, UserErrorCategory,
+    },
+    HexColorRGB, HexColorRGBA,
+};
 use cgmath::{Vector1, Vector2, Vector3, Vector4};
 use std::str::FromStr;
 

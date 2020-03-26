@@ -3,8 +3,10 @@ use itertools::Itertools;
 use proc_macro::TokenStream;
 use proc_macro2::{Group, Ident, Literal};
 use quote::{format_ident, quote};
-use syn::export::{ToTokens, TokenStream2};
-use syn::{Attribute, ExprPath, GenericArgument, PathArguments, Type, TypePath, Visibility};
+use syn::{
+    export::{ToTokens, TokenStream2},
+    Attribute, ExprPath, GenericArgument, PathArguments, Type, TypePath, Visibility,
+};
 
 struct PrettyPrintField {
     name: Ident,

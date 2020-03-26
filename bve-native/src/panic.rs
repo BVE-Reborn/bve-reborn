@@ -24,12 +24,14 @@
 //! the new panic handler will be called with the wrong pointer. This can cause all kinds of bad things if the panic
 //! handler expects that pointer to be of a specific type.
 
-use std::ffi::{c_void, CStr, CString};
-use std::io::Write;
-use std::os::raw::c_char;
-use std::panic::PanicInfo;
-use std::ptr::null_mut;
-use std::sync::atomic::{AtomicPtr, Ordering};
+use std::{
+    ffi::{c_void, CStr, CString},
+    io::Write,
+    os::raw::c_char,
+    panic::PanicInfo,
+    ptr::null_mut,
+    sync::atomic::{AtomicPtr, Ordering},
+};
 
 /// Function pointer type for the Panic Handler.
 ///

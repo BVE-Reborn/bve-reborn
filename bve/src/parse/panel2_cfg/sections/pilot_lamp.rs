@@ -1,5 +1,7 @@
-use crate::parse::panel2_cfg::{Subject, SubjectTarget};
-use crate::HexColorRGB;
+use crate::{
+    parse::panel2_cfg::{Subject, SubjectTarget},
+    HexColorRGB,
+};
 use bve_derive::FromKVPSection;
 use cgmath::{Array, Vector2};
 

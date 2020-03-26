@@ -91,10 +91,12 @@ pub mod load;
 pub mod panic;
 pub mod parse;
 
-use std::borrow::Cow;
-use std::ffi::{CStr, CString};
-use std::os::raw::*;
-use std::ptr::null_mut;
+use std::{
+    borrow::Cow,
+    ffi::{CStr, CString},
+    os::raw::*,
+    ptr::null_mut,
+};
 
 /// C safe wrapper for an [`Option`].
 ///

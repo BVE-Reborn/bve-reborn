@@ -1,6 +1,4 @@
-use crate::parse::kvp::FromKVPValue;
-use crate::parse::panel1_cfg::sections::IndicatorType;
-use crate::parse::{util, PrettyPrintResult};
+use crate::parse::{kvp::FromKVPValue, panel1_cfg::sections::IndicatorType, util, PrettyPrintResult};
 use bve_derive::{FromKVPSection, FromKVPValueEnumNumbers};
 use cgmath::{Array, Vector2};
 use std::io;

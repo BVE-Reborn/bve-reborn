@@ -1,28 +1,40 @@
-use crate::panic::{PANIC, USE_DEFAULT_PANIC_HANLDER};
-use crate::{File, FileKind, FileResult, ParseResult, SharedData};
-use bve::filesystem::read_convert_utf8;
-use bve::parse::animated::ParsedAnimatedObject;
-use bve::parse::ats_cfg::ParsedAtsConfig;
-use bve::parse::extensions_cfg::ParsedExtensionsCfg;
-use bve::parse::mesh::{FileType, MeshErrorKind, ParsedStaticObject, ParsedStaticObjectB3D, ParsedStaticObjectCSV};
-use bve::parse::panel1_cfg::ParsedPanel1Cfg;
-use bve::parse::panel2_cfg::ParsedPanel2Cfg;
-use bve::parse::sound_cfg::ParsedSoundCfg;
-use bve::parse::train_dat::ParsedTrainDat;
-use bve::parse::{FileParser, ParserResult, UserError};
+use crate::{
+    panic::{PANIC, USE_DEFAULT_PANIC_HANLDER},
+    File, FileKind, FileResult, ParseResult, SharedData,
+};
+use bve::{
+    filesystem::read_convert_utf8,
+    parse::{
+        animated::ParsedAnimatedObject,
+        ats_cfg::ParsedAtsConfig,
+        extensions_cfg::ParsedExtensionsCfg,
+        mesh::{FileType, MeshErrorKind, ParsedStaticObject, ParsedStaticObjectB3D, ParsedStaticObjectCSV},
+        panel1_cfg::ParsedPanel1Cfg,
+        panel2_cfg::ParsedPanel2Cfg,
+        sound_cfg::ParsedSoundCfg,
+        train_dat::ParsedTrainDat,
+        FileParser, ParserResult, UserError,
+    },
+};
 use core::panicking::panic;
-use crossbeam::atomic::AtomicCell;
-use crossbeam::channel::{Receiver, Sender};
+use crossbeam::{
+    atomic::AtomicCell,
+    channel::{Receiver, Sender},
+};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use itertools::Itertools;
-use std::fmt::Debug;
-use std::fs::read_to_string;
-use std::io::Write;
-use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{Arc, Mutex};
-use std::thread::JoinHandle;
-use std::time::Instant;
+use std::{
+    fmt::Debug,
+    fs::read_to_string,
+    io::Write,
+    path::{Path, PathBuf},
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc, Mutex,
+    },
+    thread::JoinHandle,
+    time::Instant,
+};
 
 pub struct WorkerThread {
     pub handle: JoinHandle<()>,

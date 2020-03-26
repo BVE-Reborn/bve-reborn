@@ -1,6 +1,8 @@
-use crate::l10n::ForceEnglish;
-use crate::localize;
-use crate::parse::{Span, UserError, UserErrorCategory};
+use crate::{
+    l10n::ForceEnglish,
+    localize,
+    parse::{Span, UserError, UserErrorCategory},
+};
 
 /// A warning in the parsing or evaluation of a mesh.
 #[derive(Debug, Clone, PartialEq)]

@@ -1,5 +1,4 @@
-use crate::parse::kvp::FromKVPValue;
-use crate::parse::PrettyPrintResult;
+use crate::parse::{kvp::FromKVPValue, PrettyPrintResult};
 use bve_derive::FromKVPSection;
 use cgmath::Vector3;
 use num_traits::Zero;
@@ -60,13 +59,9 @@ impl FromKVPValue for PlayOn {
 
 impl PrettyPrintResult for PlayOn {
     fn fmt(&self, _indent: usize, out: &mut dyn io::Write) -> io::Result<()> {
-        writeln!(
-            out,
-            "{}",
-            match self {
-                Self::Silent => "Silent",
-                Self::Play => "Play",
-            },
-        )
+        writeln!(out, "{}", match self {
+            Self::Silent => "Silent",
+            Self::Play => "Play",
+        },)
     }
 }

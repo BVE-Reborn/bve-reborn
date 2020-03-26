@@ -1,6 +1,4 @@
-use crate::parse::function_scripts::ParsedFunctionScript;
-use crate::parse::kvp::FromKVPValue;
-use crate::parse::PrettyPrintResult;
+use crate::parse::{function_scripts::ParsedFunctionScript, kvp::FromKVPValue, PrettyPrintResult};
 use bve_derive::{FromKVPSection, FromKVPValue};
 use cgmath::{Vector2, Vector3};
 use num_traits::Zero;
@@ -108,14 +106,10 @@ impl FromKVPValue for TextureOverride {
 
 impl PrettyPrintResult for TextureOverride {
     fn fmt(&self, _indent: usize, out: &mut dyn io::Write) -> io::Result<()> {
-        writeln!(
-            out,
-            "{}",
-            match self {
-                Self::None => "None",
-                Self::Timetable => "Timetable",
-            },
-        )
+        writeln!(out, "{}", match self {
+            Self::None => "None",
+            Self::Timetable => "Timetable",
+        },)
     }
 }
 

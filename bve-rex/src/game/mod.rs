@@ -1,8 +1,9 @@
 use bve_rex_sys::*;
-use std::ffi::c_void;
-use std::ffi::CString;
-use std::mem::transmute;
-use std::os::raw::c_char;
+use std::{
+    ffi::{c_void, CString},
+    mem::transmute,
+    os::raw::c_char,
+};
 
 pub trait GameBuilder: Sized {
     type Built: Game;

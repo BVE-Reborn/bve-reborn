@@ -1,13 +1,16 @@
-use crate::filesystem::read_convert_utf8;
-use crate::load::mesh::execution::generate_meshes;
-use crate::parse::mesh::instructions::{create_instructions, post_process};
-use crate::parse::mesh::{BlendMode, FileType, Glow, GlowAttenuationMode, MeshError, MeshWarning};
-use crate::{ColorU8RGB, ColorU8RGBA};
+use crate::{
+    filesystem::read_convert_utf8,
+    load::mesh::execution::generate_meshes,
+    parse::mesh::{
+        instructions::{create_instructions, post_process},
+        BlendMode, FileType, Glow, GlowAttenuationMode, MeshError, MeshWarning,
+    },
+    ColorU8RGB, ColorU8RGBA,
+};
 use cgmath::{Array, Vector2, Vector3};
 pub use execution::*;
 use indexmap::IndexSet;
-use std::ffi::OsStr;
-use std::path::Path;
+use std::{ffi::OsStr, path::Path};
 
 mod execution;
 
