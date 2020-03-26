@@ -5,7 +5,7 @@ use bve::{ColorU8RGB, ColorU8RGBA};
 use bve_derive::c_interface;
 use libc::c_char;
 use std::ffi::CStr;
-use std::ptr::null;
+use std::ptr::{null, null_mut};
 
 pub use mesh::Vertex;
 
@@ -53,9 +53,11 @@ impl Into<mesh::LoadedStaticMesh> for Loaded_Static_Mesh {
 /// - Object provided must be able to be reassembled into a rust datastructure before being deleted. This means the
 ///   invariants of all of rust's equivalent datastructure must be upheld.
 #[c_interface]
-pub unsafe extern "C" fn bve_delete_loaded_static_mesh(object: Loaded_Static_Mesh) {
-    let _reassembled: mesh::LoadedStaticMesh = object.into();
-    // Object safely deleted
+pub unsafe extern "C" fn bve_delete_loaded_static_mesh(object: *mut Loaded_Static_Mesh) {
+    if object != null_mut() {
+        let _reassembled: mesh::LoadedStaticMesh = (*Box::from_raw(object)).into();
+        // Object safely deleted
+    }
 }
 
 /// C safe wrapper for [`TextureSet`](bve::load::mesh::TextureSet).
@@ -202,12 +204,14 @@ impl Into<mesh::Mesh> for Mesh {
 ///
 /// # Safety
 ///
-/// - `string` must be non-null and null terminated. May be invalid utf8.
-/// - `file_type` must be a valid enumeration.
+/// - `file` must be non-null and null terminated.
 /// - Result must be properly deleted.
 #[must_use]
 #[c_interface]
-pub unsafe extern "C" fn bve_load_mesh_from_file(file: *const c_char) -> COption<Loaded_Static_Mesh> {
+pub unsafe extern "C" fn bve_load_mesh_from_file(file: *const c_char) -> *mut Loaded_Static_Mesh {
     let result = mesh::load_mesh_from_file(unowned_ptr_to_str(&file).as_ref());
-    result.into()
+    match result {
+        Some(m) => Box::into_raw(Box::new(m.into())),
+        None => null_mut(),
+    }
 }
