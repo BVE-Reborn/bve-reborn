@@ -1,0 +1,17 @@
+[package]
+name = "bve-render"
+version = "0.0.1"
+description = "BVE-Reborn's renderer and window managment"
+license = "MPL-2.0"
+authors = ["Connor Fitzgerald <connorwadefitzgerald@gmail.com>"]
+edition = "2018"
+
+repository = "https://gitlab.bvereborn.com/bve-reborn/bve-reborn"
+readme = "README.md"
+categories = ["games", "rendering", "graphics"]
+keywords = ["bve", "renderer", "wgpu"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+wgpu = "0.4.0"
