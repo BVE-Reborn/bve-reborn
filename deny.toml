@@ -16,12 +16,6 @@ multiple-versions = "deny"
 skip = [
     # gfx-hal
     { name = "smallvec", version = "0.6.13" }, # All of gfx-hal has an old version, and it also has a dep on parking_lot which depends on this
-    # wgpu
-    { name = "proc-macro2", version = "0.4.30" }, # Wgpu has an old version of zerocopy
-    { name = "quote", version = "0.6.13" }, # Wgpu has an old version of zerocopy
-    { name = "syn", version = "0.6.13" }, # Wgpu has an old version of zerocopy
-    { name = "synstructure", version = "0.10.2" }, # Wgpu has an old version of zerocopy
-    { name = "unicode-xid", version = "0.1.0" }, # Wgpu has an old version of zerocopy
     # nom
     { name = "arrayvec", version = "0.4.12" }, # Nom has an old version of lexical-core
     # clap
