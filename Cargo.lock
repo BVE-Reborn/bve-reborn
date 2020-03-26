@@ -2046,7 +2046,7 @@ checksum = "daf76fe7d25ac79748a37538b7daeed1c7a6867c92d3245c12c6222e4a20d639"
 [[package]]
 name = "wgpu"
 version = "0.4.0"
-source = "git+https://github.com/BVE-Reborn/wgpu-rs.git?rev=ce10a47de81e28a9ad3468952bda66a4aa9d2f9e#ce10a47de81e28a9ad3468952bda66a4aa9d2f9e"
+source = "git+https://github.com/gfx-rs/wgpu-rs.git?rev=ce10a47de81e28a9ad3468952bda66a4aa9d2f9e#ce10a47de81e28a9ad3468952bda66a4aa9d2f9e"
 dependencies = [
  "arrayvec 0.5.1",
  "raw-window-handle",
