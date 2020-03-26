@@ -8,7 +8,6 @@ allow = [
     "MPL-2.0",
     "Unlicense",
     "WTFPL",
-
 ]
 
 [bans]
