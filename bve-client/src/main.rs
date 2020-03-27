@@ -1,20 +1,33 @@
-use winit::event_loop::EventLoop;
+use winit::event_loop::{EventLoop, ControlFlow};
 use winit::window::WindowBuilder;
+use bve_render::Renderer;
+use winit::event::{Event, WindowEvent};
 
 async fn async_main() {
     let event_loop = EventLoop::new();
 
     env_logger::init();
 
-    let (window, size) = {
+    let window = {
         let mut builder = WindowBuilder::new();
         builder = builder.with_title("BVE-Reborn");
         let window = builder.build(&event_loop).unwrap();
-        let size = window.inner_size();
-        (window, size)
+        window
     };
 
+    let mut renderer = Renderer::new(&window).await;
 
+    event_loop.run(move |event, _, control_flow| {
+        match event {
+            Event::MainEventsCleared => window.request_redraw(),
+            Event::WindowEvent { event: WindowEvent::Resized(size), ..} => renderer.resize(size),
+            Event::RedrawRequested(_) => {
+                renderer.render();
+            }
+            Event::WindowEvent {event: WindowEvent::CloseRequested, ..} => *control_flow = ControlFlow::Exit,
+            _ => {}
+        }
+    })
 }
 
 fn main() {
