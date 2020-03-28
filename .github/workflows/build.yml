@@ -121,7 +121,7 @@ jobs:
 
       - name: Build C API
         run: |
-          cargo run --bin bve-build -- --color=always --no-build
+          cargo run --bin bve-build -- --color=always --bindgen
         shell: bash
 
       - name: Build
