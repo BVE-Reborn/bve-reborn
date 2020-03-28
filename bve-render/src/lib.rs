@@ -21,25 +21,32 @@ macro_rules! include_shader {
 
 #[repr(C)]
 #[derive(Clone, Copy, AsBytes, FromBytes)]
-struct Vertex {
+pub struct Vertex {
     _pos: [f32; 3],
     _tex_coord: [f32; 2],
 }
 
+pub const fn vertex(pos: [i8; 3], tc: [i8; 2]) -> Vertex {
+    Vertex {
+        _pos: [pos[0] as f32, pos[1] as f32, pos[2] as f32],
+        _tex_coord: [tc[0] as f32, tc[1] as f32],
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Hash)]
-pub struct ObjectHandle(i64);
+pub struct ObjectHandle(u64);
 
 pub struct Object {
     vertex_buffer: Buffer,
-    index_buffer: Buffer,
 
-    matrix_buffer: Buffer,
+    index_buffer: Buffer,
+    index_count: u32,
     bind_group: BindGroup,
 }
 
 pub struct Renderer {
     objects: HashMap<ObjectHandle, Object>,
-    object_handle_count: i64,
+    object_handle_count: u64,
 
     surface: Surface,
     device: Device,
@@ -173,7 +180,7 @@ impl Renderer {
         }
     }
 
-    pub fn add_object(&mut self, location: Vector3<f32>, vertices: &[Vertex], indices: &[u16]) -> ObjectHandle {
+    pub fn add_object(&mut self, _location: Vector3<f32>, vertices: &[Vertex], indices: &[u16]) -> ObjectHandle {
         let vertex_buffer = self
             .device
             .create_buffer_with_data(vertices.as_bytes(), BufferUsage::VERTEX);
@@ -203,7 +210,7 @@ impl Renderer {
         self.objects.insert(ObjectHandle(handle), Object {
             vertex_buffer,
             index_buffer,
-            matrix_buffer,
+            index_count: indices.len() as u32,
             bind_group,
         });
         ObjectHandle(handle)
@@ -239,8 +246,12 @@ impl Renderer {
                 depth_stencil_attachment: None,
             });
             rpass.set_pipeline(&self.pipeline);
-            rpass.set_bind_group(0, &self.bind_group, &[]);
-            rpass.draw(0..3, 0..1);
+            for object in self.objects.values() {
+                rpass.set_bind_group(0, &object.bind_group, &[]);
+                rpass.set_vertex_buffer(0, &object.vertex_buffer, 0, 0);
+                rpass.set_index_buffer(&object.index_buffer, 0, 0);
+                rpass.draw_indexed(0..(object.index_count as u32), 0, 0..1);
+            }
         }
 
         self.queue.submit(&[encoder.finish()]);
