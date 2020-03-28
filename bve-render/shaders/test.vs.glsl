@@ -1,15 +1,12 @@
 #version 450
 
-out gl_PerVertex {
-    vec4 gl_Position;
+layout(location = 0) in vec4 position;
+layout(location = 1) in vec2 texcoord;
+
+layout(set = 0, binding = 0) uniform Locals {
+    mat4 transform;
 };
 
-const vec2 positions[3] = vec2[3](
-    vec2(0.0, -0.5),
-    vec2(0.5, 0.5),
-    vec2(-0.5, 0.5)
-);
-
 void main() {
-    gl_Position = vec4(positions[gl_VertexIndex], 0.0, 1.0);
+    gl_Position = transform * position;
 }

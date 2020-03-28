@@ -217,6 +217,7 @@ version = "0.0.1"
 dependencies = [
  "bve",
  "bve-render",
+ "cgmath",
  "env_logger",
  "futures",
  "log",
@@ -277,8 +278,10 @@ dependencies = [
 name = "bve-render"
 version = "0.0.1"
 dependencies = [
+ "cgmath",
  "wgpu",
  "winit",
+ "zerocopy",
 ]
 
 [[package]]
@@ -2738,3 +2741,24 @@ name = "xml-rs"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "541b12c998c5b56aa2b4e6f18f03664eef9a4fd0a246a55594efae6cc2d964b5"
+
+[[package]]
+name = "zerocopy"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6580539ad917b7c026220c4b3f2c08d52ce54d6ce0dc491e66002e35388fab46"
+dependencies = [
+ "byteorder",
+ "zerocopy-derive",
+]
+
+[[package]]
+name = "zerocopy-derive"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d498dbd1fd7beb83c86709ae1c33ca50942889473473d287d56ce4770a18edfb"
+dependencies = [
+ "proc-macro2 1.0.9",
+ "syn",
+ "synstructure",
+]

@@ -1,6 +1,8 @@
-use std::io;
+use cgmath::Vector3;
+use std::{collections::HashMap, io};
 use wgpu::*;
 use winit::{dpi::PhysicalSize, window::Window};
+use zerocopy::{AsBytes, FromBytes};
 
 macro_rules! include_shader {
     (vert $name:literal) => {
@@ -17,13 +19,31 @@ macro_rules! include_shader {
     };
 }
 
+#[repr(C)]
+#[derive(Clone, Copy, AsBytes, FromBytes)]
+struct Vertex {
+    _pos: [f32; 4],
+    _tex_coord: [f32; 2],
+}
+
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub struct ObjectHandle(i64);
+
+pub struct Object {
+    vertex_buffer: Buffer,
+    index_buffer: Buffer,
+}
+
 pub struct Renderer {
+    objects: HashMap<ObjectHandle, Object>,
+    object_handle_count: i64,
+
     surface: Surface,
     device: Device,
     queue: Queue,
     swapchain: SwapChain,
     pipeline: RenderPipeline,
-    bind_group: BindGroup,
+    bind_group_layout: BindGroupLayout,
 }
 
 impl Renderer {
@@ -65,10 +85,12 @@ impl Renderer {
         let fs = include_shader!(frag "test");
         let fs_module = device.create_shader_module(&read_spirv(io::Cursor::new(&fs[..])).unwrap());
 
-        let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor { bindings: &[] });
-        let bind_group = device.create_bind_group(&BindGroupDescriptor {
-            layout: &bind_group_layout,
-            bindings: &[],
+        let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+            bindings: &[BindGroupLayoutEntry {
+                binding: 0,
+                visibility: ShaderStage::VERTEX,
+                ty: BindingType::UniformBuffer { dynamic: false },
+            }],
         });
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             bind_group_layouts: &[&bind_group_layout],
@@ -107,13 +129,33 @@ impl Renderer {
         });
 
         Self {
+            objects: HashMap::new(),
+            object_handle_count: 0,
+
             surface,
             device,
             queue,
             swapchain,
             pipeline,
-            bind_group,
+            bind_group_layout,
         }
+    }
+
+    pub fn add_object(&mut self, location: Vector3<f32>, vertices: &[Vertex], indices: &[u16]) -> ObjectHandle {
+        let vertex_buffer = self
+            .device
+            .create_buffer_with_data(vertices.as_bytes(), BufferUsage::VERTEX);
+        let index_buffer = self
+            .device
+            .create_buffer_with_data(indices.as_bytes(), BufferUsage::INDEX);
+
+        let handle = self.object_handle_count;
+        self.object_handle_count += 1;
+        self.objects.insert(ObjectHandle(handle), Object {
+            vertex_buffer,
+            index_buffer,
+        });
+        ObjectHandle(handle)
     }
 
     pub fn resize(&mut self, size: PhysicalSize<u32>) {
