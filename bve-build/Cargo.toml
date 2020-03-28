@@ -17,3 +17,4 @@ keywords = ["bve", "building", "serialization", "simulation"]
 [dependencies]
 cbindgen = "0.13"
 structopt = "0.3"
+walkdir = "2.3.1"
