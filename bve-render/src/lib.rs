@@ -1,5 +1,5 @@
-use cgmath::Vector3;
-use std::{collections::HashMap, io};
+use cgmath::{Matrix4, Point3, Vector3};
+use std::{collections::HashMap, io, mem::size_of};
 use wgpu::*;
 use winit::{dpi::PhysicalSize, window::Window};
 use zerocopy::{AsBytes, FromBytes};
@@ -22,7 +22,7 @@ macro_rules! include_shader {
 #[repr(C)]
 #[derive(Clone, Copy, AsBytes, FromBytes)]
 struct Vertex {
-    _pos: [f32; 4],
+    _pos: [f32; 3],
     _tex_coord: [f32; 2],
 }
 
@@ -32,6 +32,9 @@ pub struct ObjectHandle(i64);
 pub struct Object {
     vertex_buffer: Buffer,
     index_buffer: Buffer,
+
+    matrix_buffer: Buffer,
+    bind_group: BindGroup,
 }
 
 pub struct Renderer {
@@ -44,6 +47,20 @@ pub struct Renderer {
     swapchain: SwapChain,
     pipeline: RenderPipeline,
     bind_group_layout: BindGroupLayout,
+}
+
+pub const OPENGL_TO_WGPU_MATRIX: Matrix4<f32> = Matrix4::new(
+    1.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.0, 0.0, 0.0, 0.5, 1.0,
+);
+
+fn generate_matrix(aspect_ratio: f32) -> Matrix4<f32> {
+    let mx_projection = cgmath::perspective(cgmath::Deg(45f32), aspect_ratio, 1.0, 10.0);
+    let mx_view: Matrix4<f32> = Matrix4::look_at(
+        Point3::new(1.5, -5.0, 3.0),
+        Point3::new(0.0, 0.0, 0.0),
+        Vector3::unit_z(),
+    );
+    OPENGL_TO_WGPU_MATRIX * mx_projection * mx_view
 }
 
 impl Renderer {
@@ -122,7 +139,22 @@ impl Renderer {
             }],
             depth_stencil_state: None,
             index_format: IndexFormat::Uint16,
-            vertex_buffers: &[],
+            vertex_buffers: &[VertexBufferDescriptor {
+                stride: size_of::<Vertex>() as BufferAddress,
+                step_mode: InputStepMode::Vertex,
+                attributes: &[
+                    VertexAttributeDescriptor {
+                        format: VertexFormat::Float3,
+                        offset: 0,
+                        shader_location: 0,
+                    },
+                    VertexAttributeDescriptor {
+                        format: VertexFormat::Float2,
+                        offset: 3 * size_of::<f32>() as BufferAddress,
+                        shader_location: 1,
+                    },
+                ],
+            }],
             sample_count: 1,
             sample_mask: !0,
             alpha_to_coverage_enabled: false,
@@ -149,11 +181,30 @@ impl Renderer {
             .device
             .create_buffer_with_data(indices.as_bytes(), BufferUsage::INDEX);
 
+        let matrix = generate_matrix(800.0 / 600.0);
+        let matrix_ref: &[f32; 16] = matrix.as_ref();
+        let matrix_buffer = self
+            .device
+            .create_buffer_with_data(matrix_ref.as_bytes(), BufferUsage::UNIFORM | BufferUsage::COPY_DST);
+
+        let bind_group = self.device.create_bind_group(&BindGroupDescriptor {
+            layout: &self.bind_group_layout,
+            bindings: &[Binding {
+                binding: 0,
+                resource: BindingResource::Buffer {
+                    buffer: &matrix_buffer,
+                    range: 0..64,
+                },
+            }],
+        });
+
         let handle = self.object_handle_count;
         self.object_handle_count += 1;
         self.objects.insert(ObjectHandle(handle), Object {
             vertex_buffer,
             index_buffer,
+            matrix_buffer,
+            bind_group,
         });
         ObjectHandle(handle)
     }
