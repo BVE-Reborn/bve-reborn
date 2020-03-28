@@ -62,7 +62,7 @@ async fn async_main() {
 
     let mut renderer = Renderer::new(&window).await;
 
-    renderer.add_object(Vector3::new(0.0, 0.0, 0.0), &VERTEX_DATA, &INDEX_DATA);
+    renderer.add_object(Vector3::new(0.0, 0.0, 3.0), &VERTEX_DATA, &INDEX_DATA);
 
     event_loop.run(move |event, _, control_flow| match event {
         Event::MainEventsCleared => window.request_redraw(),

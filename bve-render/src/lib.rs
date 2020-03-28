@@ -41,7 +41,10 @@ pub struct Object {
 
     index_buffer: Buffer,
     index_count: u32,
+
     bind_group: BindGroup,
+
+    location: Vector3<f32>,
 }
 
 pub struct Renderer {
@@ -57,17 +60,21 @@ pub struct Renderer {
 }
 
 pub const OPENGL_TO_WGPU_MATRIX: Matrix4<f32> = Matrix4::new(
-    1.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.0, 0.0, 0.0, 0.5, 1.0,
+    1.0, 0.0, 0.0, 0.0, //
+    0.0, -1.0, 0.0, 0.0, //
+    0.0, 0.0, 0.5, 0.0, //
+    0.0, 0.0, 0.5, 1.0,
 );
 
-fn generate_matrix(aspect_ratio: f32) -> Matrix4<f32> {
+fn generate_matrix(location: Vector3<f32>, aspect_ratio: f32) -> Matrix4<f32> {
     let mx_projection = cgmath::perspective(cgmath::Deg(45f32), aspect_ratio, 1.0, 10.0);
     let mx_view: Matrix4<f32> = Matrix4::look_at(
         Point3::new(1.5, -5.0, 3.0),
         Point3::new(0.0, 0.0, 0.0),
         Vector3::unit_z(),
     );
-    OPENGL_TO_WGPU_MATRIX * mx_projection * mx_view
+    let mx_model = Matrix4::from_translation(location);
+    OPENGL_TO_WGPU_MATRIX * mx_projection * mx_view * mx_model
 }
 
 impl Renderer {
@@ -180,7 +187,7 @@ impl Renderer {
         }
     }
 
-    pub fn add_object(&mut self, _location: Vector3<f32>, vertices: &[Vertex], indices: &[u16]) -> ObjectHandle {
+    pub fn add_object(&mut self, location: Vector3<f32>, vertices: &[Vertex], indices: &[u16]) -> ObjectHandle {
         let vertex_buffer = self
             .device
             .create_buffer_with_data(vertices.as_bytes(), BufferUsage::VERTEX);
@@ -188,7 +195,7 @@ impl Renderer {
             .device
             .create_buffer_with_data(indices.as_bytes(), BufferUsage::INDEX);
 
-        let matrix = generate_matrix(800.0 / 600.0);
+        let matrix = generate_matrix(location, 800.0 / 600.0);
         let matrix_ref: &[f32; 16] = matrix.as_ref();
         let matrix_buffer = self
             .device
@@ -212,6 +219,7 @@ impl Renderer {
             index_buffer,
             index_count: indices.len() as u32,
             bind_group,
+            location,
         });
         ObjectHandle(handle)
     }
