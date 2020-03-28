@@ -53,7 +53,7 @@ use std::{
     borrow::Cow,
     ffi::OsStr,
     fs::{read_to_string, FileType},
-    process::Command,
+    process::{exit, Command},
 };
 use structopt::StructOpt;
 use walkdir::WalkDir;
@@ -240,6 +240,7 @@ fn build_shaders() {
                     name,
                     result.code().expect("Unable to get error code")
                 );
+                exit(1);
             }
         }
     }
