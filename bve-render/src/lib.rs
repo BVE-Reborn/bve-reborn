@@ -1,7 +1,21 @@
-use winit::window::Window;
-use wgpu::*;
 use std::io;
-use winit::dpi::PhysicalSize;
+use wgpu::*;
+use winit::{dpi::PhysicalSize, window::Window};
+
+macro_rules! include_shader {
+    (vert $name:literal) => {
+        include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/shaders/", $name, ".vs.spv"));
+    };
+    (geo $name:literal) => {
+        include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/shaders/", $name, ".gs.spv"));
+    };
+    (frag $name:literal) => {
+        include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/shaders/", $name, ".fs.spv"));
+    };
+    (comp $name:literal) => {
+        include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/shaders/", $name, ".cs.spv"));
+    };
+}
 
 pub struct Renderer {
     surface: Surface,
@@ -18,16 +32,23 @@ impl Renderer {
 
         let surface = Surface::create(window);
 
-        let adapter = Adapter::request(&RequestAdapterOptions {
-            power_preference: PowerPreference::Default,
-        }, BackendBit::PRIMARY).await.unwrap();
-
-        let (device, queue) = adapter.request_device(&DeviceDescriptor {
-            extensions: Extensions {
-                anisotropic_filtering: true,
+        let adapter = Adapter::request(
+            &RequestAdapterOptions {
+                power_preference: PowerPreference::Default,
             },
-            limits: Limits::default(),
-        }).await;
+            BackendBit::PRIMARY,
+        )
+        .await
+        .unwrap();
+
+        let (device, queue) = adapter
+            .request_device(&DeviceDescriptor {
+                extensions: Extensions {
+                    anisotropic_filtering: true,
+                },
+                limits: Limits::default(),
+            })
+            .await;
 
         let swapchain_descriptor = SwapChainDescriptor {
             usage: TextureUsage::OUTPUT_ATTACHMENT,
@@ -38,14 +59,13 @@ impl Renderer {
         };
         let swapchain = device.create_swap_chain(&surface, &swapchain_descriptor);
 
-        let vs = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/shaders/test.vs.spv"));
+        let vs = include_shader!(vert "test");
         let vs_module = device.create_shader_module(&read_spirv(io::Cursor::new(&vs[..])).unwrap());
 
-        let fs = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/shaders/test.fs.spv"));
+        let fs = include_shader!(frag "test");
         let fs_module = device.create_shader_module(&read_spirv(io::Cursor::new(&fs[..])).unwrap());
 
-        let bind_group_layout =
-            device.create_bind_group_layout(&BindGroupLayoutDescriptor { bindings: &[] });
+        let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor { bindings: &[] });
         let bind_group = device.create_bind_group(&BindGroupDescriptor {
             layout: &bind_group_layout,
             bindings: &[],
@@ -54,7 +74,7 @@ impl Renderer {
             bind_group_layouts: &[&bind_group_layout],
         });
 
-        let pipeline = device.create_render_pipeline(&RenderPipelineDescriptor{
+        let pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
             layout: &pipeline_layout,
             vertex_stage: ProgrammableStageDescriptor {
                 module: &vs_module,
@@ -110,9 +130,9 @@ impl Renderer {
 
     pub fn render(&mut self) {
         let frame = self.swapchain.get_next_texture().unwrap();
-        let mut encoder = self.device.create_command_encoder(&CommandEncoderDescriptor{
-            todo: 0,
-        });
+        let mut encoder = self
+            .device
+            .create_command_encoder(&CommandEncoderDescriptor { todo: 0 });
 
         {
             let mut rpass = encoder.begin_render_pass(&RenderPassDescriptor {

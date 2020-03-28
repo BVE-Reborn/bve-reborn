@@ -1,7 +1,9 @@
-use winit::event_loop::{EventLoop, ControlFlow};
-use winit::window::WindowBuilder;
 use bve_render::Renderer;
-use winit::event::{Event, WindowEvent};
+use winit::{
+    event::{Event, WindowEvent},
+    event_loop::{ControlFlow, EventLoop},
+    window::WindowBuilder,
+};
 
 async fn async_main() {
     let event_loop = EventLoop::new();
@@ -17,16 +19,20 @@ async fn async_main() {
 
     let mut renderer = Renderer::new(&window).await;
 
-    event_loop.run(move |event, _, control_flow| {
-        match event {
-            Event::MainEventsCleared => window.request_redraw(),
-            Event::WindowEvent { event: WindowEvent::Resized(size), ..} => renderer.resize(size),
-            Event::RedrawRequested(_) => {
-                renderer.render();
-            }
-            Event::WindowEvent {event: WindowEvent::CloseRequested, ..} => *control_flow = ControlFlow::Exit,
-            _ => {}
+    event_loop.run(move |event, _, control_flow| match event {
+        Event::MainEventsCleared => window.request_redraw(),
+        Event::WindowEvent {
+            event: WindowEvent::Resized(size),
+            ..
+        } => renderer.resize(size),
+        Event::RedrawRequested(_) => {
+            renderer.render();
         }
+        Event::WindowEvent {
+            event: WindowEvent::CloseRequested,
+            ..
+        } => *control_flow = ControlFlow::Exit,
+        _ => {}
     })
 }
 
