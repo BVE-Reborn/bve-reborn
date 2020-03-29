@@ -79,45 +79,6 @@ fn main() {
 
     event_loop.run(move |event, _, control_flow| match event {
         Event::MainEventsCleared => {
-            let now = Instant::now();
-            let duration = now - last_frame_instant;
-            frame_times.push(duration);
-
-            if now - last_printed_instant >= Duration::from_secs(1) {
-                let sorted = frame_times.iter().map(Duration::clone).sorted().collect_vec();
-
-                let low = *sorted.first().unwrap();
-                let percentile_1th = sorted[sorted.len() * 1 / 100];
-                let percentile_5th = sorted[sorted.len() * 5 / 100];
-                let percentile_50th = sorted[sorted.len() * 50 / 100];
-                let percentile_95th = sorted[sorted.len() * 95 / 100];
-                let percentile_99th = sorted[sorted.len() * 99 / 100];
-                let high = *sorted.last().unwrap();
-
-                let sum: Duration = sorted.iter().sum();
-                let average = sum / (sorted.len() as u32);
-                let fps = 1.0 / average.as_secs_f32();
-
-                let p = |d: Duration| d.as_secs_f32() * 1000.0;
-
-                println!(
-                    "Frame {} ({:.1} fps): ({:.2}, {:.2}, {:.2}, {:.2}, {:.2}, {:.2}, {:.2})",
-                    frame_count,
-                    fps,
-                    p(low),
-                    p(percentile_1th),
-                    p(percentile_5th),
-                    p(percentile_50th),
-                    p(percentile_95th),
-                    p(percentile_99th),
-                    p(high)
-                );
-
-                last_printed_instant = now;
-            }
-            frame_count += 1;
-            last_frame_instant = now;
-
             if up {
                 cube_location.x += 0.01;
             }
@@ -169,6 +130,45 @@ fn main() {
             };
         }
         Event::RedrawRequested(_) => {
+            let now = Instant::now();
+            let duration = now - last_frame_instant;
+            frame_times.push(duration);
+
+            if now - last_printed_instant >= Duration::from_secs(1) {
+                let sorted = frame_times.iter().map(Duration::clone).sorted().collect_vec();
+
+                let low = *sorted.first().unwrap();
+                let percentile_1th = sorted[sorted.len() * 1 / 100];
+                let percentile_5th = sorted[sorted.len() * 5 / 100];
+                let percentile_50th = sorted[sorted.len() * 50 / 100];
+                let percentile_95th = sorted[sorted.len() * 95 / 100];
+                let percentile_99th = sorted[sorted.len() * 99 / 100];
+                let high = *sorted.last().unwrap();
+
+                let sum: Duration = sorted.iter().sum();
+                let average = sum / (sorted.len() as u32);
+                let fps = 1.0 / average.as_secs_f32();
+
+                let p = |d: Duration| d.as_secs_f32() * 1000.0;
+
+                println!(
+                    "Frame {} ({:.1} fps): ({:.2}, {:.2}, {:.2}, {:.2}, {:.2}, {:.2}, {:.2})",
+                    frame_count,
+                    fps,
+                    p(low),
+                    p(percentile_1th),
+                    p(percentile_5th),
+                    p(percentile_50th),
+                    p(percentile_95th),
+                    p(percentile_99th),
+                    p(high)
+                );
+
+                last_printed_instant = now;
+            }
+            frame_count += 1;
+            last_frame_instant = now;
+
             renderer.render();
         }
         Event::WindowEvent {
