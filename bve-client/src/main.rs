@@ -69,7 +69,7 @@ fn main() {
 
             let speed = if shift { 20.0 } else { 2.0 };
 
-            let mut raw_dir_vec: Vector3<f32> = Vector3::new(
+            let raw_dir_vec: Vector3<f32> = Vector3::new(
                 if left {
                     -1.0
                 } else if right {
@@ -149,7 +149,7 @@ fn main() {
             mouse_yaw += (-delta_x / 1000.0) as f32;
             mouse_pitch += (-delta_y / 1000.0) as f32;
             if mouse_yaw < 0.0 {
-                mouse_yaw = TAU + mouse_yaw;
+                mouse_yaw += TAU;
             } else if mouse_yaw >= TAU {
                 mouse_yaw -= TAU;
             }
@@ -171,7 +171,7 @@ fn main() {
                 let sorted = frame_times.iter().map(Duration::clone).sorted().collect_vec();
 
                 let low = *sorted.first().unwrap();
-                let percentile_1th = sorted[sorted.len() * 1 / 100];
+                let percentile_1th = sorted[sorted.len() / 100];
                 let percentile_5th = sorted[sorted.len() * 5 / 100];
                 let percentile_50th = sorted[sorted.len() * 50 / 100];
                 let percentile_95th = sorted[sorted.len() * 95 / 100];

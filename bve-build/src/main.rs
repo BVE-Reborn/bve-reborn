@@ -199,7 +199,7 @@ fn generate_c_bindings(options: &Options) {
 fn build_shaders() {
     for content in WalkDir::new("bve-render/shaders") {
         let entry = content.expect("IO error");
-        if entry.file_type().is_file()
+        if !entry.file_type().is_dir()
             && entry.path().extension().map(OsStr::to_string_lossy) == Some(Cow::Borrowed("glsl"))
         {
             let name = entry.file_name().to_string_lossy();

@@ -2,7 +2,7 @@
 // +y up
 // +z into camera
 
-use bve::load::mesh::{Mesh as BveMesh, Vertex as MeshVertex};
+use bve::load::mesh::Vertex as MeshVertex;
 use cgmath::{EuclideanSpace, Matrix3, Matrix4, Point3, Rad, Vector3};
 use itertools::Itertools;
 use num_traits::ToPrimitive;
