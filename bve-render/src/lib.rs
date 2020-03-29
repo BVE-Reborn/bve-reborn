@@ -42,13 +42,14 @@ pub struct Object {
     index_buffer: Buffer,
     index_count: u32,
 
+    matrix_buffer: Buffer,
     bind_group: BindGroup,
 
     location: Vector3<f32>,
 }
 
 pub struct Renderer {
-    objects: HashMap<ObjectHandle, Object>,
+    objects: HashMap<u64, Object>,
     object_handle_count: u64,
 
     surface: Surface,
@@ -67,9 +68,9 @@ pub const OPENGL_TO_WGPU_MATRIX: Matrix4<f32> = Matrix4::new(
 );
 
 fn generate_matrix(location: Vector3<f32>, aspect_ratio: f32) -> Matrix4<f32> {
-    let mx_projection = cgmath::perspective(cgmath::Deg(45f32), aspect_ratio, 1.0, 10.0);
+    let mx_projection = cgmath::perspective(cgmath::Deg(45f32), aspect_ratio, 1.0, 1000.0);
     let mx_view: Matrix4<f32> = Matrix4::look_at(
-        Point3::new(1.5, -5.0, 3.0),
+        Point3::new(-6.0, 0.0, 3.0),
         Point3::new(0.0, 0.0, 0.0),
         Vector3::unit_z(),
     );
@@ -85,7 +86,7 @@ impl Renderer {
 
         let adapter = Adapter::request(
             &RequestAdapterOptions {
-                power_preference: PowerPreference::Default,
+                power_preference: PowerPreference::HighPerformance,
             },
             BackendBit::PRIMARY,
         )
@@ -156,18 +157,7 @@ impl Renderer {
             vertex_buffers: &[VertexBufferDescriptor {
                 stride: size_of::<Vertex>() as BufferAddress,
                 step_mode: InputStepMode::Vertex,
-                attributes: &[
-                    VertexAttributeDescriptor {
-                        format: VertexFormat::Float3,
-                        offset: 0,
-                        shader_location: 0,
-                    },
-                    VertexAttributeDescriptor {
-                        format: VertexFormat::Float2,
-                        offset: 3 * size_of::<f32>() as BufferAddress,
-                        shader_location: 1,
-                    },
-                ],
+                attributes: &vertex_attr_array![0 => Float3, 1 => Float2],
             }],
             sample_count: 1,
             sample_mask: !0,
@@ -214,14 +204,30 @@ impl Renderer {
 
         let handle = self.object_handle_count;
         self.object_handle_count += 1;
-        self.objects.insert(ObjectHandle(handle), Object {
+        self.objects.insert(handle, Object {
             vertex_buffer,
             index_buffer,
             index_count: indices.len() as u32,
             bind_group,
+            matrix_buffer,
             location,
         });
         ObjectHandle(handle)
+    }
+
+    pub async fn set_location(&mut self, ObjectHandle(handle): &ObjectHandle, location: Vector3<f32>) -> Option<()> {
+        let object = self.objects.get_mut(handle)?;
+
+        object.location = location;
+        let mut buf = object
+            .matrix_buffer
+            .map_write(0, size_of::<Matrix4<f32>>() as u64)
+            .await
+            .ok()?;
+        let matrix = generate_matrix(location, 800.0 / 600.0);
+        let matrix_ref: &[f32; 16] = matrix.as_ref();
+        buf.as_slice().copy_from_slice(matrix_ref.as_bytes());
+        Some(())
     }
 
     pub fn resize(&mut self, size: PhysicalSize<u32>) {

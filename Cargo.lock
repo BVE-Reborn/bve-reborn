@@ -218,8 +218,10 @@ dependencies = [
  "bve",
  "bve-render",
  "cgmath",
+ "circular-queue",
  "env_logger",
  "futures",
+ "itertools",
  "log",
  "winit",
 ]
@@ -279,6 +281,7 @@ name = "bve-render"
 version = "0.0.1"
 dependencies = [
  "cgmath",
+ "indexmap",
  "wgpu",
  "winit",
  "zerocopy",
@@ -368,6 +371,15 @@ dependencies = [
  "num-integer",
  "num-traits",
  "time",
+]
+
+[[package]]
+name = "circular-queue"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1b0aadaeed21c6fc5ff19687407640db71f9236e2eb6c66ec426b82497645c7a"
+dependencies = [
+ "version_check",
 ]
 
 [[package]]

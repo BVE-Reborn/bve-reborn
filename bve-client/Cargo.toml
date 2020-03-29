@@ -17,8 +17,10 @@ keywords = ["bve", "rex", "engine"]
 [dependencies]
 bve = { version = "0.0.1", path = "../bve" }
 bve-render = { version = "0.0.1", path = "../bve-render" }
+circular-queue = "0.2.4"
 cgmath = "0.17.0"
 env_logger = "0.7.1"
+itertools = "0.8"
 futures = { version = "0.3.4", features = ["executor"] }
 log = "0.4.8"
 winit = "0.22.0"
