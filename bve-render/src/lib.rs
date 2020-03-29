@@ -255,7 +255,12 @@ impl Renderer {
                     resolve_target: None,
                     load_op: LoadOp::Clear,
                     store_op: StoreOp::Store,
-                    clear_color: Color::GREEN,
+                    clear_color: Color {
+                        r: 0.3,
+                        g: 0.3,
+                        b: 0.3,
+                        a: 1.0,
+                    },
                 }],
                 depth_stencil_attachment: None,
             });
