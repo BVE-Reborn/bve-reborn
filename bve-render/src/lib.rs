@@ -208,7 +208,7 @@ impl Renderer {
         let matrix_ref: &[f32; 16] = matrix.as_ref();
         let matrix_buffer = self
             .device
-            .create_buffer_with_data(matrix_ref.as_bytes(), BufferUsage::UNIFORM | BufferUsage::COPY_DST);
+            .create_buffer_with_data(matrix_ref.as_bytes(), BufferUsage::UNIFORM | BufferUsage::MAP_WRITE);
 
         let bind_group = self.device.create_bind_group(&BindGroupDescriptor {
             layout: &self.bind_group_layout,
@@ -234,18 +234,11 @@ impl Renderer {
         ObjectHandle(handle)
     }
 
-    pub async fn set_location(&mut self, ObjectHandle(handle): &ObjectHandle, location: Vector3<f32>) -> Option<()> {
+    pub fn set_location(&mut self, ObjectHandle(handle): &ObjectHandle, location: Vector3<f32>) -> Option<()> {
         let object = self.objects.get_mut(handle)?;
 
         object.location = location;
-        let mut buf = object
-            .matrix_buffer
-            .map_write(0, size_of::<Matrix4<f32>>() as u64)
-            .await
-            .ok()?;
-        let matrix = generate_matrix(location, 800.0 / 600.0);
-        let matrix_ref: &[f32; 16] = matrix.as_ref();
-        buf.as_slice().copy_from_slice(matrix_ref.as_bytes());
+
         Some(())
     }
 
@@ -261,8 +254,24 @@ impl Renderer {
         self.swapchain = self.device.create_swap_chain(&self.surface, &swapchain_descriptor);
     }
 
-    pub fn render(&mut self) {
+    async fn recompute_mvp(&mut self) {
+        for object in self.objects.values() {
+            let mut buf = object
+                .matrix_buffer
+                .map_write(0, size_of::<Matrix4<f32>>() as u64)
+                .await
+                .expect("Could not map buffer");
+            let matrix = generate_matrix(object.location, 800.0 / 600.0);
+            let matrix_ref: &[f32; 16] = matrix.as_ref();
+            buf.as_slice().copy_from_slice(matrix_ref.as_bytes());
+        }
+    }
+
+    pub async fn render(&mut self) {
+        self.recompute_mvp().await;
+
         let frame = self.swapchain.get_next_texture().unwrap();
+
         let mut encoder = self
             .device
             .create_command_encoder(&CommandEncoderDescriptor { todo: 0 });

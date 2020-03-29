@@ -65,11 +65,9 @@ fn main() {
                 objects_location.y -= 0.01;
             }
 
-            block_on(async {
-                for object in &objects {
-                    renderer.set_location(&object, objects_location).await.unwrap();
-                }
-            });
+            for object in &objects {
+                renderer.set_location(&object, objects_location).unwrap();
+            }
 
             window.request_redraw();
         }
@@ -146,7 +144,9 @@ fn main() {
             frame_count += 1;
             last_frame_instant = now;
 
-            renderer.render();
+            block_on(async {
+                renderer.render().await;
+            });
         }
         Event::WindowEvent {
             event: WindowEvent::CloseRequested,
