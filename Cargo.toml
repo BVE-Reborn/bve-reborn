@@ -8,6 +8,9 @@ cgmath = { git = "https://github.com/rustgd/cgmath.git", rev = "50a345b7c439c492
 crossbeam = { git = "https://github.com/crossbeam-rs/crossbeam.git", rev = "ebecb82c740a1b3d9d10f235387848f7e3fa9c68" }
 wgpu = { git = "https://github.com/gfx-rs/wgpu-rs.git", rev = "ce10a47de81e28a9ad3468952bda66a4aa9d2f9e" }
 
+[profile.dev]
+opt-level = 1
+
 [profile.release]
 overflow-checks = true
 debug-assertions = true

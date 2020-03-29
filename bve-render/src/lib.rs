@@ -1,5 +1,9 @@
+// +x right
+// +y up
+// +z into camera
+
 use bve::load::mesh::{Mesh as BveMesh, Vertex as MeshVertex};
-use cgmath::{Matrix4, Point3, Vector3};
+use cgmath::{EuclideanSpace, Matrix3, Matrix4, Point3, Rad, Vector3};
 use itertools::Itertools;
 use num_traits::ToPrimitive;
 use std::{collections::HashMap, io, mem::size_of};
@@ -33,7 +37,7 @@ pub struct Vertex {
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub struct ObjectHandle(u64);
 
-pub struct Object {
+struct Object {
     vertex_buffer: Buffer,
 
     index_buffer: Buffer,
@@ -45,9 +49,19 @@ pub struct Object {
     location: Vector3<f32>,
 }
 
+struct Camera {
+    location: Vector3<f32>,
+    /// radians
+    pitch: f32,
+    /// radians
+    yaw: f32,
+}
+
 pub struct Renderer {
     objects: HashMap<u64, Object>,
     object_handle_count: u64,
+
+    camera: Camera,
 
     surface: Surface,
     device: Device,
@@ -64,13 +78,8 @@ pub const OPENGL_TO_WGPU_MATRIX: Matrix4<f32> = Matrix4::new(
     0.0, 0.0, 0.5, 1.0,
 );
 
-fn generate_matrix(location: Vector3<f32>, aspect_ratio: f32) -> Matrix4<f32> {
+fn generate_matrix(mx_view: &Matrix4<f32>, location: Vector3<f32>, aspect_ratio: f32) -> Matrix4<f32> {
     let mx_projection = cgmath::perspective(cgmath::Deg(45f32), aspect_ratio, 1.0, 1000.0);
-    let mx_view: Matrix4<f32> = Matrix4::look_at(
-        Point3::new(-6.0, 0.0, 3.0),
-        Point3::new(0.0, 0.0, 0.0),
-        Vector3::unit_z(),
-    );
     let mx_model = Matrix4::from_translation(location);
     OPENGL_TO_WGPU_MATRIX * mx_projection * mx_view * mx_model
 }
@@ -176,6 +185,12 @@ impl Renderer {
             objects: HashMap::new(),
             object_handle_count: 0,
 
+            camera: Camera {
+                location: Vector3::new(-6.0, 0.0, 3.0),
+                pitch: 0.0,
+                yaw: 0.0,
+            },
+
             surface,
             device,
             queue,
@@ -204,7 +219,7 @@ impl Renderer {
             .device
             .create_buffer_with_data(indices.as_bytes(), BufferUsage::INDEX);
 
-        let matrix = generate_matrix(location, 800.0 / 600.0);
+        let matrix = generate_matrix(&self.compute_camera_matrix(), location, 800.0 / 600.0);
         let matrix_ref: &[f32; 16] = matrix.as_ref();
         let matrix_buffer = self
             .device
@@ -242,6 +257,11 @@ impl Renderer {
         Some(())
     }
 
+    pub fn set_camera(&mut self, pitch: f32, yaw: f32) {
+        self.camera.pitch = pitch;
+        self.camera.yaw = yaw;
+    }
+
     pub fn resize(&mut self, size: PhysicalSize<u32>) {
         let swapchain_descriptor = SwapChainDescriptor {
             usage: TextureUsage::OUTPUT_ATTACHMENT,
@@ -254,14 +274,27 @@ impl Renderer {
         self.swapchain = self.device.create_swap_chain(&self.surface, &swapchain_descriptor);
     }
 
+    fn compute_camera_matrix(&mut self) -> Matrix4<f32> {
+        let look_offset = Matrix3::from_axis_angle(Vector3::unit_y(), Rad(self.camera.yaw))
+            * Matrix3::from_axis_angle(Vector3::unit_x(), Rad(self.camera.pitch))
+            * -Vector3::unit_z();
+
+        Matrix4::look_at(
+            Point3::from_vec(self.camera.location),
+            Point3::from_vec(self.camera.location + look_offset),
+            Vector3::unit_y(),
+        )
+    }
+
     async fn recompute_mvp(&mut self) {
+        let camera_mat = self.compute_camera_matrix();
         for object in self.objects.values() {
             let mut buf = object
                 .matrix_buffer
                 .map_write(0, size_of::<Matrix4<f32>>() as u64)
                 .await
                 .expect("Could not map buffer");
-            let matrix = generate_matrix(object.location, 800.0 / 600.0);
+            let matrix = generate_matrix(&camera_mat, object.location, 800.0 / 600.0);
             let matrix_ref: &[f32; 16] = matrix.as_ref();
             buf.as_slice().copy_from_slice(matrix_ref.as_bytes());
         }

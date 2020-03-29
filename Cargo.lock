@@ -223,6 +223,7 @@ dependencies = [
  "futures",
  "itertools",
  "log",
+ "num-traits",
  "winit",
 ]
 

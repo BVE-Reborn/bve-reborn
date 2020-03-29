@@ -1,9 +1,12 @@
+#![feature(clamp, tau_constant)]
+
 use bve::load::mesh::load_mesh_from_file;
 use bve_render::{ObjectHandle, Renderer};
-use cgmath::Vector3;
+use cgmath::{ElementWise, InnerSpace, Vector3};
 use circular_queue::CircularQueue;
 use futures::executor::block_on;
 use itertools::Itertools;
+use num_traits::Zero;
 use std::time::{Duration, Instant};
 use winit::{
     event::{DeviceEvent, ElementState, Event, KeyboardInput, WindowEvent},
@@ -37,12 +40,18 @@ fn main() {
         window
     };
 
-    let (mut up, mut left, mut down, mut right) = (false, false, false, false);
+    window.set_cursor_grab(true).unwrap();
+    window.set_cursor_visible(false);
+
+    let (mut up, mut left, mut down, mut right, mut shift) = (false, false, false, false, false);
 
     let mut renderer = block_on(async { Renderer::new(&window).await });
 
     let mut objects_location = Vector3::new(0.0, 0.0, 0.0);
     let objects = load_and_add(&mut renderer);
+
+    let mut mouse_pitch = 0.0_f32;
+    let mut mouse_yaw = 0.0_f32;
 
     // TODO: Do 0.1 second/1 second/5 seconds/15 second rolling average
     let mut frame_count = 0_u64;
@@ -52,18 +61,38 @@ fn main() {
 
     event_loop.run(move |event, _, control_flow| match event {
         Event::MainEventsCleared => {
-            if up {
-                objects_location.x += 0.01;
-            }
-            if down {
-                objects_location.x -= 0.01;
-            }
-            if left {
-                objects_location.y += 0.01;
-            }
-            if right {
-                objects_location.y -= 0.01;
-            }
+            let last_frame_time = frame_times
+                .iter()
+                .map(Duration::clone)
+                .next()
+                .unwrap_or_else(|| Duration::from_secs(0));
+
+            let speed = if shift { 20.0 } else { 2.0 };
+
+            let mut raw_dir_vec: Vector3<f32> = Vector3::new(
+                if left {
+                    -1.0
+                } else if right {
+                    1.0
+                } else {
+                    0.0
+                },
+                if up {
+                    1.0
+                } else if down {
+                    -1.0
+                } else {
+                    0.0
+                },
+                0.0,
+            );
+            let dir_vec = if raw_dir_vec.is_zero() {
+                Vector3::zero()
+            } else {
+                raw_dir_vec.normalize_to(speed)
+            } * last_frame_time.as_secs_f32();
+
+            objects_location = objects_location.add_element_wise(dir_vec);
 
             for object in &objects {
                 renderer.set_location(&object, objects_location).unwrap();
@@ -75,12 +104,6 @@ fn main() {
             event: WindowEvent::Resized(size),
             ..
         } => renderer.resize(size),
-        Event::DeviceEvent {
-            event: DeviceEvent::Button { button, state },
-            ..
-        } => {
-            println!("{} {:#?}", button, state);
-        }
         Event::WindowEvent {
             event:
                 WindowEvent::KeyboardInput {
@@ -89,6 +112,7 @@ fn main() {
                 },
             ..
         } => {
+            println!("scancode: {}", scancode);
             *match scancode {
                 // w
                 17 => &mut up,
@@ -98,11 +122,45 @@ fn main() {
                 31 => &mut down,
                 // d
                 32 => &mut right,
-                _ => return,
+                // shift
+                42 => &mut shift,
+                _ => {
+                    match scancode {
+                        // Esc
+                        1 => *control_flow = ControlFlow::Exit,
+                        _ => {}
+                    }
+                    return;
+                }
             } = match state {
                 ElementState::Pressed => true,
                 ElementState::Released => false,
             };
+        }
+        Event::DeviceEvent {
+            event:
+                DeviceEvent::MouseMotion {
+                    delta: (delta_x, delta_y),
+                    ..
+                },
+            ..
+        } => {
+            use std::f32::consts::TAU;
+            mouse_yaw += (-delta_x / 1000.0) as f32;
+            mouse_pitch += (-delta_y / 1000.0) as f32;
+            if mouse_yaw < 0.0 {
+                mouse_yaw = TAU + mouse_yaw;
+            } else if mouse_yaw >= TAU {
+                mouse_yaw -= TAU;
+            }
+            mouse_pitch = mouse_pitch.clamp(
+                -std::f32::consts::FRAC_PI_2 + 0.0001,
+                std::f32::consts::FRAC_PI_2 - 0.0001,
+            );
+
+            renderer.set_camera(mouse_pitch, mouse_yaw);
+
+            println!("{}", mouse_pitch)
         }
         Event::RedrawRequested(_) => {
             let now = Instant::now();
