@@ -1,4 +1,7 @@
+use bve::load::mesh::{Mesh as BveMesh, Vertex as MeshVertex};
 use cgmath::{Matrix4, Point3, Vector3};
+use itertools::Itertools;
+use num_traits::ToPrimitive;
 use std::{collections::HashMap, io, mem::size_of};
 use wgpu::*;
 use winit::{dpi::PhysicalSize, window::Window};
@@ -23,14 +26,8 @@ macro_rules! include_shader {
 #[derive(Clone, Copy, AsBytes, FromBytes)]
 pub struct Vertex {
     _pos: [f32; 3],
+    _normal: [f32; 3],
     _tex_coord: [f32; 2],
-}
-
-pub const fn vertex(pos: [i8; 3], tc: [i8; 2]) -> Vertex {
-    Vertex {
-        _pos: [pos[0] as f32, pos[1] as f32, pos[2] as f32],
-        _tex_coord: [tc[0] as f32, tc[1] as f32],
-    }
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -76,6 +73,17 @@ fn generate_matrix(location: Vector3<f32>, aspect_ratio: f32) -> Matrix4<f32> {
     );
     let mx_model = Matrix4::from_translation(location);
     OPENGL_TO_WGPU_MATRIX * mx_projection * mx_view * mx_model
+}
+
+fn convert_mesh_verts_to_verts(mesh_verts: &[MeshVertex]) -> Vec<Vertex> {
+    mesh_verts
+        .iter()
+        .map(|v| Vertex {
+            _pos: v.position.clone().into(),
+            _normal: v.normal.clone().into(),
+            _tex_coord: v.coord.clone().into(),
+        })
+        .collect()
 }
 
 impl Renderer {
@@ -140,7 +148,7 @@ impl Renderer {
             }),
             rasterization_state: Some(RasterizationStateDescriptor {
                 front_face: FrontFace::Ccw,
-                cull_mode: CullMode::None,
+                cull_mode: CullMode::Back,
                 depth_bias: 0,
                 depth_bias_slope_scale: 0.0,
                 depth_bias_clamp: 0.0,
@@ -153,11 +161,11 @@ impl Renderer {
                 write_mask: ColorWrite::ALL,
             }],
             depth_stencil_state: None,
-            index_format: IndexFormat::Uint16,
+            index_format: IndexFormat::Uint32,
             vertex_buffers: &[VertexBufferDescriptor {
                 stride: size_of::<Vertex>() as BufferAddress,
                 step_mode: InputStepMode::Vertex,
-                attributes: &vertex_attr_array![0 => Float3, 1 => Float2],
+                attributes: &vertex_attr_array![0 => Float3, 1 => Float3, 2 => Float2],
             }],
             sample_count: 1,
             sample_mask: !0,
@@ -177,7 +185,18 @@ impl Renderer {
         }
     }
 
-    pub fn add_object(&mut self, location: Vector3<f32>, vertices: &[Vertex], indices: &[u16]) -> ObjectHandle {
+    pub fn add_object(
+        &mut self,
+        location: Vector3<f32>,
+        mesh_verts: &[MeshVertex],
+        indices: &[impl ToPrimitive],
+    ) -> ObjectHandle {
+        let vertices = convert_mesh_verts_to_verts(mesh_verts);
+        let indices = indices
+            .iter()
+            .map(|i| i.to_u32().expect("Index too large (>2^32)"))
+            .collect_vec();
+
         let vertex_buffer = self
             .device
             .create_buffer_with_data(vertices.as_bytes(), BufferUsage::VERTEX);

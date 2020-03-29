@@ -1,4 +1,5 @@
-use bve_render::{vertex, Renderer, Vertex};
+use bve::load::mesh::load_mesh_from_file;
+use bve_render::{ObjectHandle, Renderer};
 use cgmath::Vector3;
 use circular_queue::CircularQueue;
 use futures::executor::block_on;
@@ -10,47 +11,19 @@ use winit::{
     window::WindowBuilder,
 };
 
-const VERTEX_DATA: [Vertex; 24] = [
-    // top (0, 0, 1)
-    vertex([-1, -1, 1], [0, 0]),
-    vertex([1, -1, 1], [1, 0]),
-    vertex([1, 1, 1], [1, 1]),
-    vertex([-1, 1, 1], [0, 1]),
-    // bottom (0, 0, -1)
-    vertex([-1, 1, -1], [1, 0]),
-    vertex([1, 1, -1], [0, 0]),
-    vertex([1, -1, -1], [0, 1]),
-    vertex([-1, -1, -1], [1, 1]),
-    // right (1, 0, 0)
-    vertex([1, -1, -1], [0, 0]),
-    vertex([1, 1, -1], [1, 0]),
-    vertex([1, 1, 1], [1, 1]),
-    vertex([1, -1, 1], [0, 1]),
-    // left (-1, 0, 0)
-    vertex([-1, -1, 1], [1, 0]),
-    vertex([-1, 1, 1], [0, 0]),
-    vertex([-1, 1, -1], [0, 1]),
-    vertex([-1, -1, -1], [1, 1]),
-    // front (0, 1, 0)
-    vertex([1, 1, -1], [1, 0]),
-    vertex([-1, 1, -1], [0, 0]),
-    vertex([-1, 1, 1], [0, 1]),
-    vertex([1, 1, 1], [1, 1]),
-    // back (0, -1, 0)
-    vertex([1, -1, 1], [0, 0]),
-    vertex([-1, -1, 1], [1, 0]),
-    vertex([-1, -1, -1], [1, 1]),
-    vertex([1, -1, -1], [0, 1]),
-];
+fn load_and_add(renderer: &mut Renderer) -> Vec<ObjectHandle> {
+    let mesh = load_mesh_from_file(
+        "C:/Users/connor/AppData/Roaming/openBVE/LegacyContent/Train/R46 2014 (8 Car)/Cars/Body/BodyA.b3d",
+    )
+    .unwrap();
 
-const INDEX_DATA: [u16; 36] = [
-    0, 1, 2, 2, 3, 0, // top
-    4, 5, 6, 6, 7, 4, // bottom
-    8, 9, 10, 10, 11, 8, // right
-    12, 13, 14, 14, 15, 12, // left
-    16, 17, 18, 18, 19, 16, // front
-    20, 21, 22, 22, 23, 20, // back
-];
+    assert!(mesh.errors.is_empty(), "{:#?}", mesh);
+
+    mesh.meshes
+        .into_iter()
+        .map(|mesh| renderer.add_object(Vector3::new(0.0, 0.0, 0.0), &mesh.vertices, &mesh.indices))
+        .collect()
+}
 
 fn main() {
     let event_loop = EventLoop::new();
@@ -68,8 +41,8 @@ fn main() {
 
     let mut renderer = block_on(async { Renderer::new(&window).await });
 
-    let mut cube_location = Vector3::new(0.0, 0.0, 0.0);
-    let cube = renderer.add_object(cube_location, &VERTEX_DATA, &INDEX_DATA);
+    let mut objects_location = Vector3::new(0.0, 0.0, 0.0);
+    let objects = load_and_add(&mut renderer);
 
     // TODO: Do 0.1 second/1 second/5 seconds/15 second rolling average
     let mut frame_count = 0_u64;
@@ -80,19 +53,23 @@ fn main() {
     event_loop.run(move |event, _, control_flow| match event {
         Event::MainEventsCleared => {
             if up {
-                cube_location.x += 0.01;
+                objects_location.x += 0.01;
             }
             if down {
-                cube_location.x -= 0.01;
+                objects_location.x -= 0.01;
             }
             if left {
-                cube_location.y += 0.01;
+                objects_location.y += 0.01;
             }
             if right {
-                cube_location.y -= 0.01;
+                objects_location.y -= 0.01;
             }
 
-            block_on(async { renderer.set_location(&cube, cube_location).await }).unwrap();
+            block_on(async {
+                for object in &objects {
+                    renderer.set_location(&object, objects_location).await.unwrap();
+                }
+            });
 
             window.request_redraw();
         }

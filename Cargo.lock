@@ -280,8 +280,11 @@ dependencies = [
 name = "bve-render"
 version = "0.0.1"
 dependencies = [
+ "bve",
  "cgmath",
  "indexmap",
+ "itertools",
+ "num-traits",
  "wgpu",
  "winit",
  "zerocopy",
