@@ -20,6 +20,7 @@ bve-render = { version = "0.0.1", path = "../bve-render" }
 circular-queue = "0.2.4"
 cgmath = "0.17.0"
 env_logger = "0.7.1"
+image = { version = "0.23.2", default-features = false }
 num-traits = "0.2.11"
 itertools = "0.8"
 futures = { version = "0.3.4", features = ["executor"] }

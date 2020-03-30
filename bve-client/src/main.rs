@@ -5,6 +5,7 @@ use bve_render::{ObjectHandle, Renderer};
 use cgmath::{ElementWise, InnerSpace, Vector3};
 use circular_queue::CircularQueue;
 use futures::executor::block_on;
+use image::RgbaImage;
 use itertools::Itertools;
 use num_traits::Zero;
 use std::time::{Duration, Instant};
@@ -22,9 +23,18 @@ fn load_and_add(renderer: &mut Renderer) -> Vec<ObjectHandle> {
 
     assert!(mesh.errors.is_empty(), "{:#?}", mesh);
 
+    println!("{:#?}", mesh.textures);
+
+    let texture =
+        renderer.add_texture(RgbaImage::from_raw(2, 1, vec![0xff, 0xff, 0x00, 0xff, 0xff, 0xff, 0x00, 0x00]).unwrap());
+
     mesh.meshes
         .into_iter()
-        .map(|mesh| renderer.add_object(Vector3::new(0.0, 0.0, 0.0), &mesh.vertices, &mesh.indices))
+        .map(|mesh| {
+            let obj = renderer.add_object(Vector3::new(0.0, 0.0, 0.0), &mesh.vertices, &mesh.indices);
+            renderer.set_texture(&obj, &texture);
+            obj
+        })
         .collect()
 }
 
@@ -95,7 +105,7 @@ fn main() {
             objects_location = objects_location.add_element_wise(dir_vec);
 
             for object in &objects {
-                renderer.set_location(&object, objects_location).unwrap();
+                renderer.set_location(&object, objects_location);
             }
 
             window.request_redraw();
@@ -159,8 +169,6 @@ fn main() {
             );
 
             renderer.set_camera(mouse_pitch, mouse_yaw);
-
-            println!("{}", mouse_pitch)
         }
         Event::RedrawRequested(_) => {
             let now = Instant::now();

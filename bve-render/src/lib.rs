@@ -4,9 +4,11 @@
 
 use bve::load::mesh::Vertex as MeshVertex;
 use cgmath::{EuclideanSpace, Matrix3, Matrix4, Point3, Rad, Vector3};
+use image::RgbaImage;
+use indexmap::map::IndexMap;
 use itertools::Itertools;
 use num_traits::ToPrimitive;
-use std::{collections::HashMap, io, mem::size_of};
+use std::{io, mem::size_of};
 use wgpu::*;
 use winit::{dpi::PhysicalSize, window::Window};
 use zerocopy::{AsBytes, FromBytes};
@@ -43,10 +45,19 @@ struct Object {
     index_buffer: Buffer,
     index_count: u32,
 
+    texture: u64,
+
     matrix_buffer: Buffer,
     bind_group: BindGroup,
 
     location: Vector3<f32>,
+}
+
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub struct TextureHandle(u64);
+
+struct Texture {
+    texture_view: TextureView,
 }
 
 struct Camera {
@@ -58,8 +69,11 @@ struct Camera {
 }
 
 pub struct Renderer {
-    objects: HashMap<u64, Object>,
+    objects: IndexMap<u64, Object>,
     object_handle_count: u64,
+
+    textures: IndexMap<u64, Texture>,
+    texture_handle_count: u64,
 
     camera: Camera,
 
@@ -69,6 +83,9 @@ pub struct Renderer {
     swapchain: SwapChain,
     pipeline: RenderPipeline,
     bind_group_layout: BindGroupLayout,
+    sampler: Sampler,
+
+    command_buffers: Vec<CommandBuffer>,
 }
 
 pub const OPENGL_TO_WGPU_MATRIX: Matrix4<f32> = Matrix4::new(
@@ -134,12 +151,40 @@ impl Renderer {
         let fs = include_shader!(frag "test");
         let fs_module = device.create_shader_module(&read_spirv(io::Cursor::new(&fs[..])).unwrap());
 
+        let sampler = device.create_sampler(&SamplerDescriptor {
+            address_mode_u: AddressMode::ClampToEdge,
+            address_mode_v: AddressMode::ClampToEdge,
+            address_mode_w: AddressMode::ClampToEdge,
+            mag_filter: FilterMode::Nearest,
+            min_filter: FilterMode::Linear,
+            mipmap_filter: FilterMode::Nearest,
+            lod_min_clamp: -100.0,
+            lod_max_clamp: 100.0,
+            compare: None,
+        });
+
         let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            bindings: &[BindGroupLayoutEntry {
-                binding: 0,
-                visibility: ShaderStage::VERTEX,
-                ty: BindingType::UniformBuffer { dynamic: false },
-            }],
+            bindings: &[
+                BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: ShaderStage::VERTEX,
+                    ty: BindingType::UniformBuffer { dynamic: false },
+                },
+                BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: ShaderStage::FRAGMENT,
+                    ty: BindingType::SampledTexture {
+                        multisampled: false,
+                        component_type: TextureComponentType::Float,
+                        dimension: TextureViewDimension::D2,
+                    },
+                },
+                BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: ShaderStage::FRAGMENT,
+                    ty: BindingType::Sampler { comparison: false },
+                },
+            ],
         });
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             bind_group_layouts: &[&bind_group_layout],
@@ -181,9 +226,13 @@ impl Renderer {
             alpha_to_coverage_enabled: false,
         });
 
-        Self {
-            objects: HashMap::new(),
+        // We need to do a couple operations on the whole pile first
+        let mut renderer = Self {
+            objects: IndexMap::new(),
             object_handle_count: 0,
+
+            textures: IndexMap::new(),
+            texture_handle_count: 0,
 
             camera: Camera {
                 location: Vector3::new(-6.0, 0.0, 3.0),
@@ -197,7 +246,15 @@ impl Renderer {
             swapchain,
             pipeline,
             bind_group_layout,
-        }
+            sampler,
+
+            command_buffers: Vec::new(),
+        };
+
+        // Default texture is texture handle zero, immediately discard the handle, never to be seen again
+        renderer.add_texture(RgbaImage::from_raw(1, 1, vec![0xff, 0x00, 0xff, 0xff]).unwrap());
+
+        renderer
     }
 
     pub fn add_object(
@@ -227,13 +284,23 @@ impl Renderer {
 
         let bind_group = self.device.create_bind_group(&BindGroupDescriptor {
             layout: &self.bind_group_layout,
-            bindings: &[Binding {
-                binding: 0,
-                resource: BindingResource::Buffer {
-                    buffer: &matrix_buffer,
-                    range: 0..64,
+            bindings: &[
+                Binding {
+                    binding: 0,
+                    resource: BindingResource::Buffer {
+                        buffer: &matrix_buffer,
+                        range: 0..64,
+                    },
                 },
-            }],
+                Binding {
+                    binding: 1,
+                    resource: BindingResource::TextureView(&self.textures[&0].texture_view),
+                },
+                Binding {
+                    binding: 2,
+                    resource: BindingResource::Sampler(&self.sampler),
+                },
+            ],
         });
 
         let handle = self.object_handle_count;
@@ -242,6 +309,7 @@ impl Renderer {
             vertex_buffer,
             index_buffer,
             index_count: indices.len() as u32,
+            texture: 0,
             bind_group,
             matrix_buffer,
             location,
@@ -249,12 +317,85 @@ impl Renderer {
         ObjectHandle(handle)
     }
 
-    pub fn set_location(&mut self, ObjectHandle(handle): &ObjectHandle, location: Vector3<f32>) -> Option<()> {
-        let object = self.objects.get_mut(handle)?;
+    pub fn add_texture(&mut self, image: RgbaImage) -> TextureHandle {
+        let extent = Extent3d {
+            width: image.width(),
+            height: image.height(),
+            depth: 1,
+        };
+        let texture = self.device.create_texture(&TextureDescriptor {
+            size: extent,
+            array_layer_count: 1,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: TextureDimension::D2,
+            format: TextureFormat::Rgba8UnormSrgb,
+            usage: TextureUsage::SAMPLED | TextureUsage::COPY_DST,
+        });
+        let texture_view = texture.create_default_view();
+        let tmp_buf = self
+            .device
+            .create_buffer_with_data(image.as_ref(), BufferUsage::COPY_SRC);
+        let mut encoder = self
+            .device
+            .create_command_encoder(&CommandEncoderDescriptor { todo: 0 });
+        encoder.copy_buffer_to_texture(
+            BufferCopyView {
+                buffer: &tmp_buf,
+                offset: 0,
+                bytes_per_row: 4 * image.width(),
+                rows_per_image: 0,
+            },
+            TextureCopyView {
+                texture: &texture,
+                mip_level: 0,
+                array_layer: 0,
+                origin: Origin3d::ZERO,
+            },
+            extent,
+        );
+
+        self.command_buffers.push(encoder.finish());
+
+        let handle = self.texture_handle_count;
+        self.texture_handle_count += 1;
+
+        self.textures.insert(handle, Texture { texture_view });
+        TextureHandle(handle)
+    }
+
+    pub fn set_location(&mut self, ObjectHandle(handle): &ObjectHandle, location: Vector3<f32>) {
+        let object: &mut Object = &mut self.objects[handle];
 
         object.location = location;
+    }
 
-        Some(())
+    pub fn set_texture(&mut self, ObjectHandle(obj_idx): &ObjectHandle, TextureHandle(tex_idx): &TextureHandle) {
+        let obj: &mut Object = &mut self.objects[obj_idx];
+        let tex: &Texture = &self.textures[tex_idx];
+
+        obj.texture = *tex_idx;
+
+        obj.bind_group = self.device.create_bind_group(&BindGroupDescriptor {
+            layout: &self.bind_group_layout,
+            bindings: &[
+                Binding {
+                    binding: 0,
+                    resource: BindingResource::Buffer {
+                        buffer: &obj.matrix_buffer,
+                        range: 0..64,
+                    },
+                },
+                Binding {
+                    binding: 1,
+                    resource: BindingResource::TextureView(&tex.texture_view),
+                },
+                Binding {
+                    binding: 2,
+                    resource: BindingResource::Sampler(&self.sampler),
+                },
+            ],
+        });
     }
 
     pub fn set_camera(&mut self, pitch: f32, yaw: f32) {
@@ -334,6 +475,9 @@ impl Renderer {
             }
         }
 
-        self.queue.submit(&[encoder.finish()]);
+        self.command_buffers.push(encoder.finish());
+
+        self.queue.submit(&self.command_buffers);
+        self.command_buffers.clear();
     }
 }
