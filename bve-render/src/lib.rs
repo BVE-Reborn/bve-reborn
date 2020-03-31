@@ -3,12 +3,14 @@
 // +z away from camera
 
 use bve::load::mesh::Vertex as MeshVertex;
-use cgmath::{EuclideanSpace, Matrix3, Matrix4, Point3, Rad, SquareMatrix, Vector3, Vector4};
+use cgmath::{
+    Array, EuclideanSpace, InnerSpace, Matrix3, Matrix4, MetricSpace, Point3, Rad, SquareMatrix, Vector3, Vector4,
+};
 use image::{Rgba, RgbaImage};
 use indexmap::map::IndexMap;
 use itertools::Itertools;
-use num_traits::ToPrimitive;
-use std::{io, mem::size_of};
+use num_traits::{ToPrimitive, Zero};
+use std::{cmp::Ordering, io, mem::size_of};
 use wgpu::*;
 use winit::{dpi::PhysicalSize, window::Window};
 use zerocopy::{AsBytes, FromBytes};
@@ -52,6 +54,11 @@ struct Object {
     bind_group: BindGroup,
 
     location: Vector3<f32>,
+    mesh_center_offset: Vector3<f32>,
+    camera_distance: f32,
+
+    transparent: bool,
+    mesh_transparent: bool,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -155,11 +162,30 @@ fn convert_mesh_verts_to_verts(verts: Vec<MeshVertex>, mut indices: Vec<u32>) ->
 }
 
 fn is_mesh_transparent(mesh: &[MeshVertex]) -> bool {
-    mesh.iter().any(|v| v.color.w != 0.0 || v.color.w != 1.0)
+    mesh.iter().any(|v| v.color.w != 0.0 && v.color.w != 1.0)
 }
 
 fn is_texture_transparent(texture: &RgbaImage) -> bool {
-    texture.pixels().any(|&Rgba([_, _, _, a])| a != 0 || a != 255)
+    texture.pixels().any(|&Rgba([_, _, _, a])| a != 0 && a != 255)
+}
+
+fn find_mesh_center(mesh: &[Vertex]) -> Vector3<f32> {
+    let first = if let Some(first) = mesh.first() {
+        *first
+    } else {
+        return Vector3::zero();
+    };
+    // Bounding box time baby!
+    let mut max: Vector3<f32> = first._pos.into();
+    let mut min: Vector3<f32> = first._pos.into();
+
+    for vert in mesh.iter().skip(1) {
+        let pos: Vector3<f32> = vert._pos.into();
+        max = max.zip(pos, |left, right| left.max(right));
+        min = min.zip(pos, |left, right| left.min(right));
+    }
+
+    (max + min) / 2.0
 }
 
 fn create_depth_buffer(device: &Device, size: &PhysicalSize<u32>) -> TextureView {
@@ -358,7 +384,10 @@ impl Renderer {
         indices: &[impl ToPrimitive],
         TextureHandle(tex_idx): &TextureHandle,
     ) -> ObjectHandle {
+        let mesh_transparent = is_mesh_transparent(&mesh_verts);
+
         let tex: &Texture = &self.textures[tex_idx];
+        let tex_transparent = tex.transparent;
 
         let indices = indices
             .iter()
@@ -400,6 +429,8 @@ impl Renderer {
             ],
         });
 
+        let mesh_center_offset = find_mesh_center(&vertices);
+
         let handle = self.object_handle_count;
         self.object_handle_count += 1;
         self.objects.insert(handle, Object {
@@ -410,6 +441,10 @@ impl Renderer {
             bind_group,
             matrix_buffer,
             location,
+            mesh_center_offset,
+            camera_distance: 0.0, // calculated later
+            transparent: tex_transparent | mesh_transparent,
+            mesh_transparent,
         });
         ObjectHandle(handle)
     }
@@ -481,6 +516,7 @@ impl Renderer {
         let tex: &Texture = &self.textures[tex_idx];
 
         obj.texture = *tex_idx;
+        obj.transparent = obj.mesh_transparent | tex.transparent;
 
         obj.bind_group = self.device.create_bind_group(&BindGroupDescriptor {
             layout: &self.bind_group_layout,
@@ -507,6 +543,10 @@ impl Renderer {
     pub fn set_camera(&mut self, pitch: f32, yaw: f32) {
         self.camera.pitch = pitch;
         self.camera.yaw = yaw;
+    }
+
+    pub fn set_camera_location(&mut self, location: Vector3<f32>) {
+        self.camera.location = location;
     }
 
     pub fn resize(&mut self, screen_size: PhysicalSize<u32>) {
@@ -542,8 +582,41 @@ impl Renderer {
         }
     }
 
+    fn compute_object_distances(&mut self) {
+        for obj in self.objects.values_mut() {
+            let mesh_center: Vector3<f32> = obj.location + obj.mesh_center_offset;
+            let camera_mesh_vector: Vector3<f32> = self.camera.location - mesh_center;
+            let distance = camera_mesh_vector.magnitude2();
+            obj.camera_distance = distance;
+            // println!(
+            //     "{} - {} {} {}",
+            //     obj.camera_distance, obj.transparent, obj.mesh_transparent, self.textures[&obj.texture].transparent
+            // );
+        }
+    }
+
+    fn sort_objects(&mut self) {
+        self.objects.sort_by(|_, lhs: &Object, _, rhs: &Object| {
+            lhs.transparent.cmp(&rhs.transparent).then_with(|| {
+                if lhs.transparent {
+                    // we can only get here if they are both of the same transparency,
+                    // so I can use the transparency for one as the transparency for both
+                    rhs.camera_distance
+                        .partial_cmp(&lhs.camera_distance)
+                        .unwrap_or(Ordering::Equal)
+                } else {
+                    lhs.camera_distance
+                        .partial_cmp(&rhs.camera_distance)
+                        .unwrap_or(Ordering::Equal)
+                }
+            })
+        });
+    }
+
     pub async fn render(&mut self) {
         self.recompute_mvp().await;
+        self.compute_object_distances();
+        self.sort_objects();
 
         let frame = self.swapchain.get_next_texture().unwrap();
 

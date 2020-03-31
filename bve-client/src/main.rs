@@ -57,7 +57,20 @@ fn load_and_add(renderer: &mut Renderer) -> Vec<ObjectHandle> {
             } else {
                 &default_handle
             };
-            let obj = renderer.add_object_texture(Vector3::new(0.0, 0.0, 0.0), mesh.vertices, &mesh.indices, &handle);
+            let obj = renderer.add_object_texture(
+                Vector3::new(0.0, 0.0, 0.0),
+                mesh.vertices.clone(),
+                &mesh.indices,
+                &handle,
+            );
+            for i in 1..10 {
+                let obj = renderer.add_object_texture(
+                    Vector3::new(i as f32 * 3.0, 0.0, 0.0),
+                    mesh.vertices.clone(),
+                    &mesh.indices,
+                    &handle,
+                );
+            }
             obj
         })
         .collect()
@@ -79,11 +92,13 @@ fn main() {
     window.set_cursor_grab(true).unwrap();
     window.set_cursor_visible(false);
 
-    let (mut up, mut left, mut down, mut right, mut shift) = (false, false, false, false, false);
+    let (mut forward, mut left, mut back, mut right, mut up, mut down, mut shift) =
+        (false, false, false, false, false, false, false);
 
     let mut renderer = block_on(async { Renderer::new(&window).await });
 
-    let mut objects_location = Vector3::new(0.0, 0.0, 0.0);
+    let mut camera_location = Vector3::new(0.0, 0.0, 0.0);
+
     let objects = load_and_add(&mut renderer);
 
     let mut mouse_pitch = 0.0_f32;
@@ -120,7 +135,13 @@ fn main() {
                 } else {
                     0.0
                 },
-                0.0,
+                if forward {
+                    1.0
+                } else if back {
+                    -1.0
+                } else {
+                    0.0
+                },
             );
             let dir_vec = if raw_dir_vec.is_zero() {
                 Vector3::zero()
@@ -128,11 +149,9 @@ fn main() {
                 raw_dir_vec.normalize_to(speed)
             } * last_frame_time.as_secs_f32();
 
-            objects_location = objects_location.add_element_wise(dir_vec);
+            camera_location = camera_location.add_element_wise(dir_vec);
 
-            for object in &objects {
-                renderer.set_location(&object, objects_location);
-            }
+            renderer.set_camera_location(camera_location);
 
             window.request_redraw();
         }
@@ -151,13 +170,17 @@ fn main() {
             println!("scancode: {}", scancode);
             *match scancode {
                 // w
-                17 => &mut up,
+                17 => &mut forward,
                 // a
                 30 => &mut left,
                 // s
-                31 => &mut down,
+                31 => &mut back,
                 // d
                 32 => &mut right,
+                // q
+                16 => &mut up,
+                // z
+                44 => &mut down,
                 // shift
                 42 => &mut shift,
                 _ => {
