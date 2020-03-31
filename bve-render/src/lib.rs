@@ -58,6 +58,7 @@ pub struct TextureHandle(u64);
 
 struct Texture {
     texture_view: TextureView,
+    transparent: bool,
 }
 
 struct Camera {
@@ -129,6 +130,15 @@ fn convert_mesh_verts_to_verts(mesh_verts: &[MeshVertex]) -> Vec<Vertex> {
             _tex_coord: v.coord.clone().into(),
         })
         .collect()
+}
+
+fn is_mesh_transparent(mesh: &[MeshVertex]) -> bool {
+    // mesh.iter().any(|v| v.)
+    unimplemented!()
+}
+
+fn is_texture_transparent(texture: &RgbaImage) -> bool {
+    texture.pixels().any(|p| p.0[3] != 0 || p.0[3] != 255)
 }
 
 fn create_depth_buffer(device: &Device, size: &PhysicalSize<u32>) -> TextureView {
@@ -306,7 +316,7 @@ impl Renderer {
         };
 
         // Default texture is texture handle zero, immediately discard the handle, never to be seen again
-        renderer.add_texture(RgbaImage::from_raw(1, 1, vec![0xff, 0x00, 0xff, 0xff]).unwrap());
+        renderer.add_texture(&RgbaImage::from_raw(1, 1, vec![0xff, 0xff, 0xff, 0xff]).unwrap());
 
         renderer
     }
@@ -383,7 +393,9 @@ impl Renderer {
         ObjectHandle(handle)
     }
 
-    pub fn add_texture(&mut self, image: RgbaImage) -> TextureHandle {
+    pub fn add_texture(&mut self, image: &RgbaImage) -> TextureHandle {
+        let transparent = is_texture_transparent(image);
+
         let extent = Extent3d {
             width: image.width(),
             height: image.height(),
@@ -426,7 +438,10 @@ impl Renderer {
         let handle = self.texture_handle_count;
         self.texture_handle_count += 1;
 
-        self.textures.insert(handle, Texture { texture_view });
+        self.textures.insert(handle, Texture {
+            texture_view,
+            transparent,
+        });
         TextureHandle(handle)
     }
 
