@@ -7,7 +7,7 @@ use crate::{
     },
     ColorU8RGB, ColorU8RGBA,
 };
-use cgmath::{Array, Vector2, Vector3};
+use cgmath::{Array, Vector2, Vector3, Vector4};
 pub use execution::*;
 use indexmap::IndexSet;
 use std::{ffi::OsStr, path::Path};
@@ -114,6 +114,7 @@ pub struct Mesh {
     pub vertices: Vec<Vertex>,
     pub indices: Vec<usize>,
     pub texture: Texture,
+    /// This data is duplicated inside the vertices, but is preserved for easy access
     pub color: ColorU8RGBA,
     pub blend_mode: BlendMode,
     pub glow: Glow,
@@ -143,6 +144,7 @@ fn default_mesh() -> Mesh {
 pub struct Vertex {
     pub position: Vector3<f32>,
     pub normal: Vector3<f32>,
+    pub color: Vector4<f32>,
     pub coord: Vector2<f32>,
     pub double_sided: bool,
 }
@@ -161,11 +163,12 @@ impl Vertex {
     }
 
     #[must_use]
-    pub const fn from_position_normal_coord(position: Vector3<f32>, normal: Vector3<f32>, coord: Vector2<f32>) -> Self {
+    pub fn from_position_normal_coord(position: Vector3<f32>, normal: Vector3<f32>, coord: Vector2<f32>) -> Self {
         Self {
             position,
             normal,
             coord,
+            color: Vector4::from_value(1.0),
             double_sided: false,
         }
     }
@@ -176,6 +179,7 @@ impl Vertex {
             position,
             normal,
             coord: Vector2::from_value(0.0),
+            color: Vector4::from_value(1.0),
             double_sided: false,
         }
     }
@@ -186,6 +190,7 @@ impl Vertex {
             position,
             normal: Vector3::from_value(0.0),
             coord: Vector2::from_value(0.0),
+            color: Vector4::from_value(1.0),
             double_sided: false,
         }
     }
