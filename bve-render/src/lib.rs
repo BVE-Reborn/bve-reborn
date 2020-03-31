@@ -4,7 +4,7 @@
 
 use bve::load::mesh::Vertex as MeshVertex;
 use cgmath::{EuclideanSpace, Matrix3, Matrix4, Point3, Rad, SquareMatrix, Vector3, Vector4};
-use image::RgbaImage;
+use image::{Rgba, RgbaImage};
 use indexmap::map::IndexMap;
 use itertools::Itertools;
 use num_traits::ToPrimitive;
@@ -33,6 +33,7 @@ macro_rules! include_shader {
 pub struct Vertex {
     _pos: [f32; 3],
     _normal: [f32; 3],
+    _color: [f32; 4],
     _tex_coord: [f32; 2],
 }
 
@@ -116,7 +117,7 @@ pub const OPENGL_TO_WGPU_MATRIX: Matrix4<f32> = Matrix4::new(
 );
 
 fn generate_matrix(mx_view: &Matrix4<f32>, location: Vector3<f32>, aspect_ratio: f32) -> Matrix4<f32> {
-    let mx_projection = cgmath::perspective(cgmath::Deg(45f32), aspect_ratio, 1.0, 1000.0);
+    let mx_projection = cgmath::perspective(cgmath::Deg(55f32), aspect_ratio, 0.1, 1000.0);
     let mx_model = Matrix4::from_translation(location);
     OPENGL_TO_WGPU_MATRIX * mx_projection * mx_view * mx_model
 }
@@ -142,6 +143,7 @@ fn convert_mesh_verts_to_verts(verts: Vec<MeshVertex>, mut indices: Vec<u32>) ->
         .into_iter()
         .map(|v| Vertex {
             _pos: v.position.into(),
+            _color: v.color.into(),
             _normal: v.normal.into(),
             _tex_coord: v.coord.into(),
         })
@@ -153,12 +155,11 @@ fn convert_mesh_verts_to_verts(verts: Vec<MeshVertex>, mut indices: Vec<u32>) ->
 }
 
 fn is_mesh_transparent(mesh: &[MeshVertex]) -> bool {
-    // mesh.iter().any(|v| v.)
-    unimplemented!()
+    mesh.iter().any(|v| v.color.w != 0.0 || v.color.w != 1.0)
 }
 
 fn is_texture_transparent(texture: &RgbaImage) -> bool {
-    texture.pixels().any(|p| p.0[3] != 0 || p.0[3] != 255)
+    texture.pixels().any(|&Rgba([_, _, _, a])| a != 0 || a != 255)
 }
 
 fn create_depth_buffer(device: &Device, size: &PhysicalSize<u32>) -> TextureView {
@@ -218,9 +219,9 @@ impl Renderer {
         let fs_module = device.create_shader_module(&read_spirv(io::Cursor::new(&fs[..])).unwrap());
 
         let sampler = device.create_sampler(&SamplerDescriptor {
-            address_mode_u: AddressMode::ClampToEdge,
-            address_mode_v: AddressMode::ClampToEdge,
-            address_mode_w: AddressMode::ClampToEdge,
+            address_mode_u: AddressMode::Repeat,
+            address_mode_v: AddressMode::Repeat,
+            address_mode_w: AddressMode::Repeat,
             mag_filter: FilterMode::Nearest,
             min_filter: FilterMode::Linear,
             mipmap_filter: FilterMode::Nearest,
@@ -301,7 +302,7 @@ impl Renderer {
             vertex_buffers: &[VertexBufferDescriptor {
                 stride: size_of::<Vertex>() as BufferAddress,
                 step_mode: InputStepMode::Vertex,
-                attributes: &vertex_attr_array![0 => Float3, 1 => Float3, 2 => Float2],
+                attributes: &vertex_attr_array![0 => Float3, 1 => Float3, 2 => Float4, 3 => Float2],
             }],
             sample_count: 1,
             sample_mask: !0,
@@ -317,7 +318,7 @@ impl Renderer {
             texture_handle_count: 0,
 
             camera: Camera {
-                location: Vector3::new(-6.0, 0.0, 10.0),
+                location: Vector3::new(-6.0, 0.0, 0.0),
                 pitch: 0.0,
                 yaw: 0.0,
             },
@@ -510,6 +511,7 @@ impl Renderer {
 
     pub fn resize(&mut self, screen_size: PhysicalSize<u32>) {
         self.depth_texture_view = create_depth_buffer(&self.device, &screen_size);
+        self.screen_size = screen_size;
 
         let swapchain_descriptor = SwapChainDescriptor {
             usage: TextureUsage::OUTPUT_ATTACHMENT,
