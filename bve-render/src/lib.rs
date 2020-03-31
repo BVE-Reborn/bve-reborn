@@ -1,9 +1,9 @@
 // +x right
 // +y up
-// +z into camera
+// +z away from camera
 
 use bve::load::mesh::Vertex as MeshVertex;
-use cgmath::{EuclideanSpace, Matrix3, Matrix4, Point3, Rad, Vector3};
+use cgmath::{EuclideanSpace, Matrix3, Matrix4, Point3, Rad, SquareMatrix, Vector3, Vector4};
 use image::RgbaImage;
 use indexmap::map::IndexMap;
 use itertools::Itertools;
@@ -68,6 +68,23 @@ struct Camera {
     yaw: f32,
 }
 
+impl Camera {
+    pub fn compute_matrix(&self) -> Matrix4<f32> {
+        // This is pre z-inversion, so z is flipped here
+        let look_offset = Matrix3::from_diagonal(Vector3::new(1.0, 1.0, -1.0))
+            * Matrix3::from_axis_angle(Vector3::unit_y(), Rad(self.yaw))
+            * Matrix3::from_axis_angle(Vector3::unit_x(), Rad(self.pitch))
+            * Vector3::unit_z();
+
+        Matrix4::from_diagonal(Vector4::new(1.0, 1.0, -1.0, 1.0))
+            * Matrix4::look_at(
+                Point3::from_vec(self.location),
+                Point3::from_vec(self.location + look_offset),
+                Vector3::unit_y(),
+            )
+    }
+}
+
 pub struct Renderer {
     objects: IndexMap<u64, Object>,
     object_handle_count: u64,
@@ -76,6 +93,7 @@ pub struct Renderer {
     texture_handle_count: u64,
 
     camera: Camera,
+    screen_size: PhysicalSize<u32>,
 
     surface: Surface,
     device: Device,
@@ -84,6 +102,7 @@ pub struct Renderer {
     pipeline: RenderPipeline,
     bind_group_layout: BindGroupLayout,
     sampler: Sampler,
+    depth_texture_view: TextureView,
 
     command_buffers: Vec<CommandBuffer>,
 }
@@ -112,9 +131,26 @@ fn convert_mesh_verts_to_verts(mesh_verts: &[MeshVertex]) -> Vec<Vertex> {
         .collect()
 }
 
+fn create_depth_buffer(device: &Device, size: &PhysicalSize<u32>) -> TextureView {
+    let depth_texture = device.create_texture(&TextureDescriptor {
+        size: Extent3d {
+            width: size.width,
+            height: size.height,
+            depth: 1,
+        },
+        array_layer_count: 1,
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: TextureDimension::D2,
+        format: TextureFormat::Depth32Float,
+        usage: TextureUsage::OUTPUT_ATTACHMENT,
+    });
+    depth_texture.create_default_view()
+}
+
 impl Renderer {
     pub async fn new(window: &Window) -> Self {
-        let window_size = window.inner_size();
+        let screen_size = window.inner_size();
 
         let surface = Surface::create(window);
 
@@ -139,8 +175,8 @@ impl Renderer {
         let swapchain_descriptor = SwapChainDescriptor {
             usage: TextureUsage::OUTPUT_ATTACHMENT,
             format: TextureFormat::Bgra8UnormSrgb,
-            width: window_size.width,
-            height: window_size.height,
+            width: screen_size.width,
+            height: screen_size.height,
             present_mode: PresentMode::Mailbox,
         };
         let swapchain = device.create_swap_chain(&surface, &swapchain_descriptor);
@@ -162,6 +198,8 @@ impl Renderer {
             lod_max_clamp: 100.0,
             compare: None,
         });
+
+        let depth_texture_view = create_depth_buffer(&device, &screen_size);
 
         let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             bindings: &[
@@ -190,6 +228,12 @@ impl Renderer {
             bind_group_layouts: &[&bind_group_layout],
         });
 
+        let blend = BlendDescriptor {
+            src_factor: BlendFactor::SrcAlpha,
+            dst_factor: BlendFactor::OneMinusSrcAlpha,
+            operation: BlendOperation::Add,
+        };
+
         let pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
             layout: &pipeline_layout,
             vertex_stage: ProgrammableStageDescriptor {
@@ -201,7 +245,7 @@ impl Renderer {
                 entry_point: "main",
             }),
             rasterization_state: Some(RasterizationStateDescriptor {
-                front_face: FrontFace::Ccw,
+                front_face: FrontFace::Cw,
                 cull_mode: CullMode::Back,
                 depth_bias: 0,
                 depth_bias_slope_scale: 0.0,
@@ -210,11 +254,19 @@ impl Renderer {
             primitive_topology: PrimitiveTopology::TriangleList,
             color_states: &[ColorStateDescriptor {
                 format: TextureFormat::Bgra8UnormSrgb,
-                color_blend: BlendDescriptor::REPLACE,
-                alpha_blend: BlendDescriptor::REPLACE,
+                color_blend: blend.clone(),
+                alpha_blend: blend,
                 write_mask: ColorWrite::ALL,
             }],
-            depth_stencil_state: None,
+            depth_stencil_state: Some(DepthStencilStateDescriptor {
+                format: TextureFormat::Depth32Float,
+                depth_write_enabled: true,
+                depth_compare: CompareFunction::LessEqual,
+                stencil_front: StencilStateFaceDescriptor::IGNORE,
+                stencil_back: StencilStateFaceDescriptor::IGNORE,
+                stencil_read_mask: 0,
+                stencil_write_mask: 0,
+            }),
             index_format: IndexFormat::Uint32,
             vertex_buffers: &[VertexBufferDescriptor {
                 stride: size_of::<Vertex>() as BufferAddress,
@@ -235,10 +287,11 @@ impl Renderer {
             texture_handle_count: 0,
 
             camera: Camera {
-                location: Vector3::new(-6.0, 0.0, 3.0),
+                location: Vector3::new(-6.0, 0.0, 10.0),
                 pitch: 0.0,
                 yaw: 0.0,
             },
+            screen_size,
 
             surface,
             device,
@@ -247,6 +300,7 @@ impl Renderer {
             pipeline,
             bind_group_layout,
             sampler,
+            depth_texture_view,
 
             command_buffers: Vec::new(),
         };
@@ -263,6 +317,18 @@ impl Renderer {
         mesh_verts: &[MeshVertex],
         indices: &[impl ToPrimitive],
     ) -> ObjectHandle {
+        self.add_object_texture(location, mesh_verts, indices, &TextureHandle(0))
+    }
+
+    pub fn add_object_texture(
+        &mut self,
+        location: Vector3<f32>,
+        mesh_verts: &[MeshVertex],
+        indices: &[impl ToPrimitive],
+        TextureHandle(tex_idx): &TextureHandle,
+    ) -> ObjectHandle {
+        let tex: &Texture = &self.textures[tex_idx];
+
         let vertices = convert_mesh_verts_to_verts(mesh_verts);
         let indices = indices
             .iter()
@@ -276,7 +342,7 @@ impl Renderer {
             .device
             .create_buffer_with_data(indices.as_bytes(), BufferUsage::INDEX);
 
-        let matrix = generate_matrix(&self.compute_camera_matrix(), location, 800.0 / 600.0);
+        let matrix = generate_matrix(&self.camera.compute_matrix(), location, 800.0 / 600.0);
         let matrix_ref: &[f32; 16] = matrix.as_ref();
         let matrix_buffer = self
             .device
@@ -294,7 +360,7 @@ impl Renderer {
                 },
                 Binding {
                     binding: 1,
-                    resource: BindingResource::TextureView(&self.textures[&0].texture_view),
+                    resource: BindingResource::TextureView(&tex.texture_view),
                 },
                 Binding {
                     binding: 2,
@@ -364,6 +430,10 @@ impl Renderer {
         TextureHandle(handle)
     }
 
+    pub fn get_default_texture() -> TextureHandle {
+        TextureHandle(0)
+    }
+
     pub fn set_location(&mut self, ObjectHandle(handle): &ObjectHandle, location: Vector3<f32>) {
         let object: &mut Object = &mut self.objects[handle];
 
@@ -403,39 +473,33 @@ impl Renderer {
         self.camera.yaw = yaw;
     }
 
-    pub fn resize(&mut self, size: PhysicalSize<u32>) {
+    pub fn resize(&mut self, screen_size: PhysicalSize<u32>) {
+        self.depth_texture_view = create_depth_buffer(&self.device, &screen_size);
+
         let swapchain_descriptor = SwapChainDescriptor {
             usage: TextureUsage::OUTPUT_ATTACHMENT,
             format: TextureFormat::Bgra8UnormSrgb,
-            width: size.width,
-            height: size.height,
+            width: screen_size.width,
+            height: screen_size.height,
             present_mode: PresentMode::Mailbox,
         };
 
         self.swapchain = self.device.create_swap_chain(&self.surface, &swapchain_descriptor);
     }
 
-    fn compute_camera_matrix(&mut self) -> Matrix4<f32> {
-        let look_offset = Matrix3::from_axis_angle(Vector3::unit_y(), Rad(self.camera.yaw))
-            * Matrix3::from_axis_angle(Vector3::unit_x(), Rad(self.camera.pitch))
-            * -Vector3::unit_z();
-
-        Matrix4::look_at(
-            Point3::from_vec(self.camera.location),
-            Point3::from_vec(self.camera.location + look_offset),
-            Vector3::unit_y(),
-        )
-    }
-
     async fn recompute_mvp(&mut self) {
-        let camera_mat = self.compute_camera_matrix();
+        let camera_mat = self.camera.compute_matrix();
         for object in self.objects.values() {
             let mut buf = object
                 .matrix_buffer
                 .map_write(0, size_of::<Matrix4<f32>>() as u64)
                 .await
                 .expect("Could not map buffer");
-            let matrix = generate_matrix(&camera_mat, object.location, 800.0 / 600.0);
+            let matrix = generate_matrix(
+                &camera_mat,
+                object.location,
+                self.screen_size.width as f32 / self.screen_size.height as f32,
+            );
             let matrix_ref: &[f32; 16] = matrix.as_ref();
             buf.as_slice().copy_from_slice(matrix_ref.as_bytes());
         }
@@ -464,7 +528,15 @@ impl Renderer {
                         a: 1.0,
                     },
                 }],
-                depth_stencil_attachment: None,
+                depth_stencil_attachment: Some(RenderPassDepthStencilAttachmentDescriptor {
+                    attachment: &self.depth_texture_view,
+                    depth_load_op: LoadOp::Clear,
+                    depth_store_op: StoreOp::Store,
+                    stencil_load_op: LoadOp::Clear,
+                    stencil_store_op: StoreOp::Store,
+                    clear_depth: 1.0,
+                    clear_stencil: 0,
+                }),
             });
             rpass.set_pipeline(&self.pipeline);
             for object in self.objects.values() {

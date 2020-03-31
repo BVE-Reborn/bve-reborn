@@ -5,15 +5,31 @@ use bve_render::{ObjectHandle, Renderer};
 use cgmath::{ElementWise, InnerSpace, Vector3};
 use circular_queue::CircularQueue;
 use futures::executor::block_on;
-use image::RgbaImage;
+use image::{Rgba, RgbaImage};
 use itertools::Itertools;
 use num_traits::Zero;
-use std::time::{Duration, Instant};
+use std::{
+    path::Path,
+    time::{Duration, Instant},
+};
 use winit::{
     event::{DeviceEvent, ElementState, Event, KeyboardInput, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
 };
+
+fn load_texture(name: impl AsRef<Path>) -> RgbaImage {
+    let base = Path::new("C:/Users/connor/AppData/Roaming/openBVE/LegacyContent/Train/R46 2014 (8 Car)/Cars/Body/");
+    let result = base.join(name.as_ref());
+    let img = image::open(result).unwrap();
+    let mut rgba = img.into_rgba();
+    rgba.pixels_mut().for_each(|pix| {
+        if pix.0[0] == 0x00 && pix.0[1] == 0x00 && pix.0[2] == 0xFF {
+            pix.0[3] = 0x00
+        }
+    });
+    rgba
+}
 
 fn load_and_add(renderer: &mut Renderer) -> Vec<ObjectHandle> {
     let mesh = load_mesh_from_file(
@@ -23,16 +39,25 @@ fn load_and_add(renderer: &mut Renderer) -> Vec<ObjectHandle> {
 
     assert!(mesh.errors.is_empty(), "{:#?}", mesh);
 
-    println!("{:#?}", mesh.textures);
-
-    let texture =
-        renderer.add_texture(RgbaImage::from_raw(2, 1, vec![0xff, 0xff, 0x00, 0xff, 0xff, 0xff, 0x00, 0x00]).unwrap());
+    let texture_handles = mesh
+        .textures
+        .into_iter()
+        .map(|s| {
+            let image = load_texture(s);
+            renderer.add_texture(image)
+        })
+        .collect_vec();
 
     mesh.meshes
         .into_iter()
         .map(|mesh| {
-            let obj = renderer.add_object(Vector3::new(0.0, 0.0, 0.0), &mesh.vertices, &mesh.indices);
-            renderer.set_texture(&obj, &texture);
+            let default_handle = Renderer::get_default_texture();
+            let handle = if let Some(id) = mesh.texture.texture_id {
+                &texture_handles[id]
+            } else {
+                &default_handle
+            };
+            let obj = renderer.add_object_texture(Vector3::new(0.0, 0.0, 0.0), &mesh.vertices, &mesh.indices, &handle);
             obj
         })
         .collect()
@@ -50,6 +75,7 @@ fn main() {
         window
     };
 
+    let mut mouse_grabbed = true;
     window.set_cursor_grab(true).unwrap();
     window.set_cursor_visible(false);
 
@@ -138,6 +164,19 @@ fn main() {
                     match scancode {
                         // Esc
                         1 => *control_flow = ControlFlow::Exit,
+                        // left alt
+                        56 => {
+                            if state == ElementState::Pressed {
+                                if mouse_grabbed {
+                                    window.set_cursor_grab(false);
+                                    window.set_cursor_visible(true);
+                                } else {
+                                    window.set_cursor_grab(true);
+                                    window.set_cursor_visible(false);
+                                }
+                                mouse_grabbed = !mouse_grabbed;
+                            }
+                        }
                         _ => {}
                     }
                     return;
@@ -155,6 +194,9 @@ fn main() {
                 },
             ..
         } => {
+            if mouse_grabbed == false {
+                return;
+            }
             use std::f32::consts::TAU;
             mouse_yaw += (-delta_x / 1000.0) as f32;
             mouse_pitch += (-delta_y / 1000.0) as f32;

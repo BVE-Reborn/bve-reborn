@@ -9,7 +9,7 @@ layout(set = 0, binding = 2) uniform sampler main_sampler;
 
 void main() {
     vec4 tex = texture(sampler2D(color, main_sampler), texcoord);
-    if (tex.a < 1.0) {
+    if (tex.a == 0.0) {
         discard;
     }
     outColor = tex;
