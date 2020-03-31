@@ -1,7 +1,7 @@
 #![feature(clamp, tau_constant)]
 
 use bve::load::mesh::load_mesh_from_file;
-use bve_render::{ObjectHandle, Renderer};
+use bve_render::{MSAASetting, ObjectHandle, Renderer};
 use cgmath::{ElementWise, InnerSpace, Vector3};
 use circular_queue::CircularQueue;
 use futures::executor::block_on;
@@ -95,7 +95,8 @@ fn main() {
     let (mut forward, mut left, mut back, mut right, mut up, mut down, mut shift) =
         (false, false, false, false, false, false, false);
 
-    let mut renderer = block_on(async { Renderer::new(&window).await });
+    let mut sample_count = MSAASetting::X1;
+    let mut renderer = block_on(async { Renderer::new(&window, sample_count).await });
 
     let mut camera_location = Vector3::new(0.0, 0.0, 0.0);
 
@@ -158,7 +159,7 @@ fn main() {
         Event::WindowEvent {
             event: WindowEvent::Resized(size),
             ..
-        } => renderer.resize(size),
+        } => renderer.resize(size, sample_count),
         Event::WindowEvent {
             event:
                 WindowEvent::KeyboardInput {
@@ -198,6 +199,22 @@ fn main() {
                                     window.set_cursor_visible(false);
                                 }
                                 mouse_grabbed = !mouse_grabbed;
+                            }
+                        }
+                        // comma
+                        51 => {
+                            if state == ElementState::Pressed {
+                                sample_count = sample_count.decrement();
+                                println!("MSAA: x{}", sample_count as u32);
+                                renderer.set_samples(sample_count)
+                            }
+                        }
+                        // period
+                        52 => {
+                            if state == ElementState::Pressed {
+                                sample_count = sample_count.increment();
+                                println!("MSAA: x{}", sample_count as u32);
+                                renderer.set_samples(sample_count)
                             }
                         }
                         _ => {}

@@ -16,6 +16,12 @@ overflow-checks = true
 debug-assertions = true
 debug = true
 
+[profile.profile]
+inherits = "release"
+debug = true
+debug-assertions = false
+lto = true
+
 [profile.lto]
 inherits = "release"
 debug = false

@@ -103,15 +103,22 @@ pub struct Renderer {
 
     camera: Camera,
     screen_size: PhysicalSize<u32>,
+    samples: MSAASetting,
 
     surface: Surface,
     device: Device,
     queue: Queue,
     swapchain: SwapChain,
-    pipeline: RenderPipeline,
+    framebuffer: TextureView,
+    depth_buffer: TextureView,
+    opaque_pipeline: RenderPipeline,
+    alpha_pipeline: RenderPipeline,
+    pipeline_layout: PipelineLayout,
     bind_group_layout: BindGroupLayout,
     sampler: Sampler,
-    depth_texture_view: TextureView,
+
+    vert_shader: ShaderModule,
+    frag_shader: ShaderModule,
 
     command_buffers: Vec<CommandBuffer>,
 }
@@ -188,7 +195,102 @@ fn find_mesh_center(mesh: &[Vertex]) -> Vector3<f32> {
     (max + min) / 2.0
 }
 
-fn create_depth_buffer(device: &Device, size: &PhysicalSize<u32>) -> TextureView {
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+enum PipelineType {
+    Normal,
+    Alpha,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[repr(u32)]
+pub enum MSAASetting {
+    X1 = 1,
+    X2 = 2,
+    X4 = 4,
+    X8 = 8,
+}
+
+impl MSAASetting {
+    pub fn increment(self) -> Self {
+        match self {
+            Self::X1 => Self::X2,
+            Self::X2 => Self::X4,
+            _ => Self::X8,
+        }
+    }
+
+    pub fn decrement(self) -> Self {
+        match self {
+            Self::X8 => Self::X4,
+            Self::X4 => Self::X2,
+            _ => Self::X1,
+        }
+    }
+}
+
+fn create_pipeline(
+    device: &Device,
+    layout: &PipelineLayout,
+    vs: &ShaderModule,
+    fs: &ShaderModule,
+    ty: PipelineType,
+    samples: MSAASetting,
+) -> RenderPipeline {
+    let blend = if ty == PipelineType::Alpha {
+        BlendDescriptor {
+            src_factor: BlendFactor::SrcAlpha,
+            dst_factor: BlendFactor::OneMinusSrcAlpha,
+            operation: BlendOperation::Add,
+        }
+    } else {
+        BlendDescriptor::REPLACE
+    };
+    device.create_render_pipeline(&RenderPipelineDescriptor {
+        layout,
+        vertex_stage: ProgrammableStageDescriptor {
+            module: vs,
+            entry_point: "main",
+        },
+        fragment_stage: Some(ProgrammableStageDescriptor {
+            module: fs,
+            entry_point: "main",
+        }),
+        rasterization_state: Some(RasterizationStateDescriptor {
+            front_face: FrontFace::Cw,
+            cull_mode: CullMode::Back,
+            depth_bias: 0,
+            depth_bias_slope_scale: 0.0,
+            depth_bias_clamp: 0.0,
+        }),
+        primitive_topology: PrimitiveTopology::TriangleList,
+        color_states: &[ColorStateDescriptor {
+            format: TextureFormat::Bgra8UnormSrgb,
+            color_blend: blend.clone(),
+            alpha_blend: blend,
+            write_mask: ColorWrite::ALL,
+        }],
+        depth_stencil_state: Some(DepthStencilStateDescriptor {
+            format: TextureFormat::Depth32Float,
+            depth_write_enabled: true,
+            depth_compare: CompareFunction::LessEqual,
+            stencil_front: StencilStateFaceDescriptor::IGNORE,
+            stencil_back: StencilStateFaceDescriptor::IGNORE,
+            stencil_read_mask: 0,
+            stencil_write_mask: 0,
+        }),
+        index_format: IndexFormat::Uint32,
+        vertex_buffers: &[VertexBufferDescriptor {
+            stride: size_of::<Vertex>() as BufferAddress,
+            step_mode: InputStepMode::Vertex,
+            attributes: &vertex_attr_array![0 => Float3, 1 => Float3, 2 => Float4, 3 => Float2],
+        }],
+        sample_count: samples as u32,
+        sample_mask: !0,
+        alpha_to_coverage_enabled: false,
+    })
+}
+
+fn create_depth_buffer(device: &Device, size: &PhysicalSize<u32>, samples: MSAASetting) -> TextureView {
     let depth_texture = device.create_texture(&TextureDescriptor {
         size: Extent3d {
             width: size.width,
@@ -197,7 +299,7 @@ fn create_depth_buffer(device: &Device, size: &PhysicalSize<u32>) -> TextureView
         },
         array_layer_count: 1,
         mip_level_count: 1,
-        sample_count: 1,
+        sample_count: samples as u32,
         dimension: TextureDimension::D2,
         format: TextureFormat::Depth32Float,
         usage: TextureUsage::OUTPUT_ATTACHMENT,
@@ -205,8 +307,27 @@ fn create_depth_buffer(device: &Device, size: &PhysicalSize<u32>) -> TextureView
     depth_texture.create_default_view()
 }
 
+fn create_framebuffer(device: &Device, size: &PhysicalSize<u32>, samples: MSAASetting) -> TextureView {
+    let extent = Extent3d {
+        width: size.width,
+        height: size.height,
+        depth: 1,
+    };
+
+    let tex = device.create_texture(&TextureDescriptor {
+        size: extent,
+        array_layer_count: 1,
+        mip_level_count: 1,
+        sample_count: samples as u32,
+        dimension: TextureDimension::D2,
+        format: TextureFormat::Bgra8UnormSrgb,
+        usage: TextureUsage::OUTPUT_ATTACHMENT,
+    });
+    tex.create_default_view()
+}
+
 impl Renderer {
-    pub async fn new(window: &Window) -> Self {
+    pub async fn new(window: &Window, samples: MSAASetting) -> Self {
         let screen_size = window.inner_size();
 
         let surface = Surface::create(window);
@@ -215,7 +336,7 @@ impl Renderer {
             &RequestAdapterOptions {
                 power_preference: PowerPreference::HighPerformance,
             },
-            BackendBit::PRIMARY,
+            BackendBit::VULKAN | BackendBit::METAL,
         )
         .await
         .unwrap();
@@ -256,7 +377,8 @@ impl Renderer {
             compare: None,
         });
 
-        let depth_texture_view = create_depth_buffer(&device, &screen_size);
+        let framebuffer = create_framebuffer(&device, &screen_size, samples);
+        let depth_buffer = create_depth_buffer(&device, &screen_size, samples);
 
         let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             bindings: &[
@@ -285,55 +407,22 @@ impl Renderer {
             bind_group_layouts: &[&bind_group_layout],
         });
 
-        let blend = BlendDescriptor {
-            src_factor: BlendFactor::SrcAlpha,
-            dst_factor: BlendFactor::OneMinusSrcAlpha,
-            operation: BlendOperation::Add,
-        };
-
-        let pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
-            layout: &pipeline_layout,
-            vertex_stage: ProgrammableStageDescriptor {
-                module: &vs_module,
-                entry_point: "main",
-            },
-            fragment_stage: Some(ProgrammableStageDescriptor {
-                module: &fs_module,
-                entry_point: "main",
-            }),
-            rasterization_state: Some(RasterizationStateDescriptor {
-                front_face: FrontFace::Cw,
-                cull_mode: CullMode::Back,
-                depth_bias: 0,
-                depth_bias_slope_scale: 0.0,
-                depth_bias_clamp: 0.0,
-            }),
-            primitive_topology: PrimitiveTopology::TriangleList,
-            color_states: &[ColorStateDescriptor {
-                format: TextureFormat::Bgra8UnormSrgb,
-                color_blend: blend.clone(),
-                alpha_blend: blend,
-                write_mask: ColorWrite::ALL,
-            }],
-            depth_stencil_state: Some(DepthStencilStateDescriptor {
-                format: TextureFormat::Depth32Float,
-                depth_write_enabled: true,
-                depth_compare: CompareFunction::LessEqual,
-                stencil_front: StencilStateFaceDescriptor::IGNORE,
-                stencil_back: StencilStateFaceDescriptor::IGNORE,
-                stencil_read_mask: 0,
-                stencil_write_mask: 0,
-            }),
-            index_format: IndexFormat::Uint32,
-            vertex_buffers: &[VertexBufferDescriptor {
-                stride: size_of::<Vertex>() as BufferAddress,
-                step_mode: InputStepMode::Vertex,
-                attributes: &vertex_attr_array![0 => Float3, 1 => Float3, 2 => Float4, 3 => Float2],
-            }],
-            sample_count: 1,
-            sample_mask: !0,
-            alpha_to_coverage_enabled: false,
-        });
+        let opaque_pipeline = create_pipeline(
+            &device,
+            &pipeline_layout,
+            &vs_module,
+            &fs_module,
+            PipelineType::Normal,
+            samples,
+        );
+        let alpha_pipeline = create_pipeline(
+            &device,
+            &pipeline_layout,
+            &vs_module,
+            &fs_module,
+            PipelineType::Alpha,
+            samples,
+        );
 
         // We need to do a couple operations on the whole pile first
         let mut renderer = Self {
@@ -349,15 +438,22 @@ impl Renderer {
                 yaw: 0.0,
             },
             screen_size,
+            samples,
 
             surface,
             device,
             queue,
             swapchain,
-            pipeline,
+            framebuffer,
+            depth_buffer,
+            opaque_pipeline,
+            alpha_pipeline,
+            pipeline_layout,
             bind_group_layout,
             sampler,
-            depth_texture_view,
+
+            vert_shader: vs_module,
+            frag_shader: fs_module,
 
             command_buffers: Vec::new(),
         };
@@ -549,19 +645,43 @@ impl Renderer {
         self.camera.location = location;
     }
 
-    pub fn resize(&mut self, screen_size: PhysicalSize<u32>) {
-        self.depth_texture_view = create_depth_buffer(&self.device, &screen_size);
+    pub fn resize(&mut self, screen_size: PhysicalSize<u32>, samples: MSAASetting) {
+        self.framebuffer = create_framebuffer(&self.device, &screen_size, samples);
+        self.depth_buffer = create_depth_buffer(&self.device, &screen_size, samples);
+        self.opaque_pipeline = create_pipeline(
+            &self.device,
+            &self.pipeline_layout,
+            &self.vert_shader,
+            &self.frag_shader,
+            PipelineType::Normal,
+            samples,
+        );
+        self.alpha_pipeline = create_pipeline(
+            &self.device,
+            &self.pipeline_layout,
+            &self.vert_shader,
+            &self.frag_shader,
+            PipelineType::Alpha,
+            samples,
+        );
         self.screen_size = screen_size;
+        self.samples = samples;
 
-        let swapchain_descriptor = SwapChainDescriptor {
+        self.swapchain = self.device.create_swap_chain(&self.surface, &SwapChainDescriptor {
             usage: TextureUsage::OUTPUT_ATTACHMENT,
             format: TextureFormat::Bgra8UnormSrgb,
             width: screen_size.width,
             height: screen_size.height,
             present_mode: PresentMode::Mailbox,
-        };
+        });
+    }
 
-        self.swapchain = self.device.create_swap_chain(&self.surface, &swapchain_descriptor);
+    pub fn get_samples(&self) -> MSAASetting {
+        self.samples
+    }
+
+    pub fn set_samples(&mut self, samples: MSAASetting) {
+        self.resize(self.screen_size, samples);
     }
 
     async fn recompute_mvp(&mut self) {
@@ -625,10 +745,15 @@ impl Renderer {
             .create_command_encoder(&CommandEncoderDescriptor { todo: 0 });
 
         {
+            let (attachment, resolve_target) = if self.samples == MSAASetting::X1 {
+                (&frame.view, None)
+            } else {
+                (&self.framebuffer, Some(&frame.view))
+            };
             let mut rpass = encoder.begin_render_pass(&RenderPassDescriptor {
                 color_attachments: &[RenderPassColorAttachmentDescriptor {
-                    attachment: &frame.view,
-                    resolve_target: None,
+                    attachment,
+                    resolve_target,
                     load_op: LoadOp::Clear,
                     store_op: StoreOp::Store,
                     clear_color: Color {
@@ -639,7 +764,7 @@ impl Renderer {
                     },
                 }],
                 depth_stencil_attachment: Some(RenderPassDepthStencilAttachmentDescriptor {
-                    attachment: &self.depth_texture_view,
+                    attachment: &self.depth_buffer,
                     depth_load_op: LoadOp::Clear,
                     depth_store_op: StoreOp::Store,
                     stencil_load_op: LoadOp::Clear,
@@ -648,8 +773,14 @@ impl Renderer {
                     clear_stencil: 0,
                 }),
             });
-            rpass.set_pipeline(&self.pipeline);
+            let mut opaque_ended = false;
+            rpass.set_pipeline(&self.opaque_pipeline);
             for object in self.objects.values() {
+                if object.transparent && !opaque_ended {
+                    rpass.set_pipeline(&self.alpha_pipeline);
+                    opaque_ended = true;
+                }
+
                 rpass.set_bind_group(0, &object.bind_group, &[]);
                 rpass.set_vertex_buffer(0, &object.vertex_buffer, 0, 0);
                 rpass.set_index_buffer(&object.index_buffer, 0, 0);
