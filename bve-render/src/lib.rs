@@ -121,15 +121,35 @@ fn generate_matrix(mx_view: &Matrix4<f32>, location: Vector3<f32>, aspect_ratio:
     OPENGL_TO_WGPU_MATRIX * mx_projection * mx_view * mx_model
 }
 
-fn convert_mesh_verts_to_verts(mesh_verts: &[MeshVertex]) -> Vec<Vertex> {
-    mesh_verts
-        .iter()
+fn convert_mesh_verts_to_verts(verts: Vec<MeshVertex>, mut indices: Vec<u32>) -> (Vec<Vertex>, Vec<u32>) {
+    // First add the extra faces due to doubling
+    let mut extra_indices = Vec::new();
+
+    for (&i1, &i2, &i3) in indices.iter().tuples() {
+        let v1_double = verts[i1 as usize].double_sided;
+        let v2_double = verts[i2 as usize].double_sided;
+        let v3_double = verts[i3 as usize].double_sided;
+
+        if v1_double || v2_double || v3_double {
+            extra_indices.push(i3);
+            extra_indices.push(i2);
+            extra_indices.push(i1);
+        }
+    }
+
+    // Then convert the verts to the new format
+    let out_verts = verts
+        .into_iter()
         .map(|v| Vertex {
-            _pos: v.position.clone().into(),
-            _normal: v.normal.clone().into(),
-            _tex_coord: v.coord.clone().into(),
+            _pos: v.position.into(),
+            _normal: v.normal.into(),
+            _tex_coord: v.coord.into(),
         })
-        .collect()
+        .collect_vec();
+
+    indices.extend(extra_indices.into_iter());
+
+    (out_verts, indices)
 }
 
 fn is_mesh_transparent(mesh: &[MeshVertex]) -> bool {
@@ -324,7 +344,7 @@ impl Renderer {
     pub fn add_object(
         &mut self,
         location: Vector3<f32>,
-        mesh_verts: &[MeshVertex],
+        mesh_verts: Vec<MeshVertex>,
         indices: &[impl ToPrimitive],
     ) -> ObjectHandle {
         self.add_object_texture(location, mesh_verts, indices, &TextureHandle(0))
@@ -333,17 +353,17 @@ impl Renderer {
     pub fn add_object_texture(
         &mut self,
         location: Vector3<f32>,
-        mesh_verts: &[MeshVertex],
+        mesh_verts: Vec<MeshVertex>,
         indices: &[impl ToPrimitive],
         TextureHandle(tex_idx): &TextureHandle,
     ) -> ObjectHandle {
         let tex: &Texture = &self.textures[tex_idx];
 
-        let vertices = convert_mesh_verts_to_verts(mesh_verts);
         let indices = indices
             .iter()
             .map(|i| i.to_u32().expect("Index too large (>2^32)"))
             .collect_vec();
+        let (vertices, indices) = convert_mesh_verts_to_verts(mesh_verts, indices);
 
         let vertex_buffer = self
             .device

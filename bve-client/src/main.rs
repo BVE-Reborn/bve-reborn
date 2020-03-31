@@ -44,7 +44,7 @@ fn load_and_add(renderer: &mut Renderer) -> Vec<ObjectHandle> {
         .into_iter()
         .map(|s| {
             let image = load_texture(s);
-            renderer.add_texture(image)
+            renderer.add_texture(&image)
         })
         .collect_vec();
 
@@ -57,7 +57,7 @@ fn load_and_add(renderer: &mut Renderer) -> Vec<ObjectHandle> {
             } else {
                 &default_handle
             };
-            let obj = renderer.add_object_texture(Vector3::new(0.0, 0.0, 0.0), &mesh.vertices, &mesh.indices, &handle);
+            let obj = renderer.add_object_texture(Vector3::new(0.0, 0.0, 0.0), mesh.vertices, &mesh.indices, &handle);
             obj
         })
         .collect()
