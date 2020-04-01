@@ -43,6 +43,13 @@ pub struct Vertex {
     _tex_coord: [f32; 2],
 }
 
+#[repr(C)]
+#[derive(AsBytes)]
+pub struct Uniforms {
+    _matrix: [f32; 16],
+    _transparent: u32,
+}
+
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub struct ObjectHandle(u64);
 
@@ -54,7 +61,7 @@ struct Object {
 
     texture: u64,
 
-    matrix_buffer: Buffer,
+    uniform_buffer: Buffer,
     bind_group: BindGroup,
 
     location: Vector3<f32>,
@@ -199,6 +206,39 @@ fn find_mesh_center(mesh: &[Vertex]) -> Vector3<f32> {
     }
 
     (max + min) / 2.0
+}
+
+fn mip_levels(size: Vector2<impl ToPrimitive>) -> u32 {
+    let float_size = size.map(|v| v.to_f32().unwrap());
+    let shortest = float_size.x.min(float_size.y);
+    let mips = shortest.log2().floor();
+    (mips as u32) + 1
+}
+
+struct MipIterator {
+    count: u32,
+    size: Vector2<u32>,
+}
+
+impl Iterator for MipIterator {
+    type Item = (u32, Vector2<u32>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.size /= 2;
+        self.count += 1;
+        if self.size.x.is_zero() | self.size.y.is_zero() {
+            None
+        } else {
+            Some((self.count, self.size))
+        }
+    }
+}
+
+fn enumerate_mip_levels(size: Vector2<impl ToPrimitive>) -> MipIterator {
+    MipIterator {
+        count: 0,
+        size: size.map(|v| v.to_u32().unwrap()),
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -375,9 +415,9 @@ impl Renderer {
             address_mode_u: AddressMode::Repeat,
             address_mode_v: AddressMode::Repeat,
             address_mode_w: AddressMode::Repeat,
-            mag_filter: FilterMode::Nearest,
+            mag_filter: FilterMode::Linear,
             min_filter: FilterMode::Linear,
-            mipmap_filter: FilterMode::Nearest,
+            mipmap_filter: FilterMode::Linear,
             lod_min_clamp: -100.0,
             lod_max_clamp: 100.0,
             compare: None,
@@ -390,7 +430,7 @@ impl Renderer {
             bindings: &[
                 BindGroupLayoutEntry {
                     binding: 0,
-                    visibility: ShaderStage::VERTEX,
+                    visibility: ShaderStage::VERTEX | ShaderStage::FRAGMENT,
                     ty: BindingType::UniformBuffer { dynamic: false },
                 },
                 BindGroupLayoutEntry {
@@ -494,6 +534,7 @@ impl Renderer {
 
         let tex: &Texture = &self.textures[tex_idx];
         let tex_transparent = tex.transparent;
+        let transparent = tex_transparent | mesh_transparent;
 
         let indices = indices
             .iter()
@@ -510,9 +551,13 @@ impl Renderer {
 
         let matrix = generate_matrix(&self.camera.compute_matrix(), location, 800.0 / 600.0);
         let matrix_ref: &[f32; 16] = matrix.as_ref();
-        let matrix_buffer = self
+        let uniforms = Uniforms {
+            _matrix: matrix_ref.clone(),
+            _transparent: transparent as u32,
+        };
+        let uniform_buffer = self
             .device
-            .create_buffer_with_data(matrix_ref.as_bytes(), BufferUsage::UNIFORM | BufferUsage::MAP_WRITE);
+            .create_buffer_with_data(uniforms.as_bytes(), BufferUsage::UNIFORM | BufferUsage::MAP_WRITE);
 
         let bind_group = self.device.create_bind_group(&BindGroupDescriptor {
             layout: &self.bind_group_layout,
@@ -520,7 +565,7 @@ impl Renderer {
                 Binding {
                     binding: 0,
                     resource: BindingResource::Buffer {
-                        buffer: &matrix_buffer,
+                        buffer: &uniform_buffer,
                         range: 0..64,
                     },
                 },
@@ -545,11 +590,11 @@ impl Renderer {
             index_count: indices.len() as u32,
             texture: 0,
             bind_group,
-            matrix_buffer,
+            uniform_buffer,
             location,
             mesh_center_offset,
             camera_distance: 0.0, // calculated later
-            transparent: tex_transparent | mesh_transparent,
+            transparent,
             mesh_transparent,
         });
         ObjectHandle(handle)
@@ -563,10 +608,11 @@ impl Renderer {
             height: image.height(),
             depth: 1,
         };
+        let mip_levels = mip_levels(Vector2::new(image.width(), image.height()));
         let texture = self.device.create_texture(&TextureDescriptor {
             size: extent,
             array_layer_count: 1,
-            mip_level_count: 2,
+            mip_level_count: mip_levels,
             sample_count: 1,
             dimension: TextureDimension::D2,
             format: TextureFormat::Rgba8Uint,
@@ -597,10 +643,13 @@ impl Renderer {
 
         self.command_buffers.push(encoder.finish());
 
-        let mip_command =
-            self.mip_creator
-                .compute_mipmaps(&self.device, &texture, Vector2::new(image.width(), image.height()));
-        self.command_buffers.push(mip_command);
+        let mip_command = self.mip_creator.compute_mipmaps(
+            &self.device,
+            &texture,
+            Vector2::new(image.width(), image.height()),
+            transparent,
+        );
+        self.command_buffers.extend(mip_command);
 
         let handle = self.texture_handle_count;
         self.texture_handle_count += 1;
@@ -635,7 +684,7 @@ impl Renderer {
                 Binding {
                     binding: 0,
                     resource: BindingResource::Buffer {
-                        buffer: &obj.matrix_buffer,
+                        buffer: &obj.uniform_buffer,
                         range: 0..64,
                     },
                 },
@@ -699,12 +748,12 @@ impl Renderer {
         self.resize(self.screen_size, samples);
     }
 
-    async fn recompute_mvp(&mut self) {
+    async fn recompute_uniforms(&mut self) {
         let camera_mat = self.camera.compute_matrix();
         for object in self.objects.values() {
             let mut buf = object
-                .matrix_buffer
-                .map_write(0, size_of::<Matrix4<f32>>() as u64)
+                .uniform_buffer
+                .map_write(0, size_of::<Uniforms>() as u64)
                 .await
                 .expect("Could not map buffer");
             let matrix = generate_matrix(
@@ -713,7 +762,11 @@ impl Renderer {
                 self.screen_size.width as f32 / self.screen_size.height as f32,
             );
             let matrix_ref: &[f32; 16] = matrix.as_ref();
-            buf.as_slice().copy_from_slice(matrix_ref.as_bytes());
+            let uniforms = Uniforms {
+                _matrix: matrix_ref.clone(),
+                _transparent: object.transparent as u32,
+            };
+            buf.as_slice().copy_from_slice(uniforms.as_bytes());
         }
     }
 
@@ -749,7 +802,7 @@ impl Renderer {
     }
 
     pub async fn render(&mut self) {
-        self.recompute_mvp().await;
+        self.recompute_uniforms().await;
         self.compute_object_distances();
         self.sort_objects();
 

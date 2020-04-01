@@ -2,7 +2,7 @@
 
 use bve::load::mesh::load_mesh_from_file;
 use bve_render::{MSAASetting, ObjectHandle, Renderer};
-use cgmath::{ElementWise, InnerSpace, Vector3};
+use cgmath::{ElementWise, InnerSpace, Vector3, Vector4};
 use circular_queue::CircularQueue;
 use futures::executor::block_on;
 use image::{Rgba, RgbaImage};
@@ -28,6 +28,39 @@ fn load_texture(name: impl AsRef<Path>) -> RgbaImage {
             pix.0[3] = 0x00
         }
     });
+    let width = rgba.width() as i32;
+    let height = rgba.height() as i32;
+    let load = |image: &RgbaImage, x: i32, y: i32| {
+        if x >= 0 && x < width && y >= 0 && y < height {
+            let pix = *image.get_pixel(x as u32, y as u32);
+            match pix {
+                Rgba([_, _, _, 0x00]) => Vector4::new(0x00 as f32, 0x00 as f32, 0x00 as f32, 0x00 as f32),
+                Rgba([x, y, z, _]) => Vector4::new(x as f32, y as f32, z as f32, 0xFF as f32),
+            }
+        } else {
+            Vector4::new(0x00 as f32, 0x00 as f32, 0x00 as f32, 0x00 as f32)
+        }
+    };
+    for x in 0..width {
+        for y in 0..height {
+            let pix11 = load(&rgba, x, y);
+            if pix11.w == 0.0 {
+                let pix00 = load(&rgba, x - 1, y - 1);
+                let pix10 = load(&rgba, x, y - 1);
+                let pix20 = load(&rgba, x + 1, y - 1);
+                let pix01 = load(&rgba, x - 1, y);
+                let pix21 = load(&rgba, x + 1, y);
+                let pix02 = load(&rgba, x - 1, y + 1);
+                let pix12 = load(&rgba, x, y + 1);
+                let pix22 = load(&rgba, x + 1, y + 1);
+
+                let sum: Vector4<f32> = pix00 + pix01 + pix02 + pix10 + pix12 + pix20 + pix21 + pix22;
+                let scale = sum.w / 255.0;
+                let avg = Vector3::new(sum.x, sum.y, sum.z) / scale;
+                rgba.put_pixel(x as u32, y as u32, Rgba([avg.x as u8, avg.y as u8, avg.z as u8, 0x00]))
+            }
+        }
+    }
     rgba
 }
 
@@ -63,14 +96,14 @@ fn load_and_add(renderer: &mut Renderer) -> Vec<ObjectHandle> {
                 &mesh.indices,
                 &handle,
             );
-            for i in 1..10 {
-                let obj = renderer.add_object_texture(
-                    Vector3::new(i as f32 * 3.0, 0.0, 0.0),
-                    mesh.vertices.clone(),
-                    &mesh.indices,
-                    &handle,
-                );
-            }
+            // for i in 1..10 {
+            //     let obj = renderer.add_object_texture(
+            //         Vector3::new(i as f32 * 3.0, 0.0, 0.0),
+            //         mesh.vertices.clone(),
+            //         &mesh.indices,
+            //         &handle,
+            //     );
+            // }
             obj
         })
         .collect()
@@ -98,7 +131,7 @@ fn main() {
     let mut sample_count = MSAASetting::X1;
     let mut renderer = block_on(async { Renderer::new(&window, sample_count).await });
 
-    let mut camera_location = Vector3::new(0.0, 0.0, 0.0);
+    let mut camera_location = Vector3::new(-200.0, 3.0, 0.0);
 
     let objects = load_and_add(&mut renderer);
 
