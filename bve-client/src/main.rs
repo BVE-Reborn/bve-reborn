@@ -23,13 +23,19 @@ fn load_texture(name: impl AsRef<Path>) -> RgbaImage {
     let result = base.join(name.as_ref());
     let img = image::open(result).unwrap();
     let mut rgba = img.into_rgba();
-    rgba.pixels_mut().for_each(|pix| {
-        if pix.0[0] == 0x00 && pix.0[1] == 0x00 && pix.0[2] == 0xFF {
-            pix.0[3] = 0x00
+    process_texture(&mut rgba);
+    rgba
+}
+
+fn process_texture(texture: &mut RgbaImage) {
+    texture.pixels_mut().for_each(|pix| {
+        // Convert pure blue to transparent
+        if let Rgba([0x00, 0x00, 0xFF, w]) = pix {
+            *w = 0x00
         }
     });
-    let width = rgba.width() as i32;
-    let height = rgba.height() as i32;
+    let width = texture.width() as i32;
+    let height = texture.height() as i32;
     let load = |image: &RgbaImage, x: i32, y: i32| {
         if x >= 0 && x < width && y >= 0 && y < height {
             let pix = *image.get_pixel(x as u32, y as u32);
@@ -43,25 +49,24 @@ fn load_texture(name: impl AsRef<Path>) -> RgbaImage {
     };
     for x in 0..width {
         for y in 0..height {
-            let pix11 = load(&rgba, x, y);
+            let pix11 = load(&texture, x, y);
             if pix11.w == 0.0 {
-                let pix00 = load(&rgba, x - 1, y - 1);
-                let pix10 = load(&rgba, x, y - 1);
-                let pix20 = load(&rgba, x + 1, y - 1);
-                let pix01 = load(&rgba, x - 1, y);
-                let pix21 = load(&rgba, x + 1, y);
-                let pix02 = load(&rgba, x - 1, y + 1);
-                let pix12 = load(&rgba, x, y + 1);
-                let pix22 = load(&rgba, x + 1, y + 1);
+                let pix00 = load(&texture, x - 1, y - 1);
+                let pix10 = load(&texture, x, y - 1);
+                let pix20 = load(&texture, x + 1, y - 1);
+                let pix01 = load(&texture, x - 1, y);
+                let pix21 = load(&texture, x + 1, y);
+                let pix02 = load(&texture, x - 1, y + 1);
+                let pix12 = load(&texture, x, y + 1);
+                let pix22 = load(&texture, x + 1, y + 1);
 
                 let sum: Vector4<f32> = pix00 + pix01 + pix02 + pix10 + pix12 + pix20 + pix21 + pix22;
                 let scale = sum.w / 255.0;
                 let avg = Vector3::new(sum.x, sum.y, sum.z) / scale;
-                rgba.put_pixel(x as u32, y as u32, Rgba([avg.x as u8, avg.y as u8, avg.z as u8, 0x00]))
+                texture.put_pixel(x as u32, y as u32, Rgba([avg.x as u8, avg.y as u8, avg.z as u8, 0x00]))
             }
         }
     }
-    rgba
 }
 
 fn load_and_add(renderer: &mut Renderer) -> Vec<ObjectHandle> {
