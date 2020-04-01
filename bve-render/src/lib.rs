@@ -2,9 +2,11 @@
 // +y up
 // +z away from camera
 
+use crate::compute::MipmapCompute;
 use bve::load::mesh::Vertex as MeshVertex;
 use cgmath::{
-    Array, EuclideanSpace, InnerSpace, Matrix3, Matrix4, MetricSpace, Point3, Rad, SquareMatrix, Vector3, Vector4,
+    Array, EuclideanSpace, InnerSpace, Matrix3, Matrix4, MetricSpace, Point3, Rad, SquareMatrix, Vector2, Vector3,
+    Vector4,
 };
 use image::{Rgba, RgbaImage};
 use indexmap::map::IndexMap;
@@ -29,6 +31,8 @@ macro_rules! include_shader {
         include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/shaders/", $name, ".cs.spv"));
     };
 }
+
+mod compute;
 
 #[repr(C)]
 #[derive(Clone, Copy, AsBytes, FromBytes)]
@@ -119,6 +123,8 @@ pub struct Renderer {
 
     vert_shader: ShaderModule,
     frag_shader: ShaderModule,
+
+    mip_creator: compute::MipmapCompute,
 
     command_buffers: Vec<CommandBuffer>,
 }
@@ -392,7 +398,7 @@ impl Renderer {
                     visibility: ShaderStage::FRAGMENT,
                     ty: BindingType::SampledTexture {
                         multisampled: false,
-                        component_type: TextureComponentType::Float,
+                        component_type: TextureComponentType::Uint,
                         dimension: TextureViewDimension::D2,
                     },
                 },
@@ -424,6 +430,8 @@ impl Renderer {
             samples,
         );
 
+        let mip_creator = MipmapCompute::new(&device);
+
         // We need to do a couple operations on the whole pile first
         let mut renderer = Self {
             objects: IndexMap::new(),
@@ -454,6 +462,8 @@ impl Renderer {
 
             vert_shader: vs_module,
             frag_shader: fs_module,
+
+            mip_creator,
 
             command_buffers: Vec::new(),
         };
@@ -556,11 +566,11 @@ impl Renderer {
         let texture = self.device.create_texture(&TextureDescriptor {
             size: extent,
             array_layer_count: 1,
-            mip_level_count: 1,
+            mip_level_count: 2,
             sample_count: 1,
             dimension: TextureDimension::D2,
-            format: TextureFormat::Rgba8UnormSrgb,
-            usage: TextureUsage::SAMPLED | TextureUsage::COPY_DST,
+            format: TextureFormat::Rgba8Uint,
+            usage: TextureUsage::SAMPLED | TextureUsage::COPY_DST | TextureUsage::STORAGE,
         });
         let texture_view = texture.create_default_view();
         let tmp_buf = self
@@ -586,6 +596,11 @@ impl Renderer {
         );
 
         self.command_buffers.push(encoder.finish());
+
+        let mip_command =
+            self.mip_creator
+                .compute_mipmaps(&self.device, &texture, Vector2::new(image.width(), image.height()));
+        self.command_buffers.push(mip_command);
 
         let handle = self.texture_handle_count;
         self.texture_handle_count += 1;
