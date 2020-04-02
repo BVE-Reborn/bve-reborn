@@ -210,7 +210,7 @@ fn apply_transform<F>(application: ApplyTo, ctx: &mut MeshBuildContext, mut func
 where
     F: FnMut(&mut Vertex) -> (),
 {
-    for v in &mut ctx.vertices {
+    for v in &mut ctx.current_mesh.vertices {
         func(v);
     }
 
