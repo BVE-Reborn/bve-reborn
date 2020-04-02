@@ -373,16 +373,18 @@ fn generate_pretty_print(ident: &Ident, fields: &[impl Into<PrettyPrintField> + 
         let name_str = name.to_string() + ": ";
         let ty = f.ty;
         quote! {
-            crate::parse::util::indent(indent + 1, out)?;
+            crate::parse::util::indent(indent, out)?;
             write!(out, #name_str)?;
             <#ty as crate::parse::PrettyPrintResult>::fmt(&self.#name, indent + 1, out)?;
         }
     }));
 
+    let ident_str = ident.to_string();
+
     quote! {
         impl crate::parse::PrettyPrintResult for #ident {
             fn fmt(&self, indent: usize, out: &mut dyn std::io::Write) -> std::io::Result<()> {
-                writeln!(out)?;
+                writeln!(out, #ident_str)?;
 
                 #members
 
