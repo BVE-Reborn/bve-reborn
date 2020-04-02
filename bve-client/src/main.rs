@@ -13,15 +13,15 @@ use std::{
     time::{Duration, Instant},
 };
 use winit::{
+    dpi::PhysicalPosition,
     event::{DeviceEvent, ElementState, Event, KeyboardInput, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
 };
 
 fn load_texture(name: impl AsRef<Path>) -> RgbaImage {
-    let base = Path::new("C:/Users/connor/AppData/Roaming/openBVE/LegacyContent/Train/R46 2014 (8 Car)/Cars/Body/");
-    let result = base.join(name.as_ref());
-    let img = image::open(result).unwrap();
+    println!("{}", name.as_ref().display());
+    let img = image::open(name).unwrap();
     let mut rgba = img.into_rgba();
     process_texture(&mut rgba);
     rgba
@@ -69,11 +69,8 @@ fn process_texture(texture: &mut RgbaImage) {
     }
 }
 
-fn load_and_add(renderer: &mut Renderer) -> Vec<ObjectHandle> {
-    let mesh = load_mesh_from_file(
-        "C:/Users/connor/AppData/Roaming/openBVE/LegacyContent/Train/R46 2014 (8 Car)/Cars/Body/BodyA.b3d",
-    )
-    .unwrap();
+fn load_and_add(renderer: &mut Renderer, path: impl AsRef<Path>) -> Vec<ObjectHandle> {
+    let mesh = load_mesh_from_file(&path).unwrap();
 
     assert!(mesh.errors.is_empty(), "{:#?}", mesh);
 
@@ -81,7 +78,8 @@ fn load_and_add(renderer: &mut Renderer) -> Vec<ObjectHandle> {
         .textures
         .into_iter()
         .map(|s| {
-            let image = load_texture(s);
+            let path = path.as_ref().parent().unwrap();
+            let image = load_texture(path.join(s));
             renderer.add_texture(&image)
         })
         .collect_vec();
@@ -101,14 +99,6 @@ fn load_and_add(renderer: &mut Renderer) -> Vec<ObjectHandle> {
                 &mesh.indices,
                 &handle,
             );
-            // for i in 1..10 {
-            //     let obj = renderer.add_object_texture(
-            //         Vector3::new(i as f32 * 3.0, 0.0, 0.0),
-            //         mesh.vertices.clone(),
-            //         &mesh.indices,
-            //         &handle,
-            //     );
-            // }
             obj
         })
         .collect()
@@ -127,8 +117,8 @@ fn main() {
     };
 
     let mut mouse_grabbed = true;
-    window.set_cursor_grab(true).unwrap();
     window.set_cursor_visible(false);
+    let mut window_size = window.inner_size();
 
     let (mut forward, mut left, mut back, mut right, mut up, mut down, mut shift) =
         (false, false, false, false, false, false, false);
@@ -136,9 +126,16 @@ fn main() {
     let mut sample_count = MSAASetting::X1;
     let mut renderer = block_on(async { Renderer::new(&window, sample_count).await });
 
-    let mut camera_location = Vector3::new(-200.0, 3.0, 0.0);
+    let mut camera_location = Vector3::new(-7.0, 3.0, 0.0);
+    renderer.set_camera(0.0, std::f32::consts::FRAC_PI_2);
 
-    let objects = load_and_add(&mut renderer);
+    let objects = load_and_add(
+        &mut renderer,
+        std::env::args()
+            .skip(1)
+            .next()
+            .expect("Must pass filename as first argument"),
+    );
 
     let mut mouse_pitch = 0.0_f32;
     let mut mouse_yaw = 0.0_f32;
@@ -156,6 +153,15 @@ fn main() {
                 .map(Duration::clone)
                 .next()
                 .unwrap_or_else(|| Duration::from_secs(0));
+
+            if mouse_grabbed {
+                window
+                    .set_cursor_position(PhysicalPosition {
+                        x: window_size.width / 2,
+                        y: window_size.height / 2,
+                    })
+                    .unwrap();
+            }
 
             let speed = if shift { 20.0 } else { 2.0 };
 
@@ -197,7 +203,10 @@ fn main() {
         Event::WindowEvent {
             event: WindowEvent::Resized(size),
             ..
-        } => renderer.resize(size, sample_count),
+        } => {
+            window_size = size;
+            renderer.resize(size, sample_count);
+        }
         Event::WindowEvent {
             event:
                 WindowEvent::KeyboardInput {
@@ -230,10 +239,8 @@ fn main() {
                         56 => {
                             if state == ElementState::Pressed {
                                 if mouse_grabbed {
-                                    window.set_cursor_grab(false);
                                     window.set_cursor_visible(true);
                                 } else {
-                                    window.set_cursor_grab(true);
                                     window.set_cursor_visible(false);
                                 }
                                 mouse_grabbed = !mouse_grabbed;
