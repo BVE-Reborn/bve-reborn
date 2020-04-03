@@ -1,5 +1,11 @@
 name: release
-on: push
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - 'v*.*.*'
+      - 'build*'
 
 env:
   RUST_BACKTRACE: full
