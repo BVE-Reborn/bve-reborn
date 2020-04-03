@@ -43,15 +43,11 @@
 #![allow(clippy::unreachable)]
 #![allow(clippy::use_debug)]
 #![allow(clippy::wildcard_enum_match_arm)]
-// CLion is having a fit about panic not existing
-#![feature(core_panic)]
-#![allow(unused_imports)]
-use core::panicking::panic;
+#![allow(clippy::wildcard_imports)]
 
 use crate::{enumeration::enumerate_all_files, panic::setup_panic_hook, worker::create_worker_thread};
-use anyhow::Result;
 use bve::{
-    log::{run_with_global_logger, set_global_logger, Level, SerializationMethod, Subscriber},
+    log::{run_with_global_logger, set_global_logger, Level, SerializationMethod},
     parse::UserErrorData,
 };
 use crossbeam::channel::unbounded;
@@ -59,7 +55,6 @@ use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 pub use options::*;
 use serde::Serialize;
 use std::{
-    panic::PanicInfo,
     path::{Path, PathBuf},
     sync::{
         atomic::{AtomicBool, AtomicU64, Ordering},

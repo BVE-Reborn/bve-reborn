@@ -48,8 +48,7 @@
 #![allow(clippy::string_add)]
 #![allow(clippy::unreachable)]
 #![allow(clippy::wildcard_enum_match_arm)]
-// CLion is having a fit about panic not existing
-#![feature(core_panic)]
+#![allow(clippy::wildcard_imports)]
 
 pub use datatypes::*;
 

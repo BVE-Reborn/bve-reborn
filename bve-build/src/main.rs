@@ -60,6 +60,7 @@ use std::{
 use structopt::StructOpt;
 use walkdir::WalkDir;
 
+#[allow(clippy::struct_excessive_bools)]
 #[derive(StructOpt)]
 struct Options {
     /// Passthrough option to cargo for the color option

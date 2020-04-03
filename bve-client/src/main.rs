@@ -49,6 +49,7 @@
 #![allow(clippy::string_add)]
 #![allow(clippy::unreachable)]
 #![allow(clippy::wildcard_enum_match_arm)]
+#![allow(clippy::wildcard_imports)]
 
 use crate::platform::*;
 use bve::load::mesh::load_mesh_from_file;

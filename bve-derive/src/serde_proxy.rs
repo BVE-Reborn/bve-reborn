@@ -213,7 +213,7 @@ fn generate_proxy_object(name: &Ident, fields: &[Field]) -> TokenStream2 {
                 let x_new = format_ident!("{}_x", original_name);
                 let y_new = format_ident!("{}_y", original_name);
                 let attributes = combine_attributes(&field.attributes);
-                let (x_inner, x_conversion, x_attribute) = process_default(&x_new, &inner_type.clone(), &field.default);
+                let (x_inner, x_conversion, x_attribute) = process_default(&x_new, &inner_type, &field.default);
                 let (y_inner, y_conversion, y_attribute) = process_default(&y_new, &inner_type, &field.default);
                 let proxy_fields = quote! {
                     #attributes
@@ -236,8 +236,8 @@ fn generate_proxy_object(name: &Ident, fields: &[Field]) -> TokenStream2 {
                 let y_new = format_ident!("{}_y", original_name);
                 let z_new = format_ident!("{}_z", original_name);
                 let attributes = combine_attributes(&field.attributes);
-                let (x_inner, x_conversion, x_attribute) = process_default(&x_new, &inner_type.clone(), &field.default);
-                let (y_inner, y_conversion, y_attribute) = process_default(&y_new, &inner_type.clone(), &field.default);
+                let (x_inner, x_conversion, x_attribute) = process_default(&x_new, &inner_type, &field.default);
+                let (y_inner, y_conversion, y_attribute) = process_default(&y_new, &inner_type, &field.default);
                 let (z_inner, z_conversion, z_attribute) = process_default(&z_new, &inner_type, &field.default);
                 let proxy_fields = quote! {
                     #attributes
@@ -265,9 +265,9 @@ fn generate_proxy_object(name: &Ident, fields: &[Field]) -> TokenStream2 {
                 let z_new = format_ident!("{}_z", original_name);
                 let w_new = format_ident!("{}_w", original_name);
                 let attributes = combine_attributes(&field.attributes);
-                let (x_inner, x_conversion, x_attribute) = process_default(&x_new, &inner_type.clone(), &field.default);
-                let (y_inner, y_conversion, y_attribute) = process_default(&y_new, &inner_type.clone(), &field.default);
-                let (z_inner, z_conversion, z_attribute) = process_default(&z_new, &inner_type.clone(), &field.default);
+                let (x_inner, x_conversion, x_attribute) = process_default(&x_new, &inner_type, &field.default);
+                let (y_inner, y_conversion, y_attribute) = process_default(&y_new, &inner_type, &field.default);
+                let (z_inner, z_conversion, z_attribute) = process_default(&z_new, &inner_type, &field.default);
                 let (w_inner, w_conversion, w_attribute) = process_default(&w_new, &inner_type, &field.default);
                 let proxy_fields = quote! {
                     #attributes

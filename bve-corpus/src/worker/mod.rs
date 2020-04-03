@@ -8,7 +8,7 @@ use bve::{
         animated::ParsedAnimatedObject,
         ats_cfg::ParsedAtsConfig,
         extensions_cfg::ParsedExtensionsCfg,
-        mesh::{FileType, MeshErrorKind, ParsedStaticObject, ParsedStaticObjectB3D, ParsedStaticObjectCSV},
+        mesh::{ParsedStaticObjectB3D, ParsedStaticObjectCSV},
         panel1_cfg::ParsedPanel1Cfg,
         panel2_cfg::ParsedPanel2Cfg,
         sound_cfg::ParsedSoundCfg,
@@ -16,16 +16,11 @@ use bve::{
         FileParser, ParserResult, UserError,
     },
 };
-use core::panicking::panic;
 use crossbeam::{
     atomic::AtomicCell,
     channel::{Receiver, Sender},
 };
-use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
-use itertools::Itertools;
 use std::{
-    fmt::Debug,
-    fs::read_to_string,
     io::Write,
     path::{Path, PathBuf},
     sync::{
