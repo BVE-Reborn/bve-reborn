@@ -2,9 +2,6 @@
 
 layout (set = 0, binding = 0, rgba8ui) uniform uimage2D mip0;
 layout (set = 0, binding = 1, rgba8ui) uniform uimage2D mip1;
-layout (set = 0, binding = 2) uniform locals {
-    bool transparent;
-};
 
 vec4 load_gamma(ivec2 position) {
     vec4 srgb = vec4(imageLoad(mip0, position)) / 255;

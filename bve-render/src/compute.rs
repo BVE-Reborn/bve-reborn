@@ -35,11 +35,6 @@ impl MipmapCompute {
                         readonly: false,
                     },
                 },
-                BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: ShaderStage::COMPUTE,
-                    ty: BindingType::UniformBuffer { dynamic: false },
-                },
             ],
         });
 
@@ -69,9 +64,6 @@ impl MipmapCompute {
         transparent: bool,
     ) -> Vec<CommandBuffer> {
         let mut buffers = Vec::new();
-
-        let uniforms =
-            device.create_buffer_with_data(&[transparent as u8], BufferUsage::MAP_WRITE | BufferUsage::UNIFORM);
 
         for (level, dimensions) in render::enumerate_mip_levels(dimensions) {
             let parent = texture.create_view(&TextureViewDescriptor {
@@ -104,13 +96,6 @@ impl MipmapCompute {
                     Binding {
                         binding: 1,
                         resource: BindingResource::TextureView(&child),
-                    },
-                    Binding {
-                        binding: 2,
-                        resource: BindingResource::Buffer {
-                            buffer: &uniforms,
-                            range: 0..1,
-                        },
                     },
                 ],
             });
