@@ -22,14 +22,14 @@ pub struct Object {
     pub mesh_transparent: bool,
 }
 
-pub const OPENGL_TO_WGPU_MATRIX: Matrix4<f32> = Matrix4::new(
-    1.0, 0.0, 0.0, 0.0, //
-    0.0, -1.0, 0.0, 0.0, //
-    0.0, 0.0, 0.5, 0.0, //
-    0.0, 0.0, 0.5, 1.0,
-);
+pub fn is_mesh_transparent(mesh: &[MeshVertex]) -> bool {
+    mesh.iter().any(|v| v.color.w != 0.0 && v.color.w != 1.0)
+}
 
-pub fn convert_mesh_verts_to_verts(verts: Vec<MeshVertex>, mut indices: Vec<u32>) -> (Vec<render::Vertex>, Vec<u32>) {
+pub fn convert_mesh_verts_to_render_verts(
+    verts: Vec<MeshVertex>,
+    mut indices: Vec<u32>,
+) -> (Vec<render::Vertex>, Vec<u32>) {
     // First add the extra faces due to doubling
     let mut extra_indices = Vec::new();
 
@@ -59,10 +59,6 @@ pub fn convert_mesh_verts_to_verts(verts: Vec<MeshVertex>, mut indices: Vec<u32>
     indices.extend(extra_indices.into_iter());
 
     (out_verts, indices)
-}
-
-pub fn is_mesh_transparent(mesh: &[MeshVertex]) -> bool {
-    mesh.iter().any(|v| v.color.w != 0.0 && v.color.w != 1.0)
 }
 
 pub fn find_mesh_center(mesh: &[render::Vertex]) -> Vector3<f32> {
@@ -117,7 +113,7 @@ impl Renderer {
             .iter()
             .map(|i| i.to_u32().expect("Index too large (>2^32)"))
             .collect_vec();
-        let (vertices, indices) = convert_mesh_verts_to_verts(mesh_verts, indices);
+        let (vertices, indices) = convert_mesh_verts_to_render_verts(mesh_verts, indices);
 
         let vertex_buffer = self
             .device

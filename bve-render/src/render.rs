@@ -20,39 +20,6 @@ pub struct Uniforms {
     pub _transparent: u32,
 }
 
-pub fn mip_levels(size: Vector2<impl ToPrimitive>) -> u32 {
-    let float_size = size.map(|v| v.to_f32().unwrap());
-    let shortest = float_size.x.min(float_size.y);
-    let mips = shortest.log2().floor();
-    (mips as u32) + 1
-}
-
-pub struct MipIterator {
-    pub count: u32,
-    pub size: Vector2<u32>,
-}
-
-impl Iterator for MipIterator {
-    type Item = (u32, Vector2<u32>);
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.size /= 2;
-        self.count += 1;
-        if self.size.x.is_zero() | self.size.y.is_zero() {
-            None
-        } else {
-            Some((self.count, self.size))
-        }
-    }
-}
-
-pub fn enumerate_mip_levels(size: Vector2<impl ToPrimitive>) -> MipIterator {
-    MipIterator {
-        count: 0,
-        size: size.map(|v| v.to_u32().unwrap()),
-    }
-}
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum PipelineType {
     Normal,
@@ -82,6 +49,39 @@ impl MSAASetting {
             Self::X8 => Self::X4,
             Self::X4 => Self::X2,
             _ => Self::X1,
+        }
+    }
+}
+
+pub fn mip_levels(size: Vector2<impl ToPrimitive>) -> u32 {
+    let float_size = size.map(|v| v.to_f32().unwrap());
+    let shortest = float_size.x.min(float_size.y);
+    let mips = shortest.log2().floor();
+    (mips as u32) + 1
+}
+
+pub fn enumerate_mip_levels(size: Vector2<impl ToPrimitive>) -> MipIterator {
+    MipIterator {
+        count: 0,
+        size: size.map(|v| v.to_u32().unwrap()),
+    }
+}
+
+pub struct MipIterator {
+    pub count: u32,
+    pub size: Vector2<u32>,
+}
+
+impl Iterator for MipIterator {
+    type Item = (u32, Vector2<u32>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.size /= 2;
+        self.count += 1;
+        if self.size.x.is_zero() | self.size.y.is_zero() {
+            None
+        } else {
+            Some((self.count, self.size))
         }
     }
 }
