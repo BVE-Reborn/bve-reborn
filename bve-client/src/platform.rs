@@ -40,13 +40,13 @@ pub mod grabber {
     }
 
     impl Grabber {
-        pub fn new(window: &Window, grab: bool) -> Grabber {
-            let mut g = Grabber { grabbed: grab };
+        pub fn new(window: &Window, grab: bool) -> Self {
+            let mut g = Self { grabbed: grab };
             g.grab(window, grab);
             g
         }
 
-        pub fn get_grabbed(&self) -> bool {
+        pub const fn get_grabbed(&self) -> bool {
             self.grabbed
         }
 
@@ -56,6 +56,7 @@ pub mod grabber {
             window.set_cursor_visible(!grab);
         }
 
+        #[allow(clippy::missing_const_for_fn, clippy::unused_self)]
         pub fn tick(&self, _window: &Window, _size: PhysicalSize<u32>) {
             // noop on !linux
         }

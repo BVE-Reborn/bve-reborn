@@ -50,6 +50,7 @@
 #![allow(clippy::string_add)]
 #![allow(clippy::unreachable)]
 #![allow(clippy::wildcard_enum_match_arm)]
+#![allow(clippy::wildcard_imports)]
 
 pub use crate::{object::ObjectHandle, render::MSAASetting, texture::Texture};
 use bve::load::mesh::Vertex as MeshVertex;

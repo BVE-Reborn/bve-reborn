@@ -16,10 +16,10 @@ make use of BVE-Reborn. If you are a developer the following is how you build fr
 
 ### Rust toolchain
 
-You need to install the 2020-02-05 nightly toolchain of rust:
+You need to install the 2020-03-19 nightly toolchain of rust:
 
 ```
-rustup install nightly-2020-02-05
+rustup install nightly-2020-03-19
 ```
 
 Then you may run the main build process:

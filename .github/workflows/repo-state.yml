@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        rust: [nightly-2020-02-05]
+        rust: [nightly-2020-03-19]
         tool: [clippy, rustfmt, deny]
     runs-on: ubuntu-18.04
 
