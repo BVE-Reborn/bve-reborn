@@ -58,12 +58,9 @@ impl Renderer {
 
         self.command_buffers.push(encoder.finish());
 
-        let mip_command = self.mip_creator.compute_mipmaps(
-            &self.device,
-            &texture,
-            Vector2::new(image.width(), image.height()),
-            transparent,
-        );
+        let mip_command =
+            self.mip_creator
+                .compute_mipmaps(&self.device, &texture, Vector2::new(image.width(), image.height()));
         self.command_buffers.extend(mip_command);
 
         let handle = self.texture_handle_count;

@@ -61,7 +61,6 @@ impl MipmapCompute {
         device: &Device,
         texture: &wgpu::Texture,
         dimensions: Vector2<u32>,
-        transparent: bool,
     ) -> Vec<CommandBuffer> {
         let mut buffers = Vec::new();
 

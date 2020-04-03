@@ -50,6 +50,7 @@
 #![allow(clippy::unreachable)]
 #![allow(clippy::wildcard_enum_match_arm)]
 
+use crate::platform::*;
 use bve::load::mesh::load_mesh_from_file;
 use bve_render::{MSAASetting, ObjectHandle, Renderer};
 use cgmath::{ElementWise, InnerSpace, Vector3, Vector4};
@@ -63,11 +64,12 @@ use std::{
     time::{Duration, Instant},
 };
 use winit::{
-    dpi::PhysicalPosition,
     event::{DeviceEvent, ElementState, Event, KeyboardInput, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
 };
+
+mod platform;
 
 fn load_texture(name: impl AsRef<Path>) -> RgbaImage {
     println!("{}", name.as_ref().display());
@@ -168,9 +170,8 @@ fn main() {
         builder.build(&event_loop).expect("Could not build window")
     };
 
-    let mut mouse_grabbed = true;
-    window.set_cursor_visible(false);
     let mut window_size = window.inner_size();
+    let mut grabber = grabber::Grabber::new(&window, true);
 
     let (mut forward, mut left, mut back, mut right, mut up, mut down, mut shift) =
         (false, false, false, false, false, false, false);
@@ -203,14 +204,7 @@ fn main() {
                 .next()
                 .unwrap_or_else(|| Duration::from_secs(0));
 
-            if mouse_grabbed {
-                window
-                    .set_cursor_position(PhysicalPosition {
-                        x: window_size.width / 2,
-                        y: window_size.height / 2,
-                    })
-                    .expect("Could not set cursor position");
-            }
+            grabber.tick(&window, window_size);
 
             let speed = if shift { 20.0 } else { 2.0 };
 
@@ -264,39 +258,27 @@ fn main() {
                 },
             ..
         } => {
-            println!("scancode: {}", scancode);
+            println!("scancode: 0x{:x}", scancode);
             *match scancode {
-                // w
-                17 => &mut forward,
-                // a
-                30 => &mut left,
-                // s
-                31 => &mut back,
-                // d
-                32 => &mut right,
-                // q
-                16 => &mut up,
-                // z
-                44 => &mut down,
-                // shift
-                42 => &mut shift,
+                Scancodes::W => &mut forward,
+                Scancodes::A => &mut left,
+                Scancodes::S => &mut back,
+                Scancodes::D => &mut right,
+                Scancodes::Q => &mut up,
+                Scancodes::Z => &mut down,
+                Scancodes::SHIFT => &mut shift,
                 _ => {
                     match scancode {
                         // Esc
-                        1 => *control_flow = ControlFlow::Exit,
+                        Scancodes::ESCAPE => *control_flow = ControlFlow::Exit,
                         // left alt
-                        56 => {
+                        Scancodes::LALT => {
                             if state == ElementState::Pressed {
-                                if mouse_grabbed {
-                                    window.set_cursor_visible(true);
-                                } else {
-                                    window.set_cursor_visible(false);
-                                }
-                                mouse_grabbed = !mouse_grabbed;
+                                grabber.grab(&window, !grabber.get_grabbed());
                             }
                         }
                         // comma
-                        51 => {
+                        Scancodes::COMMA => {
                             if state == ElementState::Pressed {
                                 sample_count = sample_count.decrement();
                                 println!("MSAA: x{}", sample_count as u32);
@@ -304,7 +286,7 @@ fn main() {
                             }
                         }
                         // period
-                        52 => {
+                        Scancodes::PERIOD => {
                             if state == ElementState::Pressed {
                                 sample_count = sample_count.increment();
                                 println!("MSAA: x{}", sample_count as u32);
@@ -329,7 +311,7 @@ fn main() {
             ..
         } => {
             use std::f32::consts::TAU;
-            if !mouse_grabbed {
+            if !grabber.get_grabbed() {
                 return;
             }
             mouse_yaw += (-delta_x / 1000.0) as f32;
