@@ -74,12 +74,12 @@ pub mod grabber {
     }
 
     impl Grabber {
-        pub fn new(window: &Window, grab: bool) -> Grabber {
+        pub fn new(window: &Window, grab: bool) -> Self {
             window.set_cursor_visible(!grab);
-            Grabber { grabbed: grab }
+            Self { grabbed: grab }
         }
 
-        pub fn get_grabbed(&self) -> bool {
+        pub const fn get_grabbed(&self) -> bool {
             self.grabbed
         }
 
