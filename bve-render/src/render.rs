@@ -26,16 +26,21 @@ pub enum PipelineType {
     Alpha,
 }
 
+// TODO: This isn't strictly true, is this just true due to WGPU? Either way I should more elegantly support this
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 #[repr(u32)]
 pub enum MSAASetting {
     X1 = 1,
+    #[cfg(not(target_os = "macos"))]
     X2 = 2,
+    #[cfg(not(target_os = "macos"))]
     X4 = 4,
+    #[cfg(not(target_os = "macos"))]
     X8 = 8,
 }
 
 impl MSAASetting {
+    #[cfg(not(target_os = "macos"))]
     #[must_use]
     pub fn increment(self) -> Self {
         match self {
@@ -45,6 +50,13 @@ impl MSAASetting {
         }
     }
 
+    #[cfg(target_os = "macos")]
+    #[must_use]
+    pub fn increment(self) -> Self {
+        Self::X1
+    }
+
+    #[cfg(not(target_os = "macos"))]
     #[must_use]
     pub fn decrement(self) -> Self {
         match self {
@@ -52,6 +64,12 @@ impl MSAASetting {
             Self::X4 => Self::X2,
             _ => Self::X1,
         }
+    }
+
+    #[cfg(target_os = "macos")]
+    #[must_use]
+    pub fn decrement(self) -> Self {
+        Self::X1
     }
 }
 
