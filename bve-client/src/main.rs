@@ -180,7 +180,7 @@ fn main() {
     let mut renderer = block_on(async { Renderer::new(&window, sample_count).await });
 
     let mut camera_location = Vector3::new(-7.0, 3.0, 0.0);
-    renderer.set_camera(0.0, std::f32::consts::FRAC_PI_2);
+    renderer.set_camera_orientation(0.0, std::f32::consts::FRAC_PI_2);
 
     let _objects = load_and_add(
         &mut renderer,
@@ -326,7 +326,7 @@ fn main() {
                 std::f32::consts::FRAC_PI_2 - 0.0001,
             );
 
-            renderer.set_camera(mouse_pitch, mouse_yaw);
+            renderer.set_camera_orientation(mouse_pitch, mouse_yaw);
         }
         Event::RedrawRequested(_) => {
             let now = Instant::now();

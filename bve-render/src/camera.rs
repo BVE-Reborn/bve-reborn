@@ -27,7 +27,7 @@ impl Camera {
 }
 
 impl Renderer {
-    pub fn set_camera(&mut self, pitch: f32, yaw: f32) {
+    pub fn set_camera_orientation(&mut self, pitch: f32, yaw: f32) {
         self.camera.pitch = pitch;
         self.camera.yaw = yaw;
     }
