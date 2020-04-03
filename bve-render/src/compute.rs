@@ -1,4 +1,4 @@
-use crate::enumerate_mip_levels;
+use crate::*;
 use cgmath::Vector2;
 use wgpu::*;
 
@@ -63,7 +63,7 @@ impl MipmapCompute {
     pub fn compute_mipmaps(
         &self,
         device: &Device,
-        texture: &Texture,
+        texture: &wgpu::Texture,
         dimensions: Vector2<u32>,
         transparent: bool,
     ) -> Vec<CommandBuffer> {
@@ -72,7 +72,7 @@ impl MipmapCompute {
         let uniforms =
             device.create_buffer_with_data(&[transparent as u8], BufferUsage::MAP_WRITE | BufferUsage::UNIFORM);
 
-        for (level, dimensions) in enumerate_mip_levels(dimensions) {
+        for (level, dimensions) in render::enumerate_mip_levels(dimensions) {
             let parent = texture.create_view(&TextureViewDescriptor {
                 dimension: TextureViewDimension::D2,
                 format: TextureFormat::Rgba8Uint,
