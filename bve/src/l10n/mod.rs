@@ -1,5 +1,5 @@
 pub use current::*;
-use fluent::{FluentBundle, FluentResource};
+use fluent::{concurrent::FluentBundle, FluentResource};
 pub use load::*;
 use once_cell::sync::Lazy;
 use std::{

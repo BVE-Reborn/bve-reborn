@@ -2,7 +2,7 @@ use crate::{
     data::DATA,
     l10n::{BVELanguage, BVELocale, BVELocaleBundle},
 };
-use fluent::{FluentBundle, FluentResource};
+use fluent::{concurrent::FluentBundle, FluentResource};
 use include_dir::File;
 
 #[must_use]
