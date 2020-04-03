@@ -12,7 +12,7 @@ env:
 
 jobs:
   release:
-    name: ${{ matrix.name }}
+    name: ${{ matrix.job-name }}
     strategy:
       fail-fast: false
       matrix:
@@ -22,20 +22,23 @@ jobs:
           - rust: nightly-2020-02-05
             triple: x86_64-pc-windows-msvc
             os: windows-2019
+            job-name: windows-release
             name: windows
             suffix: .exe
 
           - rust: nightly-2020-02-05
             triple: x86_64-apple-darwin
             os: macos-latest
+            job-name: macos-release
             name: mac
             suffix:
 
           - rust: nightly-2020-02-05
             triple: x86_64-unknown-linux-gnu
             os: ubuntu-18.04
+            job-name: linux-release
             name: linux
-            suffix: 
+            suffix:
     runs-on: ${{ matrix.os }}
 
     steps:
