@@ -92,8 +92,8 @@ pub mod grabber {
             if self.grabbed {
                 window
                     .set_cursor_position(PhysicalPosition {
-                        x: window_size.width / 2,
-                        y: window_size.height / 2,
+                        x: size.width / 2,
+                        y: size.height / 2,
                     })
                     .expect("Could not set cursor position");
             }
