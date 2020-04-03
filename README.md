@@ -6,7 +6,7 @@ performance, as well as code quality and flexibility.
 While progress is strong, there is still a lot of work to do in order to get a working
 demo.
 
-BVE uses rust for all code, which allows the code to be robust and safe from crashes
+BVE uses Rust for all code, which allows the code to be robust and safe from crashes
 while being just as fast as C/C++.
 
 ## Building from Source

@@ -224,7 +224,7 @@ impl Renderer {
 
         let mip_creator = compute::MipmapCompute::new(&device);
 
-        // We need to do a couple operations on the whole pile first
+        // Create the Renderer object early so we can can call methods on it.
         let mut renderer = Self {
             objects: IndexMap::new(),
             object_handle_count: 0,
