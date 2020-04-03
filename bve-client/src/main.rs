@@ -248,7 +248,7 @@ fn main() {
             ..
         } => {
             window_size = size;
-            renderer.resize(size, sample_count);
+            renderer.resize(size);
         }
         Event::WindowEvent {
             event:

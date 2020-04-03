@@ -272,27 +272,10 @@ impl Renderer {
         object.location = location;
     }
 
-    pub fn resize(&mut self, screen_size: PhysicalSize<u32>, samples: render::MSAASetting) {
-        self.framebuffer = render::create_framebuffer(&self.device, screen_size, samples);
-        self.depth_buffer = render::create_depth_buffer(&self.device, screen_size, samples);
-        self.opaque_pipeline = render::create_pipeline(
-            &self.device,
-            &self.pipeline_layout,
-            &self.vert_shader,
-            &self.frag_shader,
-            render::PipelineType::Normal,
-            samples,
-        );
-        self.alpha_pipeline = render::create_pipeline(
-            &self.device,
-            &self.pipeline_layout,
-            &self.vert_shader,
-            &self.frag_shader,
-            render::PipelineType::Alpha,
-            samples,
-        );
+    pub fn resize(&mut self, screen_size: PhysicalSize<u32>) {
+        self.framebuffer = render::create_framebuffer(&self.device, screen_size, self.samples);
+        self.depth_buffer = render::create_depth_buffer(&self.device, screen_size, self.samples);
         self.screen_size = screen_size;
-        self.samples = samples;
 
         self.swapchain = self.device.create_swap_chain(&self.surface, &SwapChainDescriptor {
             usage: TextureUsage::OUTPUT_ATTACHMENT,
@@ -309,7 +292,25 @@ impl Renderer {
     }
 
     pub fn set_samples(&mut self, samples: render::MSAASetting) {
-        self.resize(self.screen_size, samples);
+        self.framebuffer = render::create_framebuffer(&self.device, self.screen_size, samples);
+        self.depth_buffer = render::create_depth_buffer(&self.device, self.screen_size, samples);
+        self.opaque_pipeline = render::create_pipeline(
+            &self.device,
+            &self.pipeline_layout,
+            &self.vert_shader,
+            &self.frag_shader,
+            render::PipelineType::Normal,
+            samples,
+        );
+        self.alpha_pipeline = render::create_pipeline(
+            &self.device,
+            &self.pipeline_layout,
+            &self.vert_shader,
+            &self.frag_shader,
+            render::PipelineType::Alpha,
+            samples,
+        );
+        self.samples = samples;
     }
 
     pub async fn render(&mut self) {
