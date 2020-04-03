@@ -1,6 +1,5 @@
 use crate::*;
 use cgmath::Vector2;
-use wgpu::*;
 
 pub struct MipmapCompute {
     pipeline: ComputePipeline,

@@ -4,15 +4,12 @@
 
 pub use crate::{object::ObjectHandle, render::MSAASetting, texture::Texture};
 use bve::load::mesh::Vertex as MeshVertex;
-use cgmath::{
-    Array, EuclideanSpace, InnerSpace, Matrix3, Matrix4, MetricSpace, Point3, Rad, SquareMatrix, Vector2, Vector3,
-    Vector4,
-};
-use image::{Rgba, RgbaImage};
+use cgmath::{Matrix4, Vector2, Vector3};
+use image::RgbaImage;
 use indexmap::map::IndexMap;
 use itertools::Itertools;
 use num_traits::{ToPrimitive, Zero};
-use std::{cmp::Ordering, io, mem::size_of};
+use std::io;
 use wgpu::*;
 use winit::{dpi::PhysicalSize, window::Window};
 use zerocopy::{AsBytes, FromBytes};

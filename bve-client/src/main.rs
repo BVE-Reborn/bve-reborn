@@ -129,7 +129,7 @@ fn main() {
     let mut camera_location = Vector3::new(-7.0, 3.0, 0.0);
     renderer.set_camera(0.0, std::f32::consts::FRAC_PI_2);
 
-    let objects = load_and_add(
+    let _objects = load_and_add(
         &mut renderer,
         std::env::args()
             .skip(1)

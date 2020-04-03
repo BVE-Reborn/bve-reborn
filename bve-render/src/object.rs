@@ -1,5 +1,4 @@
 use crate::*;
-use wgpu::*;
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub struct ObjectHandle(pub(crate) u64);

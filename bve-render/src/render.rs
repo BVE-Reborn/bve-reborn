@@ -2,7 +2,6 @@ use crate::*;
 use cgmath::{InnerSpace, Vector2, Vector3};
 use num_traits::ToPrimitive;
 use std::{cmp::Ordering, mem::size_of};
-use wgpu::*;
 use winit::dpi::PhysicalSize;
 
 #[repr(C)]

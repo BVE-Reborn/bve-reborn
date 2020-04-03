@@ -1,6 +1,5 @@
 use crate::*;
 use cgmath::{EuclideanSpace, Matrix3, Matrix4, Point3, Rad, SquareMatrix, Vector3, Vector4};
-use wgpu::*;
 
 pub struct Camera {
     pub location: Vector3<f32>,
