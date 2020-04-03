@@ -83,10 +83,13 @@ impl TextureSet {
     pub fn lookup(&self, idx: usize) -> Option<&str> {
         self.filenames.get_index(idx).map(std::string::String::as_str)
     }
+}
 
-    /// Iterator
-    #[must_use]
-    pub fn into_iter(self) -> impl Iterator<Item = String> {
+impl IntoIterator for TextureSet {
+    type IntoIter = <IndexSet<String> as IntoIterator>::IntoIter;
+    type Item = String;
+
+    fn into_iter(self) -> Self::IntoIter {
         self.filenames.into_iter()
     }
 }

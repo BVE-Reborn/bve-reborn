@@ -9,7 +9,9 @@ pub struct MipmapCompute {
 impl MipmapCompute {
     pub fn new(device: &Device) -> Self {
         let shader_source = include_shader!(comp "mipmap");
-        let shader_module = device.create_shader_module(&read_spirv(std::io::Cursor::new(&shader_source[..])).unwrap());
+        let shader_module = device.create_shader_module(
+            &read_spirv(std::io::Cursor::new(&shader_source[..])).expect("Cannot read shader spirv"),
+        );
 
         let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             bindings: &[

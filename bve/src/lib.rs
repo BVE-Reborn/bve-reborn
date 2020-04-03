@@ -13,6 +13,7 @@
 #![warn(clippy::pedantic)]
 #![warn(clippy::restriction)]
 // Annoying regular clippy warnings
+#![allow(clippy::cast_lossless)] // Annoying
 #![allow(clippy::cast_sign_loss)] // Annoying
 #![allow(clippy::cast_precision_loss)] // Annoying
 #![allow(clippy::cast_possible_truncation)] // Annoying
@@ -24,6 +25,7 @@
 #![allow(clippy::else_if_without_else)]
 #![allow(clippy::fallible_impl_from)] // This fails horribly when you try to panic in a macro inside a From impl
 #![allow(clippy::float_arithmetic)]
+#![allow(clippy::float_cmp)]
 #![allow(clippy::float_cmp_const)]
 #![allow(clippy::implicit_return)]
 #![allow(clippy::indexing_slicing)]
@@ -35,10 +37,12 @@
 #![allow(clippy::missing_inline_in_public_items)]
 #![allow(clippy::module_name_repetitions)]
 #![allow(clippy::multiple_crate_versions)] // Cargo deny's job
+#![allow(clippy::multiple_inherent_impl)]
 #![allow(clippy::non_ascii_literal)]
 #![allow(clippy::option_expect_used)]
 #![allow(clippy::panic)]
 #![allow(clippy::result_expect_used)]
+#![allow(clippy::similar_names)]
 #![allow(clippy::shadow_reuse)]
 #![allow(clippy::shadow_same)]
 #![allow(clippy::string_add)]

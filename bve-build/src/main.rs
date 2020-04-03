@@ -21,6 +21,8 @@
 #![allow(clippy::as_conversions)]
 #![allow(clippy::decimal_literal_representation)]
 #![allow(clippy::else_if_without_else)]
+#![allow(clippy::else_if_without_else)]
+#![allow(clippy::exit)]
 #![allow(clippy::float_arithmetic)]
 #![allow(clippy::float_cmp_const)]
 #![allow(clippy::implicit_return)]

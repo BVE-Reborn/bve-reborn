@@ -2,6 +2,55 @@
 // +y up
 // +z away from camera
 
+// Rust warnings
+#![warn(unused)]
+#![deny(future_incompatible)]
+#![deny(nonstandard_style)]
+#![deny(rust_2018_idioms)]
+// Rustdoc Warnings
+#![deny(intra_doc_link_resolution_failure)]
+// Clippy warnings
+#![warn(clippy::cargo)]
+#![warn(clippy::nursery)]
+#![warn(clippy::pedantic)]
+#![warn(clippy::restriction)]
+// Annoying regular clippy warnings
+#![allow(clippy::cast_lossless)] // Annoying
+#![allow(clippy::cast_sign_loss)] // Annoying
+#![allow(clippy::cast_precision_loss)] // Annoying
+#![allow(clippy::cast_possible_truncation)] // Annoying
+#![allow(clippy::cognitive_complexity)] // This is dumb
+#![allow(clippy::too_many_lines)] // This is also dumb
+// Annoying/irrelevant clippy Restrictions
+#![allow(clippy::as_conversions)]
+#![allow(clippy::decimal_literal_representation)]
+#![allow(clippy::else_if_without_else)]
+#![allow(clippy::fallible_impl_from)] // This fails horribly when you try to panic in a macro inside a From impl
+#![allow(clippy::float_arithmetic)]
+#![allow(clippy::float_cmp)]
+#![allow(clippy::float_cmp_const)]
+#![allow(clippy::implicit_return)]
+#![allow(clippy::indexing_slicing)]
+#![allow(clippy::integer_arithmetic)]
+#![allow(clippy::integer_division)]
+#![allow(clippy::let_underscore_must_use)]
+#![allow(clippy::match_bool)] // prettier
+#![allow(clippy::missing_docs_in_private_items)]
+#![allow(clippy::missing_inline_in_public_items)]
+#![allow(clippy::module_name_repetitions)]
+#![allow(clippy::multiple_crate_versions)] // Cargo deny's job
+#![allow(clippy::multiple_inherent_impl)]
+#![allow(clippy::non_ascii_literal)]
+#![allow(clippy::option_expect_used)]
+#![allow(clippy::panic)]
+#![allow(clippy::result_expect_used)]
+#![allow(clippy::similar_names)]
+#![allow(clippy::shadow_reuse)]
+#![allow(clippy::shadow_same)]
+#![allow(clippy::string_add)]
+#![allow(clippy::unreachable)]
+#![allow(clippy::wildcard_enum_match_arm)]
+
 pub use crate::{object::ObjectHandle, render::MSAASetting, texture::Texture};
 use bve::load::mesh::Vertex as MeshVertex;
 use cgmath::{Matrix4, Vector2, Vector3};
@@ -86,7 +135,7 @@ impl Renderer {
             BackendBit::VULKAN | BackendBit::METAL,
         )
         .await
-        .unwrap();
+        .expect("Could not create Adapter");
 
         let (device, queue) = adapter
             .request_device(&DeviceDescriptor {
@@ -107,10 +156,12 @@ impl Renderer {
         let swapchain = device.create_swap_chain(&surface, &swapchain_descriptor);
 
         let vs = include_shader!(vert "test");
-        let vs_module = device.create_shader_module(&read_spirv(io::Cursor::new(&vs[..])).unwrap());
+        let vs_module =
+            device.create_shader_module(&read_spirv(io::Cursor::new(&vs[..])).expect("Could not read shader spirv"));
 
         let fs = include_shader!(frag "test");
-        let fs_module = device.create_shader_module(&read_spirv(io::Cursor::new(&fs[..])).unwrap());
+        let fs_module =
+            device.create_shader_module(&read_spirv(io::Cursor::new(&fs[..])).expect("Could not read shader spirv"));
 
         let sampler = device.create_sampler(&SamplerDescriptor {
             address_mode_u: AddressMode::Repeat,
@@ -124,8 +175,8 @@ impl Renderer {
             compare: None,
         });
 
-        let framebuffer = render::create_framebuffer(&device, &screen_size, samples);
-        let depth_buffer = render::create_depth_buffer(&device, &screen_size, samples);
+        let framebuffer = render::create_framebuffer(&device, screen_size, samples);
+        let depth_buffer = render::create_depth_buffer(&device, screen_size, samples);
 
         let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             bindings: &[
@@ -210,7 +261,7 @@ impl Renderer {
         };
 
         // Default texture is texture handle zero, immediately discard the handle, never to be seen again
-        renderer.add_texture(&RgbaImage::from_raw(1, 1, vec![0xff, 0xff, 0xff, 0xff]).unwrap());
+        renderer.add_texture(&RgbaImage::from_raw(1, 1, vec![0xff, 0xff, 0xff, 0xff]).expect("Invalid Image"));
 
         renderer
     }
@@ -222,8 +273,8 @@ impl Renderer {
     }
 
     pub fn resize(&mut self, screen_size: PhysicalSize<u32>, samples: render::MSAASetting) {
-        self.framebuffer = render::create_framebuffer(&self.device, &screen_size, samples);
-        self.depth_buffer = render::create_depth_buffer(&self.device, &screen_size, samples);
+        self.framebuffer = render::create_framebuffer(&self.device, screen_size, samples);
+        self.depth_buffer = render::create_depth_buffer(&self.device, screen_size, samples);
         self.opaque_pipeline = render::create_pipeline(
             &self.device,
             &self.pipeline_layout,
@@ -252,7 +303,8 @@ impl Renderer {
         });
     }
 
-    pub fn get_samples(&self) -> render::MSAASetting {
+    #[must_use]
+    pub const fn get_samples(&self) -> render::MSAASetting {
         self.samples
     }
 
@@ -265,7 +317,10 @@ impl Renderer {
         self.compute_object_distances();
         self.sort_objects();
 
-        let frame = self.swapchain.get_next_texture().unwrap();
+        let frame = self
+            .swapchain
+            .get_next_texture()
+            .expect("Could not get next swapchain texture");
 
         let mut encoder = self
             .device

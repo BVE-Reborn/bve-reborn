@@ -76,7 +76,8 @@ impl Renderer {
         TextureHandle(handle)
     }
 
-    pub fn get_default_texture() -> TextureHandle {
+    #[must_use]
+    pub const fn get_default_texture() -> TextureHandle {
         TextureHandle(0)
     }
 

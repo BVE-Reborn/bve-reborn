@@ -1,4 +1,54 @@
 #![feature(clamp, tau_constant)]
+// Rust warnings
+#![warn(unused)]
+#![deny(future_incompatible)]
+#![deny(nonstandard_style)]
+#![deny(rust_2018_idioms)]
+// Rustdoc Warnings
+#![deny(intra_doc_link_resolution_failure)]
+// Clippy warnings
+#![warn(clippy::cargo)]
+#![warn(clippy::nursery)]
+#![warn(clippy::pedantic)]
+#![warn(clippy::restriction)]
+// Annoying regular clippy warnings
+#![allow(clippy::cast_lossless)] // Annoying
+#![allow(clippy::cast_sign_loss)] // Annoying
+#![allow(clippy::cast_precision_loss)] // Annoying
+#![allow(clippy::cast_possible_truncation)] // Annoying
+#![allow(clippy::cognitive_complexity)] // This is dumb
+#![allow(clippy::too_many_lines)] // This is also dumb
+// Annoying/irrelevant clippy Restrictions
+#![allow(clippy::as_conversions)]
+#![allow(clippy::decimal_literal_representation)]
+#![allow(clippy::else_if_without_else)]
+#![allow(clippy::fallible_impl_from)] // This fails horribly when you try to panic in a macro inside a From impl
+#![allow(clippy::float_arithmetic)]
+#![allow(clippy::float_cmp)]
+#![allow(clippy::float_cmp_const)]
+#![allow(clippy::implicit_return)]
+#![allow(clippy::indexing_slicing)]
+#![allow(clippy::integer_arithmetic)]
+#![allow(clippy::integer_division)]
+#![allow(clippy::let_underscore_must_use)]
+#![allow(clippy::match_bool)] // prettier
+#![allow(clippy::missing_docs_in_private_items)]
+#![allow(clippy::missing_inline_in_public_items)]
+#![allow(clippy::module_name_repetitions)]
+#![allow(clippy::multiple_crate_versions)] // Cargo deny's job
+#![allow(clippy::multiple_inherent_impl)]
+#![allow(clippy::non_ascii_literal)]
+#![allow(clippy::option_expect_used)]
+#![allow(clippy::panic)]
+#![allow(clippy::cast_possible_wrap)]
+#![allow(clippy::print_stdout)]
+#![allow(clippy::result_expect_used)]
+#![allow(clippy::similar_names)]
+#![allow(clippy::shadow_reuse)]
+#![allow(clippy::shadow_same)]
+#![allow(clippy::string_add)]
+#![allow(clippy::unreachable)]
+#![allow(clippy::wildcard_enum_match_arm)]
 
 use bve::load::mesh::load_mesh_from_file;
 use bve_render::{MSAASetting, ObjectHandle, Renderer};
@@ -21,7 +71,8 @@ use winit::{
 
 fn load_texture(name: impl AsRef<Path>) -> RgbaImage {
     println!("{}", name.as_ref().display());
-    let img = image::open(name).unwrap();
+    let img = image::open(&name)
+        .unwrap_or_else(|e| panic!("Could not open/parse image {}: {:#?}", name.as_ref().display(), e));
     let mut rgba = img.into_rgba();
     process_texture(&mut rgba);
     rgba
@@ -40,25 +91,25 @@ fn process_texture(texture: &mut RgbaImage) {
         if x >= 0 && x < width && y >= 0 && y < height {
             let pix = *image.get_pixel(x as u32, y as u32);
             match pix {
-                Rgba([_, _, _, 0x00]) => Vector4::new(0x00 as f32, 0x00 as f32, 0x00 as f32, 0x00 as f32),
-                Rgba([x, y, z, _]) => Vector4::new(x as f32, y as f32, z as f32, 0xFF as f32),
+                Rgba([_, _, _, 0x00]) => Vector4::new(0_f32, 0_f32, 0_f32, 0_f32),
+                Rgba([x, y, z, _]) => Vector4::new(x as f32, y as f32, z as f32, 255_f32),
             }
         } else {
-            Vector4::new(0x00 as f32, 0x00 as f32, 0x00 as f32, 0x00 as f32)
+            Vector4::new(0_f32, 0_f32, 0_f32, 0_f32)
         }
     };
     for x in 0..width {
         for y in 0..height {
-            let pix11 = load(&texture, x, y);
+            let pix11 = load(texture, x, y);
             if pix11.w == 0.0 {
-                let pix00 = load(&texture, x - 1, y - 1);
-                let pix10 = load(&texture, x, y - 1);
-                let pix20 = load(&texture, x + 1, y - 1);
-                let pix01 = load(&texture, x - 1, y);
-                let pix21 = load(&texture, x + 1, y);
-                let pix02 = load(&texture, x - 1, y + 1);
-                let pix12 = load(&texture, x, y + 1);
-                let pix22 = load(&texture, x + 1, y + 1);
+                let pix00 = load(texture, x - 1, y - 1);
+                let pix10 = load(texture, x, y - 1);
+                let pix20 = load(texture, x + 1, y - 1);
+                let pix01 = load(texture, x - 1, y);
+                let pix21 = load(texture, x + 1, y);
+                let pix02 = load(texture, x - 1, y + 1);
+                let pix12 = load(texture, x, y + 1);
+                let pix22 = load(texture, x + 1, y + 1);
 
                 let sum: Vector4<f32> = pix00 + pix01 + pix02 + pix10 + pix12 + pix20 + pix21 + pix22;
                 let scale = sum.w / 255.0;
@@ -70,7 +121,7 @@ fn process_texture(texture: &mut RgbaImage) {
 }
 
 fn load_and_add(renderer: &mut Renderer, path: impl AsRef<Path>) -> Vec<ObjectHandle> {
-    let mesh = load_mesh_from_file(&path).unwrap();
+    let mesh = load_mesh_from_file(&path).unwrap_or_else(|| panic!("Could not load file {}", path.as_ref().display()));
 
     assert!(mesh.errors.is_empty(), "{:#?}", mesh);
 
@@ -78,7 +129,10 @@ fn load_and_add(renderer: &mut Renderer, path: impl AsRef<Path>) -> Vec<ObjectHa
         .textures
         .into_iter()
         .map(|s| {
-            let path = path.as_ref().parent().unwrap();
+            let path = path
+                .as_ref()
+                .parent()
+                .expect("Path unexpectedly had no parent. Did you pass in a file?");
             let image = load_texture(path.join(s));
             renderer.add_texture(&image)
         })
@@ -93,13 +147,12 @@ fn load_and_add(renderer: &mut Renderer, path: impl AsRef<Path>) -> Vec<ObjectHa
             } else {
                 &default_handle
             };
-            let obj = renderer.add_object_texture(
+            renderer.add_object_texture(
                 Vector3::new(0.0, 0.0, 0.0),
                 mesh.vertices.clone(),
                 &mesh.indices,
-                &handle,
-            );
-            obj
+                handle,
+            )
         })
         .collect()
 }
@@ -112,8 +165,7 @@ fn main() {
     let window = {
         let mut builder = WindowBuilder::new();
         builder = builder.with_title("BVE-Reborn");
-        let window = builder.build(&event_loop).unwrap();
-        window
+        builder.build(&event_loop).expect("Could not build window")
     };
 
     let mut mouse_grabbed = true;
@@ -131,10 +183,7 @@ fn main() {
 
     let _objects = load_and_add(
         &mut renderer,
-        std::env::args()
-            .skip(1)
-            .next()
-            .expect("Must pass filename as first argument"),
+        std::env::args().nth(1).expect("Must pass filename as first argument"),
     );
 
     let mut mouse_pitch = 0.0_f32;
@@ -160,7 +209,7 @@ fn main() {
                         x: window_size.width / 2,
                         y: window_size.height / 2,
                     })
-                    .unwrap();
+                    .expect("Could not set cursor position");
             }
 
             let speed = if shift { 20.0 } else { 2.0 };
@@ -279,10 +328,10 @@ fn main() {
                 },
             ..
         } => {
-            if mouse_grabbed == false {
+            use std::f32::consts::TAU;
+            if !mouse_grabbed {
                 return;
             }
-            use std::f32::consts::TAU;
             mouse_yaw += (-delta_x / 1000.0) as f32;
             mouse_pitch += (-delta_y / 1000.0) as f32;
             if mouse_yaw < 0.0 {
@@ -305,13 +354,13 @@ fn main() {
             if now - last_printed_instant >= Duration::from_secs(1) {
                 let sorted = frame_times.iter().map(Duration::clone).sorted().collect_vec();
 
-                let low = *sorted.first().unwrap();
+                let low = *sorted.first().expect("Could not get first value");
                 let percentile_1th = sorted[sorted.len() / 100];
                 let percentile_5th = sorted[sorted.len() * 5 / 100];
                 let percentile_50th = sorted[sorted.len() * 50 / 100];
                 let percentile_95th = sorted[sorted.len() * 95 / 100];
                 let percentile_99th = sorted[sorted.len() * 99 / 100];
-                let high = *sorted.last().unwrap();
+                let high = *sorted.last().expect("Could not get last value");
 
                 let sum: Duration = sorted.iter().sum();
                 let average = sum / (sorted.len() as u32);

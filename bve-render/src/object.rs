@@ -49,7 +49,7 @@ pub fn convert_mesh_verts_to_render_verts(
     let out_verts = verts
         .into_iter()
         .map(|v| render::Vertex {
-            _pos: v.position.into(),
+            pos: v.position.into(),
             _color: v.color.into(),
             _normal: v.normal.into(),
             _tex_coord: v.coord.into(),
@@ -68,11 +68,11 @@ pub fn find_mesh_center(mesh: &[render::Vertex]) -> Vector3<f32> {
         return Vector3::zero();
     };
     // Bounding box time baby!
-    let mut max: Vector3<f32> = first._pos.into();
-    let mut min: Vector3<f32> = first._pos.into();
+    let mut max: Vector3<f32> = first.pos.into();
+    let mut min: Vector3<f32> = first.pos.into();
 
     for vert in mesh.iter().skip(1) {
-        let pos: Vector3<f32> = vert._pos.into();
+        let pos: Vector3<f32> = vert.pos.into();
         max = max.zip(pos, |left, right| left.max(right));
         min = min.zip(pos, |left, right| left.min(right));
     }
@@ -81,7 +81,7 @@ pub fn find_mesh_center(mesh: &[render::Vertex]) -> Vector3<f32> {
 }
 
 pub fn generate_matrix(mx_view: &Matrix4<f32>, location: Vector3<f32>, aspect_ratio: f32) -> Matrix4<f32> {
-    let mx_projection = cgmath::perspective(cgmath::Deg(55f32), aspect_ratio, 0.1, 1000.0);
+    let mx_projection = cgmath::perspective(cgmath::Deg(55_f32), aspect_ratio, 0.1, 1000.0);
     let mx_model = Matrix4::from_translation(location);
     OPENGL_TO_WGPU_MATRIX * mx_projection * mx_view * mx_model
 }
@@ -125,7 +125,7 @@ impl Renderer {
         let matrix = generate_matrix(&self.camera.compute_matrix(), location, 800.0 / 600.0);
         let matrix_ref: &[f32; 16] = matrix.as_ref();
         let uniforms = render::Uniforms {
-            _matrix: matrix_ref.clone(),
+            _matrix: *matrix_ref,
             _transparent: transparent as u32,
         };
         let uniform_buffer = self

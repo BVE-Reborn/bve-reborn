@@ -7,7 +7,7 @@ use winit::dpi::PhysicalSize;
 #[repr(C)]
 #[derive(Clone, Copy, AsBytes, FromBytes)]
 pub struct Vertex {
-    pub _pos: [f32; 3],
+    pub pos: [f32; 3],
     pub _normal: [f32; 3],
     pub _color: [f32; 4],
     pub _tex_coord: [f32; 2],
@@ -36,6 +36,7 @@ pub enum MSAASetting {
 }
 
 impl MSAASetting {
+    #[must_use]
     pub fn increment(self) -> Self {
         match self {
             Self::X1 => Self::X2,
@@ -44,6 +45,7 @@ impl MSAASetting {
         }
     }
 
+    #[must_use]
     pub fn decrement(self) -> Self {
         match self {
             Self::X8 => Self::X4,
@@ -54,7 +56,7 @@ impl MSAASetting {
 }
 
 pub fn mip_levels(size: Vector2<impl ToPrimitive>) -> u32 {
-    let float_size = size.map(|v| v.to_f32().unwrap());
+    let float_size = size.map(|v| v.to_f32().expect("Cannot convert to f32"));
     let shortest = float_size.x.min(float_size.y);
     let mips = shortest.log2().floor();
     (mips as u32) + 1
@@ -63,7 +65,7 @@ pub fn mip_levels(size: Vector2<impl ToPrimitive>) -> u32 {
 pub fn enumerate_mip_levels(size: Vector2<impl ToPrimitive>) -> MipIterator {
     MipIterator {
         count: 0,
-        size: size.map(|v| v.to_u32().unwrap()),
+        size: size.map(|v| v.to_u32().expect("Cannot convert to u32")),
     }
 }
 
@@ -148,7 +150,7 @@ pub fn create_pipeline(
     })
 }
 
-pub fn create_depth_buffer(device: &Device, size: &PhysicalSize<u32>, samples: MSAASetting) -> TextureView {
+pub fn create_depth_buffer(device: &Device, size: PhysicalSize<u32>, samples: MSAASetting) -> TextureView {
     let depth_texture = device.create_texture(&TextureDescriptor {
         size: Extent3d {
             width: size.width,
@@ -165,7 +167,7 @@ pub fn create_depth_buffer(device: &Device, size: &PhysicalSize<u32>, samples: M
     depth_texture.create_default_view()
 }
 
-pub fn create_framebuffer(device: &Device, size: &PhysicalSize<u32>, samples: MSAASetting) -> TextureView {
+pub fn create_framebuffer(device: &Device, size: PhysicalSize<u32>, samples: MSAASetting) -> TextureView {
     let extent = Extent3d {
         width: size.width,
         height: size.height,
@@ -200,7 +202,7 @@ impl Renderer {
             );
             let matrix_ref: &[f32; 16] = matrix.as_ref();
             let uniforms = Uniforms {
-                _matrix: matrix_ref.clone(),
+                _matrix: *matrix_ref,
                 _transparent: object.transparent as u32,
             };
             buf.as_slice().copy_from_slice(uniforms.as_bytes());
