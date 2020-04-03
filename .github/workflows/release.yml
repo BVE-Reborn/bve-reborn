@@ -5,7 +5,7 @@ env:
   RUST_BACKTRACE: full
 
 jobs:
-  build:
+  release:
     name: ${{ matrix.name }}
     strategy:
       fail-fast: false
@@ -16,19 +16,19 @@ jobs:
           - rust: nightly-2020-02-05
             triple: x86_64-pc-windows-msvc
             os: windows-2019
-            name: windows-release
+            name: windows
             suffix: .exe
 
           - rust: nightly-2020-02-05
             triple: x86_64-apple-darwin
             os: macos-latest
-            name: mac-release
+            name: mac
             suffix:
 
           - rust: nightly-2020-02-05
             triple: x86_64-unknown-linux-gnu
             os: ubuntu-18.04
-            name: linux-release
+            name: linux
             suffix: 
     runs-on: ${{ matrix.os }}
 
@@ -74,16 +74,16 @@ jobs:
 
       - uses: actions/upload-artifact@v1
         with:
-          name: bve-client
+          name: ${{ matrix.name }}-bve-client
           path: target/lto/bve-client${{ matrix.suffix }}
 
       - uses: actions/upload-artifact@v1
         with:
-          name: bve-corpus
+          name: ${{ matrix.name }}-bve-corpus
           path: target/lto/bve-corpus${{ matrix.suffix }}
 
       - uses: actions/upload-artifact@v1
         with:
-          name: bve-parser-run
+          name: ${{ matrix.name }}-bve-parser-run
           path: target/lto/bve-parser-run${{ matrix.suffix }}
 
