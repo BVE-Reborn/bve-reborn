@@ -23,13 +23,13 @@ jobs:
             triple: x86_64-apple-darwin
             os: macos-latest
             name: mac-release
-            suffix: ""
+            suffix:
 
           - rust: nightly-2020-02-05
             triple: x86_64-unknown-linux-gnu
             os: ubuntu-18.04
             name: linux-release
-            suffix: ""
+            suffix: 
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -80,10 +80,10 @@ jobs:
       - uses: actions/upload-artifact@v1
         with:
           name: bve-corpus
-          path: target/lto/bve-corpus{{ matrix.suffix }}
+          path: target/lto/bve-corpus${{ matrix.suffix }}
 
       - uses: actions/upload-artifact@v1
         with:
           name: bve-parser-run
-          path: target/lto/bve-parser-run{{ matrix.suffix }}
+          path: target/lto/bve-parser-run${{ matrix.suffix }}
 
