@@ -1,0 +1,93 @@
+name: release
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - 'v*.*.*'
+      - 'build*'
+
+env:
+  RUST_BACKTRACE: full
+
+jobs:
+  release:
+    name: ${{ matrix.job-name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        rust: [nightly-2020-02-05]
+        os: [windows-2019, macos-latest, ubuntu-18.04]
+        include:
+          - rust: nightly-2020-02-05
+            triple: x86_64-pc-windows-msvc
+            os: windows-2019
+            job-name: windows-release
+            name: windows
+            suffix: .exe
+
+          - rust: nightly-2020-02-05
+            triple: x86_64-apple-darwin
+            os: macos-latest
+            job-name: macos-release
+            name: mac
+            suffix:
+
+          - rust: nightly-2020-02-05
+            triple: x86_64-unknown-linux-gnu
+            os: ubuntu-18.04
+            job-name: linux-release
+            name: linux
+            suffix:
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Set Env (win)
+        run: |
+          echo "::add-path::$env:USERPROFILE\.cargo\bin"
+        shell: powershell
+        if: matrix.os == 'windows-2019'
+
+      - name: Set Env (nix)
+        run: |
+          echo "::add-path::$HOME/.cargo/bin"
+        shell: bash
+        if: matrix.os != 'windows-2019'
+
+      - name: Checkout repository
+        uses: actions/checkout@v1
+        with:
+          submodules: true
+
+      - name: Install Rustup
+        run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain none --profile minimal -y
+        if: matrix.os == 'macos-latest' || matrix.os == 'windows-2019'
+        shell: bash
+
+      - name: Update Rustup
+        run: |
+          rustup self update
+          rustup set profile minimal
+        shell: bash
+
+      - name: Install Rust ${{ matrix.rust }}
+        run: |
+          rustup set default-host ${{ matrix.triple }}
+          rustup toolchain install ${{ matrix.rust }}
+        shell: bash
+
+      - name: Build
+        run: |
+          cargo build -Z unstable-options --profile lto -p bve-client -p bve-corpus
+        shell: bash
+
+      - name: Build
+        run: |
+          mkdir ${{ matrix.name }}
+          cp target/lto/bve-client${{ matrix.suffix }} target/lto/bve-corpus${{ matrix.suffix }} target/lto/bve-parser-run${{ matrix.suffix }} ${{ matrix.name }}
+        shell: bash
+
+      - uses: actions/upload-artifact@v1
+        with:
+          name: bve-${{ matrix.name }}
+          path: ${{ matrix.name }}

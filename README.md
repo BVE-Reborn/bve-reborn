@@ -6,8 +6,7 @@ performance, as well as code quality and flexibility.
 While progress is strong, there is still a lot of work to do in order to get a working
 demo.
 
-BVE uses rex to provide graphics and user input. For all
-internal code it uses rust. Rust allows the code to be robust and safe from crashes
+BVE uses Rust for all code, which allows the code to be robust and safe from crashes
 while being just as fast as C/C++.
 
 ## Building from Source

@@ -11,29 +11,28 @@ jobs:
       fail-fast: false
       matrix:
         rust: [nightly-2020-02-05]
-        os: [windows-2019, ubuntu-18.04]
+        os: [windows-2019, macos-latest, ubuntu-18.04]
         include:
           - rust: nightly-2020-02-05
             triple: x86_64-pc-windows-msvc
             os: windows-2019
-            name: windows-nightly
+            name: windows-build
 
-#          - rust: nightly-2020-02-05
-#            triple: x86_64-apple-darwin
-#            os: macos-latest
-#            name: mac-nightly
+          - rust: nightly-2020-02-05
+            triple: x86_64-apple-darwin
+            os: macos-latest
+            name: mac-build
 
           - rust: nightly-2020-02-05
             triple: x86_64-unknown-linux-gnu
             os: ubuntu-18.04
-            name: linux-nightly
+            name: linux-build
     runs-on: ${{ matrix.os }}
 
     steps:
       - name: Set Env (win)
         run: |
           echo "::add-path::$env:USERPROFILE\.cargo\bin"
-          echo "::add-path::$env:USERPROFILE\scoop\shims"
         shell: powershell
         if: matrix.os == 'windows-2019'
 
@@ -47,13 +46,6 @@ jobs:
         uses: actions/checkout@v1
         with:
           submodules: true
-
-      - name: Cache scoop
-        uses: actions/cache@v1
-        with:
-          path: ~/scoop
-          key: ${{ matrix.os }}-scoop
-        if: matrix.os == 'windows-2019'
 
       - name: Cache cargo registry
         uses: actions/cache@v1
@@ -91,42 +83,15 @@ jobs:
         shell: bash
 
       - name: Install Rust ${{ matrix.rust }}
-        # we need rustfmt for bindgen
         run: |
           rustup set default-host ${{ matrix.triple }}
           rustup toolchain install ${{ matrix.rust }}
-          rustup component add --toolchain ${{ matrix.rust }} rustfmt
-        shell: bash
-
-      - name: Install scoop
-        run: |
-          powershell -command "Invoke-Expression (New-Object System.Net.WebClient).DownloadString('https://get.scoop.sh'); exit 0"
-        if: matrix.os == 'windows-2019'
-        shell: powershell
-
-      - name: Install deps (win)
-        run: |
-          scoop install llvm ninja || true
-          export LIBCLANG_PATH=$HOME/scoop/apps/llvm/current/bin
-          echo "::set-env name=LIBCLANG_PATH::$LIBCLANG_PATH"
-        if: matrix.os == 'windows-2019'
-        shell: bash
-
-      - name: Install deps (linux)
-        run: |
-          sudo apt update
-          sudo apt install libsdl2-dev # not needed, but good for transitives dependencies
-        if: matrix.os == 'ubuntu-18.04'
-        shell: bash
-
-      - name: Build C API
-        run: |
-          cargo run --bin bve-build -- --color=always --no-build
         shell: bash
 
       - name: Build
         run: |
           cargo build --all
+          cargo run --bin bve-build -- --color=always --bindgen
         shell: bash
 
       - name: Run tests

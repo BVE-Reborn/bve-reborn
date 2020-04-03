@@ -21,6 +21,8 @@
 #![allow(clippy::as_conversions)]
 #![allow(clippy::decimal_literal_representation)]
 #![allow(clippy::else_if_without_else)]
+#![allow(clippy::else_if_without_else)]
+#![allow(clippy::exit)]
 #![allow(clippy::float_arithmetic)]
 #![allow(clippy::float_cmp_const)]
 #![allow(clippy::implicit_return)]
@@ -49,8 +51,14 @@
 use core::panicking::panic;
 
 use cbindgen::Language;
-use std::{fs::read_to_string, process::Command};
+use std::{
+    borrow::Cow,
+    ffi::OsStr,
+    fs::{read_to_string, FileType},
+    process::{exit, Command},
+};
 use structopt::StructOpt;
+use walkdir::WalkDir;
 
 #[derive(StructOpt)]
 struct Options {
@@ -62,13 +70,17 @@ struct Options {
     #[structopt(long)]
     debug: bool,
 
-    /// Don't build bve
+    /// Build bve
     #[structopt(long)]
-    no_build: bool,
+    build: bool,
 
-    /// Don't run cbindgen
+    /// Run cbindgen
     #[structopt(long)]
-    no_bindgen: bool,
+    bindgen: bool,
+
+    /// Build shaders
+    #[structopt(long)]
+    shaderc: bool,
 
     /// Build `bve` crate
     #[structopt(long)]
@@ -186,14 +198,69 @@ fn generate_c_bindings(options: &Options) {
     }
 }
 
+fn build_shaders() {
+    for content in WalkDir::new("bve-render/shaders") {
+        let entry = content.expect("IO error");
+        if !entry.file_type().is_dir()
+            && entry.path().extension().map(OsStr::to_string_lossy) == Some(Cow::Borrowed("glsl"))
+        {
+            let name = entry.file_name().to_string_lossy();
+            let stage = if name.contains(".vs") {
+                "-fshader-stage=vert"
+            } else if name.contains(".gs") {
+                "-fshader-stage=geom"
+            } else if name.contains(".fs") {
+                "-fshader-stage=frag"
+            } else if name.contains(".cs") {
+                "-fshader-stage=comp"
+            } else {
+                break;
+            };
+
+            let spirv_name = name.replace(".glsl", ".spv");
+            let out_path = entry.path().parent().expect("Must have parent").join(&spirv_name);
+
+            println!("Compiling {} to {}", name, spirv_name);
+
+            let mut child = Command::new("glslc")
+                .args(&[
+                    "-x",
+                    "glsl",
+                    stage,
+                    &format!("{}", entry.path().display()),
+                    "-o",
+                    &format!("{}", out_path.display()),
+                ])
+                .spawn()
+                .expect("Unable to find glslc in PATH. glslc must be installed. See https://github.com/google/shaderc");
+
+            let result = child.wait().expect("Unable to wait for child");
+            if !result.success() {
+                println!(
+                    "glslc failed on file {} with error code {}",
+                    name,
+                    result.code().expect("Unable to get error code")
+                );
+                exit(1);
+            }
+        }
+    }
+}
+
 fn main() {
     let options: Options = Options::from_args();
 
-    if !options.no_build {
+    let all = !(options.bindgen || options.build || options.shaderc);
+
+    if options.build || all {
         build(&options);
     }
 
-    if !options.no_bindgen {
-        generate_c_bindings(&options)
+    if options.bindgen || all {
+        generate_c_bindings(&options);
+    }
+
+    if options.shaderc || all {
+        build_shaders();
     }
 }

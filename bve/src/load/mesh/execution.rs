@@ -139,6 +139,12 @@ fn shrink_vertex_list(vertices: &[Vertex], indices: &[usize]) -> (Vec<Vertex>, V
 fn run_create_mesh_builder(ctx: &mut MeshBuildContext) {
     if !ctx.current_mesh.vertices.is_empty() && !ctx.current_mesh.indices.is_empty() {
         calculate_normals(&mut ctx.current_mesh);
+        // Distribute the mesh color to the vertices. It is redundant, but when
+        // these meshes get combined, this is the easiest and fastest way for shaders
+        // to access the data
+        for v in &mut ctx.current_mesh.vertices {
+            v.color = ctx.current_mesh.color.map(|i| i as f32 / 255.0);
+        }
         ctx.parsed
             .meshes
             .push(std::mem::replace(&mut ctx.current_mesh, default_mesh()));
@@ -204,7 +210,7 @@ fn apply_transform<F>(application: ApplyTo, ctx: &mut MeshBuildContext, mut func
 where
     F: FnMut(&mut Vertex) -> (),
 {
-    for v in &mut ctx.vertices {
+    for v in &mut ctx.current_mesh.vertices {
         func(v);
     }
 
