@@ -91,7 +91,7 @@ jobs:
       - name: Build
         run: |
           cargo build --all
-          cargo run --bin bve-build -- --color=always --bindgen
+          cargo run --bin bve-build -- --color=always --cbindgen
         shell: bash
 
       - name: Run tests
