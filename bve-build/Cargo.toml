@@ -15,6 +15,4 @@ keywords = ["bve", "building", "serialization", "simulation"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-cbindgen = "0.13"
-structopt = "0.3"
-walkdir = "2.3.1"
+pico-args = "0.3.1"

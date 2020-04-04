@@ -45,63 +45,41 @@
 #![allow(clippy::shadow_same)]
 #![allow(clippy::unreachable)]
 #![allow(clippy::wildcard_enum_match_arm)]
-// CLion is having a fit about panic not existing
-#![feature(core_panic)]
-#![allow(unused_imports)]
-use core::panicking::panic;
 
-use cbindgen::Language;
 use std::{
     borrow::Cow,
     ffi::OsStr,
-    fs::{read_to_string, FileType},
+    fs::read_dir,
     process::{exit, Command},
 };
-use structopt::StructOpt;
-use walkdir::WalkDir;
 
-#[allow(clippy::struct_excessive_bools)]
-#[derive(StructOpt)]
 struct Options {
     /// Passthrough option to cargo for the color option
-    #[structopt(short, long)]
     color: Option<String>,
 
+    /// Help
+    help: bool,
+
     /// Build bve in debug mode
-    #[structopt(long)]
     debug: bool,
 
     /// Build bve
-    #[structopt(long)]
     build: bool,
 
     /// Run cbindgen
-    #[structopt(long)]
-    bindgen: bool,
+    cbindgen: bool,
 
     /// Build shaders
-    #[structopt(long)]
     shaderc: bool,
 
     /// Build `bve` crate
-    #[structopt(long)]
     core: bool,
 
     /// Build `bve-client` crate
-    #[structopt(long)]
     client: bool,
 
     /// Build `bve-native` crate
-    #[structopt(long)]
     native: bool,
-}
-
-fn clean() {
-    let mut child = Command::new("cargo")
-        .arg("clean")
-        .spawn()
-        .expect("Unable to spawn cargo.");
-    assert!(child.wait().expect("Unable to wait for cargo.").success());
 }
 
 fn build(options: &Options) {
@@ -142,70 +120,46 @@ fn build(options: &Options) {
     assert!(child.wait().expect("Unable to wait for cargo.").success());
 }
 
-fn handle_cbindgen_error(err: &cbindgen::Error, options: &Options) {
-    if let cbindgen::Error::CargoExpand(s, err) = &err {
-        // Bug in cbindgen/rustc
-        // https://github.com/eqrion/cbindgen/issues/457
-        // https://github.com/rust-lang/rust/issues/68333
-        // Fixed by cleaning the build cache and rerunning
-        if err.to_string().contains("Finished") && s == "bve-native" {
-            println!("Dealing with cbindgen bug; clearing cache and regenerating");
-            clean();
-            generate_c_bindings(options);
-            return;
-        }
-    }
-    panic!("cbindgen error: {}", err)
-}
-
-fn generate_c_bindings(options: &Options) {
-    let config = cbindgen::Config::from_file("bve-native/cbindgen.toml").unwrap();
-
-    {
-        // C
-        let mut config = config.clone();
-        config.language = Language::C;
-        *config.header.as_mut().expect("bve-native/cbindgen.toml needs a header") +=
-            "/* C API for BVE-Reborn high performance libraries. */";
-        let result = cbindgen::Builder::new()
-            .with_crate("bve-native")
-            .with_config(config)
-            .generate();
-        match result {
-            Ok(bindings) => {
-                bindings.write_to_file("bve-native/include/bve.h");
-            }
-            Err(err) => handle_cbindgen_error(&err, options),
-        }
-    }
-    {
-        // C++
-        let mut config = config;
-        config.language = Language::Cxx;
-        config.export.prefix = None;
-        *config.header.as_mut().expect("bve-native/cbindgen.toml needs a header") +=
-            "/* C++ API for BVE-Reborn high performance libraries. */";
-        config.trailer = Some(read_to_string("bve-native/include/bve_cpp.hpp").unwrap());
-        let result = cbindgen::Builder::new()
-            .with_crate("bve-native")
-            .with_config(config)
-            .generate();
-        match result {
-            Ok(bindings) => {
-                bindings.write_to_file("bve-native/include/bve.hpp");
-            }
-            Err(err) => handle_cbindgen_error(&err, options),
-        }
-    }
+fn generate_c_bindings() {
+    println!("Generating C Bindings... (may take a while)");
+    let mut c = Command::new("cbindgen")
+        .args(&[
+            "--crate",
+            "bve-native",
+            "-o",
+            "bve-native/include/bve.h",
+            "-c",
+            "bve-native/cbindgen-c.toml",
+        ])
+        .spawn()
+        .unwrap();
+    if !c.wait().unwrap().success() {
+        println!("cbindgen failed");
+    };
+    println!("Generating C++ Bindings... (may take a while)");
+    let mut cpp = Command::new("cbindgen")
+        .args(&[
+            "--crate",
+            "bve-native",
+            "-o",
+            "bve-native/include/bve.hpp",
+            "-c",
+            "bve-native/cbindgen-cpp.toml",
+        ])
+        .spawn()
+        .unwrap();
+    if !cpp.wait().unwrap().success() {
+        println!("cbindgen failed");
+    };
 }
 
 fn build_shaders() {
-    for content in WalkDir::new("bve-render/shaders") {
+    for content in read_dir("bve-render/shaders").unwrap() {
         let entry = content.expect("IO error");
-        if !entry.file_type().is_dir()
+        if !entry.file_type().unwrap().is_dir()
             && entry.path().extension().map(OsStr::to_string_lossy) == Some(Cow::Borrowed("glsl"))
         {
-            let name = entry.file_name().to_string_lossy();
+            let name = entry.file_name().to_string_lossy().to_string();
             let stage = if name.contains(".vs") {
                 "-fshader-stage=vert"
             } else if name.contains(".gs") {
@@ -248,17 +202,61 @@ fn build_shaders() {
     }
 }
 
-fn main() {
-    let options: Options = Options::from_args();
+const HELP_MESSAGE: &str = r#"Usage: cargo run -p bve-build -- [args...]
+BVE-Reborn build tool.
 
-    let all = !(options.bindgen || options.build || options.shaderc);
+General:
+  -h, --help       Display this help message
+  --color=[value]  Pass --color=[value] to all cargo calls
+  
+Tasks:
+  --build     Build bve-reborn
+  --cbindgen  Build bve-native C and C++ headers (requires cbindgen)
+  --shaderc   Build spirv shaders (requires glslc [from shaderc])
+
+Build Options:
+  --debug   Build bve in debug mode
+  
+Libraries:
+  If none of these are specified, builds everything
+  --core    Build bve-core
+  --client  Build bve-client
+  --native  Build bve-native
+"#;
+
+fn main() {
+    let mut args = pico_args::Arguments::from_env();
+
+    let mut options: Options = Options {
+        color: args.opt_value_from_str("--color").unwrap(),
+        help: args.contains(["-h", "--help"]),
+        debug: args.contains("--debug"),
+        build: args.contains("--build"),
+        cbindgen: args.contains("--cbindgen"),
+        shaderc: args.contains("--shaderc"),
+        core: args.contains("--core"),
+        client: args.contains("--client"),
+        native: args.contains("--native"),
+    };
+
+    if let Err(pico_args::Error::UnusedArgsLeft(args)) = args.finish() {
+        println!("Unrecognized arguments: {}", args.join(", "));
+        options.help = true;
+    }
+
+    if options.help {
+        println!("{}", HELP_MESSAGE);
+        exit(1);
+    }
+
+    let all = !(options.cbindgen || options.build || options.shaderc);
 
     if options.build || all {
         build(&options);
     }
 
-    if options.bindgen || all {
-        generate_c_bindings(&options);
+    if options.cbindgen || all {
+        generate_c_bindings();
     }
 
     if options.shaderc || all {

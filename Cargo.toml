@@ -9,6 +9,10 @@ crossbeam = { git = "https://github.com/crossbeam-rs/crossbeam.git", rev = "ebec
 wgpu = { git = "https://github.com/gfx-rs/wgpu-rs.git", rev = "ce10a47de81e28a9ad3468952bda66a4aa9d2f9e" }
 
 [profile.dev]
+opt-level = 0
+
+[profile.opt-dev]
+inherits = "dev"
 opt-level = 1
 
 [profile.release]
@@ -20,7 +24,7 @@ debug = true
 inherits = "release"
 debug = true
 debug-assertions = false
-lto = true
+lto = "thin"
 
 [profile.lto]
 inherits = "release"
