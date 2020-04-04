@@ -17,15 +17,14 @@ keywords = ["bve", "serialization", "simulation"]
 [dependencies]
 backtrace = "0.3.42"
 bve = { version = "0.0.1", path = "../bve" }
-clap = "2.33.0"
 crossbeam-channel = "0.4.2"
 crossbeam-utils = "0.7.2"
 indicatif = "0.14.0"
 itertools = "0.9"
 libc = "0.2.66"
 num_cpus = "1.12.0"
+pico-args = "0.3.1"
 serde = { version = "1.0.104", features = ["derive"] }
 serde_json = "1.0.45"
-structopt = "0.3.8"
 tracing = "0.1.12"
 walkdir = "2.3.1"

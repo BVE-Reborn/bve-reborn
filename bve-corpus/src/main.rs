@@ -62,7 +62,6 @@ use std::{
     },
     time::{Duration, Instant},
 };
-use structopt::StructOpt;
 use walkdir::{DirEntry, WalkDir};
 
 mod enumeration;
