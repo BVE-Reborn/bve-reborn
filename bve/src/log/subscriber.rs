@@ -1,5 +1,5 @@
 use crate::log::{common::*, writer::run_writer, SerializationMethod};
-use crossbeam::{bounded, Sender};
+use crossbeam_channel::{bounded, Sender};
 use std::{
     cell::RefCell,
     collections::HashMap,

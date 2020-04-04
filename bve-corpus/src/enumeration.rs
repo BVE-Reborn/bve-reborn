@@ -1,5 +1,5 @@
 use crate::*;
-use crossbeam::Sender;
+use crossbeam_channel::Sender;
 
 fn enumerate(path: impl AsRef<Path>, mut func: impl FnMut(PathBuf, DirEntry) -> ()) {
     for entry in WalkDir::new(path.as_ref()).follow_links(true).same_file_system(false) {

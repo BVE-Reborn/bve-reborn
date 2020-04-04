@@ -50,7 +50,7 @@ use bve::{
     log::{run_with_global_logger, set_global_logger, Level, SerializationMethod},
     parse::UserErrorData,
 };
-use crossbeam::channel::unbounded;
+use crossbeam_channel::unbounded;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 pub use options::*;
 use serde::Serialize;

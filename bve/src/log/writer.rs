@@ -1,5 +1,5 @@
 use crate::log::{common::*, Message, SerializationMethod};
-use crossbeam::Receiver;
+use crossbeam_channel::Receiver;
 use num_traits::FromPrimitive;
 use std::io::{BufWriter, Write};
 use tracing::Id;
