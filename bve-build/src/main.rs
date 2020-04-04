@@ -124,14 +124,8 @@ fn build(options: &Options) {
 fn generate_c_bindings() {
     println!("Generating C Bindings... (may take a while)");
     let mut c = Command::new("cbindgen")
-        .args(&[
-            "--crate",
-            "bve-native",
-            "-o",
-            "bve-native/include/bve.h",
-            "-c",
-            "bve-native/cbindgen-c.toml",
-        ])
+        .args(&["--crate", "bve-native", "-o", "include/bve.h", "-c", "cbindgen-c.toml"])
+        .current_dir("bve-native")
         .spawn()
         .unwrap();
     if !c.wait().unwrap().success() {
@@ -143,10 +137,11 @@ fn generate_c_bindings() {
             "--crate",
             "bve-native",
             "-o",
-            "bve-native/include/bve.hpp",
+            "include/bve.hpp",
             "-c",
-            "bve-native/cbindgen-cpp.toml",
+            "cbindgen-cpp.toml",
         ])
+        .current_dir("bve-native")
         .spawn()
         .unwrap();
     if !cpp.wait().unwrap().success() {
