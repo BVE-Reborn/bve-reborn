@@ -117,6 +117,7 @@ jobs:
           cmake --build .
           cd -
         shell: bash
+        if: matrix.os != 'macos-latest'
 
       - name: Run C API (win)
         run: |
