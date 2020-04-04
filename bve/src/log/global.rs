@@ -1,10 +1,9 @@
 use crate::log::{SerializationMethod, Subscriber};
+use once_cell::sync::Lazy;
 use std::{io::Write, sync::Mutex, thread::JoinHandle};
 use tracing_core::{dispatcher::with_default, Dispatch, Level};
 
-lazy_static::lazy_static! {
-    static ref GLOBAL_LOGGER: Mutex<Option<Subscriber>> = Mutex::new(None);
-}
+static GLOBAL_LOGGER: Lazy<Mutex<Option<Subscriber>>> = Lazy::new(|| Mutex::new(None));
 
 /// Automatically removes the global logger when it goes out of scope, making sure everything gets cleaned up correctly.
 pub struct GlobalLoggerGuard;

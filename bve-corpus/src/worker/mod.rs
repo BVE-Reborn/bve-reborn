@@ -16,10 +16,8 @@ use bve::{
         FileParser, ParserResult, UserError,
     },
 };
-use crossbeam::{
-    atomic::AtomicCell,
-    channel::{Receiver, Sender},
-};
+use crossbeam_channel::{Receiver, Sender};
+use crossbeam_utils::atomic::AtomicCell;
 use std::{
     io::Write,
     path::{Path, PathBuf},

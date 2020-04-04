@@ -17,10 +17,6 @@ skip = [
     { name = "parking_lot", version = "0.9.0" }, # Wgpu and the dx11 and metal backends depend on this old version
     { name = "parking_lot_core", version = "0.6.2" }, # ^
     { name = "smallvec", version = "0.6.13" }, # All of gfx-hal has an old version, and it also has a dep on parking_lot which depends on this
-    # nom
-    { name = "arrayvec", version = "0.4.12" }, # Nom has an old version of lexical-core
-    # clap
-    { name = "strsim", version = "0.8.0" }, # clap 2 isn't in dev anymore, change merged with clap 3.
     # Winit
     { name = "rusttype", version = "0.7.9" }, # smithay-clinet-toolkit requires this; shell around 0.8.2, not really worrying
     { name = "winapi", version = "0.2.8" }, # smithay-clinet-toolkit requires this

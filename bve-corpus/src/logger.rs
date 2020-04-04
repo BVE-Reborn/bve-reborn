@@ -1,7 +1,7 @@
 #![allow(clippy::mem_forget)]
 
 use crate::{FileKind, FileResult, Options, ParseResult};
-use crossbeam::channel::Receiver;
+use crossbeam_channel::Receiver;
 use serde::Serialize;
 use std::{cmp::Reverse, collections::HashMap, fs::write, path::PathBuf};
 

@@ -1,5 +1,5 @@
 use crate::*;
-use crossbeam::Sender;
+use crossbeam_channel::Sender;
 
 fn enumerate(path: impl AsRef<Path>, mut func: impl FnMut(PathBuf, DirEntry) -> ()) {
     for entry in WalkDir::new(path.as_ref()).follow_links(true).same_file_system(false) {
@@ -30,7 +30,7 @@ fn should_add_file(allowed: Option<FileType>, desired: FileType) -> bool {
 pub fn enumerate_all_files(options: &Options, file_sink: &Sender<File>, shared: &SharedData) {
     let mut entry_func = |path: PathBuf, _entry: DirEntry| {
         match path.file_name().map(|v| v.to_string_lossy().to_lowercase()) {
-            p if p == Some("train.dat".into()) && should_add_file(options.file, FileType::TrainDat) => {
+            p if p == Some("train.dat".into()) && should_add_file(options.file_types, FileType::TrainDat) => {
                 add_file(file_sink, shared, &shared.train_dat, File {
                     path,
                     kind: FileKind::TrainDat,
@@ -40,50 +40,50 @@ pub fn enumerate_all_files(options: &Options, file_sink: &Sender<File>, shared: 
                 path,
                 kind: FileKind::TrainXML,
             }),
-            p if p == Some("extensions.cfg".into()) && should_add_file(options.file, FileType::ExtensionsCfg) => {
+            p if p == Some("extensions.cfg".into()) && should_add_file(options.file_types, FileType::ExtensionsCfg) => {
                 add_file(file_sink, shared, &shared.extensions_cfg, File {
                     path,
                     kind: FileKind::ExtensionsCfg,
                 })
             }
-            p if p == Some("panel.cfg".into()) && should_add_file(options.file, FileType::PanelCfg) => {
+            p if p == Some("panel.cfg".into()) && should_add_file(options.file_types, FileType::PanelCfg) => {
                 add_file(file_sink, shared, &shared.panel1_cfg, File {
                     path,
                     kind: FileKind::Panel1Cfg,
                 })
             }
-            p if p == Some("panel2.cfg".into()) && should_add_file(options.file, FileType::Panel2Cfg) => {
+            p if p == Some("panel2.cfg".into()) && should_add_file(options.file_types, FileType::Panel2Cfg) => {
                 add_file(file_sink, shared, &shared.panel2_cfg, File {
                     path,
                     kind: FileKind::Panel2Cfg,
                 })
             }
-            p if p == Some("sound.cfg".into()) && should_add_file(options.file, FileType::SoundCfg) => {
+            p if p == Some("sound.cfg".into()) && should_add_file(options.file_types, FileType::SoundCfg) => {
                 add_file(file_sink, shared, &shared.sound_cfg, File {
                     path,
                     kind: FileKind::SoundCfg,
                 })
             }
-            p if p == Some("ats.cfg".into()) && should_add_file(options.file, FileType::AtsCfg) => {
+            p if p == Some("ats.cfg".into()) && should_add_file(options.file_types, FileType::AtsCfg) => {
                 add_file(file_sink, shared, &shared.ats_cfg, File {
                     path,
                     kind: FileKind::AtsCfg,
                 })
             }
             _ => match path.extension().map(|v| v.to_string_lossy().to_lowercase()) {
-                ext if ext == Some("b3d".into()) && should_add_file(options.file, FileType::B3D) => {
+                ext if ext == Some("b3d".into()) && should_add_file(options.file_types, FileType::B3D) => {
                     add_file(file_sink, shared, &shared.model_b3d, File {
                         path,
                         kind: FileKind::ModelB3d,
                     })
                 }
-                ext if ext == Some("csv".into()) && should_add_file(options.file, FileType::CSV) => {
+                ext if ext == Some("csv".into()) && should_add_file(options.file_types, FileType::CSV) => {
                     add_file(file_sink, shared, &shared.model_csv, File {
                         path,
                         kind: FileKind::ModelCsv,
                     })
                 }
-                ext if ext == Some("animated".into()) && should_add_file(options.file, FileType::Animated) => {
+                ext if ext == Some("animated".into()) && should_add_file(options.file_types, FileType::Animated) => {
                     add_file(file_sink, shared, &shared.model_animated, File {
                         path,
                         kind: FileKind::ModelAnimated,
@@ -97,20 +97,20 @@ pub fn enumerate_all_files(options: &Options, file_sink: &Sender<File>, shared: 
         }
     };
 
-    let mut path = options.root_path.clone();
+    let mut path = options.path.clone();
     path.push("LegacyContent");
     path.push("Railway");
     path.push("Object");
 
     enumerate(path, &mut entry_func);
 
-    let mut path = options.root_path.clone();
+    let mut path = options.path.clone();
     path.push("LegacyContent");
     path.push("Train");
 
     enumerate(path, &mut entry_func);
 
-    let mut path = options.root_path.clone();
+    let mut path = options.path.clone();
     path.push("LegacyContent");
     path.push("Railway");
     path.push("Route");
