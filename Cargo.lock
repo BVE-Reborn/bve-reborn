@@ -222,16 +222,18 @@ version = "0.1.0"
 dependencies = [
  "backtrace",
  "bve",
+ "chrono",
  "crossbeam-channel",
  "crossbeam-utils",
+ "fern",
  "indicatif",
  "itertools",
  "libc",
+ "log",
  "num_cpus",
  "pico-args",
  "serde",
  "serde_json",
- "tracing",
  "walkdir",
 ]
 
@@ -648,6 +650,15 @@ dependencies = [
  "quote 1.0.3",
  "syn",
  "synstructure",
+]
+
+[[package]]
+name = "fern"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8c9a4820f0ccc8a7afd67c39a0f1a0f4b07ca1725164271a64939d7aeb9af065"
+dependencies = [
+ "log",
 ]
 
 [[package]]

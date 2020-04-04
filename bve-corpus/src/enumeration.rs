@@ -1,7 +1,9 @@
 use crate::*;
 use crossbeam_channel::Sender;
+use log::info;
 
-fn enumerate(path: impl AsRef<Path>, mut func: impl FnMut(PathBuf, DirEntry) -> ()) {
+fn enumerate(path: impl AsRef<Path>, mut func: impl FnMut(PathBuf, DirEntry) -> ()) -> usize {
+    let mut count = 0_usize;
     for entry in WalkDir::new(path.as_ref()).follow_links(true).same_file_system(false) {
         if let Ok(entry) = entry {
             if !entry.file_type().is_dir() {
@@ -10,7 +12,9 @@ fn enumerate(path: impl AsRef<Path>, mut func: impl FnMut(PathBuf, DirEntry) -> 
                 func(file_path, entry);
             }
         }
+        count += 1;
     }
+    count
 }
 
 fn add_file(file_sink: &Sender<File>, shared: &SharedData, stats: &Stats, file: File) {
@@ -102,20 +106,25 @@ pub fn enumerate_all_files(options: &Options, file_sink: &Sender<File>, shared: 
     path.push("Railway");
     path.push("Object");
 
-    enumerate(path, &mut entry_func);
+    info!("Scanning {}", path.display());
+    let count = enumerate(path, &mut entry_func);
+    info!("Scanned {} files", count);
 
     let mut path = options.path.clone();
     path.push("LegacyContent");
     path.push("Train");
 
-    enumerate(path, &mut entry_func);
+    info!("Scanning {}", path.display());
+    let count = enumerate(path, &mut entry_func);
+    info!("Scanned {} files", count);
 
     let mut path = options.path.clone();
     path.push("LegacyContent");
     path.push("Railway");
     path.push("Route");
 
-    enumerate(path, |path: PathBuf, _entry| {
+    info!("Scanning {}", path.display());
+    let count = enumerate(path, |path: PathBuf, _entry| {
         match path.extension().map(|v| v.to_string_lossy().to_lowercase()) {
             ext if ext == Some("csv".into()) && false => add_file(file_sink, shared, &shared.route_csv, File {
                 path,
@@ -131,6 +140,7 @@ pub fn enumerate_all_files(options: &Options, file_sink: &Sender<File>, shared: 
             _ => {}
         }
     });
+    info!("Scanned {} files", count);
 
     shared.fully_loaded.store(true, Ordering::SeqCst);
 }

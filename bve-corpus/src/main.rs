@@ -46,12 +46,10 @@
 #![allow(clippy::wildcard_imports)]
 
 use crate::{enumeration::enumerate_all_files, panic::setup_panic_hook, worker::create_worker_thread};
-use bve::{
-    log::{run_with_global_logger, set_global_logger, Level, SerializationMethod},
-    parse::UserErrorData,
-};
+use bve::parse::UserErrorData;
 use crossbeam_channel::unbounded;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
+use log::{error, LevelFilter};
 pub use options::*;
 use serde::Serialize;
 use std::{
@@ -138,11 +136,44 @@ pub struct SharedData {
 fn main() {
     setup_panic_hook();
 
-    let options: Options = Options::from_args();
+    let options = Options::from_args();
 
-    let _guard = set_global_logger(std::io::sink(), Level::WARN, SerializationMethod::JsonPretty);
+    let filter = if options.trace {
+        LevelFilter::Trace
+    } else if options.debug {
+        LevelFilter::Debug
+    } else if !options.quiet {
+        LevelFilter::Info
+    } else {
+        LevelFilter::Warn
+    };
 
-    run_with_global_logger(move || program_main(options));
+    let output: fern::Output = if let Some(file) = &options.log_output {
+        fern::log_file(file).expect("Unable to open log file").into()
+    } else {
+        fern::Dispatch::new()
+            .filter(|m| m.level() > LevelFilter::Warn)
+            .chain(std::io::stdout())
+            .into()
+    };
+
+    fern::Dispatch::new()
+        .format(|out, message, record| {
+            out.finish(format_args!(
+                "{}[{}][{}] {}",
+                chrono::Local::now().format("[%H:%M:%S%.3f]"),
+                record.level(),
+                record.target(),
+                message
+            ))
+        })
+        .level(filter)
+        .chain(fern::Dispatch::new().level(LevelFilter::Warn).chain(std::io::stderr()))
+        .chain(output)
+        .apply()
+        .expect("Unable to set default logger");
+
+    program_main(options);
 }
 
 fn program_main(options: Options) {
@@ -161,7 +192,7 @@ fn program_main(options: Options) {
     let enumeration_thread = {
         let shared = Arc::clone(&shared);
         let options = options.clone();
-        bve::concurrency::spawn(move || enumerate_all_files(&options, &file_sink, &shared))
+        std::thread::spawn(move || enumerate_all_files(&options, &file_sink, &shared))
     };
 
     let worker_thread_count = options.jobs.unwrap_or_else(num_cpus::get);
@@ -184,7 +215,7 @@ fn program_main(options: Options) {
 
             let last_respond = t.last_respond.load();
             if (now > last_respond) && (now - last_respond > TIMEOUT) {
-                eprintln!(
+                error!(
                     "Job for file {:?} has taken longer than {:.2}. Aborting.",
                     t.last_file.lock().unwrap(),
                     TIMEOUT.as_secs_f32()

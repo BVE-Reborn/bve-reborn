@@ -2,6 +2,7 @@
 
 use crate::{FileKind, FileResult, Options, ParseResult};
 use crossbeam_channel::Receiver;
+use log::{debug, info};
 use serde::Serialize;
 use std::{cmp::Reverse, collections::HashMap, fs::write, path::PathBuf};
 
@@ -71,6 +72,7 @@ pub fn receive_results(options: &Options, result_source: Receiver<FileResult>) {
         }
     }
 
+    debug!("Summing result counts");
     let (panics, warnings, errors, successes) = results
         .file_types
         .values_mut()
@@ -94,10 +96,10 @@ pub fn receive_results(options: &Options, result_source: Receiver<FileResult>) {
             },
         );
 
-    println!("Panics: {}", panics);
-    println!("Warnings: {}", warnings);
-    println!("Errors: {}", errors);
-    println!("Successes: {}", successes);
+    info!("Panics: {}", panics);
+    info!("Warnings: {}", warnings);
+    info!("Errors: {}", errors);
+    info!("Successes: {}", successes);
 
     if let Some(output) = &options.output {
         write(output, serde_json::to_string_pretty(&results).unwrap()).unwrap();

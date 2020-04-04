@@ -9,7 +9,7 @@ use bve::{
         panel2_cfg::ParsedPanel2Cfg,
         sound_cfg::ParsedSoundCfg,
         train_dat::ParsedTrainDat,
-        FileParser, ParserResult, PrettyPrintResult,
+        FileParser, ParserResult, PrettyPrintResult, UserError,
     },
 };
 use std::{
@@ -90,6 +90,8 @@ impl Arguments {
     pub fn create(mut args: pico_args::Arguments) -> Result<Self, String> {
         let o = Self {
             help: args.contains(["-h", "--help"]),
+            errors: args.contains(["-e", "--errors"]),
+            print_result: args.contains(["-p", "--print"]),
             file_type: args
                 .free_from_str()
                 .map_err(|e| e.to_string())?
@@ -98,8 +100,6 @@ impl Arguments {
                 .free_from_os_str(|os| PathBuf::try_from(os))
                 .map_err(|e| e.to_string())?
                 .ok_or_else(|| String::from("No path provided"))?,
-            errors: args.contains(["-e", "--errors"]),
-            print_result: args.contains(["-p", "--print"]),
         };
 
         args.finish().map_err(|e| e.to_string())?;
@@ -147,12 +147,14 @@ fn parse_file<T: FileParser>(source: &Path, options: &Arguments) {
 
     if options.errors {
         println!("Warnings:");
-        for _e in warnings {
-            // println!("\t{} {:?}", e.location.line.map(|v| v as i64).unwrap_or(-1), e.kind)
+        for w in warnings {
+            let w = w.to_data();
+            println!("\t{} {:?}", w.line, w.description_english);
         }
         println!("Errors:");
-        for _e in errors {
-            // println!("\t{} {:?}", e.location.line.map(|v| v as i64).unwrap_or(-1), e.kind)
+        for e in errors {
+            let e = e.to_data();
+            println!("\t{} {:?}", e.line, e.description_english);
         }
     } else {
         println!("Warnings: {}", warnings.len());
