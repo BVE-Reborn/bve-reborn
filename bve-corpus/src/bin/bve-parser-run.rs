@@ -12,47 +12,119 @@ use bve::{
         FileParser, ParserResult, PrettyPrintResult,
     },
 };
-use clap::arg_enum;
 use std::{
+    convert::TryFrom,
     io::stdout,
     path::{Path, PathBuf},
+    process::exit,
+    str::FromStr,
     time::Instant,
 };
-use structopt::StructOpt;
 
-arg_enum! {
-    #[derive(Debug, Clone)]
-    enum FileType {
-        AtsCfg,
-        B3D,
-        CSV,
-        Animated,
-        TrainDat,
-        ExtensionsCfg,
-        PanelCfg,
-        Panel2Cfg,
-        SoundCfg,
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum FileType {
+    AtsCfg,
+    B3D,
+    CSV,
+    Animated,
+    TrainDat,
+    ExtensionsCfg,
+    PanelCfg,
+    Panel2Cfg,
+    SoundCfg,
+}
+
+impl FromStr for FileType {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let lower = s.to_lowercase();
+        Ok(match lower.as_str() {
+            "ats" | "ats.cfg" => Self::AtsCfg,
+            "b3d" => Self::B3D,
+            "csv-mesh" => Self::CSV,
+            "anim" | "animated" => Self::Animated,
+            "train" | "train.dat" => Self::TrainDat,
+            "ext" | "extensions.cfg" => Self::ExtensionsCfg,
+            "panel" | "panel1" | "panel1.cfg" | "panel.cfg" => Self::PanelCfg,
+            "panel2" | "panel2.cfg" => Self::Panel2Cfg,
+            "sound" | "sound.cfg" => Self::Panel2Cfg,
+            _ => return Err(format!("Invalid File Type: {}", lower)),
+        })
     }
 }
 
-#[derive(Debug, Clone, StructOpt)]
-struct Options {
-    #[structopt(possible_values = &FileType::variants(), case_insensitive = true)]
-    file_type: FileType,
-
-    /// show errors
-    #[structopt(long)]
-    errors: bool,
-
-    /// show result
-    #[structopt(short, long = "print")]
-    print_result: bool,
-
-    /// file to load
-    source_file: PathBuf,
+#[derive(Clone)]
+pub struct Arguments {
+    pub help: bool,
+    pub source_file: PathBuf,
+    pub errors: bool,
+    pub print_result: bool,
+    pub file_type: FileType,
 }
 
-fn parse_file<T: FileParser>(source: &Path, options: &Options) {
+const HELP_MESSAGE: &str = r#"cargo run --bin bve-parser-run -- [options] <type> <path>
+BVE-Reborn parser runner -- runs a single file with specific aprser
+
+General Options:
+  <type>     File type to test. Options:
+               ats[.cfg]
+               b3d
+               csv-mesh
+               anim[ated]
+               train[.dat]
+               ext[ensions.cfg]
+               panel[1][.cfg]
+               panel2[.cfg]
+               sound[.cfg]
+  <path>     Path to file to test
+  -h,--help  Print this message
+  
+Printing Options:
+  -e,--errors  Print all warnings/errors
+  -p,--print   Print parser output
+"#;
+
+impl Arguments {
+    pub fn create(mut args: pico_args::Arguments) -> Result<Self, String> {
+        let o = Self {
+            help: args.contains(["-h", "--help"]),
+            file_type: args
+                .free_from_str()
+                .map_err(|e| e.to_string())?
+                .ok_or_else(|| String::from("Missing file type"))?,
+            source_file: args
+                .free_from_os_str(|v| PathBuf::try_from(v))
+                .map_err(|e| e.to_string())?
+                .ok_or_else(|| String::from("No path provided"))?,
+            errors: args.contains(["-e", "--errors"]),
+            print_result: args.contains(["-p", "--print"]),
+        };
+
+        args.finish().map_err(|e| e.to_string())?;
+
+        Ok(o)
+    }
+
+    // Pretend to be structopt lmao
+    pub fn from_args() -> Self {
+        let o = Self::create(pico_args::Arguments::from_env());
+
+        match o {
+            Ok(Arguments { help: true, .. }) => {
+                println!("{}", HELP_MESSAGE);
+                exit(0);
+            }
+            Err(e) => {
+                println!("Error parsing args: {}\n{}", e, HELP_MESSAGE);
+                exit(1);
+            }
+            Ok(o) => o,
+        }
+    }
+}
+
+fn parse_file<T: FileParser>(source: &Path, options: &Arguments) {
     let contents = read_convert_utf8(source).expect("Must be able to read file");
 
     let start = Instant::now();
@@ -87,7 +159,7 @@ fn parse_file<T: FileParser>(source: &Path, options: &Options) {
 }
 
 fn main() {
-    let options: Options = Options::from_args();
+    let options: Arguments = Arguments::from_args();
 
     match options.file_type {
         FileType::AtsCfg => parse_file::<ParsedAtsConfig>(&options.source_file, &options),

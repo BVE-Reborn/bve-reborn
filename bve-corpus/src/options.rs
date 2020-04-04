@@ -47,13 +47,24 @@ pub struct Options {
     pub file_types: Option<FileType>,
 }
 
-const HELP_MESSAGE: &str = r#"cargo run -p bve-corpus -- [options] path
+const HELP_MESSAGE: &str = r#"cargo run --bin bve-corpus -- [options] <path>
 BVE-Reborn corpus tester -- tests bve parsers against an entire OpenBVE data folder
 
 General Options:
-  <path>     Path to OpenBVE folder
-  -h,--help  Print this message
-  
+  <path>       Path to OpenBVE folder
+  -h,--help    Print this message
+  -j,--jobs    Worker threads (there will be 1 more filesystem scanning thread)
+  -o,--output  Output json report to file
+  -f,--file    File type to test. If not added, will test all files. Options:
+                 ats[.cfg]
+                 b3d
+                 csv-mesh
+                 anim[ated]
+                 train[.dat]
+                 ext[ensions.cfg]
+                 panel[1][.cfg]
+                 panel2[.cfg]
+                 sound[.cfg]
 "#;
 
 impl Options {
@@ -68,7 +79,7 @@ impl Options {
                 .opt_value_from_os_str(["-o", "--output"], |v| PathBuf::try_from(v))
                 .map_err(|e| e.to_string())?,
             jobs: args.opt_value_from_str(["-j", "--jobs"]).map_err(|e| e.to_string())?,
-            file_types: args.opt_value_from_str(["-f", "--files"]).map_err(|e| e.to_string())?,
+            file_types: args.opt_value_from_str(["-f", "--file"]).map_err(|e| e.to_string())?,
         };
 
         args.finish().map_err(|e| e.to_string())?;

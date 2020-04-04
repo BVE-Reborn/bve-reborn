@@ -202,7 +202,7 @@ fn build_shaders() {
     }
 }
 
-const HELP_MESSAGE: &str = r#"Usage: cargo run -p bve-build -- [args...]
+const HELP_MESSAGE: &str = r#"Usage: cargo run --bin bve-build -- [args...]
 BVE-Reborn build tool.
 
 General:
