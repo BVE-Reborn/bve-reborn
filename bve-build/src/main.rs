@@ -53,6 +53,7 @@ use std::{
     process::{exit, Command},
 };
 
+#[allow(clippy::struct_excessive_bools)]
 struct Options {
     /// Passthrough option to cargo for the color option
     color: Option<String>,

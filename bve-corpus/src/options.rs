@@ -28,7 +28,7 @@ impl FromStr for FileType {
             "ext" | "extensions.cfg" => Self::ExtensionsCfg,
             "panel" | "panel1" | "panel1.cfg" | "panel.cfg" => Self::PanelCfg,
             "panel2" | "panel2.cfg" => Self::Panel2Cfg,
-            "sound" | "sound.cfg" => Self::Panel2Cfg,
+            "sound" | "sound.cfg" => Self::SoundCfg,
             _ => return Err(format!("Invalid File Type: {}", lower)),
         })
     }
@@ -68,11 +68,12 @@ General Options:
 "#;
 
 impl Options {
-    pub fn create(mut args: Arguments) -> Result<Self, String> {
+    #[allow(clippy::redundant_closure)] // PathBuf::try_from doesn't work
+    fn create(mut args: Arguments) -> Result<Self, String> {
         let o = Self {
             help: args.contains(["-h", "--help"]),
             path: args
-                .free_from_os_str(|v| PathBuf::try_from(v))
+                .free_from_os_str(|os| PathBuf::try_from(os))
                 .map_err(|e| e.to_string())?
                 .ok_or_else(|| String::from("No path provided"))?,
             output: args
@@ -88,11 +89,12 @@ impl Options {
     }
 
     // Pretend to be structopt lmao
+    #[must_use]
     pub fn from_args() -> Self {
         let o = Self::create(Arguments::from_env());
 
         match o {
-            Ok(Options { help: true, .. }) => {
+            Ok(Self { help: true, .. }) => {
                 println!("{}", HELP_MESSAGE);
                 exit(0);
             }
