@@ -49,7 +49,8 @@
 use std::{
     borrow::Cow,
     ffi::OsStr,
-    fs::read_dir,
+    fs::{metadata, read_dir},
+    path::Path,
     process::{exit, Command},
 };
 
@@ -81,6 +82,23 @@ struct Options {
 
     /// Build `bve-native` crate
     native: bool,
+}
+
+fn out_of_date(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> bool {
+    if !dst.as_ref().exists() {
+        return true;
+    }
+
+    let src_time = metadata(src.as_ref())
+        .expect("Source must have metadata")
+        .modified()
+        .expect("Source must have modified time");
+    let dst_time = metadata(src.as_ref())
+        .expect("Destination must have metadata")
+        .modified()
+        .expect("Destination must have modified time");
+
+    src_time > dst_time
 }
 
 fn build(options: &Options) {
@@ -168,31 +186,72 @@ fn build_shaders() {
                 break;
             };
 
-            let spirv_name = name.replace(".glsl", ".spv");
-            let out_path = entry.path().parent().expect("Must have parent").join(&spirv_name);
+            {
+                let spirv_name = name.replace(".glsl", ".spv");
+                let out_path = entry.path().parent().expect("Must have parent").join(&spirv_name);
 
-            println!("Compiling {} to {}", name, spirv_name);
+                if out_of_date(entry.path(), &out_path) {
+                    println!("Compiling {} to {}", name, spirv_name);
 
-            let mut child = Command::new("glslc")
-                .args(&[
-                    "-x",
-                    "glsl",
-                    stage,
-                    &format!("{}", entry.path().display()),
-                    "-o",
-                    &format!("{}", out_path.display()),
-                ])
-                .spawn()
-                .expect("Unable to find glslc in PATH. glslc must be installed. See https://github.com/google/shaderc");
+                    let mut child = Command::new("glslc")
+                        .args(&[
+                            "-x",
+                            "glsl",
+                            "-g",
+                            stage,
+                            &format!("{}", entry.path().display()),
+                            "-o",
+                            &format!("{}", out_path.display()),
+                        ])
+                        .spawn()
+                        .expect(
+                            "Unable to find glslc in PATH. glslc must be installed. See https://github.com/google/shaderc",
+                        );
 
-            let result = child.wait().expect("Unable to wait for child");
-            if !result.success() {
-                println!(
-                    "glslc failed on file {} with error code {}",
-                    name,
-                    result.code().expect("Unable to get error code")
-                );
-                exit(1);
+                    let result = child.wait().expect("Unable to wait for child");
+                    if !result.success() {
+                        println!(
+                            "glslc failed on file {} with error code {}",
+                            name,
+                            result.code().expect("Unable to get error code")
+                        );
+                        exit(1);
+                    }
+                }
+            }
+
+            {
+                let spirv_name_opt = name.replace(".glsl", ".spv.opt");
+                let out_path_opt = entry.path().parent().expect("Must have parent").join(&spirv_name_opt);
+
+                if out_of_date(entry.path(), &out_path_opt) {
+                    println!("Compiling {} to {}", name, spirv_name_opt);
+
+                    let mut child = Command::new("glslc")
+                        .args(&[
+                            "-x",
+                            "glsl",
+                            "-O",
+                            stage,
+                            &format!("{}", entry.path().display()),
+                            "-o",
+                            &format!("{}", out_path_opt.display()),
+                        ])
+                        .spawn()
+                        .expect(
+                            "Unable to find glslc in PATH. glslc must be installed. See https://github.com/google/shaderc",
+                        );
+
+                    let result = child.wait().expect("Unable to wait for child");
+                    if !result.success() {
+                        println!(
+                            "glslc failed on file {} with error code {}",
+                            name,
+                            result.code().expect("Unable to get error code")
+                        );
+                        exit(1);
+                    }
+                }
             }
         }
     }
