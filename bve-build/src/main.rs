@@ -93,7 +93,7 @@ fn out_of_date(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> bool {
         .expect("Source must have metadata")
         .modified()
         .expect("Source must have modified time");
-    let dst_time = metadata(src.as_ref())
+    let dst_time = metadata(dst.as_ref())
         .expect("Destination must have metadata")
         .modified()
         .expect("Destination must have modified time");
