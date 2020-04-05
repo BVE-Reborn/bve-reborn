@@ -65,54 +65,37 @@ use winit::{dpi::PhysicalSize, window::Window};
 use zerocopy::{AsBytes, FromBytes};
 
 #[cfg(debug_assertions)]
-macro_rules! include_shader {
-    (vert $name:literal) => {
-        include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/shaders/", $name, ".vs.spv"));
-    };
-    (geo $name:literal) => {
-        include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/shaders/", $name, ".gs.spv"));
-    };
-    (frag $name:literal) => {
-        include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/shaders/", $name, ".fs.spv"));
-    };
-    (comp $name:literal) => {
-        include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/shaders/", $name, ".cs.spv"));
+macro_rules! shader_path {
+    ($name:literal, $suffix:literal) => {
+        include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/shaders/", $name, $suffix, ".spv"))
     };
 }
 
 #[cfg(not(debug_assertions))]
+macro_rules! shader_path {
+    ($name:literal, $suffix:literal) => {
+        include_bytes!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/shaders/",
+            $name,
+            $suffix,
+            ".spv.opt"
+        ))
+    };
+}
+
 macro_rules! include_shader {
     (vert $name:literal) => {
-        include_bytes!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/shaders/",
-            $name,
-            ".vs.spv.opt"
-        ));
+        shader_path!($name, ".vs")
     };
     (geo $name:literal) => {
-        include_bytes!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/shaders/",
-            $name,
-            ".gs.spv.opt"
-        ));
+        shader_path!($name, ".gs")
     };
     (frag $name:literal) => {
-        include_bytes!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/shaders/",
-            $name,
-            ".fs.spv.opt"
-        ));
+        shader_path!($name, ".fs")
     };
     (comp $name:literal) => {
-        include_bytes!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/shaders/",
-            $name,
-            ".cs.spv.opt"
-        ));
+        shader_path!($name, ".cs")
     };
 }
 
