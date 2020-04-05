@@ -15,7 +15,7 @@ use std::f32::consts::PI;
 /// - Applies all [`SetTextureCoordinates`] to their vertex, moving the data into the [`AddVertex`] data structure.
 ///
 /// The last bit of post processing must be done as the executor isn't actually able to edit the resulting
-/// [`Vertex`](crate::parse::mesh::Vertex) structs arbitrarily by index as [`SetTextureCoordinates`] requires.
+/// [`Vertex`](crate::load::mesh::Vertex) structs arbitrarily by index as [`SetTextureCoordinates`] requires.
 ///
 /// Errors are taken from [`InstructionList::errors`] and any new ones encountered are appended and put in the result's
 /// [`InstructionList::errors`]. These errors are all non-fatal, so [`Result`] can't be used.
