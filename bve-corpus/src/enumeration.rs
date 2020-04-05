@@ -30,7 +30,7 @@ fn should_add_file(allowed: Option<FileType>, desired: FileType) -> bool {
     }
 }
 
-#[allow(clippy::logic_bug)] // Remove when `&& false` removed
+#[allow(clippy::logic_bug, clippy::shadow_unrelated)] // Remove when `&& false` removed
 pub fn enumerate_all_files(options: &Options, file_sink: &Sender<File>, shared: &SharedData) {
     let mut entry_func = |path: PathBuf, _entry: DirEntry| {
         match path.file_name().map(|v| v.to_string_lossy().to_lowercase()) {

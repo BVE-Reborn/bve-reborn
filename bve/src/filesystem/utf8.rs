@@ -1,4 +1,5 @@
 use chardetng::EncodingDetector;
+use log::{debug, trace};
 use std::{fs::read, io::Result, path::Path};
 
 /// Reads a file, detects the encoding, and converts to utf8.
@@ -6,16 +7,16 @@ use std::{fs::read, io::Result, path::Path};
 /// # Errors
 ///
 /// Returns Err if opening/reading the file fails. All errors come from [`std::fs::read`].
-#[bve_derive::span(DEBUG, "Read to UTF-8", filename = ?filename.as_ref())]
 pub fn read_convert_utf8(filename: impl AsRef<Path>) -> Result<String> {
+    debug!("Reading and converting {}", filename.as_ref().display());
+
     let bytes = read(filename)?;
 
     Ok(convert_to_utf8(bytes))
 }
 
-#[bve_derive::span(TRACE, "UTF-8 Conversion", size = bytes.len())]
 fn convert_to_utf8(bytes: Vec<u8>) -> String {
-    tracing::trace!("Converting file of {} bytes", bytes.len());
+    trace!("Converting file of {} bytes", bytes.len());
 
     // Byte order marks are not properly dealt with in chardetng, detect them here, encoding_rs will remove them
     let (encoding, reason) = if bytes.len() >= 2 && bytes[0..2] == [0xFF, 0xFE] {
@@ -28,16 +29,14 @@ fn convert_to_utf8(bytes: Vec<u8>) -> String {
         let mut detector = EncodingDetector::new();
         let ascii_only = !detector.feed(&bytes, true);
         if ascii_only {
-            tracing::debug!("UTF-8 chosen due to All ASCII");
+            trace!("UTF-8 chosen due to All ASCII");
             return String::from_utf8(bytes).expect("Only ascii characters detected, but utf8 validation failed");
         }
         (detector.guess(None, true), "chardetng")
     };
 
-    tracing::debug!("{} chosen due to {}", encoding.name(), reason);
+    trace!("{} chosen due to {}", encoding.name(), reason);
     let (result, ..) = encoding.decode_with_bom_removal(&bytes);
-
-    tracing::trace!("Converted UTF-8 is {} bytes", result.len());
 
     result.to_string()
 }

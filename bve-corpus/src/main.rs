@@ -46,10 +46,10 @@
 #![allow(clippy::wildcard_imports)]
 
 use crate::{enumeration::enumerate_all_files, panic::setup_panic_hook, worker::create_worker_thread};
-use bve::parse::UserErrorData;
+use bve::{panic_log, parse::UserErrorData};
 use crossbeam_channel::unbounded;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
-use log::{error, LevelFilter};
+use log::error;
 pub use options::*;
 use serde::Serialize;
 use std::{
@@ -138,40 +138,7 @@ fn main() {
 
     let options = Options::from_args();
 
-    let filter = if options.trace {
-        LevelFilter::Trace
-    } else if options.debug {
-        LevelFilter::Debug
-    } else if !options.quiet {
-        LevelFilter::Info
-    } else {
-        LevelFilter::Warn
-    };
-
-    let output: fern::Output = if let Some(file) = &options.log_output {
-        fern::log_file(file).expect("Unable to open log file").into()
-    } else {
-        fern::Dispatch::new()
-            .filter(|m| m.level() > LevelFilter::Warn)
-            .chain(std::io::stdout())
-            .into()
-    };
-
-    fern::Dispatch::new()
-        .format(|out, message, record| {
-            out.finish(format_args!(
-                "{}[{}][{}] {}",
-                chrono::Local::now().format("[%H:%M:%S%.3f]"),
-                record.level(),
-                record.target(),
-                message
-            ))
-        })
-        .level(filter)
-        .chain(fern::Dispatch::new().level(LevelFilter::Warn).chain(std::io::stderr()))
-        .chain(output)
-        .apply()
-        .expect("Unable to set default logger");
+    bve::log::enable_logger(&options.log_output, options.quiet, options.debug, options.trace);
 
     program_main(options);
 }
@@ -229,7 +196,7 @@ fn program_main(options: Options) {
                     })
                     .unwrap();
                 logger_thread.join().unwrap();
-                panic!(
+                panic_log!(
                     "Job for file {:?} has taken longer than {:.2}.",
                     t.last_file.lock().unwrap(),
                     TIMEOUT.as_secs_f32()

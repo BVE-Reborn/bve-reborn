@@ -12,20 +12,13 @@ pub fn test(item: TokenStream) -> TokenStream {
     let result = quote::quote! {
         #attrs
         #vis #sig {
-            let task = || {
-                #block;
-            };
-            // TODO: Actually fix these clion issues
-            let in_clion = !std::env::args().any(|v| v == "--nocapture"); // clion causes the logger issues, disable it when in the test harness. Output isn't seen anyway.
-            if in_clion {
-                task();
-            } else {
-                // Manually dispatch to avoid non-thread-local state
-                let subscriber = crate::log::Subscriber::new(::std::io::stderr(), crate::log::Level::TRACE, crate::log::SerializationMethod::JsonPretty);
-                ::tracing::dispatcher::with_default(&::tracing::dispatcher::Dispatch::new(subscriber),
-                    task
-                );
+            // clion causes the logger issues, disable it when in the test harness. Output isn't seen anyway.
+            let in_clion = !std::env::args().any(|v| v == "--nocapture");
+            if !in_clion {
+                let _ = ::fern::Dispatch::new().format(crate::log::log_formatter).chain(::std::io::stderr()).apply();
             }
+            // We don't care if it succeeded or not
+            #block
         }
     };
     result.into()

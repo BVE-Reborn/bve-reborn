@@ -4,11 +4,13 @@ use crate::parse::{
     Span,
 };
 use csv::{ReaderBuilder, StringRecord, Trim};
+use log::trace;
 use std::iter::FromIterator;
 
 /// Adds a comma after the first space on each line. Forces newline on last line. Lowercases string.
 pub(in crate::parse::mesh::instructions) fn b3d_to_csv_syntax(input: &str) -> String {
-    tracing::trace!("Processing .b3d into .csv");
+    trace!("Processing .b3d into .csv");
+
     let mut p = String::with_capacity((input.len() as f32 * 1.1) as usize);
     for line in input.lines() {
         let mut lowered = line.to_lowercase();
@@ -77,7 +79,6 @@ fn deserialize_instruction(
             InstructionData::Cylinder(parsed)
         }
         InstructionType::GenerateNormals => {
-            tracing::info!(?inst_type, ?record, line = ?span.line, "Useless instruction");
             return Err(MeshWarning {
                 kind: MeshWarningKind::UselessInstruction {
                     name: String::from("GenerateNormals"),
@@ -87,7 +88,6 @@ fn deserialize_instruction(
             .into());
         }
         InstructionType::Texture => {
-            tracing::info!(?inst_type, ?record, line = ?span.line, "Useless instruction");
             return Err(MeshWarning {
                 kind: MeshWarningKind::UselessInstruction {
                     name: String::from("[texture]"),
@@ -178,16 +178,19 @@ fn deserialize_instruction(
 ///
 /// All errors are reported in [`InstructionList::errors`].
 #[must_use]
-#[bve_derive::span(DEBUG, "Create .b3d/csv instructions", ?file_type, input_size = %input.len())]
 pub fn create_instructions(input: &str, file_type: FileType) -> InstructionList {
     // Make entire setup lowercase to make it easy to match.
+    trace!(
+        "Creating instructions for {:#?} mesh of length {}",
+        file_type,
+        input.len()
+    );
     let processed = if file_type == FileType::B3D {
         b3d_to_csv_syntax(input)
     } else {
         let mut p = input.to_lowercase();
         // Ensure file ends with lowercase
         if !p.ends_with('\n') {
-            tracing::trace!("input ends without newline, adding one");
             p.push('\n');
         }
         p
@@ -214,10 +217,7 @@ pub fn create_instructions(input: &str, file_type: FileType) -> InstructionList 
                             v
                         } else {
                             // If only whitespace, this is an instance a line with just commmas `,,,,,`, ignore it
-                            if name.chars().all(char::is_whitespace) {
-                                tracing::info!(name, ?record, line = ?span.line, "Ignoring empty command name");
-                            } else {
-                                tracing::warn!(name, ?record, line = ?span.line, "Unknown command");
+                            if !(name.chars().all(char::is_whitespace)) {
                                 instructions.errors.push(MeshError {
                                     location: span,
                                     kind: MeshErrorKind::UnknownInstruction { name: name.to_owned() },

@@ -60,9 +60,6 @@ mod serde_proxy;
 mod c_interface;
 
 #[cfg_attr(tarpaulin, skip)]
-mod span;
-
-#[cfg_attr(tarpaulin, skip)]
 mod helpers;
 
 #[cfg_attr(tarpaulin, skip)]
@@ -93,12 +90,6 @@ pub fn c_interface(attr: TokenStream, item: TokenStream) -> TokenStream {
 #[cfg_attr(tarpaulin, skip)]
 pub fn bve_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
     test::test(item)
-}
-
-#[proc_macro_attribute]
-#[cfg_attr(tarpaulin, skip)]
-pub fn span(attr: TokenStream, item: TokenStream) -> TokenStream {
-    span::span(attr, item)
 }
 
 #[proc_macro_derive(FromKVPFile, attributes(kvp))]

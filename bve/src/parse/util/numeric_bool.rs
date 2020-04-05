@@ -33,8 +33,6 @@ impl<'de> Visitor<'de> for LooseNumericBoolVisitor {
 }
 
 pub fn parse_loose_numeric_bool(input: &str) -> Option<LooseNumericBool> {
-    tracing::trace!(input, "Parsing numeric bool...");
-
     let mut filtered: String = input.chars().filter(|c| !c.is_whitespace()).collect();
 
     let first_letter = filtered.chars().next().as_ref().map(char::to_ascii_lowercase);
@@ -49,7 +47,6 @@ pub fn parse_loose_numeric_bool(input: &str) -> Option<LooseNumericBool> {
         match parsed {
             Ok(v) => {
                 let output = v != 0;
-                tracing::trace!(output, %filtered, "Parsed loose bool");
                 return Some(LooseNumericBool(output));
             }
             Err(_) => filtered.pop(),

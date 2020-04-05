@@ -4,6 +4,7 @@ use crate::{
 };
 use bve::{
     filesystem::read_convert_utf8,
+    panic_log,
     parse::{
         animated::ParsedAnimatedObject,
         ats_cfg::ParsedAtsConfig,
@@ -18,7 +19,7 @@ use bve::{
 };
 use crossbeam_channel::{Receiver, Sender};
 use crossbeam_utils::atomic::AtomicCell;
-use log::{error, warn};
+use log::warn;
 use std::{
     path::{Path, PathBuf},
     sync::{
@@ -61,8 +62,7 @@ fn read_from_file(filename: impl AsRef<Path>) -> String {
     match read_convert_utf8(filename) {
         Ok(s) => s,
         Err(err) => {
-            error!("Loading error: {:?}", err);
-            panic!("Loading error: {:?}", err)
+            panic_log!("Loading error: {:?}", err);
         }
     }
 }
@@ -146,8 +146,7 @@ fn processing_loop(
         };
 
         result_sink.send(file_result).unwrap_or_else(|_| {
-            error!("Send error on file {}", file_path.display());
-            panic!("Send error on file {}", file_path.display())
+            panic_log!("Send error on file {}", file_path.display());
         });
 
         // Dump the total amount worked on

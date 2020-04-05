@@ -35,6 +35,7 @@ impl FromStr for FileType {
 }
 
 #[derive(Clone)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct Options {
     pub help: bool,
     pub path: PathBuf,
