@@ -9,9 +9,10 @@ use bve::{
         panel2_cfg::ParsedPanel2Cfg,
         sound_cfg::ParsedSoundCfg,
         train_dat::ParsedTrainDat,
-        FileParser, ParserResult, PrettyPrintResult,
+        FileParser, ParserResult, PrettyPrintResult, UserError,
     },
 };
+use log::{error, info, warn};
 use std::{
     convert::TryFrom,
     io::stdout,
@@ -61,6 +62,11 @@ pub struct Arguments {
     pub errors: bool,
     pub print_result: bool,
     pub file_type: FileType,
+
+    pub log_output: Option<PathBuf>,
+    pub quiet: bool,
+    pub debug: bool,
+    pub trace: bool,
 }
 
 const HELP_MESSAGE: &str = r#"cargo run --bin bve-parser-run -- [options] <type> <path>
@@ -83,6 +89,13 @@ General Options:
 Printing Options:
   -e,--errors  Print all warnings/errors
   -p,--print   Print parser output
+                 
+Logging Options:
+  --log        Send all messages to a file. Errors and warnings
+                 will also be sent to stderr as normal.
+  -q,--quiet   Disable info level log messages
+  -v,--debug   Enable debug trace level log messages
+  -vv,--trace  Enable trace level log messages
 "#;
 
 impl Arguments {
@@ -90,6 +103,16 @@ impl Arguments {
     pub fn create(mut args: pico_args::Arguments) -> Result<Self, String> {
         let o = Self {
             help: args.contains(["-h", "--help"]),
+            errors: args.contains(["-e", "--errors"]),
+            print_result: args.contains(["-p", "--print"]),
+
+            log_output: args
+                .opt_value_from_os_str("--log", |os| PathBuf::try_from(os))
+                .map_err(|e| e.to_string())?,
+            quiet: args.contains(["-q", "--quiet"]),
+            debug: args.contains(["-v", "--debug"]),
+            trace: args.contains(["-vv", "--trace"]),
+
             file_type: args
                 .free_from_str()
                 .map_err(|e| e.to_string())?
@@ -98,8 +121,6 @@ impl Arguments {
                 .free_from_os_str(|os| PathBuf::try_from(os))
                 .map_err(|e| e.to_string())?
                 .ok_or_else(|| String::from("No path provided"))?,
-            errors: args.contains(["-e", "--errors"]),
-            print_result: args.contains(["-p", "--print"]),
         };
 
         args.finish().map_err(|e| e.to_string())?;
@@ -137,7 +158,7 @@ fn parse_file<T: FileParser>(source: &Path, options: &Arguments) {
     } = T::parse_from(&contents);
     let duration = Instant::now() - start;
 
-    println!("Duration: {:.4}", duration.as_secs_f32());
+    info!("Duration: {:.4}", duration.as_secs_f32());
 
     if options.print_result {
         output
@@ -145,23 +166,30 @@ fn parse_file<T: FileParser>(source: &Path, options: &Arguments) {
             .expect("Must be able to write to stdout");
     }
 
-    if options.errors {
-        println!("Warnings:");
-        for _e in warnings {
-            // println!("\t{} {:?}", e.location.line.map(|v| v as i64).unwrap_or(-1), e.kind)
-        }
-        println!("Errors:");
-        for _e in errors {
-            // println!("\t{} {:?}", e.location.line.map(|v| v as i64).unwrap_or(-1), e.kind)
+    if options.errors && !warnings.is_empty() {
+        info!("Warnings:");
+        for w in warnings {
+            let w = w.to_data();
+            warn!("\t{} {:?}", w.line, w.description_english);
         }
     } else {
-        println!("Warnings: {}", warnings.len());
-        println!("Errors: {}", errors.len());
+        info!("Warnings: {}", warnings.len());
+    }
+    if options.errors && !errors.is_empty() {
+        info!("Errors:");
+        for e in errors {
+            let e = e.to_data();
+            error!("\t{} {:?}", e.line, e.description_english);
+        }
+    } else {
+        info!("Errors: {}", errors.len());
     }
 }
 
 fn main() {
     let options: Arguments = Arguments::from_args();
+
+    bve::log::enable_logger(&options.log_output, options.quiet, options.debug, options.trace);
 
     match options.file_type {
         FileType::AtsCfg => parse_file::<ParsedAtsConfig>(&options.source_file, &options),

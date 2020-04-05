@@ -4,6 +4,7 @@ use crate::{
 };
 use bve::{
     filesystem::read_convert_utf8,
+    panic_log,
     parse::{
         animated::ParsedAnimatedObject,
         ats_cfg::ParsedAtsConfig,
@@ -18,8 +19,8 @@ use bve::{
 };
 use crossbeam_channel::{Receiver, Sender};
 use crossbeam_utils::atomic::AtomicCell;
+use log::warn;
 use std::{
-    io::Write,
     path::{Path, PathBuf},
     sync::{
         atomic::{AtomicU64, Ordering},
@@ -48,7 +49,7 @@ pub fn create_worker_thread(
         let shared = Arc::clone(shared);
         let last_respond = Arc::clone(&last_respond);
         let last_file = Arc::clone(&last_file);
-        bve::concurrency::spawn(move || processing_loop(&job_source, &result_sink, &shared, &last_respond, &last_file))
+        std::thread::spawn(move || processing_loop(&job_source, &result_sink, &shared, &last_respond, &last_file))
     };
     WorkerThread {
         handle,
@@ -61,8 +62,7 @@ fn read_from_file(filename: impl AsRef<Path>) -> String {
     match read_convert_utf8(filename) {
         Ok(s) => s,
         Err(err) => {
-            println!("Path Error: {:?}", err);
-            panic!("Path Error: {:?}", err)
+            panic_log!("Loading error: {:?}", err);
         }
     }
 }
@@ -128,11 +128,7 @@ fn processing_loop(
         let result = match panicked {
             Ok(parse_result) => parse_result,
             Err(..) => PANIC.with(|v| {
-                let stderr = std::io::stderr();
-                let path_str = format!("Panicked while parsing: {:?}\n", file_ref.path);
-                let mut stderr_guard = stderr.lock();
-                stderr_guard.write_all(path_str.as_bytes()).unwrap();
-                drop(stderr_guard);
+                warn!("Panicked while parsing: {:?}", file_ref.path);
 
                 let m = &mut *v.borrow_mut();
                 let cause = m.take().unwrap_or_else(String::default);
@@ -149,9 +145,9 @@ fn processing_loop(
             _duration: duration,
         };
 
-        result_sink
-            .send(file_result)
-            .unwrap_or_else(|_| panic!("Send error on file {}", file_path.display()));
+        result_sink.send(file_result).unwrap_or_else(|_| {
+            panic_log!("Send error on file {}", file_path.display());
+        });
 
         // Dump the total amount worked on
         shared.total.finished.fetch_add(1, Ordering::SeqCst);

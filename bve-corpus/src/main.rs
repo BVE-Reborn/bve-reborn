@@ -46,12 +46,10 @@
 #![allow(clippy::wildcard_imports)]
 
 use crate::{enumeration::enumerate_all_files, panic::setup_panic_hook, worker::create_worker_thread};
-use bve::{
-    log::{run_with_global_logger, set_global_logger, Level, SerializationMethod},
-    parse::UserErrorData,
-};
+use bve::{panic_log, parse::UserErrorData};
 use crossbeam_channel::unbounded;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
+use log::error;
 pub use options::*;
 use serde::Serialize;
 use std::{
@@ -138,11 +136,11 @@ pub struct SharedData {
 fn main() {
     setup_panic_hook();
 
-    let options: Options = Options::from_args();
+    let options = Options::from_args();
 
-    let _guard = set_global_logger(std::io::sink(), Level::WARN, SerializationMethod::JsonPretty);
+    bve::log::enable_logger(&options.log_output, options.quiet, options.debug, options.trace);
 
-    run_with_global_logger(move || program_main(options));
+    program_main(options);
 }
 
 fn program_main(options: Options) {
@@ -161,7 +159,7 @@ fn program_main(options: Options) {
     let enumeration_thread = {
         let shared = Arc::clone(&shared);
         let options = options.clone();
-        bve::concurrency::spawn(move || enumerate_all_files(&options, &file_sink, &shared))
+        std::thread::spawn(move || enumerate_all_files(&options, &file_sink, &shared))
     };
 
     let worker_thread_count = options.jobs.unwrap_or_else(num_cpus::get);
@@ -169,9 +167,9 @@ fn program_main(options: Options) {
         .map(|_| create_worker_thread(&file_source, &result_sink, &shared))
         .collect();
 
-    let logger_thread = { bve::concurrency::spawn(move || logger::receive_results(&options, result_source)) };
+    let logger_thread = { std::thread::spawn(move || logger::receive_results(&options, result_source)) };
 
-    let tui_progress_thread = bve::concurrency::spawn(move || mp.join().unwrap());
+    let tui_progress_thread = std::thread::spawn(move || mp.join().unwrap());
 
     while !shared.fully_loaded.load(Ordering::SeqCst)
         || (shared.total.total.load(Ordering::SeqCst) - shared.total.finished.load(Ordering::SeqCst)) != 0
@@ -184,7 +182,7 @@ fn program_main(options: Options) {
 
             let last_respond = t.last_respond.load();
             if (now > last_respond) && (now - last_respond > TIMEOUT) {
-                eprintln!(
+                error!(
                     "Job for file {:?} has taken longer than {:.2}. Aborting.",
                     t.last_file.lock().unwrap(),
                     TIMEOUT.as_secs_f32()
@@ -198,7 +196,7 @@ fn program_main(options: Options) {
                     })
                     .unwrap();
                 logger_thread.join().unwrap();
-                panic!(
+                panic_log!(
                     "Job for file {:?} has taken longer than {:.2}.",
                     t.last_file.lock().unwrap(),
                     TIMEOUT.as_secs_f32()

@@ -35,16 +35,18 @@ impl FromStr for FileType {
 }
 
 #[derive(Clone)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct Options {
     pub help: bool,
-    /// Location of root of bve folder
     pub path: PathBuf,
-    /// Location of result file
     pub output: Option<PathBuf>,
-    /// Job Count
     pub jobs: Option<usize>,
-    /// File to allow
     pub file_types: Option<FileType>,
+
+    pub log_output: Option<PathBuf>,
+    pub quiet: bool,
+    pub debug: bool,
+    pub trace: bool,
 }
 
 const HELP_MESSAGE: &str = r#"cargo run --bin bve-corpus -- [options] <path>
@@ -65,6 +67,13 @@ General Options:
                  panel[1][.cfg]
                  panel2[.cfg]
                  sound[.cfg]
+                 
+Logging Options:
+  --log        Send all messages to a file. Errors and warnings
+                 will also be sent to stderr as normal.
+  -q,--quiet   Disable info level log messages
+  -v,--debug   Enable debug trace level log messages
+  -vv,--trace  Enable trace level log messages
 "#;
 
 impl Options {
@@ -72,15 +81,22 @@ impl Options {
     fn create(mut args: Arguments) -> Result<Self, String> {
         let o = Self {
             help: args.contains(["-h", "--help"]),
-            path: args
-                .free_from_os_str(|os| PathBuf::try_from(os))
-                .map_err(|e| e.to_string())?
-                .ok_or_else(|| String::from("No path provided"))?,
             output: args
                 .opt_value_from_os_str(["-o", "--output"], |v| PathBuf::try_from(v))
                 .map_err(|e| e.to_string())?,
             jobs: args.opt_value_from_str(["-j", "--jobs"]).map_err(|e| e.to_string())?,
             file_types: args.opt_value_from_str(["-f", "--file"]).map_err(|e| e.to_string())?,
+
+            log_output: args
+                .opt_value_from_os_str("--log", |os| PathBuf::try_from(os))
+                .map_err(|e| e.to_string())?,
+            quiet: args.contains(["-q", "--quiet"]),
+            debug: args.contains(["-v", "--debug"]),
+            trace: args.contains(["-vv", "--trace"]),
+            path: args
+                .free_from_os_str(|os| PathBuf::try_from(os))
+                .map_err(|e| e.to_string())?
+                .ok_or_else(|| String::from("No path provided"))?,
         };
 
         args.finish().map_err(|e| e.to_string())?;

@@ -8,7 +8,7 @@ kvp-unknown-field = Unknown Field: "{$field}"
 kvp-too-many-fields = Too Many Values: Value {$number} of {$total}
 kvp-invalid-value = Invalid Value: "{$value}"
 
-mesh-warning-useless-instruction = Instruction "{name}" has no effect
+mesh-warning-useless-instruction = Instruction "{$name}" has no effect
 mesh-error-utf8 = UTF-8 error on column {$column}
 mesh-error-out-of-bounds = Index {$idx} is out of bounds
 mesh-error-unknown-instruction = Unrecognized instruction {$name}

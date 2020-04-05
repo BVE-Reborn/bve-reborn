@@ -53,21 +53,17 @@ pub fn parse_loose_number<T>(input: &str) -> Option<LooseNumber<T>>
 where
     T: FromStr + Zero + Display,
 {
-    tracing::trace!(input, "Parsing loose number...");
-
     let mut filtered: String = input.chars().filter(|c| !c.is_whitespace()).collect();
 
     while !filtered.is_empty() {
         let parsed: Result<T, _> = filtered.parse();
         match parsed {
             Ok(v) => {
-                tracing::trace!(output = %v, %filtered, "Parsed loose number");
                 return Some(LooseNumber(v));
             }
             Err(_) => {
                 // Allow a single dot to represent 0.0
                 if filtered == "." {
-                    tracing::trace!(output = 0, %filtered, "Parsed loose number");
                     return Some(LooseNumber(T::zero()));
                 } else {
                     filtered.pop();

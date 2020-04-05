@@ -1,5 +1,6 @@
 use crate::{
     load::mesh::*,
+    panic_log,
     parse::{
         mesh::{instructions::*, *},
         Span,
@@ -7,6 +8,7 @@ use crate::{
 };
 use cgmath::{Array, Basis3, ElementWise, InnerSpace, Rad, Rotation, Rotation3, Vector3, Zero};
 use itertools::Itertools;
+use log::trace;
 
 trait Executable {
     fn execute(&self, span: Span, ctx: &mut MeshBuildContext);
@@ -35,9 +37,11 @@ impl Instruction {
             InstructionData::CreateMeshBuilder(data) => data.execute(self.span, ctx),
             InstructionData::AddVertex(data) => data.execute(self.span, ctx),
             InstructionData::AddFace(data) => data.execute(self.span, ctx),
-            InstructionData::Cube(_data) => panic!("Cube instruction cannot be executed, must be postprocessed away"),
+            InstructionData::Cube(_data) => {
+                panic_log!("Cube instruction cannot be executed, must be postprocessed away");
+            }
             InstructionData::Cylinder(_data) => {
-                panic!("Cylinder instruction cannot be executed, must be postprocessed away")
+                panic_log!("Cylinder instruction cannot be executed, must be postprocessed away");
             }
             InstructionData::Translate(data) => data.execute(self.span, ctx),
             InstructionData::Scale(data) => data.execute(self.span, ctx),
@@ -50,7 +54,7 @@ impl Instruction {
             InstructionData::LoadTexture(data) => data.execute(self.span, ctx),
             InstructionData::SetDecalTransparentColor(data) => data.execute(self.span, ctx),
             InstructionData::SetTextureCoordinates(_data) => {
-                panic!("SetTextureCoordinates instruction cannot be executed, must be postprocessed away")
+                panic_log!("SetTextureCoordinates instruction cannot be executed, must be postprocessed away");
             }
         }
     }
@@ -74,12 +78,6 @@ fn triangulate_faces(input_face: &[usize]) -> Vec<usize> {
         output_list.push(input_face[i]);
     }
 
-    tracing::trace!(
-        input_indices = input_face.len(),
-        output_indices = output_list.len(),
-        "Triangulated faces"
-    );
-
     output_list
 }
 
@@ -101,8 +99,6 @@ fn calculate_normals(mesh: &mut Mesh) {
     }
 
     mesh.vertices.iter_mut().for_each(|v| v.normal = v.normal.normalize());
-
-    tracing::trace!(indices = mesh.indices.len(), "Calculated normals");
 }
 
 fn shrink_vertex_list(vertices: &[Vertex], indices: &[usize]) -> (Vec<Vertex>, Vec<usize>) {
@@ -130,8 +126,6 @@ fn shrink_vertex_list(vertices: &[Vertex], indices: &[usize]) -> (Vec<Vertex>, V
     for index in &mut new_indices {
         *index = translation[*index];
     }
-
-    tracing::trace!(input = ?(vertices.len(), indices.len()), output = ?(new_vertices.len(), new_indices.len()), "Shrunk vertex list");
 
     (new_vertices, new_indices)
 }
@@ -320,14 +314,13 @@ impl Executable for SetDecalTransparentColor {
 ///
 /// Must be postprocessed.
 #[must_use]
-#[bve_derive::span(INFO, "Run Mesh", count = instructions.instructions.len())]
 pub fn generate_meshes(instructions: InstructionList) -> LoadedStaticMesh {
+    trace!("Generating mesh");
     let mut mbc = MeshBuildContext::default();
     for instr in instructions.instructions {
         instr.execute(&mut mbc);
     }
     run_create_mesh_builder(&mut mbc);
-    tracing::debug!(errors = instructions.errors.len(), "Generated mesh");
     mbc.parsed.warnings = instructions.warnings;
     mbc.parsed.errors = instructions.errors;
     mbc.parsed
