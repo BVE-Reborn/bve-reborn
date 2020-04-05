@@ -64,6 +64,7 @@ use wgpu::*;
 use winit::{dpi::PhysicalSize, window::Window};
 use zerocopy::{AsBytes, FromBytes};
 
+#[cfg(debug_assertions)]
 macro_rules! include_shader {
     (vert $name:literal) => {
         include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/shaders/", $name, ".vs.spv"));
@@ -76,6 +77,42 @@ macro_rules! include_shader {
     };
     (comp $name:literal) => {
         include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/shaders/", $name, ".cs.spv"));
+    };
+}
+
+#[cfg(not(debug_assertions))]
+macro_rules! include_shader {
+    (vert $name:literal) => {
+        include_bytes!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/shaders/",
+            $name,
+            ".vs.spv.opt"
+        ));
+    };
+    (geo $name:literal) => {
+        include_bytes!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/shaders/",
+            $name,
+            ".gs.spv.opt"
+        ));
+    };
+    (frag $name:literal) => {
+        include_bytes!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/shaders/",
+            $name,
+            ".fs.spv.opt"
+        ));
+    };
+    (comp $name:literal) => {
+        include_bytes!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/shaders/",
+            $name,
+            ".cs.spv.opt"
+        ));
     };
 }
 
