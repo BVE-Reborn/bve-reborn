@@ -200,9 +200,9 @@ fn program_main(options: Options) {
         .map(|_| create_worker_thread(&file_source, &result_sink, &shared))
         .collect();
 
-    let logger_thread = { bve::concurrency::spawn(move || logger::receive_results(&options, result_source)) };
+    let logger_thread = { std::thread::spawn(move || logger::receive_results(&options, result_source)) };
 
-    let tui_progress_thread = bve::concurrency::spawn(move || mp.join().unwrap());
+    let tui_progress_thread = std::thread::spawn(move || mp.join().unwrap());
 
     while !shared.fully_loaded.load(Ordering::SeqCst)
         || (shared.total.total.load(Ordering::SeqCst) - shared.total.finished.load(Ordering::SeqCst)) != 0

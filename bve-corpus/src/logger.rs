@@ -102,6 +102,11 @@ pub fn receive_results(options: &Options, result_source: Receiver<FileResult>) {
     info!("Successes: {}", successes);
 
     if let Some(output) = &options.output {
-        write(output, serde_json::to_string_pretty(&results).unwrap()).unwrap();
+        info!("Serializing result");
+        let serialized = serde_json::to_string_pretty(&results).unwrap();
+        info!("Writing output to {}", output.display());
+        write(output, serialized).unwrap();
+    } else {
+        info!("No output file, not writing results")
     }
 }
