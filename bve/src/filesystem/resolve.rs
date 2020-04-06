@@ -1,5 +1,17 @@
 use std::path::{Path, PathBuf};
 
+pub fn resolve_path_bases(
+    bases: impl IntoIterator<Item = impl AsRef<Path>>,
+    path: impl AsRef<Path>,
+) -> Option<PathBuf> {
+    for base in bases {
+        if let Some(p) = resolve_path(base, path.as_ref().to_path_buf()) {
+            return Some(p);
+        }
+    }
+    None
+}
+
 #[must_use]
 pub fn resolve_path(base: impl AsRef<Path>, path: PathBuf) -> Option<PathBuf> {
     let base = base.as_ref();
@@ -37,6 +49,7 @@ mod test {
     use crate::filesystem::resolve_path;
     use std::path::PathBuf;
 
+    #[bve_derive::bve_test]
     #[test]
     fn filesystem_resolve_test() {
         let res = resolve_path(PathBuf::from("src"), PathBuf::from("fIlEsYsTeM/rEsOlVe.rs"));
