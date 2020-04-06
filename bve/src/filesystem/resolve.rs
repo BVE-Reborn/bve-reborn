@@ -3,13 +3,13 @@ use std::path::{Path, PathBuf};
 #[must_use]
 pub fn resolve_path(base: impl AsRef<Path>, path: PathBuf) -> Option<PathBuf> {
     let base = base.as_ref();
-    let combined = base.join(path);
+    let combined = base.join(&path);
     if combined.exists() {
         return Some(combined.canonicalize().expect("Failed to canonicalize"));
     }
 
-    let mut new_path = combined.clone();
-    'comp: for component in combined.iter() {
+    let mut new_path = base.to_path_buf();
+    'comp: for component in path.iter() {
         let path = new_path.join(component);
         if path.exists() {
             new_path = path;
