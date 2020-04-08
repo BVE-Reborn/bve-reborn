@@ -1,7 +1,7 @@
 use fern::FormatCallback;
 use log::{LevelFilter, Record};
 use nom::lib::std::fmt::Arguments;
-use std::path::PathBuf;
+use std::path::Path;
 
 #[macro_export]
 macro_rules! panic_log {
@@ -22,7 +22,7 @@ pub fn log_formatter(out: FormatCallback<'_>, message: &Arguments<'_>, record: &
     ));
 }
 
-pub fn enable_logger(file: &Option<PathBuf>, quiet: bool, debug: bool, trace: bool) {
+pub fn enable_logger(file: &Option<impl AsRef<Path>>, quiet: bool, debug: bool, trace: bool) {
     let filter = if trace {
         LevelFilter::Trace
     } else if debug {
@@ -34,7 +34,7 @@ pub fn enable_logger(file: &Option<PathBuf>, quiet: bool, debug: bool, trace: bo
     };
 
     let output: fern::Output = if let Some(file) = &file {
-        fern::log_file(file).expect("Unable to open log file").into()
+        fern::log_file(file.as_ref()).expect("Unable to open log file").into()
     } else {
         fern::Dispatch::new()
             .filter(|m| m.level() > LevelFilter::Warn)

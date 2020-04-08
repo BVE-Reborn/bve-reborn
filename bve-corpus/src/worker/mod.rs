@@ -2,6 +2,7 @@ use crate::{
     panic::{PANIC, USE_DEFAULT_PANIC_HANLDER},
     File, FileKind, FileResult, ParseResult, SharedData,
 };
+use async_std::task::block_on;
 use bve::{
     filesystem::read_convert_utf8,
     panic_log,
@@ -59,7 +60,7 @@ pub fn create_worker_thread(
 }
 
 fn read_from_file(filename: impl AsRef<Path>) -> String {
-    match read_convert_utf8(filename) {
+    match block_on(read_convert_utf8(filename.as_ref())) {
         Ok(s) => s,
         Err(err) => {
             panic_log!("Loading error: {:?}", err);

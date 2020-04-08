@@ -2,6 +2,7 @@ use crate::{
     parse::mesh::{BlendMode, Glow, Mesh_Error, Mesh_Warning},
     str_to_owned_ptr, unowned_ptr_to_str, COption, CVector,
 };
+use async_std::task::block_on;
 use bve::{load::mesh, ColorU8RGB, ColorU8RGBA};
 use bve_derive::c_interface;
 use libc::c_char;
@@ -212,7 +213,7 @@ impl Into<mesh::Mesh> for Mesh {
 #[must_use]
 #[c_interface]
 pub unsafe extern "C" fn bve_load_mesh_from_file(file: *const c_char) -> *mut Loaded_Static_Mesh {
-    let result = mesh::load_mesh_from_file(unowned_ptr_to_str(&file).as_ref());
+    let result = block_on(mesh::load_mesh_from_file(unowned_ptr_to_str(&file).as_ref()));
     match result {
         Some(m) => Box::into_raw(Box::new(m.into())),
         None => null_mut(),

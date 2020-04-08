@@ -52,11 +52,11 @@
 #![allow(clippy::wildcard_imports)]
 
 use crate::platform::*;
+use async_std::task::block_on;
 use bve::load::mesh::load_mesh_from_file;
 use bve_render::{MSAASetting, ObjectHandle, Renderer};
 use cgmath::{ElementWise, InnerSpace, Vector3, Vector4};
 use circular_queue::CircularQueue;
-use futures::executor::block_on;
 use image::{Rgba, RgbaImage};
 use itertools::Itertools;
 use num_traits::Zero;
@@ -124,7 +124,8 @@ fn process_texture(texture: &mut RgbaImage) {
 }
 
 fn load_and_add(renderer: &mut Renderer, path: impl AsRef<Path>) -> Vec<ObjectHandle> {
-    let mesh = load_mesh_from_file(&path).unwrap_or_else(|| panic!("Could not load file {}", path.as_ref().display()));
+    let mesh = block_on(load_mesh_from_file(path.as_ref()))
+        .unwrap_or_else(|| panic!("Could not load file {}", path.as_ref().display()));
 
     assert!(mesh.errors.is_empty(), "{:#?}", mesh);
 

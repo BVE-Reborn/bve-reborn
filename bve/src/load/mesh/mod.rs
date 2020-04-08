@@ -7,10 +7,11 @@ use crate::{
     },
     ColorU8RGB, ColorU8RGBA,
 };
+use async_std::path::Path;
 use cgmath::{Array, Vector2, Vector3, Vector4};
 pub use execution::*;
 use indexmap::IndexSet;
-use std::{ffi::OsStr, path::Path};
+use std::ffi::OsStr;
 
 mod execution;
 
@@ -199,7 +200,7 @@ impl Vertex {
     }
 }
 
-pub fn load_mesh_from_file(file: impl AsRef<Path>) -> Option<LoadedStaticMesh> {
+pub async fn load_mesh_from_file(file: impl AsRef<Path>) -> Option<LoadedStaticMesh> {
     let path = file.as_ref();
     let ext = path
         .extension()
@@ -212,7 +213,7 @@ pub fn load_mesh_from_file(file: impl AsRef<Path>) -> Option<LoadedStaticMesh> {
         _ => return None, // TODO: Use result not option
     };
 
-    let result = read_convert_utf8(path).ok()?; // TODO: Use result not option
+    let result = read_convert_utf8(path).await.ok()?; // TODO: Use result not option
 
     Some(generate_meshes(post_process(create_instructions(&result, file_type))))
 }
