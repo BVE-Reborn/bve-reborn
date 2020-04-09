@@ -25,6 +25,7 @@ csv = { version = "1.1" }
 encoding_rs = "0.8.22"
 fern = "0.6.0"
 fluent = "0.11.0"
+hecs = "0.2.10"
 include_dir = "0.5.0"
 indexmap = "1.2"
 itertools = "0.9"
@@ -36,6 +37,7 @@ once_cell = "1.3.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.45"
 serde_plain = "0.3"
+smallvec = "1.3.0"
 unic-langid = { version = "0.8.0", features = ["unic-langid-macros"] }
 unic-locale = "0.8.0"
 

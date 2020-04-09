@@ -7,6 +7,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5d2e7343e7fc9de883d1b0341e0b13970f764c14101234857d2ddafa1cb1cac2"
 
 [[package]]
+name = "ahash"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0989268a37e128d4d7a8028f1c60099430113fdbc70419010601ce51a228e4fe"
+
+[[package]]
 name = "aho-corasick"
 version = "0.7.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -200,6 +206,7 @@ dependencies = [
  "encoding_rs",
  "fern",
  "fluent",
+ "hecs",
  "include_dir",
  "indexmap",
  "indoc",
@@ -215,6 +222,7 @@ dependencies = [
  "serde_json",
  "serde_plain",
  "serde_test",
+ "smallvec 1.3.0",
  "unic-langid",
  "unic-locale",
 ]
@@ -735,7 +743,7 @@ dependencies = [
  "intl-memoizer",
  "intl_pluralrules",
  "rental",
- "smallvec 1.2.0",
+ "smallvec 1.3.0",
  "unic-langid",
 ]
 
@@ -950,6 +958,25 @@ name = "glob"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
+
+[[package]]
+name = "hashbrown"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "479e9d9a1a3f8c489868a935b557ab5710e3e223836da2ecd52901d88935cb56"
+dependencies = [
+ "ahash",
+ "autocfg",
+]
+
+[[package]]
+name = "hecs"
+version = "0.2.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "29c758b9a96c816248741ae664a146642d1dacd0821bc89144c10a9bfe826226"
+dependencies = [
+ "hashbrown",
+]
 
 [[package]]
 name = "hermit-abi"
@@ -1551,7 +1578,7 @@ dependencies = [
  "cloudabi",
  "libc",
  "redox_syscall",
- "smallvec 1.2.0",
+ "smallvec 1.3.0",
  "winapi 0.3.8",
 ]
 
@@ -1917,9 +1944,9 @@ dependencies = [
 
 [[package]]
 name = "smallvec"
-version = "1.2.0"
+version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5c2fb2ec9bcd216a5b0d0ccf31ab17b5ed1d627960edff65bbe95d3ce221cefc"
+checksum = "05720e22615919e4734f6a99ceae50d00226c3c5aca406e102ebc33298214e0a"
 
 [[package]]
 name = "smithay-client-toolkit"
@@ -2291,7 +2318,7 @@ source = "git+https://github.com/gfx-rs/wgpu-rs.git?rev=ce10a47de81e28a9ad346895
 dependencies = [
  "arrayvec",
  "raw-window-handle",
- "smallvec 1.2.0",
+ "smallvec 1.3.0",
  "wgpu-core",
  "wgpu-native",
  "wgpu-types",
@@ -2317,7 +2344,7 @@ dependencies = [
  "peek-poke",
  "rendy-descriptor",
  "rendy-memory",
- "smallvec 1.2.0",
+ "smallvec 1.3.0",
  "vec_map",
  "wgpu-types",
 ]
