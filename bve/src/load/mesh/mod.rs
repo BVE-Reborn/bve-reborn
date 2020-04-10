@@ -11,7 +11,7 @@ use async_std::path::Path;
 use cgmath::{Array, Vector2, Vector3, Vector4};
 pub use execution::*;
 use indexmap::IndexSet;
-use std::ffi::OsStr;
+use std::{ffi::OsStr, ops::Deref};
 
 mod execution;
 
@@ -83,6 +83,14 @@ impl TextureSet {
     #[must_use]
     pub fn lookup(&self, idx: usize) -> Option<&str> {
         self.filenames.get_index(idx).map(std::string::String::as_str)
+    }
+}
+
+impl Deref for TextureSet {
+    type Target = IndexSet<String>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.filenames
     }
 }
 

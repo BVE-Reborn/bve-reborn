@@ -25,7 +25,9 @@ csv = { version = "1.1" }
 encoding_rs = "0.8.22"
 fern = "0.6.0"
 fluent = "0.11.0"
+futures = { version = "0.3.4", default-features = false, features = ["std", "async-await"] }
 hecs = "0.2.10"
+image = { version = "0.23.2", default-features = false, features = ["bmp", "gif", "png"] }
 include_dir = "0.5.0"
 indexmap = "1.2"
 itertools = "0.9"
