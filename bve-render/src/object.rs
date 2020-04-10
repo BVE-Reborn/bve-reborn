@@ -1,4 +1,5 @@
 use crate::*;
+use bve::runtime::is_mesh_transparent;
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub struct ObjectHandle(pub(crate) u64);
@@ -20,10 +21,6 @@ pub struct Object {
 
     pub transparent: bool,
     pub mesh_transparent: bool,
-}
-
-pub fn is_mesh_transparent(mesh: &[MeshVertex]) -> bool {
-    mesh.iter().any(|v| v.color.w != 0.0 && v.color.w != 1.0)
 }
 
 pub fn convert_mesh_verts_to_render_verts(

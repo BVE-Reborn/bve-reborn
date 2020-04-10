@@ -1,10 +1,7 @@
 use crate::*;
+use bve::runtime::is_texture_transparent;
 use image::{Rgba, RgbaImage};
 use wgpu::TextureView;
-
-pub fn is_texture_transparent(texture: &RgbaImage) -> bool {
-    texture.pixels().any(|&Rgba([_, _, _, a])| a != 0 && a != 255)
-}
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub struct TextureHandle(pub u64);

@@ -1,6 +1,6 @@
 use crate::{
     filesystem::resolve_path,
-    load::mesh::{load_mesh_from_file, LoadedStaticMesh, Vertex},
+    load::mesh::{load_mesh_from_file, LoadedStaticMesh, Mesh, Vertex},
 };
 use async_std::{
     fs::read,
@@ -9,9 +9,12 @@ use async_std::{
     task::spawn,
 };
 use cgmath::{Vector2, Vector3};
-use futures::{stream::FuturesUnordered, StreamExt};
+use futures::{
+    stream::{FuturesOrdered, FuturesUnordered},
+    StreamExt,
+};
 use hecs::World;
-use image::{guess_format, ImageFormat, RgbaImage};
+use image::{guess_format, ImageFormat, Rgba, RgbaImage};
 use smallvec::SmallVec;
 use std::{
     collections::{HashMap, HashSet},
@@ -86,6 +89,14 @@ struct Renderable<C: Client> {
     handles: SmallVec<[ObjectTexture<C>; 4]>,
 }
 
+pub fn is_mesh_transparent(mesh: &[Vertex]) -> bool {
+    mesh.iter().any(|v| v.color.w != 0.0 && v.color.w != 1.0)
+}
+
+pub fn is_texture_transparent(texture: &RgbaImage) -> bool {
+    texture.pixels().any(|&Rgba([_, _, _, a])| a != 0 && a != 255)
+}
+
 pub struct Runtime<C: Client + Send + Sync + 'static> {
     client: Arc<C>,
     chunks: RwLock<HashMap<ChunkAddress, Arc<Chunk>>>,
@@ -151,16 +162,18 @@ impl<C: Client + Send + Sync + 'static> Runtime<C> {
         let mesh_opt = load_mesh_from_file(&chunk.path).await;
         if let Some(mesh) = mesh_opt {
             let root_dir = chunk.path.parent().expect("File must have containing directory");
-            let mut image_futures = FuturesUnordered::new();
+            let mut image_futures = FuturesOrdered::new();
             for texture in mesh.textures.iter() {
                 let future = Self::load_single_texture(root_dir.to_path_buf(), PathBuf::from(texture));
                 image_futures.push(spawn(future));
             }
             let mut images = Vec::with_capacity(mesh.textures.len());
             for image in image_futures.next().await {
-                if let Some(image) = image {
-                    images.push(image);
-                }
+                images.push(if let Some(image) = image {
+                    image
+                } else {
+                    RgbaImage::from_raw(1, 1, vec![0x00, 0xFF, 0xFF, 0xFF]).expect("Cannot create default image")
+                })
             }
             Some((mesh, images))
         } else {
@@ -168,7 +181,7 @@ impl<C: Client + Send + Sync + 'static> Runtime<C> {
         }
     }
 
-    async fn load_chunk_meshes(chunk: Arc<Chunk>) -> Vec<(LoadedStaticMesh, Vec<RgbaImage>)> {
+    async fn load_chunk_objects(chunk: Arc<Chunk>) -> Vec<(LoadedStaticMesh, Vec<RgbaImage>)> {
         let mesh_list = chunk.paths.read().await;
         let mut mesh_futures = FuturesUnordered::new();
         for mesh in mesh_list.iter() {
@@ -187,8 +200,34 @@ impl<C: Client + Send + Sync + 'static> Runtime<C> {
         meshes
     }
 
+    fn unify_objects(input: Vec<(LoadedStaticMesh, Vec<RgbaImage>)>) -> (Vec<Mesh>, Vec<RgbaImage>) {
+        let mut final_meshes = Vec::new();
+        let mut final_textures =
+            vec![RgbaImage::from_raw(1, 1, vec![0xFF, 0xFF, 0xFF, 0xFF]).expect("Cannot create default image")];
+        for (objects, textures) in input {
+            let texture_offset = final_textures.len();
+            for texture in textures {
+                final_textures.push(texture);
+            }
+            for mut mesh in objects.meshes {
+                let id = &mut mesh.texture.texture_id;
+                if let Some(id) = id {
+                    *id += texture_offset;
+                } else {
+                    *id = Some(0);
+                }
+                final_meshes.push(mesh);
+            }
+        }
+
+        (final_meshes, final_textures)
+    }
+
     async fn load_chunk(self: Arc<Self>, chunk: Arc<Chunk>) {
-        let meshes = Self::load_chunk_meshes(chunk).await;
+        let objects = Self::load_chunk_objects(chunk).await;
+        let (meshes, images) = Self::unify_objects(objects);
+
+        unimplemented!()
     }
 
     pub async fn tick(self: &Arc<Self>) {
