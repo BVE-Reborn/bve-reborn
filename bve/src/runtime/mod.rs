@@ -8,19 +8,20 @@ use async_std::{
     sync::{Arc, Mutex, RwLock},
     task::spawn,
 };
-use cgmath::{Vector2, Vector3};
+use cgmath::{Array, Deg, Matrix3, SquareMatrix, Vector2, Vector3};
 use futures::{
     stream::{FuturesOrdered, FuturesUnordered},
     StreamExt,
 };
 use hecs::World;
-use image::{guess_format, ImageFormat, Rgba, RgbaImage};
-use smallvec::SmallVec;
+use image::{guess_format, Rgba, RgbaImage};
+use smallvec::{smallvec, SmallVec};
 use std::{
     collections::{HashMap, HashSet},
     hash::{Hash, Hasher},
-    sync::atomic::{AtomicBool, AtomicI32, Ordering},
+    sync::atomic::{AtomicI32, AtomicU8, Ordering},
 };
+use texture_packer::{exporter::ImageExporter, TexturePacker, TexturePackerConfig};
 
 struct BoundingBox {
     min_x: i32,
@@ -35,11 +36,18 @@ impl BoundingBox {
     }
 }
 
-pub trait Client {
-    type ObjectHandle;
-    type TextureHandle;
+pub trait Client: Send + Sync + 'static {
+    type ObjectHandle: Send + Sync + 'static;
+    type TextureHandle: Send + Sync + 'static;
 
-    fn add_object(&self, location: Vector3<f32>, verts: &[Vertex], indices: &[usize]) -> Self::ObjectHandle;
+    fn add_object_texture(
+        &mut self,
+        location: Vector3<f32>,
+        verts: &[Vertex],
+        indices: &[usize],
+        texture: &Self::TextureHandle,
+    ) -> Self::ObjectHandle;
+    fn add_texture(&mut self, image: &RgbaImage) -> Self::TextureHandle;
 }
 
 const CHUNK_SIZE: f32 = 128.0;
@@ -76,13 +84,32 @@ impl Hash for UnloadedObject {
     }
 }
 
+#[repr(u8)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+enum ChunkState {
+    Unloaded = 0,
+    Loading = 1,
+    Finished = 2,
+}
+
+impl From<u8> for ChunkState {
+    fn from(x: u8) -> Self {
+        match x {
+            0 => Self::Unloaded,
+            1 => Self::Loading,
+            2 => Self::Finished,
+            _ => unreachable!(),
+        }
+    }
+}
+
 struct Chunk {
     paths: RwLock<HashSet<UnloadedObject>>,
-    loaded: AtomicBool,
+    state: AtomicU8,
 }
 
 struct ChunkComponent {
-    address: Location,
+    address: ChunkAddress,
 }
 
 struct Renderable<C: Client> {
@@ -97,16 +124,16 @@ pub fn is_texture_transparent(texture: &RgbaImage) -> bool {
     texture.pixels().any(|&Rgba([_, _, _, a])| a != 0 && a != 255)
 }
 
-pub struct Runtime<C: Client + Send + Sync + 'static> {
-    client: Arc<C>,
+pub struct Runtime<C: Client> {
+    client: Arc<Mutex<C>>,
     chunks: RwLock<HashMap<ChunkAddress, Arc<Chunk>>>,
     position: Mutex<Location>,
     view_distance: AtomicI32,
     ecs: RwLock<World>,
 }
 
-impl<C: Client + Send + Sync + 'static> Runtime<C> {
-    pub fn new(client: Arc<C>) -> Arc<Self> {
+impl<C: Client> Runtime<C> {
+    pub fn new(client: Arc<Mutex<C>>) -> Arc<Self> {
         Arc::new(Self {
             client,
             chunks: RwLock::new(HashMap::new()),
@@ -128,7 +155,7 @@ impl<C: Client + Send + Sync + 'static> Runtime<C> {
                 let mut chunk_map_mut = self.chunks.write().await;
                 let arc = Arc::new(Chunk {
                     paths: RwLock::new(HashSet::new()),
-                    loaded: AtomicBool::new(false),
+                    state: AtomicU8::new(ChunkState::Unloaded as u8),
                 });
                 chunk_map_mut.insert(address, Arc::clone(&arc));
                 arc
@@ -223,11 +250,83 @@ impl<C: Client + Send + Sync + 'static> Runtime<C> {
         (final_meshes, final_textures)
     }
 
+    fn create_packed_textures(images: Vec<RgbaImage>) -> (RgbaImage, Vec<Matrix3<f32>>) {
+        let mut packer = TexturePacker::new_skyline(TexturePackerConfig {
+            max_width: 1 << 14,
+            max_height: 1 << 14,
+            texture_padding: 2,
+            border_padding: 2,
+            allow_rotation: true,
+            texture_outlines: true,
+            trim: false,
+        });
+
+        let image_count = images.len();
+
+        for (idx, image) in images.into_iter().enumerate() {
+            packer.pack_own(idx.to_string(), image).expect("Packing failure");
+        }
+
+        let texture_atlas = ImageExporter::export(&packer)
+            .expect("Unable to export texture atlas")
+            .into_rgba();
+
+        let max_width = (texture_atlas.width() - 1) as f32;
+        let max_height = (texture_atlas.height() - 1) as f32;
+
+        let mut transforms = vec![Matrix3::identity(); image_count];
+
+        for (string, frame) in packer.get_frames() {
+            let idx: usize = string.parse().expect("Unable to parse");
+            let inner = &frame.frame;
+            let translation = Matrix3::from_translation(Vector2::new(inner.x as f32, inner.y as f32));
+            let scale =
+                Matrix3::from_nonuniform_scale((inner.w - 1) as f32 / max_width, (inner.h - 1) as f32 / max_height);
+            if frame.rotated {
+                let rot_trans = Matrix3::from_translation(Vector2::new(0.0, 1.0));
+                let rot_rot = Matrix3::from_angle_z(Deg(-90.0));
+                transforms[idx] = translation * scale * rot_trans * rot_rot;
+            } else {
+                transforms[idx] = translation * scale;
+            }
+        }
+
+        (texture_atlas, transforms)
+    }
+
     async fn load_chunk(self: Arc<Self>, chunk: Arc<Chunk>) {
-        let objects = Self::load_chunk_objects(chunk).await;
+        let objects = Self::load_chunk_objects(Arc::clone(&chunk)).await;
         let (meshes, images) = Self::unify_objects(objects);
 
-        unimplemented!()
+        let (texture_atlas, transforms) = Self::create_packed_textures(images);
+
+        let mut atlas_verts: Vec<Vertex> = Vec::new();
+        let mut atlas_indices: Vec<usize> = Vec::new();
+
+        for mut mesh in meshes {
+            let vert_offset = atlas_verts.len();
+            let texture_id = mesh.texture.texture_id.unwrap_or_else(|| unreachable!());
+            mesh.vertices
+                .iter_mut()
+                .for_each(|v| v.coord_transform = transforms[texture_id]);
+            atlas_verts.extend(mesh.vertices.into_iter());
+            atlas_indices.extend(mesh.indices.into_iter().map(|i| i + vert_offset));
+        }
+
+        let mut client = self.client.lock().await;
+        let texture = client.add_texture(&texture_atlas);
+        let object = client.add_object_texture(Vector3::from_value(0.0), &atlas_verts, &atlas_indices, &texture);
+        drop(client);
+
+        let handles = smallvec![ObjectTexture { object, texture }];
+
+        let mut ecs = self.ecs.write().await;
+        ecs.spawn((Renderable::<C> { handles }, ChunkComponent {
+            address: Vector2::new(0, 0),
+        }));
+        drop(ecs);
+
+        chunk.state.store(ChunkState::Finished as u8, Ordering::Release);
     }
 
     pub async fn tick(self: &Arc<Self>) {
@@ -241,13 +340,14 @@ impl<C: Client + Send + Sync + 'static> Runtime<C> {
         };
 
         for (&location, chunk) in self.chunks.read().await.iter() {
-            let loaded = chunk.loaded.load(Ordering::Acquire);
+            let state = ChunkState::from(chunk.state.load(Ordering::Acquire));
             let inside = bounding_box.inside(location);
-            if loaded && !inside {
+            if state == ChunkState::Finished && !inside {
                 // deload
-            } else if !loaded && inside {
+            } else if state == ChunkState::Unloaded && inside {
                 let other_self = Arc::clone(self);
                 spawn(other_self.load_chunk(Arc::clone(chunk)));
+                chunk.state.store(ChunkState::Loading as u8, Ordering::Release);
             }
         }
     }
