@@ -15,7 +15,6 @@ pub async fn resolve_path_bases(
     None
 }
 
-#[must_use]
 pub async fn resolve_path(base: impl AsRef<Path>, path: PathBuf) -> Option<PathBuf> {
     let base = base.as_ref();
     let combined = base.join(&path);

@@ -58,7 +58,6 @@ struct ObjectTexture<C: Client> {
     object: C::ObjectHandle,
     texture: C::TextureHandle,
 }
-
 #[derive(Debug, Clone, PartialEq)]
 struct UnloadedObject {
     path: PathBuf,
@@ -67,6 +66,7 @@ struct UnloadedObject {
 
 impl Eq for UnloadedObject {}
 
+#[allow(clippy::derive_hash_xor_eq)]
 impl Hash for UnloadedObject {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.path.hash(state);
@@ -168,7 +168,7 @@ impl<C: Client + Send + Sync + 'static> Runtime<C> {
                 image_futures.push(spawn(future));
             }
             let mut images = Vec::with_capacity(mesh.textures.len());
-            for image in image_futures.next().await {
+            while let Some(image) = image_futures.next().await {
                 images.push(if let Some(image) = image {
                     image
                 } else {
