@@ -50,7 +50,13 @@ pub fn convert_mesh_verts_to_render_verts(
             _color: v.color.into(),
             _normal: v.normal.into(),
             _texcoord: v.coord.into(),
-            _texcoord_transform: v.coord_transform.into(),
+            _texcoord_transform: {
+                let mat3: &[[f32; 3]; 3] = v.coord_transform.as_ref();
+                let mat3x2: [[f32; 2]; 3] = [[mat3[0][0], mat3[0][1]], [mat3[1][0], mat3[1][1]], [
+                    mat3[2][0], mat3[2][1],
+                ]];
+                mat3x2
+            },
         })
         .collect_vec();
 
