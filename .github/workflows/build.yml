@@ -97,7 +97,7 @@ jobs:
         run: |
           cargo run --bin bve-build -- --color=always --cbindgen
         shell: bash
-        if: matrix.os != 'macos-latest'
+        if: matrix.os == 'windows-2019'
 
       - name: Run tests
         run: |
@@ -117,7 +117,7 @@ jobs:
           cmake --build .
           cd -
         shell: bash
-        if: matrix.os != 'macos-latest'
+        if: matrix.os == 'windows-2019'
 
       - name: Run C API (win)
         run: |
@@ -126,9 +126,9 @@ jobs:
         shell: bash
         if: matrix.os == 'windows-2019'
 
-      - name: Run C API (unix)
-        run: |
-          target/capi/debug/bve-native-c
-          target/capi/debug/bve-native-cpp
-        shell: bash
-        if: matrix.os == 'ubuntu-18.04'
+#      - name: Run C API (unix)
+#        run: |
+#          target/capi/debug/bve-native-c
+#          target/capi/debug/bve-native-cpp
+#        shell: bash
+#        if: matrix.os == 'ubuntu-18.04'
