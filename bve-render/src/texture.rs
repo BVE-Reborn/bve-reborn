@@ -1,6 +1,6 @@
 use crate::*;
 use bve::runtime::is_texture_transparent;
-use image::{Rgba, RgbaImage};
+use image::RgbaImage;
 use wgpu::TextureView;
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -29,14 +29,15 @@ impl Renderer {
             dimension: TextureDimension::D2,
             format: TextureFormat::Rgba8Uint,
             usage: TextureUsage::SAMPLED | TextureUsage::COPY_DST | TextureUsage::STORAGE,
+            label: None,
         });
         let texture_view = texture.create_default_view();
         let tmp_buf = self
             .device
             .create_buffer_with_data(image.as_ref(), BufferUsage::COPY_SRC);
-        let mut encoder = self
-            .device
-            .create_command_encoder(&CommandEncoderDescriptor { todo: 0 });
+        let mut encoder = self.device.create_command_encoder(&CommandEncoderDescriptor {
+            label: Some("texture copy"),
+        });
         encoder.copy_buffer_to_texture(
             BufferCopyView {
                 buffer: &tmp_buf,
@@ -105,6 +106,7 @@ impl Renderer {
                     resource: BindingResource::Sampler(&self.sampler),
                 },
             ],
+            label: None,
         });
     }
 }

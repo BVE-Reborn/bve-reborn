@@ -128,7 +128,7 @@ impl Renderer {
         };
         let uniform_buffer = self
             .device
-            .create_buffer_with_data(uniforms.as_bytes(), BufferUsage::UNIFORM | BufferUsage::MAP_WRITE);
+            .create_buffer_with_data(uniforms.as_bytes(), BufferUsage::UNIFORM | BufferUsage::COPY_DST);
 
         let bind_group = self.device.create_bind_group(&BindGroupDescriptor {
             layout: &self.bind_group_layout,
@@ -149,6 +149,7 @@ impl Renderer {
                     resource: BindingResource::Sampler(&self.sampler),
                 },
             ],
+            label: None,
         });
 
         let mesh_center_offset = find_mesh_center(&vertices);

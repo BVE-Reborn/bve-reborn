@@ -36,6 +36,7 @@ impl MipmapCompute {
                     },
                 },
             ],
+            label: Some("compute"),
         });
 
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
@@ -97,9 +98,10 @@ impl MipmapCompute {
                         resource: BindingResource::TextureView(&child),
                     },
                 ],
+                label: None,
             });
 
-            let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor { todo: 0 });
+            let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor { label: Some("compute") });
             let mut cpass = encoder.begin_compute_pass();
 
             cpass.set_pipeline(&self.pipeline);

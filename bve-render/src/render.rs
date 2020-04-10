@@ -158,12 +158,12 @@ pub fn create_pipeline(
             stencil_read_mask: 0,
             stencil_write_mask: 0,
         }),
-        index_format: IndexFormat::Uint32,
-        vertex_buffers: &[VertexBufferDescriptor {
-            stride: size_of::<Vertex>() as BufferAddress,
-            step_mode: InputStepMode::Vertex,
-            attributes: &vertex_attr_array![0 => Float3, 1 => Float3, 2 => Float4, 3 => Float2, 4 => Float2, 5 => Float2],
-        }],
+        vertex_state: VertexStateDescriptor {index_format: IndexFormat::Uint32,
+            vertex_buffers: &[VertexBufferDescriptor {
+                stride: size_of::<Vertex>() as BufferAddress,
+                step_mode: InputStepMode::Vertex,
+                attributes: &vertex_attr_array![0 => Float3, 1 => Float3, 2 => Float4, 3 => Float2, 4 => Float2, 5 => Float2],
+            }]},
         sample_count: samples as u32,
         sample_mask: !0,
         alpha_to_coverage_enabled: alpha_to_coverage,
@@ -183,6 +183,7 @@ pub fn create_depth_buffer(device: &Device, size: PhysicalSize<u32>, samples: MS
         dimension: TextureDimension::D2,
         format: TextureFormat::Depth32Float,
         usage: TextureUsage::OUTPUT_ATTACHMENT,
+        label: Some("depth buffer"),
     });
     depth_texture.create_default_view()
 }
@@ -202,6 +203,7 @@ pub fn create_framebuffer(device: &Device, size: PhysicalSize<u32>, samples: MSA
         dimension: TextureDimension::D2,
         format: TextureFormat::Bgra8UnormSrgb,
         usage: TextureUsage::OUTPUT_ATTACHMENT,
+        label: Some("framebuffer"),
     });
     tex.create_default_view()
 }
@@ -209,12 +211,11 @@ pub fn create_framebuffer(device: &Device, size: PhysicalSize<u32>, samples: MSA
 impl Renderer {
     pub async fn recompute_uniforms(&mut self) {
         let camera_mat = self.camera.compute_matrix();
+        let mut encoder = self.device.create_command_encoder(&CommandEncoderDescriptor {
+            label: Some("uniform updater"),
+        });
+
         for object in self.objects.values() {
-            let mut buf = object
-                .uniform_buffer
-                .map_write(0, size_of::<Uniforms>() as u64)
-                .await
-                .expect("Could not map buffer");
             let matrix = object::generate_matrix(
                 &camera_mat,
                 object.location,
@@ -225,8 +226,13 @@ impl Renderer {
                 _matrix: *matrix_ref,
                 _transparent: object.transparent as u32,
             };
-            buf.as_slice().copy_from_slice(uniforms.as_bytes());
+            let tmp_buf = self
+                .device
+                .create_buffer_with_data(uniforms.as_bytes(), BufferUsage::COPY_SRC);
+            encoder.copy_buffer_to_buffer(&tmp_buf, 0, &object.uniform_buffer, 0, size_of::<Uniforms>() as u64);
         }
+
+        self.command_buffers.push(encoder.finish());
     }
 
     pub fn compute_object_distances(&mut self) {

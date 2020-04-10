@@ -107,7 +107,7 @@ mod texture;
 
 pub const OPENGL_TO_WGPU_MATRIX: Matrix4<f32> = Matrix4::new(
     1.0, 0.0, 0.0, 0.0, //
-    0.0, -1.0, 0.0, 0.0, //
+    0.0, 1.0, 0.0, 0.0, //
     0.0, 0.0, 0.5, 0.0, //
     0.0, 0.0, 0.5, 1.0,
 );
@@ -152,6 +152,7 @@ impl Renderer {
         let adapter = Adapter::request(
             &RequestAdapterOptions {
                 power_preference: PowerPreference::HighPerformance,
+                compatible_surface: Some(&surface),
             },
             BackendBit::VULKAN | BackendBit::METAL,
         )
@@ -193,7 +194,7 @@ impl Renderer {
             mipmap_filter: FilterMode::Linear,
             lod_min_clamp: -100.0,
             lod_max_clamp: 100.0,
-            compare: None,
+            compare: CompareFunction::Never,
         });
 
         let framebuffer = render::create_framebuffer(&device, screen_size, samples);
@@ -221,6 +222,7 @@ impl Renderer {
                     ty: BindingType::Sampler { comparison: false },
                 },
             ],
+            label: None,
         });
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             bind_group_layouts: &[&bind_group_layout],
@@ -346,7 +348,7 @@ impl Renderer {
 
         let mut encoder = self
             .device
-            .create_command_encoder(&CommandEncoderDescriptor { todo: 0 });
+            .create_command_encoder(&CommandEncoderDescriptor { label: Some("primary") });
 
         {
             let (attachment, resolve_target) = if self.samples == render::MSAASetting::X1 {

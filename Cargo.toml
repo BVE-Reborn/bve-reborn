@@ -5,7 +5,6 @@ members = ["bve*"]
 
 [patch.crates-io]
 cgmath = { git = "https://github.com/rustgd/cgmath.git", rev = "50a345b7c439c492a9c658dbb432f6cbd70a0557" }
-wgpu = { git = "https://github.com/gfx-rs/wgpu-rs.git", rev = "ce10a47de81e28a9ad3468952bda66a4aa9d2f9e" }
 
 [profile.dev]
 opt-level = 0
