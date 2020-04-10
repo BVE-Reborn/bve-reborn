@@ -124,7 +124,7 @@ pub fn create_pipeline(
     } else {
         BlendDescriptor::REPLACE
     };
-    let alpha_to_coverage = ty == PipelineType::Normal;
+    // let alpha_to_coverage = ty == PipelineType::Normal;
     device.create_render_pipeline(&RenderPipelineDescriptor {
         layout,
         vertex_stage: ProgrammableStageDescriptor {
@@ -166,7 +166,7 @@ pub fn create_pipeline(
             }]},
         sample_count: samples as u32,
         sample_mask: !0,
-        alpha_to_coverage_enabled: alpha_to_coverage,
+        alpha_to_coverage_enabled: false,
     })
 }
 

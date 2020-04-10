@@ -15,6 +15,7 @@ use futures::{
 };
 use hecs::World;
 use image::{guess_format, Rgba, RgbaImage};
+use log::{debug, info, trace, warn};
 use smallvec::{smallvec, SmallVec};
 use std::{
     collections::{HashMap, HashSet},
@@ -43,7 +44,7 @@ pub trait Client: Send + Sync + 'static {
     fn add_object_texture(
         &mut self,
         location: Vector3<f32>,
-        verts: &[Vertex],
+        verts: Vec<Vertex>,
         indices: &[usize],
         texture: &Self::TextureHandle,
     ) -> Self::ObjectHandle;
@@ -52,8 +53,8 @@ pub trait Client: Send + Sync + 'static {
 
 const CHUNK_SIZE: f32 = 128.0;
 
-type ChunkAddress = Vector2<i32>;
-type ChunkOffset = Vector3<f32>;
+pub type ChunkAddress = Vector2<i32>;
+pub type ChunkOffset = Vector3<f32>;
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -174,20 +175,28 @@ impl<C: Client> Runtime<C> {
     }
 
     async fn load_single_texture(root_dir: PathBuf, relative: PathBuf) -> Option<RgbaImage> {
-        let resolved_path = resolve_path(root_dir, relative).await;
+        let resolved_path = resolve_path(root_dir.clone(), relative.clone()).await;
         if let Some(path) = resolved_path {
+            trace!("Loading texture {}", path.display());
             let data = read(path).await.expect("Cannot read file");
             let format = guess_format(&data).expect("Could not guess format");
             let image = image::load(std::io::Cursor::new(data), format).expect("Could not load image");
             Some(image.into_rgba())
         } else {
+            warn!(
+                "Could not find texture {} in {}",
+                relative.display(),
+                root_dir.display()
+            );
             None
         }
     }
 
     async fn load_single_chunk_mesh(chunk: UnloadedObject) -> Option<(LoadedStaticMesh, Vec<RgbaImage>)> {
+        trace!("Loading mesh {}", chunk.path.display());
         let mesh_opt = load_mesh_from_file(&chunk.path).await;
         if let Some(mesh) = mesh_opt {
+            trace!("Loaded mesh {}", chunk.path.display());
             let root_dir = chunk.path.parent().expect("File must have containing directory");
             let mut image_futures = FuturesOrdered::new();
             for texture in mesh.textures.iter() {
@@ -204,6 +213,7 @@ impl<C: Client> Runtime<C> {
             }
             Some((mesh, images))
         } else {
+            warn!("Could not find mesh {}", chunk.path.display());
             None
         }
     }
@@ -254,10 +264,10 @@ impl<C: Client> Runtime<C> {
         let mut packer = TexturePacker::new_skyline(TexturePackerConfig {
             max_width: 1 << 14,
             max_height: 1 << 14,
-            texture_padding: 2,
-            border_padding: 2,
+            texture_padding: 32,
+            border_padding: 32,
             allow_rotation: true,
-            texture_outlines: true,
+            texture_outlines: false,
             trim: false,
         });
 
@@ -279,12 +289,13 @@ impl<C: Client> Runtime<C> {
         for (string, frame) in packer.get_frames() {
             let idx: usize = string.parse().expect("Unable to parse");
             let inner = &frame.frame;
-            let translation = Matrix3::from_translation(Vector2::new(inner.x as f32, inner.y as f32));
+            let translation =
+                Matrix3::from_translation(Vector2::new(inner.x as f32 / max_width, inner.y as f32 / max_height));
             let scale =
                 Matrix3::from_nonuniform_scale((inner.w - 1) as f32 / max_width, (inner.h - 1) as f32 / max_height);
             if frame.rotated {
-                let rot_trans = Matrix3::from_translation(Vector2::new(0.0, 1.0));
-                let rot_rot = Matrix3::from_angle_z(Deg(-90.0));
+                let rot_trans = Matrix3::from_translation(Vector2::new(1.0, 0.0));
+                let rot_rot = Matrix3::from_angle_z(Deg(90.0));
                 transforms[idx] = translation * scale * rot_trans * rot_rot;
             } else {
                 transforms[idx] = translation * scale;
@@ -298,7 +309,9 @@ impl<C: Client> Runtime<C> {
         let objects = Self::load_chunk_objects(Arc::clone(&chunk)).await;
         let (meshes, images) = Self::unify_objects(objects);
 
+        info!("Preforming texture packing on chunk ({}, {})", 0, 0);
         let (texture_atlas, transforms) = Self::create_packed_textures(images);
+        info!("Texture packing finished on chunk ({}, {})", 0, 0);
 
         let mut atlas_verts: Vec<Vertex> = Vec::new();
         let mut atlas_indices: Vec<usize> = Vec::new();
@@ -313,13 +326,15 @@ impl<C: Client> Runtime<C> {
             atlas_indices.extend(mesh.indices.into_iter().map(|i| i + vert_offset));
         }
 
+        trace!("Creating texture and object in client");
         let mut client = self.client.lock().await;
         let texture = client.add_texture(&texture_atlas);
-        let object = client.add_object_texture(Vector3::from_value(0.0), &atlas_verts, &atlas_indices, &texture);
+        let object = client.add_object_texture(Vector3::from_value(0.0), atlas_verts, &atlas_indices, &texture);
         drop(client);
 
         let handles = smallvec![ObjectTexture { object, texture }];
 
+        trace!("Adding chunk to ecs");
         let mut ecs = self.ecs.write().await;
         ecs.spawn((Renderable::<C> { handles }, ChunkComponent {
             address: Vector2::new(0, 0),
@@ -327,6 +342,7 @@ impl<C: Client> Runtime<C> {
         drop(ecs);
 
         chunk.state.store(ChunkState::Finished as u8, Ordering::Release);
+        trace!("Chunk marked finished");
     }
 
     pub async fn tick(self: &Arc<Self>) {
@@ -345,6 +361,7 @@ impl<C: Client> Runtime<C> {
             if state == ChunkState::Finished && !inside {
                 // deload
             } else if state == ChunkState::Unloaded && inside {
+                debug!("Spawning chunk ({}, {})", location.x, location.y);
                 let other_self = Arc::clone(self);
                 spawn(other_self.load_chunk(Arc::clone(chunk)));
                 chunk.state.store(ChunkState::Loading as u8, Ordering::Release);

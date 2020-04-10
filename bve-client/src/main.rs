@@ -52,29 +52,33 @@
 #![allow(clippy::wildcard_imports)]
 
 use crate::platform::*;
-use async_std::task::block_on;
-use bve::load::mesh::load_mesh_from_file;
-use bve_render::{MSAASetting, ObjectHandle, Renderer};
+use async_std::{
+    path::{Path, PathBuf},
+    sync::{Arc, Mutex},
+    task::block_on,
+};
+use bve::{
+    load::mesh::{load_mesh_from_file, Vertex},
+    runtime,
+};
+use bve_render::{MSAASetting, ObjectHandle, Renderer, TextureHandle};
 use cgmath::{ElementWise, InnerSpace, Vector3, Vector4};
 use circular_queue::CircularQueue;
 use image::{Rgba, RgbaImage};
 use itertools::Itertools;
 use num_traits::Zero;
-use std::{
-    path::Path,
-    time::{Duration, Instant},
-};
+use std::time::{Duration, Instant};
 use winit::{
     event::{DeviceEvent, ElementState, Event, KeyboardInput, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
-    window::WindowBuilder,
+    window::{Window, WindowBuilder},
 };
 
 mod platform;
 
 fn load_texture(name: impl AsRef<Path>) -> RgbaImage {
     println!("{}", name.as_ref().display());
-    let img = image::open(&name)
+    let img = image::open(name.as_ref())
         .unwrap_or_else(|e| panic!("Could not open/parse image {}: {:#?}", name.as_ref().display(), e));
     let mut rgba = img.into_rgba();
     process_texture(&mut rgba);
@@ -161,6 +165,37 @@ fn load_and_add(renderer: &mut Renderer, path: impl AsRef<Path>) -> Vec<ObjectHa
         .collect()
 }
 
+struct Client {
+    renderer: Renderer,
+}
+
+impl Client {
+    async fn new(window: &Window, samples: MSAASetting) -> Arc<Mutex<Self>> {
+        Arc::new(Mutex::new(Self {
+            renderer: Renderer::new(window, samples).await,
+        }))
+    }
+}
+
+impl runtime::Client for Client {
+    type ObjectHandle = ObjectHandle;
+    type TextureHandle = TextureHandle;
+
+    fn add_object_texture(
+        &mut self,
+        location: Vector3<f32>,
+        verts: Vec<Vertex>,
+        indices: &[usize],
+        texture: &Self::TextureHandle,
+    ) -> Self::ObjectHandle {
+        self.renderer.add_object_texture(location, verts, indices, texture)
+    }
+
+    fn add_texture(&mut self, image: &RgbaImage) -> Self::TextureHandle {
+        self.renderer.add_texture(image)
+    }
+}
+
 fn main() {
     let event_loop = EventLoop::new();
 
@@ -179,15 +214,29 @@ fn main() {
         (false, false, false, false, false, false, false);
 
     let mut sample_count = MSAASetting::X1;
-    let mut renderer = block_on(async { Renderer::new(&window, sample_count).await });
+    let client = block_on(async { Client::new(&window, sample_count).await });
+    let runtime = runtime::Runtime::new(Arc::clone(&client));
 
     let mut camera_location = Vector3::new(-7.0, 3.0, 0.0);
-    renderer.set_camera_orientation(0.0, std::f32::consts::FRAC_PI_2);
+    block_on(async {
+        client
+            .lock()
+            .await
+            .renderer
+            .set_camera_orientation(0.0, std::f32::consts::FRAC_PI_2)
+    });
 
-    let _objects = load_and_add(
-        &mut renderer,
-        std::env::args().nth(1).expect("Must pass filename as first argument"),
-    );
+    block_on(async {
+        runtime
+            .add_static_object(
+                runtime::Location {
+                    chunk: runtime::ChunkAddress::new(0, 0),
+                    offset: runtime::ChunkOffset::new(0.0, 0.0, 0.0),
+                },
+                PathBuf::from(std::env::args().nth(1).expect("Must pass filename as first argument")),
+            )
+            .await
+    });
 
     let mut mouse_pitch = 0.0_f32;
     let mut mouse_yaw = 0.0_f32;
@@ -241,8 +290,9 @@ fn main() {
 
             camera_location = camera_location.add_element_wise(dir_vec);
 
-            renderer.set_camera_location(camera_location);
+            block_on(async { client.lock().await.renderer.set_camera_location(camera_location) });
 
+            block_on(async { runtime.tick().await });
             window.request_redraw();
         }
         Event::WindowEvent {
@@ -250,7 +300,7 @@ fn main() {
             ..
         } => {
             window_size = size;
-            renderer.resize(size);
+            block_on(async { client.lock().await.renderer.resize(size) });
         }
         Event::WindowEvent {
             event:
@@ -284,7 +334,7 @@ fn main() {
                             if state == ElementState::Pressed {
                                 sample_count = sample_count.decrement();
                                 println!("MSAA: x{}", sample_count as u32);
-                                renderer.set_samples(sample_count)
+                                block_on(async { client.lock().await.renderer.set_samples(sample_count) });
                             }
                         }
                         // period
@@ -292,7 +342,7 @@ fn main() {
                             if state == ElementState::Pressed {
                                 sample_count = sample_count.increment();
                                 println!("MSAA: x{}", sample_count as u32);
-                                renderer.set_samples(sample_count)
+                                block_on(async { client.lock().await.renderer.set_samples(sample_count) });
                             }
                         }
                         _ => {}
@@ -328,7 +378,13 @@ fn main() {
                 std::f32::consts::FRAC_PI_2 - 0.0001,
             );
 
-            renderer.set_camera_orientation(mouse_pitch, mouse_yaw);
+            block_on(async {
+                client
+                    .lock()
+                    .await
+                    .renderer
+                    .set_camera_orientation(mouse_pitch, mouse_yaw)
+            });
         }
         Event::RedrawRequested(_) => {
             let now = Instant::now();
@@ -370,9 +426,7 @@ fn main() {
             frame_count += 1;
             last_frame_instant = now;
 
-            block_on(async {
-                renderer.render().await;
-            });
+            block_on(async { client.lock().await.renderer.render().await });
         }
         Event::WindowEvent {
             event: WindowEvent::CloseRequested,

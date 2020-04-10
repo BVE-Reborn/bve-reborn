@@ -52,7 +52,7 @@
 #![allow(clippy::wildcard_enum_match_arm)]
 #![allow(clippy::wildcard_imports)]
 
-pub use crate::{object::ObjectHandle, render::MSAASetting, texture::Texture};
+pub use crate::{object::ObjectHandle, render::MSAASetting, texture::TextureHandle};
 use bve::load::mesh::Vertex as MeshVertex;
 use cgmath::{Matrix4, Vector2, Vector3};
 use image::RgbaImage;
