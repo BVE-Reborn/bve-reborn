@@ -8,7 +8,7 @@ use crate::{
     ColorU8RGB, ColorU8RGBA,
 };
 use async_std::path::Path;
-use cgmath::{Array, Vector2, Vector3, Vector4};
+use cgmath::{Array, Matrix2, SquareMatrix, Vector2, Vector3, Vector4};
 pub use execution::*;
 use indexmap::IndexSet;
 use std::{ffi::OsStr, ops::Deref};
@@ -158,6 +158,7 @@ pub struct Vertex {
     pub normal: Vector3<f32>,
     pub color: Vector4<f32>,
     pub coord: Vector2<f32>,
+    pub coord_transform: Matrix2<f32>,
     pub double_sided: bool,
 }
 
@@ -180,6 +181,7 @@ impl Vertex {
             position,
             normal,
             coord,
+            coord_transform: Matrix2::identity(),
             color: Vector4::from_value(1.0),
             double_sided: false,
         }
@@ -191,6 +193,7 @@ impl Vertex {
             position,
             normal,
             coord: Vector2::from_value(0.0),
+            coord_transform: Matrix2::identity(),
             color: Vector4::from_value(1.0),
             double_sided: false,
         }
@@ -202,6 +205,7 @@ impl Vertex {
             position,
             normal: Vector3::from_value(0.0),
             coord: Vector2::from_value(0.0),
+            coord_transform: Matrix2::identity(),
             color: Vector4::from_value(1.0),
             double_sided: false,
         }

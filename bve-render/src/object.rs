@@ -52,7 +52,8 @@ pub fn convert_mesh_verts_to_render_verts(
             pos: v.position.into(),
             _color: v.color.into(),
             _normal: v.normal.into(),
-            _tex_coord: v.coord.into(),
+            _texcoord: v.coord.into(),
+            _texcoord_transform: v.coord_transform.into(),
         })
         .collect_vec();
 

@@ -10,7 +10,8 @@ pub struct Vertex {
     pub pos: [f32; 3],
     pub _normal: [f32; 3],
     pub _color: [f32; 4],
-    pub _tex_coord: [f32; 2],
+    pub _texcoord: [f32; 2],
+    pub _texcoord_transform: [[f32; 2]; 2],
 }
 
 #[repr(C)]
@@ -161,7 +162,7 @@ pub fn create_pipeline(
         vertex_buffers: &[VertexBufferDescriptor {
             stride: size_of::<Vertex>() as BufferAddress,
             step_mode: InputStepMode::Vertex,
-            attributes: &vertex_attr_array![0 => Float3, 1 => Float3, 2 => Float4, 3 => Float2],
+            attributes: &vertex_attr_array![0 => Float3, 1 => Float3, 2 => Float4, 3 => Float2, 4 => Float4],
         }],
         sample_count: samples as u32,
         sample_mask: !0,
