@@ -59,6 +59,8 @@ use image::RgbaImage;
 use indexmap::map::IndexMap;
 use itertools::Itertools;
 use num_traits::{ToPrimitive, Zero};
+use once_cell::sync::Lazy;
+use renderdoc::RenderDoc;
 use std::io;
 use wgpu::*;
 use winit::{dpi::PhysicalSize, window::Window};
@@ -105,6 +107,9 @@ mod object;
 mod render;
 mod texture;
 
+// static RENDERDOC: once_cell::sync::Lazy<std::sync::Mutex<RenderDoc<renderdoc::V140>>> =
+//     Lazy::new(|| std::sync::Mutex::new(RenderDoc::new().expect("Could not initialize renderdoc")));
+
 pub const OPENGL_TO_WGPU_MATRIX: Matrix4<f32> = Matrix4::new(
     1.0, 0.0, 0.0, 0.0, //
     0.0, 1.0, 0.0, 0.0, //
@@ -142,6 +147,7 @@ pub struct Renderer {
     mip_creator: compute::MipmapCompute,
 
     command_buffers: Vec<CommandBuffer>,
+    delayed_command_buffers: Vec<CommandBuffer>,
 }
 
 impl Renderer {

@@ -308,12 +308,15 @@ dependencies = [
 name = "bve-render"
 version = "0.0.1"
 dependencies = [
+ "async-std",
  "bve",
  "cgmath",
  "image",
  "indexmap",
  "itertools",
  "num-traits",
+ "once_cell",
+ "renderdoc",
  "wgpu",
  "winit",
  "zerocopy",
@@ -760,6 +763,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8c9a4820f0ccc8a7afd67c39a0f1a0f4b07ca1725164271a64939d7aeb9af065"
 dependencies = [
  "log",
+]
+
+[[package]]
+name = "float-cmp"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "75224bec9bfe1a65e2d34132933f2de7fe79900c96a0174307554244ece8150e"
+dependencies = [
+ "num-traits",
 ]
 
 [[package]]
@@ -1851,6 +1863,27 @@ name = "regex-syntax"
 version = "0.6.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7fe5bd57d1d7414c6b5ed48563a2c855d995ff777729dcd91c369ec7fea395ae"
+
+[[package]]
+name = "renderdoc"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1d93e7b2e3d668ab807a7681cfe2fec53eb15170c18849905dbd9c97c7372ea2"
+dependencies = [
+ "bitflags",
+ "float-cmp",
+ "lazy_static",
+ "libloading",
+ "renderdoc-sys",
+ "winapi 0.3.8",
+ "wio",
+]
+
+[[package]]
+name = "renderdoc-sys"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "60d4a9058849c3e765fe2fa68b72c1416b1766f27eac3c52d7bac8712ea0d390"
 
 [[package]]
 name = "rental"

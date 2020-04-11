@@ -149,8 +149,17 @@ impl CutoutTransparencyCompute {
         texture_dst: &Texture,
         dimensions: Vector2<u32>,
     ) -> CommandBuffer {
-        let source = texture.create_default_view();
-        let dest = texture_dst.create_default_view();
+        let view = TextureViewDescriptor {
+            dimension: TextureViewDimension::D2,
+            format: TextureFormat::Rgba8Uint,
+            aspect: TextureAspect::All,
+            base_mip_level: 0,
+            level_count: 1,
+            base_array_layer: 0,
+            array_layer_count: 1,
+        };
+        let source = texture.create_view(&view);
+        let dest = texture_dst.create_view(&view);
 
         let bind_group = create_texture_compute_bind_group(&device, &self.bind_group_layout, &source, &dest);
 

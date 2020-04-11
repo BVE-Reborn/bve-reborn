@@ -11,13 +11,16 @@ pub struct Texture {
 
 impl Renderer {
     pub fn add_texture(&mut self, image: &RgbaImage) -> TextureHandle {
+        RenderDoc::<renderdoc::V140>::new()
+            .expect("Could not initialize renderdoc")
+            .start_frame_capture();
         let extent = Extent3d {
             width: image.width(),
             height: image.height(),
             depth: 1,
         };
         let mip_levels = render::mip_levels(Vector2::new(image.width(), image.height()));
-        let texture_descriptor = TextureDescriptor {
+        let mut texture_descriptor = TextureDescriptor {
             size: extent,
             array_layer_count: 1,
             mip_level_count: mip_levels,
@@ -62,10 +65,10 @@ impl Renderer {
         );
         self.command_buffers.push(transparent_command);
 
-        let mip_command = self
+        let mip_commands = self
             .mip_creator
             .compute_mipmaps(&self.device, &filtered_texture, dimensions);
-        self.command_buffers.extend(mip_command);
+        self.command_buffers.extend(mip_commands);
 
         let texture_view = filtered_texture.create_default_view();
 
