@@ -177,11 +177,11 @@ impl Renderer {
         };
         let swapchain = device.create_swap_chain(&surface, &swapchain_descriptor);
 
-        let vs = include_shader!(vert "test");
+        let vs = include_shader!(vert "forward");
         let vs_module =
             device.create_shader_module(&read_spirv(io::Cursor::new(&vs[..])).expect("Could not read shader spirv"));
 
-        let fs = include_shader!(frag "test");
+        let fs = include_shader!(frag "forward");
         let fs_module =
             device.create_shader_module(&read_spirv(io::Cursor::new(&fs[..])).expect("Could not read shader spirv"));
 
