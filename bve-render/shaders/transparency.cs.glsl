@@ -22,9 +22,17 @@ bool ivec2_le(ivec2 lhs, ivec2 rhs) {
     return lhs.x <= rhs.x && lhs.y <= rhs.y;
 }
 
+vec4 load_strip_blue(ivec2 location) {
+    vec4 value = load_gamma(location);
+    if (value.xyz == vec3(0.0, 0.0, 1.0)) {
+        value = vec4(0.0);
+    }
+    return value;
+}
+
 vec4 conditional_load(ivec2 location) {
     if (ivec2_le(ivec2(0), location) && ivec2_lt(location, ivec2(gl_NumWorkGroups.xy))) {
-        vec4 value = load_gamma(location);
+        vec4 value = load_strip_blue(location);
         if (value.w == 0.0) {
             value = vec4(0.0);
         } else {
@@ -38,10 +46,7 @@ vec4 conditional_load(ivec2 location) {
 
 void main() {
     ivec2 location = ivec2(gl_GlobalInvocationID.xy);
-    vec4 texel11 = load_gamma(location);
-    if (texel11.xyz == vec3(0.0, 0.0, 1.0)) {
-        texel11 = vec4(0.0);
-    }
+    vec4 texel11 = load_strip_blue(location);
     if (texel11.w == 0.0) {
         vec4 texel00 = conditional_load(location + ivec2(-1, -1));
         vec4 texel10 = conditional_load(location + ivec2(0, -1));
