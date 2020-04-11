@@ -55,11 +55,8 @@ void main() {
         vec4 sum = texel00 + texel01 + texel02 + texel10 + texel12 + texel20 + texel21 + texel22;
         float scale = sum.w;
         vec3 average = sum.xyz / scale;
-//        store_gamma(location, vec4(average, 0.0));
+        store_gamma(location, vec4(average, 0.0));
     } else {
-//        store_gamma(location, texel11);
+        store_gamma(location, texel11);
     }
-    store_gamma(location, load_gamma(location));
-//    store_gamma(location, vec4(1.0));
-
 }

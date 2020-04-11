@@ -60,7 +60,6 @@ use indexmap::map::IndexMap;
 use itertools::Itertools;
 use num_traits::{ToPrimitive, Zero};
 use once_cell::sync::Lazy;
-use renderdoc::RenderDoc;
 use std::{io, ptr::null};
 use wgpu::*;
 use winit::{dpi::PhysicalSize, window::Window};
@@ -86,6 +85,18 @@ macro_rules! shader_path {
     };
 }
 
+#[cfg(feature = "renderdoc")]
+macro_rules! renderdoc {
+    ($($tokens:tt)*) => {
+        $($tokens)*
+    };
+}
+
+#[cfg(not(feature = "renderdoc"))]
+macro_rules! renderdoc {
+    ($($tokens:tt)*) => {};
+}
+
 macro_rules! include_shader {
     (vert $name:literal) => {
         shader_path!($name, ".vs")
@@ -106,9 +117,6 @@ mod compute;
 mod object;
 mod render;
 mod texture;
-
-// static RENDERDOC: once_cell::sync::Lazy<std::sync::Mutex<RenderDoc<renderdoc::V140>>> =
-//     Lazy::new(|| std::sync::Mutex::new(RenderDoc::new().expect("Could not initialize renderdoc")));
 
 pub const OPENGL_TO_WGPU_MATRIX: Matrix4<f32> = Matrix4::new(
     1.0, 0.0, 0.0, 0.0, //
@@ -347,9 +355,11 @@ impl Renderer {
     }
 
     pub async fn render(&mut self) {
-        let mut rd = RenderDoc::<renderdoc::V140>::new().expect("Could not initialize renderdoc");
-        if self.renderdoc_capture {
-            rd.start_frame_capture(null(), null());
+        renderdoc! {
+            let mut rd = renderdoc::RenderDoc::<renderdoc::V140>::new().expect("Could not initialize renderdoc");
+            if self.renderdoc_capture {
+                rd.start_frame_capture(null(), null());
+            }
         }
         self.recompute_uniforms().await;
         self.compute_object_distances();
@@ -412,9 +422,11 @@ impl Renderer {
 
         self.queue.submit(&self.command_buffers);
         self.command_buffers.clear();
-        if self.renderdoc_capture {
-            rd.end_frame_capture(null(), null());
-            self.renderdoc_capture = false;
+        renderdoc! {
+            if self.renderdoc_capture {
+                rd.end_frame_capture(null(), null());
+                self.renderdoc_capture = false;
+            }
         }
     }
 }
