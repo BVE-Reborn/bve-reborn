@@ -23,7 +23,7 @@ bool ivec2_le(ivec2 lhs, ivec2 rhs) {
 }
 
 vec4 conditional_load(ivec2 location) {
-    if (ivec2_le(ivec2(0), location) && ivec2_lt(location, gl_NumWorkGroups.xy)) {
+    if (ivec2_le(ivec2(0), location) && ivec2_lt(location, ivec2(gl_NumWorkGroups.xy))) {
         vec4 value = load_gamma(location);
         if (value.w == 0.0) {
             value = vec4(0.0);
@@ -57,6 +57,6 @@ void main() {
         vec3 average = sum.xyz / scale;
         store_gamma(location, vec4(average, 0.0));
     } else {
-        store_gamme(location, texel11);
+        store_gamma(location, texel11);
     }
 }
