@@ -44,13 +44,13 @@ void main() {
     }
     if (texel11.w == 0.0) {
         vec4 texel00 = conditional_load(location + ivec2(-1, -1));
-        vec4 texel10 = conditional_load(location + ivec2(-1, -1));
-        vec4 texel20 = conditional_load(location + ivec2(-1, -1));
-        vec4 texel01 = conditional_load(location + ivec2(-1, -1));
-        vec4 texel21 = conditional_load(location + ivec2(-1, -1));
-        vec4 texel02 = conditional_load(location + ivec2(-1, -1));
-        vec4 texel12 = conditional_load(location + ivec2(-1, -1));
-        vec4 texel22 = conditional_load(location + ivec2(-1, -1));
+        vec4 texel10 = conditional_load(location + ivec2(0, -1));
+        vec4 texel20 = conditional_load(location + ivec2(1, -1));
+        vec4 texel01 = conditional_load(location + ivec2(-1, 0));
+        vec4 texel21 = conditional_load(location + ivec2(1, 0));
+        vec4 texel02 = conditional_load(location + ivec2(-1, 1));
+        vec4 texel12 = conditional_load(location + ivec2(0, 1));
+        vec4 texel22 = conditional_load(location + ivec2(1, 1));
         
         vec4 sum = texel00 + texel01 + texel02 + texel10 + texel12 + texel20 + texel21 + texel22;
         float scale = sum.w;

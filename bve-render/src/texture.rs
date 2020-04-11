@@ -11,9 +11,7 @@ pub struct Texture {
 
 impl Renderer {
     pub fn add_texture(&mut self, image: &RgbaImage) -> TextureHandle {
-        RenderDoc::<renderdoc::V140>::new()
-            .expect("Could not initialize renderdoc")
-            .start_frame_capture();
+        self.renderdoc_capture = true;
         let extent = Extent3d {
             width: image.width(),
             height: image.height(),
@@ -52,7 +50,6 @@ impl Renderer {
             },
             extent,
         );
-
         self.command_buffers.push(encoder.finish());
 
         let filtered_texture = self.device.create_texture(&texture_descriptor);

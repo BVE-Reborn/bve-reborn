@@ -61,7 +61,7 @@ use itertools::Itertools;
 use num_traits::{ToPrimitive, Zero};
 use once_cell::sync::Lazy;
 use renderdoc::RenderDoc;
-use std::io;
+use std::{io, ptr::null};
 use wgpu::*;
 use winit::{dpi::PhysicalSize, window::Window};
 use zerocopy::{AsBytes, FromBytes};
@@ -147,7 +147,7 @@ pub struct Renderer {
     mip_creator: compute::MipmapCompute,
 
     command_buffers: Vec<CommandBuffer>,
-    delayed_command_buffers: Vec<CommandBuffer>,
+    renderdoc_capture: bool,
 }
 
 impl Renderer {
@@ -290,6 +290,7 @@ impl Renderer {
             mip_creator,
 
             command_buffers: Vec::new(),
+            renderdoc_capture: false,
         };
 
         // Default texture is texture handle zero, immediately discard the handle, never to be seen again
@@ -346,6 +347,10 @@ impl Renderer {
     }
 
     pub async fn render(&mut self) {
+        let mut rd = RenderDoc::<renderdoc::V140>::new().expect("Could not initialize renderdoc");
+        if self.renderdoc_capture {
+            rd.start_frame_capture(null(), null());
+        }
         self.recompute_uniforms().await;
         self.compute_object_distances();
         self.sort_objects();
@@ -407,5 +412,9 @@ impl Renderer {
 
         self.queue.submit(&self.command_buffers);
         self.command_buffers.clear();
+        if self.renderdoc_capture {
+            rd.end_frame_capture(null(), null());
+            self.renderdoc_capture = false;
+        }
     }
 }
