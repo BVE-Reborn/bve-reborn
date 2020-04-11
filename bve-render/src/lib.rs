@@ -138,6 +138,7 @@ pub struct Renderer {
     vert_shader: ShaderModule,
     frag_shader: ShaderModule,
 
+    transparency_processor: compute::CutoutTransparencyCompute,
     mip_creator: compute::MipmapCompute,
 
     command_buffers: Vec<CommandBuffer>,
@@ -245,6 +246,7 @@ impl Renderer {
             samples,
         );
 
+        let transparency_processor = compute::CutoutTransparencyCompute::new(&device);
         let mip_creator = compute::MipmapCompute::new(&device);
 
         // Create the Renderer object early so we can can call methods on it.
@@ -278,6 +280,7 @@ impl Renderer {
             vert_shader: vs_module,
             frag_shader: fs_module,
 
+            transparency_processor,
             mip_creator,
 
             command_buffers: Vec::new(),

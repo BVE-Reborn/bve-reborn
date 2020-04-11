@@ -17,7 +17,7 @@ impl Renderer {
             depth: 1,
         };
         let mip_levels = render::mip_levels(Vector2::new(image.width(), image.height()));
-        let texture = self.device.create_texture(&TextureDescriptor {
+        let texture_descriptor = TextureDescriptor {
             size: extent,
             array_layer_count: 1,
             mip_level_count: mip_levels,
@@ -26,8 +26,8 @@ impl Renderer {
             format: TextureFormat::Rgba8Uint,
             usage: TextureUsage::SAMPLED | TextureUsage::COPY_DST | TextureUsage::STORAGE,
             label: None,
-        });
-        let texture_view = texture.create_default_view();
+        };
+        let base_texture = self.device.create_texture(&texture_descriptor);
         let tmp_buf = self
             .device
             .create_buffer_with_data(image.as_ref(), BufferUsage::COPY_SRC);
@@ -42,7 +42,7 @@ impl Renderer {
                 rows_per_image: 0,
             },
             TextureCopyView {
-                texture: &texture,
+                texture: &base_texture,
                 mip_level: 0,
                 array_layer: 0,
                 origin: Origin3d::ZERO,
@@ -52,10 +52,22 @@ impl Renderer {
 
         self.command_buffers.push(encoder.finish());
 
-        let mip_command =
-            self.mip_creator
-                .compute_mipmaps(&self.device, &texture, Vector2::new(image.width(), image.height()));
+        let filtered_texture = self.device.create_texture(&texture_descriptor);
+        let dimensions = Vector2::new(image.width(), image.height());
+        let transparent_command = self.transparency_processor.compute_transparency(
+            &self.device,
+            &base_texture,
+            &filtered_texture,
+            dimensions,
+        );
+        self.command_buffers.push(transparent_command);
+
+        let mip_command = self
+            .mip_creator
+            .compute_mipmaps(&self.device, &filtered_texture, dimensions);
         self.command_buffers.extend(mip_command);
+
+        let texture_view = filtered_texture.create_default_view();
 
         let handle = self.texture_handle_count;
         self.texture_handle_count += 1;
