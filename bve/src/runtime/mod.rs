@@ -15,8 +15,9 @@ use futures::{
 };
 use hecs::World;
 use image::{guess_format, Rgba, RgbaImage};
+use itertools::zip;
 use log::{debug, info, trace, warn};
-use smallvec::{smallvec, SmallVec};
+use smallvec::SmallVec;
 use std::{
     collections::{HashMap, HashSet},
     hash::{Hash, Hasher},
@@ -38,14 +39,15 @@ impl BoundingBox {
 }
 
 pub trait Client: Send + Sync + 'static {
-    type ObjectHandle: Send + Sync + 'static;
-    type TextureHandle: Send + Sync + 'static;
+    type ObjectHandle: Clone + Send + Sync + 'static;
+    type TextureHandle: Clone + Send + Sync + 'static;
 
     fn add_object_texture(
         &mut self,
         location: Vector3<f32>,
         verts: Vec<Vertex>,
         indices: &[usize],
+        transparent: bool,
         texture: &Self::TextureHandle,
     ) -> Self::ObjectHandle;
     fn add_texture(&mut self, image: &RgbaImage) -> Self::TextureHandle;
@@ -313,6 +315,8 @@ impl<C: Client> Runtime<C> {
         let (texture_atlas, transforms) = Self::create_packed_textures(images);
         info!("Texture packing finished on chunk ({}, {})", 0, 0);
 
+        let mut transparent_verts: Vec<Vec<Vertex>> = Vec::new();
+        let mut transparent_indices: Vec<Vec<usize>> = Vec::new();
         let mut atlas_verts: Vec<Vertex> = Vec::new();
         let mut atlas_indices: Vec<usize> = Vec::new();
 
@@ -322,17 +326,31 @@ impl<C: Client> Runtime<C> {
             mesh.vertices
                 .iter_mut()
                 .for_each(|v| v.coord_transform = transforms[texture_id]);
-            atlas_verts.extend(mesh.vertices.into_iter());
-            atlas_indices.extend(mesh.indices.into_iter().map(|i| i + vert_offset));
+            let transparent = is_mesh_transparent(&mesh.vertices);
+            if transparent {
+                transparent_verts.push(mesh.vertices);
+                transparent_indices.push(mesh.indices);
+            } else {
+                atlas_verts.extend(mesh.vertices.into_iter());
+                atlas_indices.extend(mesh.indices.into_iter().map(|i| i + vert_offset));
+            }
         }
 
         trace!("Creating texture and object in client");
         let mut client = self.client.lock().await;
         let texture = client.add_texture(&texture_atlas);
-        let object = client.add_object_texture(Vector3::from_value(0.0), atlas_verts, &atlas_indices, &texture);
+        let mut handles = SmallVec::<[ObjectTexture<C>; 4]>::with_capacity(transparent_verts.len());
+        handles.push(ObjectTexture::<C> {
+            object: client.add_object_texture(Vector3::from_value(0.0), atlas_verts, &atlas_indices, false, &texture),
+            texture: texture.clone(),
+        });
+        for (verts, indices) in zip(transparent_verts, transparent_indices) {
+            handles.push(ObjectTexture::<C> {
+                object: client.add_object_texture(Vector3::from_value(0.0), verts, &indices, true, &texture),
+                texture: texture.clone(),
+            });
+        }
         drop(client);
-
-        let handles = smallvec![ObjectTexture { object, texture }];
 
         trace!("Adding chunk to ecs");
         let mut ecs = self.ecs.write().await;

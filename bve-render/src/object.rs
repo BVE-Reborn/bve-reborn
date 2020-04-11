@@ -1,7 +1,6 @@
 use crate::*;
-use bve::runtime::is_mesh_transparent;
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ObjectHandle(pub(crate) u64);
 
 pub struct Object {
@@ -20,7 +19,6 @@ pub struct Object {
     pub camera_distance: f32,
 
     pub transparent: bool,
-    pub mesh_transparent: bool,
 }
 
 pub fn convert_mesh_verts_to_render_verts(
@@ -96,8 +94,9 @@ impl Renderer {
         location: Vector3<f32>,
         mesh_verts: Vec<MeshVertex>,
         indices: &[impl ToPrimitive],
+        transparent: bool,
     ) -> ObjectHandle {
-        self.add_object_texture(location, mesh_verts, indices, &texture::TextureHandle(0))
+        self.add_object_texture(location, mesh_verts, indices, transparent, &texture::TextureHandle(0))
     }
 
     pub fn add_object_texture(
@@ -105,13 +104,10 @@ impl Renderer {
         location: Vector3<f32>,
         mesh_verts: Vec<MeshVertex>,
         indices: &[impl ToPrimitive],
+        transparent: bool,
         texture::TextureHandle(tex_idx): &texture::TextureHandle,
     ) -> ObjectHandle {
-        let mesh_transparent = is_mesh_transparent(&mesh_verts);
-
         let tex: &texture::Texture = &self.textures[tex_idx];
-        let tex_transparent = tex.transparent;
-        let transparent = tex_transparent | mesh_transparent;
 
         let indices = indices
             .iter()
@@ -173,7 +169,6 @@ impl Renderer {
             mesh_center_offset,
             camera_distance: 0.0, // calculated later
             transparent,
-            mesh_transparent,
         });
         ObjectHandle(handle)
     }

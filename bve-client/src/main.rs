@@ -127,44 +127,6 @@ fn process_texture(texture: &mut RgbaImage) {
     }
 }
 
-fn load_and_add(renderer: &mut Renderer, path: impl AsRef<Path>) -> Vec<ObjectHandle> {
-    let mesh = block_on(load_mesh_from_file(path.as_ref()))
-        .unwrap_or_else(|| panic!("Could not load file {}", path.as_ref().display()));
-
-    assert!(mesh.errors.is_empty(), "{:#?}", mesh);
-
-    let texture_handles = mesh
-        .textures
-        .into_iter()
-        .map(|s| {
-            let path = path
-                .as_ref()
-                .parent()
-                .expect("Path unexpectedly had no parent. Did you pass in a file?");
-            let image = load_texture(path.join(s));
-            renderer.add_texture(&image)
-        })
-        .collect_vec();
-
-    mesh.meshes
-        .into_iter()
-        .map(|mesh| {
-            let default_handle = Renderer::get_default_texture();
-            let handle = if let Some(id) = mesh.texture.texture_id {
-                &texture_handles[id]
-            } else {
-                &default_handle
-            };
-            renderer.add_object_texture(
-                Vector3::new(0.0, 0.0, 0.0),
-                mesh.vertices.clone(),
-                &mesh.indices,
-                handle,
-            )
-        })
-        .collect()
-}
-
 struct Client {
     renderer: Renderer,
 }
@@ -186,9 +148,11 @@ impl runtime::Client for Client {
         location: Vector3<f32>,
         verts: Vec<Vertex>,
         indices: &[usize],
+        transparent: bool,
         texture: &Self::TextureHandle,
     ) -> Self::ObjectHandle {
-        self.renderer.add_object_texture(location, verts, indices, texture)
+        self.renderer
+            .add_object_texture(location, verts, indices, transparent, texture)
     }
 
     fn add_texture(&mut self, image: &RgbaImage) -> Self::TextureHandle {

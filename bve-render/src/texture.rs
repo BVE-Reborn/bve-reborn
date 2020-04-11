@@ -1,20 +1,16 @@
 use crate::*;
-use bve::runtime::is_texture_transparent;
 use image::RgbaImage;
 use wgpu::TextureView;
 
-#[derive(Debug, PartialEq, Eq, Hash)]
-pub struct TextureHandle(pub u64);
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TextureHandle(pub(crate) u64);
 
 pub struct Texture {
     pub texture_view: TextureView,
-    pub transparent: bool,
 }
 
 impl Renderer {
     pub fn add_texture(&mut self, image: &RgbaImage) -> TextureHandle {
-        let transparent = is_texture_transparent(image);
-
         let extent = Extent3d {
             width: image.width(),
             height: image.height(),
@@ -64,10 +60,7 @@ impl Renderer {
         let handle = self.texture_handle_count;
         self.texture_handle_count += 1;
 
-        self.textures.insert(handle, Texture {
-            texture_view,
-            transparent,
-        });
+        self.textures.insert(handle, Texture { texture_view });
         TextureHandle(handle)
     }
 
@@ -85,7 +78,6 @@ impl Renderer {
         let tex: &Texture = &self.textures[tex_idx];
 
         obj.texture = *tex_idx;
-        obj.transparent = obj.mesh_transparent | tex.transparent;
 
         obj.bind_group = self.device.create_bind_group(&BindGroupDescriptor {
             layout: &self.bind_group_layout,
