@@ -224,7 +224,6 @@ dependencies = [
  "serde_json",
  "serde_plain",
  "serde_test",
- "smallvec",
  "unic-langid",
  "unic-locale",
 ]
