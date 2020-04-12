@@ -23,7 +23,7 @@ impl Renderer {
         let mut texture_descriptor = TextureDescriptor {
             size: extent,
             array_layer_count: 1,
-            mip_level_count: mip_levels,
+            mip_level_count: 1,
             sample_count: 1,
             dimension: TextureDimension::D2,
             format: TextureFormat::Rgba8Uint,
@@ -54,6 +54,7 @@ impl Renderer {
         );
         self.command_buffers.push(encoder.finish());
 
+        texture_descriptor.mip_level_count = mip_levels;
         let filtered_texture = self.device.create_texture(&texture_descriptor);
         let dimensions = Vector2::new(image.width(), image.height());
         let transparent_command = self.transparency_processor.compute_transparency(

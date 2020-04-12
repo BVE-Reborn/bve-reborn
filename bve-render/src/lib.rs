@@ -59,7 +59,6 @@ use image::RgbaImage;
 use indexmap::map::IndexMap;
 use itertools::Itertools;
 use num_traits::{ToPrimitive, Zero};
-use once_cell::sync::Lazy;
 use std::{io, ptr::null};
 use wgpu::*;
 use winit::{dpi::PhysicalSize, window::Window};

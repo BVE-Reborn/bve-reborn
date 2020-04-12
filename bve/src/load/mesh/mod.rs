@@ -8,7 +8,7 @@ use crate::{
     ColorU8RGB, ColorU8RGBA,
 };
 use async_std::path::Path;
-use cgmath::{Array, Matrix3, SquareMatrix, Vector2, Vector3, Vector4};
+use cgmath::{Array, Vector2, Vector3, Vector4};
 pub use execution::*;
 use indexmap::IndexSet;
 use std::{ffi::OsStr, ops::Deref};

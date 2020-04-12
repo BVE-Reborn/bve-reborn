@@ -8,22 +8,20 @@ use async_std::{
     sync::{Arc, Mutex, RwLock},
     task::spawn,
 };
-use cgmath::{Array, Deg, Matrix3, SquareMatrix, Vector2, Vector3};
+use cgmath::{Array, Vector2, Vector3};
 use futures::{
     stream::{FuturesOrdered, FuturesUnordered},
     StreamExt,
 };
 use hecs::World;
 use image::{guess_format, Rgba, RgbaImage};
-use itertools::{zip, Itertools};
-use log::{debug, info, trace, warn};
-use smallvec::SmallVec;
+use itertools::Itertools;
+use log::{debug, trace, warn};
 use std::{
     collections::{HashMap, HashSet},
     hash::{Hash, Hasher},
     sync::atomic::{AtomicI32, AtomicU8, Ordering},
 };
-use texture_packer::{exporter::ImageExporter, TexturePacker, TexturePackerConfig};
 
 struct BoundingBox {
     min_x: i32,
