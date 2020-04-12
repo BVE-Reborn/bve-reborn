@@ -16,11 +16,12 @@ use futures::{
 };
 use hecs::World;
 use image::{guess_format, Rgba, RgbaImage};
+use indexmap::set::IndexSet;
 use itertools::Itertools;
 use log::{debug, trace, warn};
 use std::{
     hash::{Hash, Hasher},
-    sync::atomic::{AtomicI32, AtomicU8, Ordering},
+    sync::atomic::{AtomicI32, AtomicU64, AtomicU8, Ordering},
 };
 
 struct BoundingBox {
@@ -37,9 +38,9 @@ impl BoundingBox {
 }
 
 pub trait Client: Send + Sync + 'static {
-    type ObjectHandle: Clone + Send + Sync + 'static;
-    type MeshHandle: Clone + Send + Sync + 'static;
-    type TextureHandle: Clone + Send + Sync + 'static;
+    type ObjectHandle: Clone + Hash + Send + Sync + 'static;
+    type MeshHandle: Clone + Hash + Send + Sync + 'static;
+    type TextureHandle: Clone + Hash + Send + Sync + 'static;
 
     fn add_object(&mut self, location: Vector3<f32>, mesh: &Self::MeshHandle, transparent: bool) -> Self::ObjectHandle;
     fn add_object_texture(
@@ -72,7 +73,7 @@ struct ObjectTexture<C: Client> {
 }
 #[derive(Debug, Clone, PartialEq)]
 struct UnloadedObject {
-    path: PathBuf,
+    path: PathHandle,
     offset: ChunkOffset,
 }
 
@@ -128,9 +129,25 @@ pub fn is_texture_transparent(texture: &RgbaImage) -> bool {
     texture.pixels().any(|&Rgba([_, _, _, a])| a != 0 && a != 255)
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+struct PathHandle(usize);
+
+struct LoadedMesh<C: Client> {
+    handle: C::MeshHandle,
+    count: AtomicU64,
+}
+
+struct LoadedTexture<C: Client> {
+    handle: C::MeshHandle,
+    count: AtomicU64,
+}
+
 pub struct Runtime<C: Client> {
     client: Arc<Mutex<C>>,
+    path_cache: RwLock<IndexSet<PathBuf>>,
     chunks: DashMap<ChunkAddress, Arc<Chunk>>,
+    meshes: DashMap<PathHandle, LoadedMesh<C>>,
+    textures: DashMap<PathHandle, LoadedTexture<C>>,
     position: Mutex<Location>,
     view_distance: AtomicI32,
     ecs: RwLock<World>,
@@ -140,7 +157,10 @@ impl<C: Client> Runtime<C> {
     pub fn new(client: Arc<Mutex<C>>) -> Arc<Self> {
         Arc::new(Self {
             client,
+            path_cache: RwLock::new(IndexSet::new()),
             chunks: DashMap::new(),
+            meshes: DashMap::new(),
+            textures: DashMap::new(),
             position: Mutex::new(Location {
                 chunk: ChunkAddress::new(0, 0),
                 offset: ChunkOffset::new(0.0, 0.0, 0.0),
@@ -164,11 +184,24 @@ impl<C: Client> Runtime<C> {
         }
     }
 
+    async fn get_path(self: &Arc<Self>, path: PathHandle) -> PathBuf {
+        self.path_cache
+            .read()
+            .await
+            .get_index(path.0)
+            .expect("Invalid path handle")
+            .clone()
+    }
+
+    async fn register_path(self: &Arc<Self>, path: PathBuf) -> PathHandle {
+        PathHandle(self.path_cache.write().await.insert_full(path).0)
+    }
+
     pub async fn add_static_object(self: &Arc<Self>, location: Location, path: PathBuf) {
         let chunk = self.get_chunk(location.chunk).await;
 
         chunk.paths.insert(UnloadedObject {
-            path,
+            path: self.register_path(path).await,
             offset: location.offset,
         });
     }
@@ -191,12 +224,16 @@ impl<C: Client> Runtime<C> {
         }
     }
 
-    async fn load_single_chunk_mesh(chunk: UnloadedObject) -> Option<(LoadedStaticMesh, Vec<RgbaImage>)> {
-        trace!("Loading mesh {}", chunk.path.display());
-        let mesh_opt = load_mesh_from_file(&chunk.path).await;
+    async fn load_single_chunk_mesh(
+        self: Arc<Self>,
+        chunk: UnloadedObject,
+    ) -> Option<(LoadedStaticMesh, Vec<RgbaImage>)> {
+        let real_path = self.get_path(chunk.path).await;
+        trace!("Loading mesh {}", real_path.display());
+        let mesh_opt = load_mesh_from_file(&real_path).await;
         if let Some(mesh) = mesh_opt {
-            trace!("Loaded mesh {}", chunk.path.display());
-            let root_dir = chunk.path.parent().expect("File must have containing directory");
+            trace!("Loaded mesh {}", real_path.display());
+            let root_dir = real_path.parent().expect("File must have containing directory");
             let mut image_futures = FuturesOrdered::new();
             for texture in mesh.textures.iter() {
                 let future = Self::load_single_texture(root_dir.to_path_buf(), PathBuf::from(texture));
@@ -212,16 +249,16 @@ impl<C: Client> Runtime<C> {
             }
             Some((mesh, images))
         } else {
-            warn!("Could not find mesh {}", chunk.path.display());
+            warn!("Could not find mesh {}", real_path.display());
             None
         }
     }
 
-    async fn load_chunk_objects(chunk: Arc<Chunk>) -> Vec<(LoadedStaticMesh, Vec<RgbaImage>)> {
+    async fn load_chunk_objects(self: &Arc<Self>, chunk: Arc<Chunk>) -> Vec<(LoadedStaticMesh, Vec<RgbaImage>)> {
         let mut mesh_futures = FuturesUnordered::new();
         for mesh in chunk.paths.iter() {
             let mesh = mesh.clone();
-            mesh_futures.push(spawn(Self::load_single_chunk_mesh(mesh)));
+            mesh_futures.push(spawn(Arc::clone(self).load_single_chunk_mesh(mesh)));
         }
 
         let mut meshes = Vec::with_capacity(mesh_futures.len());
@@ -259,7 +296,7 @@ impl<C: Client> Runtime<C> {
     }
 
     async fn load_chunk(self: Arc<Self>, chunk: Arc<Chunk>) {
-        let objects = Self::load_chunk_objects(Arc::clone(&chunk)).await;
+        let objects = self.load_chunk_objects(Arc::clone(&chunk)).await;
         let (meshes, images) = Self::unify_objects(objects);
 
         trace!("Creating textures and objects in client");
