@@ -9,6 +9,7 @@ use async_std::{
     task::spawn,
 };
 use cgmath::{Array, Vector2, Vector3};
+use dashmap::{DashMap, DashSet};
 use futures::{
     stream::{FuturesOrdered, FuturesUnordered},
     StreamExt,
@@ -18,7 +19,6 @@ use image::{guess_format, Rgba, RgbaImage};
 use itertools::Itertools;
 use log::{debug, trace, warn};
 use std::{
-    collections::{HashMap, HashSet},
     hash::{Hash, Hasher},
     sync::atomic::{AtomicI32, AtomicU8, Ordering},
 };
@@ -105,7 +105,7 @@ impl From<u8> for ChunkState {
 }
 
 struct Chunk {
-    paths: RwLock<HashSet<UnloadedObject>>,
+    paths: DashSet<UnloadedObject>,
     state: AtomicU8,
 }
 
@@ -127,7 +127,7 @@ pub fn is_texture_transparent(texture: &RgbaImage) -> bool {
 
 pub struct Runtime<C: Client> {
     client: Arc<Mutex<C>>,
-    chunks: RwLock<HashMap<ChunkAddress, Arc<Chunk>>>,
+    chunks: DashMap<ChunkAddress, Arc<Chunk>>,
     position: Mutex<Location>,
     view_distance: AtomicI32,
     ecs: RwLock<World>,
@@ -137,7 +137,7 @@ impl<C: Client> Runtime<C> {
     pub fn new(client: Arc<Mutex<C>>) -> Arc<Self> {
         Arc::new(Self {
             client,
-            chunks: RwLock::new(HashMap::new()),
+            chunks: DashMap::new(),
             position: Mutex::new(Location {
                 chunk: ChunkAddress::new(0, 0),
                 offset: ChunkOffset::new(0.0, 0.0, 0.0),
@@ -148,17 +148,14 @@ impl<C: Client> Runtime<C> {
     }
 
     async fn get_chunk(self: &Arc<Self>, address: ChunkAddress) -> Arc<Chunk> {
-        let chunk_map = self.chunks.read().await;
-        match chunk_map.get(&address) {
-            Some(e) => Arc::clone(e),
+        match self.chunks.get(&address) {
+            Some(e) => Arc::clone(e.value()),
             None => {
-                drop(chunk_map);
-                let mut chunk_map_mut = self.chunks.write().await;
                 let arc = Arc::new(Chunk {
-                    paths: RwLock::new(HashSet::new()),
+                    paths: DashSet::new(),
                     state: AtomicU8::new(ChunkState::Unloaded as u8),
                 });
-                chunk_map_mut.insert(address, Arc::clone(&arc));
+                self.chunks.insert(address, Arc::clone(&arc));
                 arc
             }
         }
@@ -167,8 +164,7 @@ impl<C: Client> Runtime<C> {
     pub async fn add_static_object(self: &Arc<Self>, location: Location, path: PathBuf) {
         let chunk = self.get_chunk(location.chunk).await;
 
-        let mut paths = chunk.paths.write().await;
-        paths.insert(UnloadedObject {
+        chunk.paths.insert(UnloadedObject {
             path,
             offset: location.offset,
         });
@@ -219,9 +215,8 @@ impl<C: Client> Runtime<C> {
     }
 
     async fn load_chunk_objects(chunk: Arc<Chunk>) -> Vec<(LoadedStaticMesh, Vec<RgbaImage>)> {
-        let mesh_list = chunk.paths.read().await;
         let mut mesh_futures = FuturesUnordered::new();
-        for mesh in mesh_list.iter() {
+        for mesh in chunk.paths.iter() {
             let mesh = mesh.clone();
             mesh_futures.push(spawn(Self::load_single_chunk_mesh(mesh)));
         }
@@ -314,7 +309,8 @@ impl<C: Client> Runtime<C> {
             max_y: location.y + view_distance,
         };
 
-        for (&location, chunk) in self.chunks.read().await.iter() {
+        for chunk_ref in self.chunks.iter() {
+            let (&location, chunk) = chunk_ref.pair();
             let state = ChunkState::from(chunk.state.load(Ordering::Acquire));
             let inside = bounding_box.inside(location);
             if state == ChunkState::Finished && !inside {
