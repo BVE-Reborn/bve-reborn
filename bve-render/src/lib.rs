@@ -155,7 +155,7 @@ pub struct Renderer {
     mip_creator: compute::MipmapCompute,
 
     command_buffers: Vec<CommandBuffer>,
-    renderdoc_capture: bool,
+    _renderdoc_capture: bool,
 }
 
 impl Renderer {
@@ -201,9 +201,9 @@ impl Renderer {
             device.create_shader_module(&read_spirv(io::Cursor::new(&fs[..])).expect("Could not read shader spirv"));
 
         let sampler = device.create_sampler(&SamplerDescriptor {
-            address_mode_u: AddressMode::ClampToEdge,
-            address_mode_v: AddressMode::ClampToEdge,
-            address_mode_w: AddressMode::ClampToEdge,
+            address_mode_u: AddressMode::Repeat,
+            address_mode_v: AddressMode::Repeat,
+            address_mode_w: AddressMode::Repeat,
             mag_filter: FilterMode::Linear,
             min_filter: FilterMode::Linear,
             mipmap_filter: FilterMode::Linear,
@@ -298,7 +298,7 @@ impl Renderer {
             mip_creator,
 
             command_buffers: Vec::new(),
-            renderdoc_capture: false,
+            _renderdoc_capture: false,
         };
 
         // Default texture is texture handle zero, immediately discard the handle, never to be seen again
@@ -357,7 +357,7 @@ impl Renderer {
     pub async fn render(&mut self) {
         renderdoc! {
             let mut rd = renderdoc::RenderDoc::<renderdoc::V140>::new().expect("Could not initialize renderdoc");
-            if self.renderdoc_capture {
+            if self._renderdoc_capture {
                 rd.start_frame_capture(null(), null());
             }
         }
@@ -423,9 +423,9 @@ impl Renderer {
         self.queue.submit(&self.command_buffers);
         self.command_buffers.clear();
         renderdoc! {
-            if self.renderdoc_capture {
+            if self._renderdoc_capture {
                 rd.end_frame_capture(null(), null());
-                self.renderdoc_capture = false;
+                self._renderdoc_capture = false;
             }
         }
     }

@@ -9,9 +9,8 @@ use winit::dpi::PhysicalSize;
 pub struct Vertex {
     pub pos: [f32; 3],
     pub _normal: [f32; 3],
-    pub _color: [f32; 4],
+    pub _color: [u8; 4],
     pub _texcoord: [f32; 2],
-    pub _texcoord_transform: [[f32; 2]; 3],
 }
 
 #[repr(C)]
@@ -158,12 +157,14 @@ pub fn create_pipeline(
             stencil_read_mask: 0,
             stencil_write_mask: 0,
         }),
-        vertex_state: VertexStateDescriptor {index_format: IndexFormat::Uint32,
+        vertex_state: VertexStateDescriptor {
+            index_format: IndexFormat::Uint32,
             vertex_buffers: &[VertexBufferDescriptor {
                 stride: size_of::<Vertex>() as BufferAddress,
                 step_mode: InputStepMode::Vertex,
-                attributes: &vertex_attr_array![0 => Float3, 1 => Float3, 2 => Float4, 3 => Float2, 4 => Float2, 5 => Float2, 6 => Float2],
-            }]},
+                attributes: &vertex_attr_array![0 => Float3, 1 => Float3, 2 => Uchar4, 3 => Float2],
+            }],
+        },
         sample_count: samples as u32,
         sample_mask: !0,
         alpha_to_coverage_enabled: false,

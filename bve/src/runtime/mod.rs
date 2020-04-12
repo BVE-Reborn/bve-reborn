@@ -1,6 +1,6 @@
 use crate::{
     filesystem::resolve_path,
-    load::mesh::{load_mesh_from_file, LoadedStaticMesh, Mesh, Vertex},
+    load::mesh::{load_mesh_from_file, LoadedStaticMesh, Mesh, Texture, Vertex},
 };
 use async_std::{
     fs::read,
@@ -15,7 +15,7 @@ use futures::{
 };
 use hecs::World;
 use image::{guess_format, Rgba, RgbaImage};
-use itertools::zip;
+use itertools::{zip, Itertools};
 use log::{debug, info, trace, warn};
 use smallvec::SmallVec;
 use std::{
@@ -116,11 +116,11 @@ struct ChunkComponent {
 }
 
 struct Renderable<C: Client> {
-    handles: SmallVec<[ObjectTexture<C>; 4]>,
+    handles: Vec<ObjectTexture<C>>,
 }
 
 pub fn is_mesh_transparent(mesh: &[Vertex]) -> bool {
-    mesh.iter().any(|v| v.color.w != 0.0 && v.color.w != 1.0)
+    mesh.iter().any(|v| v.color.w != 0 && v.color.w != 255)
 }
 
 pub fn is_texture_transparent(texture: &RgbaImage) -> bool {
@@ -262,92 +262,35 @@ impl<C: Client> Runtime<C> {
         (final_meshes, final_textures)
     }
 
-    fn create_packed_textures(images: Vec<RgbaImage>) -> (RgbaImage, Vec<Matrix3<f32>>) {
-        let mut packer = TexturePacker::new_skyline(TexturePackerConfig {
-            max_width: 1 << 14,
-            max_height: 1 << 14,
-            texture_padding: 32,
-            border_padding: 32,
-            allow_rotation: true,
-            texture_outlines: false,
-            trim: false,
-        });
-
-        let image_count = images.len();
-
-        for (idx, image) in images.into_iter().enumerate() {
-            packer.pack_own(idx.to_string(), image).expect("Packing failure");
-        }
-
-        let texture_atlas = ImageExporter::export(&packer)
-            .expect("Unable to export texture atlas")
-            .into_rgba();
-
-        let max_width = (texture_atlas.width() - 1) as f32;
-        let max_height = (texture_atlas.height() - 1) as f32;
-
-        let mut transforms = vec![Matrix3::identity(); image_count];
-
-        for (string, frame) in packer.get_frames() {
-            let idx: usize = string.parse().expect("Unable to parse");
-            let inner = &frame.frame;
-            let translation =
-                Matrix3::from_translation(Vector2::new(inner.x as f32 / max_width, inner.y as f32 / max_height));
-            let scale =
-                Matrix3::from_nonuniform_scale((inner.w - 1) as f32 / max_width, (inner.h - 1) as f32 / max_height);
-            if frame.rotated {
-                let rot_trans = Matrix3::from_translation(Vector2::new(1.0, 0.0));
-                let rot_rot = Matrix3::from_angle_z(Deg(90.0));
-                transforms[idx] = translation * scale * rot_trans * rot_rot;
-            } else {
-                transforms[idx] = translation * scale;
-            }
-        }
-
-        (texture_atlas, transforms)
-    }
-
     async fn load_chunk(self: Arc<Self>, chunk: Arc<Chunk>) {
         let objects = Self::load_chunk_objects(Arc::clone(&chunk)).await;
         let (meshes, images) = Self::unify_objects(objects);
 
-        info!("Preforming texture packing on chunk ({}, {})", 0, 0);
-        let (texture_atlas, transforms) = Self::create_packed_textures(images);
-        info!("Texture packing finished on chunk ({}, {})", 0, 0);
-
-        let mut transparent_verts: Vec<Vec<Vertex>> = Vec::new();
-        let mut transparent_indices: Vec<Vec<usize>> = Vec::new();
-        let mut atlas_verts: Vec<Vertex> = Vec::new();
-        let mut atlas_indices: Vec<usize> = Vec::new();
-
-        for mut mesh in meshes {
-            let vert_offset = atlas_verts.len();
-            let texture_id = mesh.texture.texture_id.unwrap_or_else(|| unreachable!());
-            mesh.vertices
-                .iter_mut()
-                .for_each(|v| v.coord_transform = transforms[texture_id]);
-            let transparent = is_mesh_transparent(&mesh.vertices);
-            if transparent {
-                transparent_verts.push(mesh.vertices);
-                transparent_indices.push(mesh.indices);
-            } else {
-                atlas_verts.extend(mesh.vertices.into_iter());
-                atlas_indices.extend(mesh.indices.into_iter().map(|i| i + vert_offset));
-            }
-        }
-
-        trace!("Creating texture and object in client");
+        trace!("Creating textures and objects in client");
         let mut client = self.client.lock().await;
-        let texture = client.add_texture(&texture_atlas);
-        let mut handles = SmallVec::<[ObjectTexture<C>; 4]>::with_capacity(transparent_verts.len());
-        handles.push(ObjectTexture::<C> {
-            object: client.add_object_texture(Vector3::from_value(0.0), atlas_verts, &atlas_indices, false, &texture),
-            texture: texture.clone(),
-        });
-        for (verts, indices) in zip(transparent_verts, transparent_indices) {
+        let texture_handles = images
+            .into_iter()
+            .map(|i| (is_texture_transparent(&i), client.add_texture(&i)))
+            .collect_vec();
+        let mut handles = Vec::new();
+        for Mesh {
+            vertices,
+            indices,
+            texture: Texture { texture_id, .. },
+            ..
+        } in meshes
+        {
+            let (tex_transparent, tex_handle) = texture_handles[texture_id.unwrap_or_else(|| unreachable!())].clone();
+            let mesh_transparent = is_mesh_transparent(&vertices);
             handles.push(ObjectTexture::<C> {
-                object: client.add_object_texture(Vector3::from_value(0.0), verts, &indices, true, &texture),
-                texture: texture.clone(),
+                object: client.add_object_texture(
+                    Vector3::from_value(0.0),
+                    vertices,
+                    &indices,
+                    tex_transparent | mesh_transparent,
+                    &tex_handle,
+                ),
+                texture: tex_handle,
             });
         }
         drop(client);

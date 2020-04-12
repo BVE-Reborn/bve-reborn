@@ -12,7 +12,7 @@ pub struct Texture {
 impl Renderer {
     pub fn add_texture(&mut self, image: &RgbaImage) -> TextureHandle {
         renderdoc! {
-            self.renderdoc_capture = true;
+            self._renderdoc_capture = true;
         };
         let extent = Extent3d {
             width: image.width(),

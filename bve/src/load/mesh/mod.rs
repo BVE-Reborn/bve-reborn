@@ -156,9 +156,8 @@ pub fn default_mesh() -> Mesh {
 pub struct Vertex {
     pub position: Vector3<f32>,
     pub normal: Vector3<f32>,
-    pub color: Vector4<f32>,
+    pub color: Vector4<u8>,
     pub coord: Vector2<f32>,
-    pub coord_transform: Matrix3<f32>,
     pub double_sided: bool,
 }
 
@@ -181,8 +180,7 @@ impl Vertex {
             position,
             normal,
             coord,
-            coord_transform: Matrix3::identity(),
-            color: Vector4::from_value(1.0),
+            color: Vector4::from_value(255),
             double_sided: false,
         }
     }
@@ -193,8 +191,7 @@ impl Vertex {
             position,
             normal,
             coord: Vector2::from_value(0.0),
-            coord_transform: Matrix3::identity(),
-            color: Vector4::from_value(1.0),
+            color: Vector4::from_value(255),
             double_sided: false,
         }
     }
@@ -205,8 +202,7 @@ impl Vertex {
             position,
             normal: Vector3::from_value(0.0),
             coord: Vector2::from_value(0.0),
-            coord_transform: Matrix3::identity(),
-            color: Vector4::from_value(1.0),
+            color: Vector4::from_value(255),
             double_sided: false,
         }
     }
