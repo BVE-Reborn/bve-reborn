@@ -18,5 +18,5 @@ void main() {
     if (!bool(uniforms.transparent) && color.a <= 0.5) {
         discard;
     }
-    outColor = color;
+    outColor = vec4(pow(color.rgb, vec3(1 / 2.2)), color.a);
 }

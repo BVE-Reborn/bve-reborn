@@ -182,14 +182,7 @@ impl Renderer {
             })
             .await;
 
-        let swapchain_descriptor = SwapChainDescriptor {
-            usage: TextureUsage::OUTPUT_ATTACHMENT,
-            format: TextureFormat::Bgra8UnormSrgb,
-            width: screen_size.width,
-            height: screen_size.height,
-            present_mode: PresentMode::Mailbox,
-        };
-        let swapchain = device.create_swap_chain(&surface, &swapchain_descriptor);
+        let swapchain = render::create_swapchain(&device, &surface, screen_size);
 
         let vs = include_shader!(vert "forward");
         let vs_module =
@@ -317,13 +310,7 @@ impl Renderer {
         self.depth_buffer = render::create_depth_buffer(&self.device, screen_size, self.samples);
         self.screen_size = screen_size;
 
-        self.swapchain = self.device.create_swap_chain(&self.surface, &SwapChainDescriptor {
-            usage: TextureUsage::OUTPUT_ATTACHMENT,
-            format: TextureFormat::Bgra8UnormSrgb,
-            width: screen_size.width,
-            height: screen_size.height,
-            present_mode: PresentMode::Mailbox,
-        });
+        self.swapchain = render::create_swapchain(&self.device, &self.surface, screen_size);
     }
 
     #[must_use]
@@ -386,9 +373,9 @@ impl Renderer {
                     load_op: LoadOp::Clear,
                     store_op: StoreOp::Store,
                     clear_color: Color {
-                        r: 0.3,
-                        g: 0.3,
-                        b: 0.3,
+                        r: 0.3_f64.powf(1.0 / 2.2),
+                        g: 0.3_f64.powf(1.0 / 2.2),
+                        b: 0.3_f64.powf(1.0 / 2.2),
                         a: 1.0,
                     },
                 }],

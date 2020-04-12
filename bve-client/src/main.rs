@@ -53,15 +53,15 @@
 
 use crate::platform::*;
 use async_std::{
-    path::{Path, PathBuf},
+    path::PathBuf,
     sync::{Arc, Mutex},
     task::block_on,
 };
 use bve::{load::mesh::Vertex, runtime};
 use bve_render::{MSAASetting, ObjectHandle, Renderer, TextureHandle};
-use cgmath::{ElementWise, InnerSpace, Vector3, Vector4};
+use cgmath::{ElementWise, InnerSpace, Vector3};
 use circular_queue::CircularQueue;
-use image::{Rgba, RgbaImage};
+use image::RgbaImage;
 use itertools::Itertools;
 use num_traits::Zero;
 use std::time::{Duration, Instant};

@@ -143,7 +143,7 @@ pub fn create_pipeline(
         }),
         primitive_topology: PrimitiveTopology::TriangleList,
         color_states: &[ColorStateDescriptor {
-            format: TextureFormat::Bgra8UnormSrgb,
+            format: TextureFormat::Bgra8Unorm,
             color_blend: blend.clone(),
             alpha_blend: blend,
             write_mask: ColorWrite::ALL,
@@ -202,11 +202,21 @@ pub fn create_framebuffer(device: &Device, size: PhysicalSize<u32>, samples: MSA
         mip_level_count: 1,
         sample_count: samples as u32,
         dimension: TextureDimension::D2,
-        format: TextureFormat::Bgra8UnormSrgb,
+        format: TextureFormat::Bgra8Unorm,
         usage: TextureUsage::OUTPUT_ATTACHMENT,
         label: Some("framebuffer"),
     });
     tex.create_default_view()
+}
+
+pub fn create_swapchain(device: &Device, surface: &Surface, screen_size: PhysicalSize<u32>) -> SwapChain {
+    device.create_swap_chain(surface, &SwapChainDescriptor {
+        usage: TextureUsage::OUTPUT_ATTACHMENT,
+        format: TextureFormat::Bgra8Unorm,
+        width: screen_size.width,
+        height: screen_size.height,
+        present_mode: PresentMode::Mailbox,
+    })
 }
 
 impl Renderer {
