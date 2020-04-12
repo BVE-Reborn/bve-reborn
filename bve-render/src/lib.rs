@@ -52,14 +52,14 @@
 #![allow(clippy::wildcard_enum_match_arm)]
 #![allow(clippy::wildcard_imports)]
 
-pub use crate::{object::ObjectHandle, render::MSAASetting, texture::TextureHandle};
+pub use crate::{mesh::MeshHandle, object::ObjectHandle, render::MSAASetting, texture::TextureHandle};
 use bve::load::mesh::Vertex as MeshVertex;
 use cgmath::{Matrix4, Vector2, Vector3};
 use image::RgbaImage;
 use indexmap::map::IndexMap;
 use itertools::Itertools;
 use num_traits::{ToPrimitive, Zero};
-use std::{io, ptr::null};
+use std::io;
 use wgpu::*;
 use winit::{dpi::PhysicalSize, window::Window};
 use zerocopy::{AsBytes, FromBytes};
@@ -113,6 +113,7 @@ macro_rules! include_shader {
 
 mod camera;
 mod compute;
+mod mesh;
 mod object;
 mod render;
 mod texture;
@@ -127,6 +128,9 @@ pub const OPENGL_TO_WGPU_MATRIX: Matrix4<f32> = Matrix4::new(
 pub struct Renderer {
     objects: IndexMap<u64, object::Object>,
     object_handle_count: u64,
+
+    mesh: IndexMap<u64, mesh::Mesh>,
+    mesh_handle_count: u64,
 
     textures: IndexMap<u64, texture::Texture>,
     texture_handle_count: u64,
@@ -260,6 +264,9 @@ impl Renderer {
             objects: IndexMap::new(),
             object_handle_count: 0,
 
+            mesh: IndexMap::new(),
+            mesh_handle_count: 0,
+
             textures: IndexMap::new(),
             texture_handle_count: 0,
 
@@ -344,7 +351,7 @@ impl Renderer {
         renderdoc! {
             let mut rd = renderdoc::RenderDoc::<renderdoc::V140>::new().expect("Could not initialize renderdoc");
             if self._renderdoc_capture {
-                rd.start_frame_capture(null(), null());
+                rd.start_frame_capture(std::ptr::null(), std::ptr::null());
             }
         }
         self.recompute_uniforms().await;
@@ -396,11 +403,12 @@ impl Renderer {
                     rpass.set_pipeline(&self.alpha_pipeline);
                     opaque_ended = true;
                 }
+                let mesh = &self.mesh[&object.mesh];
 
                 rpass.set_bind_group(0, &object.bind_group, &[]);
-                rpass.set_vertex_buffer(0, &object.vertex_buffer, 0, 0);
-                rpass.set_index_buffer(&object.index_buffer, 0, 0);
-                rpass.draw_indexed(0..(object.index_count as u32), 0, 0..1);
+                rpass.set_vertex_buffer(0, &mesh.vertex_buffer, 0, 0);
+                rpass.set_index_buffer(&mesh.index_buffer, 0, 0);
+                rpass.draw_indexed(0..(mesh.index_count as u32), 0, 0..1);
             }
         }
 
@@ -410,7 +418,7 @@ impl Renderer {
         self.command_buffers.clear();
         renderdoc! {
             if self._renderdoc_capture {
-                rd.end_frame_capture(null(), null());
+                rd.end_frame_capture(std::ptr::null(), std::ptr::null());
                 self._renderdoc_capture = false;
             }
         }

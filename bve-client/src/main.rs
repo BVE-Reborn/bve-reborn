@@ -58,7 +58,7 @@ use async_std::{
     task::block_on,
 };
 use bve::{load::mesh::Vertex, runtime};
-use bve_render::{MSAASetting, ObjectHandle, Renderer, TextureHandle};
+use bve_render::{MSAASetting, MeshHandle, ObjectHandle, Renderer, TextureHandle};
 use cgmath::{ElementWise, InnerSpace, Vector3};
 use circular_queue::CircularQueue;
 use image::RgbaImage;
@@ -86,19 +86,26 @@ impl Client {
 }
 
 impl runtime::Client for Client {
+    type MeshHandle = MeshHandle;
     type ObjectHandle = ObjectHandle;
     type TextureHandle = TextureHandle;
+
+    fn add_object(&mut self, location: Vector3<f32>, mesh: &Self::MeshHandle, transparent: bool) -> Self::ObjectHandle {
+        self.renderer.add_object(location, mesh, transparent)
+    }
 
     fn add_object_texture(
         &mut self,
         location: Vector3<f32>,
-        verts: Vec<Vertex>,
-        indices: &[usize],
-        transparent: bool,
+        mesh: &Self::MeshHandle,
         texture: &Self::TextureHandle,
+        transparent: bool,
     ) -> Self::ObjectHandle {
-        self.renderer
-            .add_object_texture(location, verts, indices, transparent, texture)
+        self.renderer.add_object_texture(location, mesh, texture, transparent)
+    }
+
+    fn add_mesh(&mut self, mesh_verts: Vec<Vertex>, indices: &[usize]) -> Self::MeshHandle {
+        self.renderer.add_mesh(mesh_verts, indices)
     }
 
     fn add_texture(&mut self, image: &RgbaImage) -> Self::TextureHandle {

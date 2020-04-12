@@ -38,16 +38,18 @@ impl BoundingBox {
 
 pub trait Client: Send + Sync + 'static {
     type ObjectHandle: Clone + Send + Sync + 'static;
+    type MeshHandle: Clone + Send + Sync + 'static;
     type TextureHandle: Clone + Send + Sync + 'static;
 
+    fn add_object(&mut self, location: Vector3<f32>, mesh: &Self::MeshHandle, transparent: bool) -> Self::ObjectHandle;
     fn add_object_texture(
         &mut self,
         location: Vector3<f32>,
-        verts: Vec<Vertex>,
-        indices: &[usize],
-        transparent: bool,
+        mesh: &Self::MeshHandle,
         texture: &Self::TextureHandle,
+        transparent: bool,
     ) -> Self::ObjectHandle;
+    fn add_mesh(&mut self, mesh_verts: Vec<Vertex>, indices: &[usize]) -> Self::MeshHandle;
     fn add_texture(&mut self, image: &RgbaImage) -> Self::TextureHandle;
 }
 
@@ -65,6 +67,7 @@ pub struct Location {
 
 struct ObjectTexture<C: Client> {
     object: C::ObjectHandle,
+    mesh: C::MeshHandle,
     texture: C::TextureHandle,
 }
 #[derive(Debug, Clone, PartialEq)]
@@ -275,14 +278,15 @@ impl<C: Client> Runtime<C> {
         {
             let (tex_transparent, tex_handle) = texture_handles[texture_id.unwrap_or_else(|| unreachable!())].clone();
             let mesh_transparent = is_mesh_transparent(&vertices);
+            let mesh_handle = client.add_mesh(vertices, &indices);
             handles.push(ObjectTexture::<C> {
                 object: client.add_object_texture(
                     Vector3::from_value(0.0),
-                    vertices,
-                    &indices,
-                    tex_transparent | mesh_transparent,
+                    &mesh_handle,
                     &tex_handle,
+                    tex_transparent | mesh_transparent,
                 ),
+                mesh: mesh_handle,
                 texture: tex_handle,
             });
         }

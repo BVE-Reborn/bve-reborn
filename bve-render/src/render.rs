@@ -248,7 +248,8 @@ impl Renderer {
 
     pub fn compute_object_distances(&mut self) {
         for obj in self.objects.values_mut() {
-            let mesh_center: Vector3<f32> = obj.location + obj.mesh_center_offset;
+            let mesh = &self.mesh[&obj.mesh];
+            let mesh_center: Vector3<f32> = obj.location + mesh.mesh_center_offset;
             let camera_mesh_vector: Vector3<f32> = self.camera.location - mesh_center;
             let distance = camera_mesh_vector.magnitude2();
             obj.camera_distance = distance;
