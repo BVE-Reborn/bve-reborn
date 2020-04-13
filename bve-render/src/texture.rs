@@ -5,6 +5,12 @@ use wgpu::TextureView;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TextureHandle(pub(crate) u64);
 
+impl Default for TextureHandle {
+    fn default() -> Self {
+        Self(0)
+    }
+}
+
 pub struct Texture {
     pub texture_view: TextureView,
 }
