@@ -90,8 +90,8 @@ impl runtime::Client for Client {
     type ObjectHandle = ObjectHandle;
     type TextureHandle = TextureHandle;
 
-    fn add_object(&mut self, location: Vector3<f32>, mesh: &Self::MeshHandle, transparent: bool) -> Self::ObjectHandle {
-        self.renderer.add_object(location, mesh, transparent)
+    fn add_object(&mut self, location: Vector3<f32>, mesh: &Self::MeshHandle) -> Self::ObjectHandle {
+        self.renderer.add_object(location, mesh)
     }
 
     fn add_object_texture(
@@ -99,9 +99,8 @@ impl runtime::Client for Client {
         location: Vector3<f32>,
         mesh: &Self::MeshHandle,
         texture: &Self::TextureHandle,
-        transparent: bool,
     ) -> Self::ObjectHandle {
-        self.renderer.add_object_texture(location, mesh, texture, transparent)
+        self.renderer.add_object_texture(location, mesh, texture)
     }
 
     fn add_mesh(&mut self, mesh_verts: Vec<Vertex>, indices: &[usize]) -> Self::MeshHandle {

@@ -1,5 +1,5 @@
 use crate::*;
-use image::RgbaImage;
+use image::{Rgba, RgbaImage};
 use wgpu::TextureView;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -13,6 +13,11 @@ impl Default for TextureHandle {
 
 pub struct Texture {
     pub texture_view: TextureView,
+    pub transparent: bool,
+}
+
+pub fn is_texture_transparent(texture: &RgbaImage) -> bool {
+    texture.pixels().any(|&Rgba([_, _, _, a])| a != 0 && a != 255)
 }
 
 impl Renderer {
@@ -20,6 +25,7 @@ impl Renderer {
         renderdoc! {
             self._renderdoc_capture = true;
         };
+        let transparent = is_texture_transparent(&image);
         let extent = Extent3d {
             width: image.width(),
             height: image.height(),
@@ -81,45 +87,15 @@ impl Renderer {
         let handle = self.texture_handle_count;
         self.texture_handle_count += 1;
 
-        self.textures.insert(handle, Texture { texture_view });
+        self.textures.insert(handle, Texture {
+            texture_view,
+            transparent,
+        });
         TextureHandle(handle)
     }
 
     #[must_use]
     pub const fn get_default_texture() -> TextureHandle {
         TextureHandle(0)
-    }
-
-    pub fn set_texture(
-        &mut self,
-        object::ObjectHandle(obj_idx): &object::ObjectHandle,
-        TextureHandle(tex_idx): &TextureHandle,
-    ) {
-        let obj: &mut object::Object = &mut self.objects[obj_idx];
-        let tex: &Texture = &self.textures[tex_idx];
-
-        obj.texture = *tex_idx;
-
-        obj.bind_group = self.device.create_bind_group(&BindGroupDescriptor {
-            layout: &self.bind_group_layout,
-            bindings: &[
-                Binding {
-                    binding: 0,
-                    resource: BindingResource::Buffer {
-                        buffer: &obj.uniform_buffer,
-                        range: 0..64,
-                    },
-                },
-                Binding {
-                    binding: 1,
-                    resource: BindingResource::TextureView(&tex.texture_view),
-                },
-                Binding {
-                    binding: 2,
-                    resource: BindingResource::Sampler(&self.sampler),
-                },
-            ],
-            label: None,
-        });
     }
 }

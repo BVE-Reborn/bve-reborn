@@ -1,14 +1,11 @@
+use crate::runtime::{
+    cache::{MeshCache, PathSet, TextureCache},
+    chunk::{Chunk, ChunkSet, ChunkState, UnloadedObject, CHUNK_SIZE},
+};
 pub use crate::runtime::{
     chunk::{ChunkAddress, ChunkOffset},
     client::Client,
     location::Location,
-};
-use crate::{
-    load::mesh::Vertex,
-    runtime::{
-        cache::{MeshCache, PathSet, TextureCache},
-        chunk::{Chunk, ChunkSet, ChunkState, UnloadedObject, CHUNK_SIZE},
-    },
 };
 use async_std::{
     path::PathBuf,
@@ -21,7 +18,6 @@ use futures::{
     StreamExt,
 };
 use hecs::World;
-use image::{Rgba, RgbaImage};
 use log::{debug, trace};
 use std::sync::atomic::{AtomicI32, Ordering};
 
@@ -62,14 +58,6 @@ impl BoundingBox {
     fn inside(&self, point: ChunkAddress) -> bool {
         self.min_x <= point.x && point.x <= self.max_x && self.min_y <= point.y && point.y <= self.max_y
     }
-}
-
-pub fn is_mesh_transparent(mesh: &[Vertex]) -> bool {
-    mesh.iter().any(|v| v.color.w != 0 && v.color.w != 255)
-}
-
-pub fn is_texture_transparent(texture: &RgbaImage) -> bool {
-    texture.pixels().any(|&Rgba([_, _, _, a])| a != 0 && a != 255)
 }
 
 pub struct Runtime<C: Client> {
@@ -157,8 +145,7 @@ impl<C: Client> Runtime<C> {
         while let Some(mesh_handle_pairs) = mesh_futures.next().await {
             let mut client = self.client.lock().await;
             for (mesh_handle, texture_handle) in mesh_handle_pairs {
-                let object_handle =
-                    client.add_object_texture(Vector3::from_value(0.0), &mesh_handle, &texture_handle, false);
+                let object_handle = client.add_object_texture(Vector3::from_value(0.0), &mesh_handle, &texture_handle);
                 object_textures.push(ObjectTexture {
                     mesh: mesh_handle,
                     texture: texture_handle,

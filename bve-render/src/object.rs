@@ -24,13 +24,8 @@ pub fn generate_matrix(mx_view: &Matrix4<f32>, location: Vector3<f32>, aspect_ra
 }
 
 impl Renderer {
-    pub fn add_object(
-        &mut self,
-        location: Vector3<f32>,
-        mesh_handle: &mesh::MeshHandle,
-        transparent: bool,
-    ) -> ObjectHandle {
-        self.add_object_texture(location, mesh_handle, &texture::TextureHandle(0), transparent)
+    pub fn add_object(&mut self, location: Vector3<f32>, mesh_handle: &mesh::MeshHandle) -> ObjectHandle {
+        self.add_object_texture(location, mesh_handle, &texture::TextureHandle::default())
     }
 
     pub fn add_object_texture(
@@ -38,9 +33,10 @@ impl Renderer {
         location: Vector3<f32>,
         mesh::MeshHandle(mesh_idx): &mesh::MeshHandle,
         texture::TextureHandle(tex_idx): &texture::TextureHandle,
-        transparent: bool,
     ) -> ObjectHandle {
+        let mesh: &mesh::Mesh = &self.mesh[mesh_idx];
         let tex: &texture::Texture = &self.textures[tex_idx];
+        let transparent = mesh.transparent || tex.transparent;
 
         let matrix = generate_matrix(&self.camera.compute_matrix(), location, 800.0 / 600.0);
         let matrix_ref: &[f32; 16] = matrix.as_ref();

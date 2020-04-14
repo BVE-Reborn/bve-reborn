@@ -10,6 +10,11 @@ pub struct Mesh {
     pub index_count: u32,
 
     pub mesh_center_offset: Vector3<f32>,
+    pub transparent: bool,
+}
+
+pub fn is_mesh_transparent(mesh: &[MeshVertex]) -> bool {
+    mesh.iter().any(|v| v.color.w != 0 && v.color.w != 255)
 }
 
 pub fn convert_mesh_verts_to_render_verts(
@@ -68,6 +73,7 @@ pub fn find_mesh_center(mesh: &[render::Vertex]) -> Vector3<f32> {
 
 impl Renderer {
     pub fn add_mesh(&mut self, mesh_verts: Vec<MeshVertex>, indices: &[impl ToPrimitive]) -> MeshHandle {
+        let transparent = is_mesh_transparent(&mesh_verts);
         let indices = indices
             .iter()
             .map(|i| i.to_u32().expect("Index too large (>2^32)"))
@@ -90,7 +96,9 @@ impl Renderer {
             index_buffer,
             index_count: indices.len() as u32,
             mesh_center_offset,
+            transparent,
         });
+
         MeshHandle(handle)
     }
 }
