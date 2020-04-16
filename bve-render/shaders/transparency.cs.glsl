@@ -1,7 +1,12 @@
 #version 450
 
+layout (local_size_x = 8, local_size_y = 8) in;
+
 layout (set = 0, binding = 0, rgba8ui) uniform uimage2D inTexture;
 layout (set = 0, binding = 1, rgba8ui) uniform uimage2D outTexture;
+layout (set = 0, binding = 2) uniform Locals {
+    uvec2 texture_dimensions;
+};
 
 vec4 load_gamma(ivec2 position) {
     vec4 srgb = vec4(imageLoad(inTexture, position)) / 255;
@@ -46,6 +51,9 @@ vec4 conditional_load(ivec2 location) {
 
 void main() {
     ivec2 location = ivec2(gl_GlobalInvocationID.xy);
+    if (!(location.x < texture_dimensions.x && location.y < texture_dimensions.y)) {
+        return;
+    }
     vec4 texel11 = load_strip_blue(location);
     if (texel11.w == 0.0) {
         vec4 texel00 = conditional_load(location + ivec2(-1, -1));
