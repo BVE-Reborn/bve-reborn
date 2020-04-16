@@ -9,9 +9,11 @@ cgmath = { git = "https://github.com/rustgd/cgmath.git", rev = "50a345b7c439c492
 [profile.dev]
 opt-level = 0
 
-[profile.opt-dev]
-inherits = "dev"
-opt-level = 1
+[profile.dev.package.pico-args]
+opt-level = 0
+
+[profile.dev.package."*"]
+opt-level = 3
 
 [profile.release]
 overflow-checks = true
