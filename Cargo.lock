@@ -307,6 +307,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "bve-obj-conv"
+version = "0.1.0"
+dependencies = [
+ "itertools",
+ "obj",
+]
+
+[[package]]
 name = "bve-render"
 version = "0.0.1"
 dependencies = [

@@ -1,0 +1,18 @@
+[package]
+name = "bve-obj-conv"
+version = "0.1.0"
+description = "Converter from .obj to .csv and back"
+license = "MPL-2.0"
+authors = ["Connor Fitzgerald <connorwadefitzgerald@gmail.com>"]
+edition = "2018"
+
+repository = "https://gitlab.bvereborn.com/bve-reborn/bve-reborn"
+readme = "README.md"
+categories = ["parsing", "rendering::data-formats"]
+keywords = ["bve", "parsing", "conversion"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+itertools = "0.9.0"
+obj = "0.9.1"
