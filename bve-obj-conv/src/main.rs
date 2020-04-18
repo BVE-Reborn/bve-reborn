@@ -199,7 +199,7 @@ fn input_main() -> Option<()> {
 
     let mut csv_file = get_input(
         format!(
-            "Output .csv file: [defaults to \"{}\"]\n > ",
+            "Enter name of output .csv file: [empty defaults to \"{}\"]\n > ",
             csv_file_suggestion.display()
         ),
         |file| File::create(file.unwrap_or(csv_file_suggestion.clone())).map_err(|err| err.to_string()),
