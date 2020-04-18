@@ -162,17 +162,21 @@ fn input_main() -> Option<()> {
         },
     );
 
+    print("Parsing .obj... ");
+
     let length = contents.len();
     let mut cursor = Cursor::new(contents);
     let parsed_object_result = Obj::<SimplePolygon>::load_buf(&mut cursor)
-        .map_err(|err| err.to_string())
+        .map_err(|err| format!("{:?}", err))
         .and_then(|mut obj| {
             obj.path = file.parent().unwrap().to_path_buf();
             obj.load_mtls().map_err(|vec| {
-                String::from("Could not load mtl files:\n");
-                vec.into_iter()
-                    .map(|(file, error)| format!("\t{}, {}", file, error))
-                    .join("\n")
+                format!(
+                    "Could not load mtl files:\n{}",
+                    vec.into_iter()
+                        .map(|(file, error)| format!("\t{}, {:?}", file, error))
+                        .join("\n")
+                )
             })?;
             Ok(obj)
         });
@@ -180,10 +184,12 @@ fn input_main() -> Option<()> {
     let parsed_object = match parsed_object_result {
         Ok(obj) => obj,
         Err(err) => {
-            eprintln!("Error reading obj file: {}", err);
+            eprintln!("\nError reading obj file: {}\n", err);
             return None;
         }
     };
+
+    print("done\n\n");
 
     let csv_file_suggestion = file.with_extension("csv");
 
@@ -200,6 +206,8 @@ fn input_main() -> Option<()> {
     csv_file
         .write_all(output.as_bytes())
         .expect("Can't write to output file");
+
+    drop(csv_file);
 
     get_input("\nFinished Conversion! Press enter to close\n", |_| Ok(()));
 

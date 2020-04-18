@@ -308,7 +308,7 @@ dependencies = [
 
 [[package]]
 name = "bve-obj-conv"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "async-std",
  "bve",
@@ -1681,8 +1681,7 @@ checksum = "17b02fc0ff9a9e4b35b3342880f48e896ebf69f2967921fe8646bf5b7125956a"
 [[package]]
 name = "obj"
 version = "0.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c03f145738a183bf53d24b6d943c861fb045fe2c231c60832419fa0eb2c8e183"
+source = "git+https://github.com/BVE-Reborn/obj.git?rev=3ca09c08d634a7500e11c3de4511960f96a16395#3ca09c08d634a7500e11c3de4511960f96a16395"
 
 [[package]]
 name = "objc"
