@@ -1681,7 +1681,7 @@ checksum = "17b02fc0ff9a9e4b35b3342880f48e896ebf69f2967921fe8646bf5b7125956a"
 [[package]]
 name = "obj"
 version = "0.9.1"
-source = "git+https://github.com/BVE-Reborn/obj.git?rev=3ca09c08d634a7500e11c3de4511960f96a16395#3ca09c08d634a7500e11c3de4511960f96a16395"
+source = "git+https://github.com/BVE-Reborn/obj.git?rev=045375434b212ce0a3076afaeabe601cdf6c310f#045375434b212ce0a3076afaeabe601cdf6c310f"
 
 [[package]]
 name = "objc"

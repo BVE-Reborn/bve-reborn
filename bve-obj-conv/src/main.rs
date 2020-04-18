@@ -170,7 +170,11 @@ fn input_main() -> Option<()> {
         .map_err(|err| format!("{:?}", err))
         .and_then(|mut obj| {
             obj.path = file.parent().unwrap().to_path_buf();
-            obj.load_mtls().map_err(|vec| {
+            obj.load_mtls_fn(|base, mat| {
+                let file = block_on(read_convert_utf8(base.join(mat)))?;
+                Ok(Cursor::new(file))
+            })
+            .map_err(|vec| {
                 format!(
                     "Could not load mtl files:\n{}",
                     vec.into_iter()
