@@ -310,6 +310,8 @@ dependencies = [
 name = "bve-obj-conv"
 version = "0.1.0"
 dependencies = [
+ "async-std",
+ "bve",
  "itertools",
  "obj",
 ]

@@ -1,11 +1,13 @@
+use async_std::task::block_on;
+use bve::filesystem::read_convert_utf8;
 use itertools::Itertools;
 use obj::{Obj, SimplePolygon};
 use std::{
     collections::HashMap,
-    fs::{read, File},
+    fs::File,
     io::{BufRead, Cursor, Write},
+    panic::catch_unwind,
     path::PathBuf,
-    process::exit,
 };
 
 const HEADER: &str = concat!(
@@ -29,12 +31,9 @@ fn read_data() -> String {
     let mut string = String::new();
     lock.read_line(&mut string).expect("Could not read input");
     string.pop(); // remove newline
-    if let Some('"') = string.chars().next() {
-        string.remove(0);
+    if let Some(idx) = string.find('"') {
+        string = string.chars().skip(idx + 1).take_while(|c| *c != '"').collect();
     };
-    if let Some('"') = string.chars().rev().next() {
-        string.pop();
-    }
     string
 }
 
@@ -153,21 +152,19 @@ fn obj_to_csv(input_size: usize, obj: Obj<SimplePolygon>) -> String {
     output
 }
 
-fn main() {
-    print(HEADER);
-
+fn input_main() -> Option<()> {
     let (file, contents) = get_input(
         "Enter or drag and drop path to .obj file then hit enter:\n > ",
         |file_opt| {
             let file = file_opt.ok_or_else(|| String::from("No path given"))?;
-            let contents = read(&file).map_err(|err| err.to_string())?;
+            let contents = block_on(read_convert_utf8(&file)).map_err(|err| err.to_string())?;
             Ok((file, contents))
         },
     );
 
     let length = contents.len();
     let mut cursor = Cursor::new(contents);
-    let parsed_object = Obj::<SimplePolygon>::load_buf(&mut cursor)
+    let parsed_object_result = Obj::<SimplePolygon>::load_buf(&mut cursor)
         .map_err(|err| err.to_string())
         .and_then(|mut obj| {
             obj.path = file.parent().unwrap().to_path_buf();
@@ -178,11 +175,15 @@ fn main() {
                     .join("\n")
             })?;
             Ok(obj)
-        })
-        .unwrap_or_else(|err| {
-            eprintln!("Error reading obj file: {}", err);
-            exit(1);
         });
+
+    let parsed_object = match parsed_object_result {
+        Ok(obj) => obj,
+        Err(err) => {
+            eprintln!("Error reading obj file: {}", err);
+            return None;
+        }
+    };
 
     let csv_file_suggestion = file.with_extension("csv");
 
@@ -201,4 +202,25 @@ fn main() {
         .expect("Can't write to output file");
 
     get_input("\nFinished Conversion! Press enter to close\n", |_| Ok(()));
+
+    Some(())
+}
+
+fn main() {
+    print(HEADER);
+    loop {
+        let error = catch_unwind(|| input_main());
+        match error {
+            Err(_error) => {
+                get_input(
+                    "\nFatal Error. This is a bug. Copy the above text and send in a bug report.\n",
+                    |_| Ok(()),
+                );
+            }
+            Ok(Some(())) => {
+                break;
+            }
+            _ => {}
+        }
+    }
 }
