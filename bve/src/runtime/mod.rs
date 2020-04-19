@@ -33,12 +33,14 @@ mod chunk;
 mod client;
 mod location;
 
+#[allow(unused)]
 struct ObjectTexture<C: Client> {
     object: C::ObjectHandle,
     mesh: C::MeshHandle,
     texture: C::TextureHandle,
 }
 
+#[allow(unused)]
 pub struct Renderable<C: Client> {
     handles: Vec<ObjectTexture<C>>,
 }

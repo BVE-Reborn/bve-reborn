@@ -174,9 +174,9 @@ fn main() {
                         runtime::Location {
                             chunk: runtime::ChunkAddress::new(0, 0),
                             offset: runtime::ChunkOffset::new(
-                                object.x + object.offset_x * idx as f32,
+                                f32::mul_add(object.offset_x, idx as f32, object.x),
                                 0.0,
-                                object.z + object.offset_z * idx as f32,
+                                f32::mul_add(object.offset_z, idx as f32, object.z),
                             ),
                         },
                         PathBuf::from(object.path.clone()),

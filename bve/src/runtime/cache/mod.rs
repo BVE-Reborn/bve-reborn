@@ -17,7 +17,8 @@ struct LoadedCacheEntry<D: Clone> {
     count: AtomicU64,
 }
 
-struct Cache<D: Clone>(Mutex<HashMap<PathHandle, Arc<RwLock<Option<LoadedCacheEntry<D>>>>>>);
+type CacheEntry<D> = Arc<RwLock<Option<LoadedCacheEntry<D>>>>;
+struct Cache<D: Clone>(Mutex<HashMap<PathHandle, CacheEntry<D>>>);
 
 impl<D: Clone> Cache<D> {
     pub fn new() -> Self {
