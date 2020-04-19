@@ -15,8 +15,12 @@ layout(set = 0, binding = 2) uniform sampler main_sampler;
 void main() {
     vec4 tex_color = pow(vec4(texture(usampler2D(colorTexture, main_sampler), texcoord)) / 255, vec4(2.2));
     vec4 color = tex_color * mesh_color;
-    if (!bool(uniforms.transparent) && color.a <= 0.5) {
-        discard;
+    if (!bool(uniforms.transparent)) {
+        if (color.a <= 0.5) {
+            discard;
+        } else {
+            color.a = 1.0;
+        }
     }
     outColor = vec4(pow(color.rgb, vec3(1 / 2.2)), color.a);
 }
