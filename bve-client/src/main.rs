@@ -68,6 +68,7 @@ use serde::Deserialize;
 use std::{
     fs::File,
     io::BufReader,
+    panic::catch_unwind,
     time::{Duration, Instant},
 };
 use winit::{
@@ -132,7 +133,7 @@ struct Loading {
     objects: Vec<Object>,
 }
 
-fn main() {
+fn client_main() {
     let event_loop = EventLoop::new();
 
     env_logger::init();
@@ -382,4 +383,14 @@ fn main() {
         } => *control_flow = ControlFlow::Exit,
         _ => {}
     })
+}
+
+fn main() {
+    let result = catch_unwind(client_main);
+
+    if let Err(..) = result {
+        println!("Fatal Error. Copy the above text and report the issue. Press enter to close.");
+        let mut _s = String::new();
+        std::io::stdin().read_line(&mut _s);
+    }
 }
