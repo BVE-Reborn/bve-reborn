@@ -87,16 +87,14 @@ fn obj_to_csv(input_size: usize, obj: Obj<SimplePolygon>) -> String {
             if let Some(material) = &group.material {
                 if let Some(texture) = &material.map_kd {
                     output.push_str(&format!("LoadTexture, {}\n", texture));
-                } else {
-                    if let Some(color) = &material.kd {
-                        let filter_color = |color: f32| (color * 255.0).round().min(255.0) as u8;
-                        output.push_str(&format!(
-                            "SetColor, {}, {}, {}, 255\n",
-                            filter_color(color[0]),
-                            filter_color(color[1]),
-                            filter_color(color[2])
-                        ));
-                    }
+                } else if let Some(color) = &material.kd {
+                    let filter_color = |color: f32| (color * 255.0).round().min(255.0) as u8;
+                    output.push_str(&format!(
+                        "SetColor, {}, {}, {}, 255\n",
+                        filter_color(color[0]),
+                        filter_color(color[1]),
+                        filter_color(color[2])
+                    ));
                 }
             }
 
@@ -202,7 +200,7 @@ fn input_main() -> Option<()> {
             "Enter name of output .csv file: [empty defaults to \"{}\"]\n > ",
             csv_file_suggestion.display()
         ),
-        |file| File::create(file.unwrap_or(csv_file_suggestion.clone())).map_err(|err| err.to_string()),
+        |file| File::create(file.unwrap_or_else(|| csv_file_suggestion.clone())).map_err(|err| err.to_string()),
     );
 
     let output = obj_to_csv(length, parsed_object);
@@ -221,7 +219,7 @@ fn input_main() -> Option<()> {
 fn main() {
     print(HEADER);
     loop {
-        let error = catch_unwind(|| input_main());
+        let error = catch_unwind(input_main);
         match error {
             Err(_error) => {
                 get_input(
