@@ -64,7 +64,12 @@ use circular_queue::CircularQueue;
 use image::RgbaImage;
 use itertools::Itertools;
 use num_traits::Zero;
-use std::time::{Duration, Instant};
+use serde::Deserialize;
+use std::{
+    fs::File,
+    io::BufReader,
+    time::{Duration, Instant},
+};
 use winit::{
     event::{DeviceEvent, ElementState, Event, KeyboardInput, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
@@ -86,8 +91,8 @@ impl Client {
 }
 
 impl runtime::Client for Client {
-    type MeshHandle = MeshHandle;
     type ObjectHandle = ObjectHandle;
+    type MeshHandle = MeshHandle;
     type TextureHandle = TextureHandle;
 
     fn add_object(&mut self, location: Vector3<f32>, mesh: &Self::MeshHandle) -> Self::ObjectHandle {
@@ -110,6 +115,21 @@ impl runtime::Client for Client {
     fn add_texture(&mut self, image: &RgbaImage) -> Self::TextureHandle {
         self.renderer.add_texture(image)
     }
+}
+
+#[derive(Deserialize)]
+struct Object {
+    path: std::path::PathBuf,
+    count: usize,
+    x: f32,
+    z: f32,
+    offset_x: f32,
+    offset_z: f32,
+}
+
+#[derive(Deserialize)]
+struct Loading {
+    objects: Vec<Object>,
 }
 
 fn main() {
@@ -142,18 +162,27 @@ fn main() {
             .set_camera_orientation(0.0, std::f32::consts::FRAC_PI_2)
     });
 
+    let path = PathBuf::from(std::env::args().nth(1).expect("Must pass filename as first argument"));
+    let loading: Loading = serde_json::from_reader(BufReader::new(File::open(path).expect("Could not read file")))
+        .expect("Could not parse");
+
     block_on(async {
-        let path = PathBuf::from(std::env::args().nth(1).expect("Must pass filename as first argument"));
-        for x in 0..5 {
-            runtime
-                .add_static_object(
-                    runtime::Location {
-                        chunk: runtime::ChunkAddress::new(0, 0),
-                        offset: runtime::ChunkOffset::new(x as f32 * 5.0, 0.0, 0.0),
-                    },
-                    path.clone(),
-                )
-                .await
+        for object in loading.objects {
+            for idx in 0..object.count {
+                runtime
+                    .add_static_object(
+                        runtime::Location {
+                            chunk: runtime::ChunkAddress::new(0, 0),
+                            offset: runtime::ChunkOffset::new(
+                                object.x + object.offset_x * idx as f32,
+                                0.0,
+                                object.z + object.offset_z * idx as f32,
+                            ),
+                        },
+                        PathBuf::from(object.path.clone()),
+                    )
+                    .await
+            }
         }
     });
 
@@ -162,7 +191,7 @@ fn main() {
 
     // TODO: Do 0.1 second/1 second/5 seconds/15 second rolling average
     let mut frame_count = 0_u64;
-    let mut frame_times = CircularQueue::with_capacity(1024);
+    let mut frame_times = CircularQueue::with_capacity(50);
     let mut last_frame_instant = Instant::now();
     let mut last_printed_instant = Instant::now();
 

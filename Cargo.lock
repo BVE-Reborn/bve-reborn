@@ -253,6 +253,8 @@ dependencies = [
  "itertools",
  "log",
  "num-traits",
+ "serde",
+ "serde_json",
  "winit",
 ]
 
