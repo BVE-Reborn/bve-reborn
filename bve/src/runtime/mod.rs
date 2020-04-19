@@ -12,11 +12,8 @@ use async_std::{
     sync::{Arc, Mutex, RwLock},
     task::spawn,
 };
-use cgmath::{Array, Vector3};
-use futures::{
-    stream::{FuturesOrdered, FuturesUnordered},
-    StreamExt,
-};
+use cgmath::Array;
+use futures::{stream::FuturesOrdered, StreamExt};
 use hecs::World;
 use log::{debug, trace};
 use std::sync::atomic::{AtomicI32, Ordering};
@@ -133,9 +130,11 @@ impl<C: Client> Runtime<C> {
     }
 
     async fn load_chunk_objects(self: &Arc<Self>, chunk: Arc<Chunk>) -> Vec<ObjectTexture<C>> {
-        let mut mesh_futures = FuturesUnordered::new();
-        for mesh_path in chunk.objects.iter() {
-            let path = self.path_set.get(mesh_path.path).await;
+        let mut mesh_futures = FuturesOrdered::new();
+        let mut mesh_locations = Vec::new();
+        for unloaded_object in chunk.objects.iter() {
+            let path = self.path_set.get(unloaded_object.path).await;
+            mesh_locations.push(unloaded_object.offset);
             mesh_futures.push(spawn(
                 async_clone_own!(runtime = self; { runtime.load_mesh_textures(path).await }),
             ));
@@ -143,10 +142,11 @@ impl<C: Client> Runtime<C> {
 
         let mut object_textures = Vec::with_capacity(mesh_futures.len());
 
-        while let Some(mesh_handle_pairs) = mesh_futures.next().await {
+        let mut location_iter = mesh_locations.into_iter();
+        while let (Some(mesh_handle_pairs), Some(location)) = (mesh_futures.next().await, location_iter.next()) {
             let mut client = self.client.lock().await;
             for (mesh_handle, texture_handle) in mesh_handle_pairs {
-                let object_handle = client.add_object_texture(Vector3::from_value(0.0), &mesh_handle, &texture_handle);
+                let object_handle = client.add_object_texture(location, &mesh_handle, &texture_handle);
                 object_textures.push(ObjectTexture {
                     mesh: mesh_handle,
                     texture: texture_handle,
