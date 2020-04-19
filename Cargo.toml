@@ -5,6 +5,7 @@ members = ["bve*"]
 
 [patch.crates-io]
 cgmath = { git = "https://github.com/rustgd/cgmath.git", rev = "50a345b7c439c492a9c658dbb432f6cbd70a0557" }
+obj = { git = "https://github.com/BVE-Reborn/obj.git", rev = "045375434b212ce0a3076afaeabe601cdf6c310f" }
 
 [profile.dev]
 opt-level = 0
