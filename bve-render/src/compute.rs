@@ -64,7 +64,7 @@ fn create_uniform_buffer(device: &Device, encoder: &mut CommandEncoder, max_size
         _max_size: *max_size.as_ref(),
     };
     let bytes = uniforms.as_bytes();
-    let tmp_buffer = device.create_buffer_with_data(&bytes, BufferUsage::COPY_SRC);
+    let tmp_buffer = device.create_buffer_with_data(bytes, BufferUsage::COPY_SRC);
     let buffer = device.create_buffer(&BufferDescriptor {
         size: size_of::<Uniforms>() as u64,
         usage: BufferUsage::COPY_DST | BufferUsage::UNIFORM,
@@ -146,9 +146,9 @@ impl MipmapCompute {
             });
 
             let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor { label: Some("Mipmap") });
-            let uniform_buffer = create_uniform_buffer(&device, &mut encoder, dimensions);
+            let uniform_buffer = create_uniform_buffer(device, &mut encoder, dimensions);
             let bind_group =
-                create_texture_compute_bind_group(&device, &self.bind_group_layout, &parent, &child, &uniform_buffer);
+                create_texture_compute_bind_group(device, &self.bind_group_layout, &parent, &child, &uniform_buffer);
 
             let mut cpass = encoder.begin_compute_pass();
 
@@ -203,9 +203,9 @@ impl CutoutTransparencyCompute {
         let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
             label: Some("CutoutTransparency"),
         });
-        let uniform_buffer = create_uniform_buffer(&device, &mut encoder, dimensions);
+        let uniform_buffer = create_uniform_buffer(device, &mut encoder, dimensions);
         let bind_group =
-            create_texture_compute_bind_group(&device, &self.bind_group_layout, &source, &dest, &uniform_buffer);
+            create_texture_compute_bind_group(device, &self.bind_group_layout, &source, &dest, &uniform_buffer);
 
         let mut cpass = encoder.begin_compute_pass();
 

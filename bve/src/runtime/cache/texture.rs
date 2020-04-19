@@ -76,6 +76,7 @@ impl<C: Client> TextureCache<C> {
         self.load_texture_handle_path(client, handle, path).await
     }
 
+    #[allow(dead_code)]
     pub async fn load_texture_relative(
         &self,
         client: &Mutex<C>,

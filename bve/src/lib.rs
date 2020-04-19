@@ -42,6 +42,7 @@
 #![allow(clippy::option_expect_used)]
 #![allow(clippy::panic)]
 #![allow(clippy::result_expect_used)]
+#![allow(clippy::single_match_else)] // I like matches
 #![allow(clippy::similar_names)]
 #![allow(clippy::shadow_reuse)]
 #![allow(clippy::shadow_same)]

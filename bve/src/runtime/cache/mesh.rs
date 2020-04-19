@@ -65,7 +65,7 @@ impl<C: Client> MeshCache<C> {
             mesh_data.handles.push((handle, mesh.texture.texture_id))
         }
 
-        for texture in mesh.textures.into_iter() {
+        for texture in mesh.textures {
             let path = resolve_path(parent_dir, PathBuf::from(texture))
                 .await
                 .expect("Could not find texture");

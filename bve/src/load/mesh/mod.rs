@@ -132,6 +132,7 @@ pub struct Mesh {
     pub glow: Glow,
 }
 
+#[must_use]
 pub fn default_mesh() -> Mesh {
     Mesh {
         vertices: vec![],

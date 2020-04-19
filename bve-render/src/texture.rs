@@ -25,7 +25,7 @@ impl Renderer {
         renderdoc! {
             self._renderdoc_capture = true;
         };
-        let transparent = is_texture_transparent(&image);
+        let transparent = is_texture_transparent(image);
         let extent = Extent3d {
             width: image.width(),
             height: image.height(),

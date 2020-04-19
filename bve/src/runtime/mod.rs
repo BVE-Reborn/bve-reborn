@@ -72,6 +72,7 @@ pub struct Runtime<C: Client> {
 }
 
 impl<C: Client> Runtime<C> {
+    #[must_use]
     pub fn new(client: Arc<Mutex<C>>) -> Arc<Self> {
         Arc::new(Self {
             client,
@@ -92,7 +93,7 @@ impl<C: Client> Runtime<C> {
     pub async fn add_static_object(self: &Arc<Self>, location: Location, path: PathBuf) {
         let chunk = self.chunks.get_chunk(location.chunk).await;
 
-        chunk.paths.insert(UnloadedObject {
+        chunk.objects.insert(UnloadedObject {
             path: self
                 .path_set
                 .insert(path.canonicalize().await.expect("Could not canonicalize object"))
@@ -133,7 +134,7 @@ impl<C: Client> Runtime<C> {
 
     async fn load_chunk_objects(self: &Arc<Self>, chunk: Arc<Chunk>) -> Vec<ObjectTexture<C>> {
         let mut mesh_futures = FuturesUnordered::new();
-        for mesh_path in chunk.paths.iter() {
+        for mesh_path in chunk.objects.iter() {
             let path = self.path_set.get(mesh_path.path).await;
             mesh_futures.push(spawn(
                 async_clone_own!(runtime = self; { runtime.load_mesh_textures(path).await }),
