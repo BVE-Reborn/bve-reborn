@@ -12,7 +12,6 @@ use async_std::{
     sync::{Arc, Mutex, RwLock},
     task::spawn,
 };
-use cgmath::Array;
 use futures::{stream::FuturesOrdered, StreamExt};
 use hecs::World;
 use log::{debug, trace};

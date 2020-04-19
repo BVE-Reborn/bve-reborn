@@ -2,7 +2,7 @@ use crate::{
     filesystem::resolve_path,
     load::mesh::load_mesh_from_file,
     runtime::{
-        cache::{PathHandle, PathSet},
+        cache::{Cache, PathHandle, PathSet},
         client::Client,
     },
 };
@@ -10,9 +10,7 @@ use async_std::{
     path::{Path, PathBuf},
     sync::Mutex,
 };
-use dashmap::DashMap;
 use log::trace;
-use std::sync::atomic::{AtomicU64, Ordering};
 
 pub struct MeshData<C: Client> {
     pub handles: Vec<(C::MeshHandle, Option<usize>)>,
@@ -37,18 +35,13 @@ impl<C: Client> Clone for MeshData<C> {
     }
 }
 
-struct LoadedMesh<C: Client> {
-    data: MeshData<C>,
-    count: AtomicU64,
-}
-
 pub struct MeshCache<C: Client> {
-    inner: DashMap<PathHandle, LoadedMesh<C>>,
+    inner: Cache<MeshData<C>>,
 }
 
 impl<C: Client> MeshCache<C> {
     pub fn new() -> Self {
-        Self { inner: DashMap::new() }
+        Self { inner: Cache::new() }
     }
 
     pub async fn load_mesh_impl(&self, client: &Mutex<C>, path_set: &PathSet, path: &Path) -> MeshData<C> {
@@ -78,19 +71,13 @@ impl<C: Client> MeshCache<C> {
     pub async fn load_mesh(&self, client: &Mutex<C>, path_set: &PathSet, path: PathBuf) -> Option<MeshData<C>> {
         let canonicalized = path.canonicalize().await.ok()?;
         let path_handle = path_set.insert(canonicalized.clone()).await;
-        Some(match self.inner.get(&path_handle) {
-            Some(loaded) => {
-                loaded.count.fetch_add(1, Ordering::AcqRel);
-                loaded.data.clone()
-            }
-            None => {
-                let mesh_data = self.load_mesh_impl(client, path_set, &canonicalized).await;
-                self.inner.insert(path_handle, LoadedMesh {
-                    data: mesh_data.clone(),
-                    count: AtomicU64::new(1),
-                });
-                mesh_data
-            }
-        })
+
+        let mesh = self
+            .inner
+            .get_or_insert(path_handle, async {
+                self.load_mesh_impl(client, path_set, &canonicalized).await
+            })
+            .await;
+        Some(mesh)
     }
 }

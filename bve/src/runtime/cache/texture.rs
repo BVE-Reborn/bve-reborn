@@ -1,7 +1,7 @@
 use crate::{
     filesystem::resolve_path,
     runtime::{
-        cache::{PathHandle, PathSet},
+        cache::{Cache, PathHandle, PathSet},
         client::Client,
     },
 };
@@ -10,26 +10,17 @@ use async_std::{
     path::{Path, PathBuf},
     sync::Mutex,
 };
-use dashmap::DashMap;
 use image::guess_format;
 use log::trace;
-use std::{
-    io::Cursor,
-    sync::atomic::{AtomicU64, Ordering},
-};
-
-struct LoadedTexture<C: Client> {
-    handle: C::TextureHandle,
-    count: AtomicU64,
-}
+use std::io::Cursor;
 
 pub struct TextureCache<C: Client> {
-    inner: DashMap<PathHandle, LoadedTexture<C>>,
+    inner: Cache<C::TextureHandle>,
 }
 
 impl<C: Client> TextureCache<C> {
     pub fn new() -> Self {
-        Self { inner: DashMap::new() }
+        Self { inner: Cache::new() }
     }
 
     async fn load_texture_impl(&self, client: &Mutex<C>, path: &Path) -> C::TextureHandle {
@@ -50,20 +41,11 @@ impl<C: Client> TextureCache<C> {
         handle: PathHandle,
         path: PathBuf,
     ) -> Option<C::TextureHandle> {
-        Some(match self.inner.get(&handle) {
-            Some(loaded) => {
-                loaded.count.fetch_add(1, Ordering::AcqRel);
-                loaded.handle.clone()
-            }
-            None => {
-                let texture_handle = self.load_texture_impl(client, &path).await;
-                self.inner.insert(handle, LoadedTexture {
-                    handle: texture_handle.clone(),
-                    count: AtomicU64::new(1),
-                });
-                texture_handle
-            }
-        })
+        let tex = self
+            .inner
+            .get_or_insert(handle, async { self.load_texture_impl(client, &path).await })
+            .await;
+        Some(tex)
     }
 
     pub async fn load_texture_handle(
