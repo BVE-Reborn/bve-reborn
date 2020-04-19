@@ -52,7 +52,7 @@
 #![allow(clippy::wildcard_enum_match_arm)]
 #![allow(clippy::wildcard_imports)]
 
-pub use crate::{object::ObjectHandle, render::MSAASetting, texture::Texture};
+pub use crate::{mesh::MeshHandle, object::ObjectHandle, render::MSAASetting, texture::TextureHandle};
 use bve::load::mesh::Vertex as MeshVertex;
 use cgmath::{Matrix4, Vector2, Vector3};
 use image::RgbaImage;
@@ -84,6 +84,18 @@ macro_rules! shader_path {
     };
 }
 
+#[cfg(feature = "renderdoc")]
+macro_rules! renderdoc {
+    ($($tokens:tt)*) => {
+        $($tokens)*
+    };
+}
+
+#[cfg(not(feature = "renderdoc"))]
+macro_rules! renderdoc {
+    ($($tokens:tt)*) => {};
+}
+
 macro_rules! include_shader {
     (vert $name:literal) => {
         shader_path!($name, ".vs")
@@ -101,13 +113,14 @@ macro_rules! include_shader {
 
 mod camera;
 mod compute;
+mod mesh;
 mod object;
 mod render;
 mod texture;
 
 pub const OPENGL_TO_WGPU_MATRIX: Matrix4<f32> = Matrix4::new(
     1.0, 0.0, 0.0, 0.0, //
-    0.0, -1.0, 0.0, 0.0, //
+    0.0, 1.0, 0.0, 0.0, //
     0.0, 0.0, 0.5, 0.0, //
     0.0, 0.0, 0.5, 1.0,
 );
@@ -115,6 +128,9 @@ pub const OPENGL_TO_WGPU_MATRIX: Matrix4<f32> = Matrix4::new(
 pub struct Renderer {
     objects: IndexMap<u64, object::Object>,
     object_handle_count: u64,
+
+    mesh: IndexMap<u64, mesh::Mesh>,
+    mesh_handle_count: u64,
 
     textures: IndexMap<u64, texture::Texture>,
     texture_handle_count: u64,
@@ -138,9 +154,11 @@ pub struct Renderer {
     vert_shader: ShaderModule,
     frag_shader: ShaderModule,
 
+    transparency_processor: compute::CutoutTransparencyCompute,
     mip_creator: compute::MipmapCompute,
 
     command_buffers: Vec<CommandBuffer>,
+    _renderdoc_capture: bool,
 }
 
 impl Renderer {
@@ -152,6 +170,7 @@ impl Renderer {
         let adapter = Adapter::request(
             &RequestAdapterOptions {
                 power_preference: PowerPreference::HighPerformance,
+                compatible_surface: Some(&surface),
             },
             BackendBit::VULKAN | BackendBit::METAL,
         )
@@ -167,20 +186,13 @@ impl Renderer {
             })
             .await;
 
-        let swapchain_descriptor = SwapChainDescriptor {
-            usage: TextureUsage::OUTPUT_ATTACHMENT,
-            format: TextureFormat::Bgra8UnormSrgb,
-            width: screen_size.width,
-            height: screen_size.height,
-            present_mode: PresentMode::Mailbox,
-        };
-        let swapchain = device.create_swap_chain(&surface, &swapchain_descriptor);
+        let swapchain = render::create_swapchain(&device, &surface, screen_size);
 
-        let vs = include_shader!(vert "test");
+        let vs = include_shader!(vert "forward");
         let vs_module =
             device.create_shader_module(&read_spirv(io::Cursor::new(&vs[..])).expect("Could not read shader spirv"));
 
-        let fs = include_shader!(frag "test");
+        let fs = include_shader!(frag "forward");
         let fs_module =
             device.create_shader_module(&read_spirv(io::Cursor::new(&fs[..])).expect("Could not read shader spirv"));
 
@@ -193,7 +205,7 @@ impl Renderer {
             mipmap_filter: FilterMode::Linear,
             lod_min_clamp: -100.0,
             lod_max_clamp: 100.0,
-            compare: None,
+            compare: CompareFunction::Never,
         });
 
         let framebuffer = render::create_framebuffer(&device, screen_size, samples);
@@ -221,6 +233,7 @@ impl Renderer {
                     ty: BindingType::Sampler { comparison: false },
                 },
             ],
+            label: None,
         });
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             bind_group_layouts: &[&bind_group_layout],
@@ -243,12 +256,16 @@ impl Renderer {
             samples,
         );
 
+        let transparency_processor = compute::CutoutTransparencyCompute::new(&device);
         let mip_creator = compute::MipmapCompute::new(&device);
 
         // Create the Renderer object early so we can can call methods on it.
         let mut renderer = Self {
             objects: IndexMap::new(),
             object_handle_count: 0,
+
+            mesh: IndexMap::new(),
+            mesh_handle_count: 0,
 
             textures: IndexMap::new(),
             texture_handle_count: 0,
@@ -276,9 +293,11 @@ impl Renderer {
             vert_shader: vs_module,
             frag_shader: fs_module,
 
+            transparency_processor,
             mip_creator,
 
             command_buffers: Vec::new(),
+            _renderdoc_capture: false,
         };
 
         // Default texture is texture handle zero, immediately discard the handle, never to be seen again
@@ -298,13 +317,7 @@ impl Renderer {
         self.depth_buffer = render::create_depth_buffer(&self.device, screen_size, self.samples);
         self.screen_size = screen_size;
 
-        self.swapchain = self.device.create_swap_chain(&self.surface, &SwapChainDescriptor {
-            usage: TextureUsage::OUTPUT_ATTACHMENT,
-            format: TextureFormat::Bgra8UnormSrgb,
-            width: screen_size.width,
-            height: screen_size.height,
-            present_mode: PresentMode::Mailbox,
-        });
+        self.swapchain = render::create_swapchain(&self.device, &self.surface, screen_size);
     }
 
     #[must_use]
@@ -335,6 +348,12 @@ impl Renderer {
     }
 
     pub async fn render(&mut self) {
+        renderdoc! {
+            let mut rd = renderdoc::RenderDoc::<renderdoc::V140>::new().expect("Could not initialize renderdoc");
+            if self._renderdoc_capture {
+                rd.start_frame_capture(std::ptr::null(), std::ptr::null());
+            }
+        }
         self.recompute_uniforms().await;
         self.compute_object_distances();
         self.sort_objects();
@@ -346,7 +365,7 @@ impl Renderer {
 
         let mut encoder = self
             .device
-            .create_command_encoder(&CommandEncoderDescriptor { todo: 0 });
+            .create_command_encoder(&CommandEncoderDescriptor { label: Some("primary") });
 
         {
             let (attachment, resolve_target) = if self.samples == render::MSAASetting::X1 {
@@ -361,9 +380,9 @@ impl Renderer {
                     load_op: LoadOp::Clear,
                     store_op: StoreOp::Store,
                     clear_color: Color {
-                        r: 0.3,
-                        g: 0.3,
-                        b: 0.3,
+                        r: 0.3_f64.powf(1.0 / 2.2),
+                        g: 0.3_f64.powf(1.0 / 2.2),
+                        b: 0.3_f64.powf(1.0 / 2.2),
                         a: 1.0,
                     },
                 }],
@@ -384,11 +403,12 @@ impl Renderer {
                     rpass.set_pipeline(&self.alpha_pipeline);
                     opaque_ended = true;
                 }
+                let mesh = &self.mesh[&object.mesh];
 
                 rpass.set_bind_group(0, &object.bind_group, &[]);
-                rpass.set_vertex_buffer(0, &object.vertex_buffer, 0, 0);
-                rpass.set_index_buffer(&object.index_buffer, 0, 0);
-                rpass.draw_indexed(0..(object.index_count as u32), 0, 0..1);
+                rpass.set_vertex_buffer(0, &mesh.vertex_buffer, 0, 0);
+                rpass.set_index_buffer(&mesh.index_buffer, 0, 0);
+                rpass.draw_indexed(0..(mesh.index_count as u32), 0, 0..1);
             }
         }
 
@@ -396,5 +416,11 @@ impl Renderer {
 
         self.queue.submit(&self.command_buffers);
         self.command_buffers.clear();
+        renderdoc! {
+            if self._renderdoc_capture {
+                rd.end_frame_capture(std::ptr::null(), std::ptr::null());
+                self._renderdoc_capture = false;
+            }
+        }
     }
 }

@@ -5,14 +5,16 @@ members = ["bve*"]
 
 [patch.crates-io]
 cgmath = { git = "https://github.com/rustgd/cgmath.git", rev = "50a345b7c439c492a9c658dbb432f6cbd70a0557" }
-wgpu = { git = "https://github.com/gfx-rs/wgpu-rs.git", rev = "ce10a47de81e28a9ad3468952bda66a4aa9d2f9e" }
+obj = { git = "https://github.com/kvark/obj.git", rev = "a1df2284ea11112aba5ee38b39b208344b634d7d" }
 
 [profile.dev]
 opt-level = 0
 
-[profile.opt-dev]
-inherits = "dev"
-opt-level = 1
+[profile.dev.package.pico-args]
+opt-level = 0
+
+[profile.dev.package."*"]
+opt-level = 3
 
 [profile.release]
 overflow-checks = true

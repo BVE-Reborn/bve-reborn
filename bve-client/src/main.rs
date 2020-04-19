@@ -52,112 +52,84 @@
 #![allow(clippy::wildcard_imports)]
 
 use crate::platform::*;
-use bve::load::mesh::load_mesh_from_file;
-use bve_render::{MSAASetting, ObjectHandle, Renderer};
-use cgmath::{ElementWise, InnerSpace, Vector3, Vector4};
+use async_std::{
+    path::PathBuf,
+    sync::{Arc, Mutex},
+    task::block_on,
+};
+use bve::{load::mesh::Vertex, runtime};
+use bve_render::{MSAASetting, MeshHandle, ObjectHandle, Renderer, TextureHandle};
+use cgmath::{ElementWise, InnerSpace, Vector3};
 use circular_queue::CircularQueue;
-use futures::executor::block_on;
-use image::{Rgba, RgbaImage};
+use image::RgbaImage;
 use itertools::Itertools;
 use num_traits::Zero;
+use serde::Deserialize;
 use std::{
-    path::Path,
+    fs::File,
+    io::BufReader,
     time::{Duration, Instant},
 };
 use winit::{
     event::{DeviceEvent, ElementState, Event, KeyboardInput, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
-    window::WindowBuilder,
+    window::{Window, WindowBuilder},
 };
 
 mod platform;
 
-fn load_texture(name: impl AsRef<Path>) -> RgbaImage {
-    println!("{}", name.as_ref().display());
-    let img = image::open(&name)
-        .unwrap_or_else(|e| panic!("Could not open/parse image {}: {:#?}", name.as_ref().display(), e));
-    let mut rgba = img.into_rgba();
-    process_texture(&mut rgba);
-    rgba
+struct Client {
+    renderer: Renderer,
 }
 
-fn process_texture(texture: &mut RgbaImage) {
-    texture.pixels_mut().for_each(|pix| {
-        // Convert pure blue to transparent
-        if let Rgba([0x00, 0x00, 0xFF, w]) = pix {
-            *w = 0x00
-        }
-    });
-    let width = texture.width() as i32;
-    let height = texture.height() as i32;
-    let load = |image: &RgbaImage, x: i32, y: i32| {
-        if x >= 0 && x < width && y >= 0 && y < height {
-            let pix = *image.get_pixel(x as u32, y as u32);
-            match pix {
-                Rgba([_, _, _, 0x00]) => Vector4::new(0_f32, 0_f32, 0_f32, 0_f32),
-                Rgba([x, y, z, _]) => Vector4::new(x as f32, y as f32, z as f32, 255_f32),
-            }
-        } else {
-            Vector4::new(0_f32, 0_f32, 0_f32, 0_f32)
-        }
-    };
-    for x in 0..width {
-        for y in 0..height {
-            let pix11 = load(texture, x, y);
-            if pix11.w == 0.0 {
-                let pix00 = load(texture, x - 1, y - 1);
-                let pix10 = load(texture, x, y - 1);
-                let pix20 = load(texture, x + 1, y - 1);
-                let pix01 = load(texture, x - 1, y);
-                let pix21 = load(texture, x + 1, y);
-                let pix02 = load(texture, x - 1, y + 1);
-                let pix12 = load(texture, x, y + 1);
-                let pix22 = load(texture, x + 1, y + 1);
-
-                let sum: Vector4<f32> = pix00 + pix01 + pix02 + pix10 + pix12 + pix20 + pix21 + pix22;
-                let scale = sum.w / 255.0;
-                let avg = Vector3::new(sum.x, sum.y, sum.z) / scale;
-                texture.put_pixel(x as u32, y as u32, Rgba([avg.x as u8, avg.y as u8, avg.z as u8, 0x00]))
-            }
-        }
+impl Client {
+    async fn new(window: &Window, samples: MSAASetting) -> Arc<Mutex<Self>> {
+        Arc::new(Mutex::new(Self {
+            renderer: Renderer::new(window, samples).await,
+        }))
     }
 }
 
-fn load_and_add(renderer: &mut Renderer, path: impl AsRef<Path>) -> Vec<ObjectHandle> {
-    let mesh = load_mesh_from_file(&path).unwrap_or_else(|| panic!("Could not load file {}", path.as_ref().display()));
+impl runtime::Client for Client {
+    type ObjectHandle = ObjectHandle;
+    type MeshHandle = MeshHandle;
+    type TextureHandle = TextureHandle;
 
-    assert!(mesh.errors.is_empty(), "{:#?}", mesh);
+    fn add_object(&mut self, location: Vector3<f32>, mesh: &Self::MeshHandle) -> Self::ObjectHandle {
+        self.renderer.add_object(location, mesh)
+    }
 
-    let texture_handles = mesh
-        .textures
-        .into_iter()
-        .map(|s| {
-            let path = path
-                .as_ref()
-                .parent()
-                .expect("Path unexpectedly had no parent. Did you pass in a file?");
-            let image = load_texture(path.join(s));
-            renderer.add_texture(&image)
-        })
-        .collect_vec();
+    fn add_object_texture(
+        &mut self,
+        location: Vector3<f32>,
+        mesh: &Self::MeshHandle,
+        texture: &Self::TextureHandle,
+    ) -> Self::ObjectHandle {
+        self.renderer.add_object_texture(location, mesh, texture)
+    }
 
-    mesh.meshes
-        .into_iter()
-        .map(|mesh| {
-            let default_handle = Renderer::get_default_texture();
-            let handle = if let Some(id) = mesh.texture.texture_id {
-                &texture_handles[id]
-            } else {
-                &default_handle
-            };
-            renderer.add_object_texture(
-                Vector3::new(0.0, 0.0, 0.0),
-                mesh.vertices.clone(),
-                &mesh.indices,
-                handle,
-            )
-        })
-        .collect()
+    fn add_mesh(&mut self, mesh_verts: Vec<Vertex>, indices: &[usize]) -> Self::MeshHandle {
+        self.renderer.add_mesh(mesh_verts, indices)
+    }
+
+    fn add_texture(&mut self, image: &RgbaImage) -> Self::TextureHandle {
+        self.renderer.add_texture(image)
+    }
+}
+
+#[derive(Deserialize)]
+struct Object {
+    path: std::path::PathBuf,
+    count: usize,
+    x: f32,
+    z: f32,
+    offset_x: f32,
+    offset_z: f32,
+}
+
+#[derive(Deserialize)]
+struct Loading {
+    objects: Vec<Object>,
 }
 
 fn main() {
@@ -178,22 +150,48 @@ fn main() {
         (false, false, false, false, false, false, false);
 
     let mut sample_count = MSAASetting::X1;
-    let mut renderer = block_on(async { Renderer::new(&window, sample_count).await });
+    let client = block_on(async { Client::new(&window, sample_count).await });
+    let runtime = runtime::Runtime::new(Arc::clone(&client));
 
     let mut camera_location = Vector3::new(-7.0, 3.0, 0.0);
-    renderer.set_camera_orientation(0.0, std::f32::consts::FRAC_PI_2);
+    block_on(async {
+        client
+            .lock()
+            .await
+            .renderer
+            .set_camera_orientation(0.0, std::f32::consts::FRAC_PI_2)
+    });
 
-    let _objects = load_and_add(
-        &mut renderer,
-        std::env::args().nth(1).expect("Must pass filename as first argument"),
-    );
+    let path = PathBuf::from(std::env::args().nth(1).expect("Must pass filename as first argument"));
+    let loading: Loading = serde_json::from_reader(BufReader::new(File::open(path).expect("Could not read file")))
+        .expect("Could not parse");
+
+    block_on(async {
+        for object in loading.objects {
+            for idx in 0..object.count {
+                runtime
+                    .add_static_object(
+                        runtime::Location {
+                            chunk: runtime::ChunkAddress::new(0, 0),
+                            offset: runtime::ChunkOffset::new(
+                                f32::mul_add(object.offset_x, idx as f32, object.x),
+                                0.0,
+                                f32::mul_add(object.offset_z, idx as f32, object.z),
+                            ),
+                        },
+                        PathBuf::from(object.path.clone()),
+                    )
+                    .await
+            }
+        }
+    });
 
     let mut mouse_pitch = 0.0_f32;
     let mut mouse_yaw = 0.0_f32;
 
     // TODO: Do 0.1 second/1 second/5 seconds/15 second rolling average
     let mut frame_count = 0_u64;
-    let mut frame_times = CircularQueue::with_capacity(1024);
+    let mut frame_times = CircularQueue::with_capacity(50);
     let mut last_frame_instant = Instant::now();
     let mut last_printed_instant = Instant::now();
 
@@ -240,8 +238,9 @@ fn main() {
 
             camera_location = camera_location.add_element_wise(dir_vec);
 
-            renderer.set_camera_location(camera_location);
+            block_on(async { client.lock().await.renderer.set_camera_location(camera_location) });
 
+            block_on(async { runtime.tick().await });
             window.request_redraw();
         }
         Event::WindowEvent {
@@ -249,7 +248,7 @@ fn main() {
             ..
         } => {
             window_size = size;
-            renderer.resize(size);
+            block_on(async { client.lock().await.renderer.resize(size) });
         }
         Event::WindowEvent {
             event:
@@ -283,7 +282,7 @@ fn main() {
                             if state == ElementState::Pressed {
                                 sample_count = sample_count.decrement();
                                 println!("MSAA: x{}", sample_count as u32);
-                                renderer.set_samples(sample_count)
+                                block_on(async { client.lock().await.renderer.set_samples(sample_count) });
                             }
                         }
                         // period
@@ -291,7 +290,7 @@ fn main() {
                             if state == ElementState::Pressed {
                                 sample_count = sample_count.increment();
                                 println!("MSAA: x{}", sample_count as u32);
-                                renderer.set_samples(sample_count)
+                                block_on(async { client.lock().await.renderer.set_samples(sample_count) });
                             }
                         }
                         _ => {}
@@ -327,7 +326,13 @@ fn main() {
                 std::f32::consts::FRAC_PI_2 - 0.0001,
             );
 
-            renderer.set_camera_orientation(mouse_pitch, mouse_yaw);
+            block_on(async {
+                client
+                    .lock()
+                    .await
+                    .renderer
+                    .set_camera_orientation(mouse_pitch, mouse_yaw)
+            });
         }
         Event::RedrawRequested(_) => {
             let now = Instant::now();
@@ -369,9 +374,7 @@ fn main() {
             frame_count += 1;
             last_frame_instant = now;
 
-            block_on(async {
-                renderer.render().await;
-            });
+            block_on(async { client.lock().await.renderer.render().await });
         }
         Event::WindowEvent {
             event: WindowEvent::CloseRequested,

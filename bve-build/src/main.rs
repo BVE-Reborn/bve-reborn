@@ -198,6 +198,7 @@ fn build_shaders() {
                             "-x",
                             "glsl",
                             "-g",
+                            "-O",
                             stage,
                             &format!("{}", entry.path().display()),
                             "-o",

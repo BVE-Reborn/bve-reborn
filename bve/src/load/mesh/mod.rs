@@ -7,10 +7,11 @@ use crate::{
     },
     ColorU8RGB, ColorU8RGBA,
 };
+use async_std::path::Path;
 use cgmath::{Array, Vector2, Vector3, Vector4};
 pub use execution::*;
 use indexmap::IndexSet;
-use std::{ffi::OsStr, path::Path};
+use std::{ffi::OsStr, ops::Deref};
 
 mod execution;
 
@@ -85,6 +86,14 @@ impl TextureSet {
     }
 }
 
+impl Deref for TextureSet {
+    type Target = IndexSet<String>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.filenames
+    }
+}
+
 impl IntoIterator for TextureSet {
     type IntoIter = <IndexSet<String> as IntoIterator>::IntoIter;
     type Item = String;
@@ -123,7 +132,8 @@ pub struct Mesh {
     pub glow: Glow,
 }
 
-fn default_mesh() -> Mesh {
+#[must_use]
+pub fn default_mesh() -> Mesh {
     Mesh {
         vertices: vec![],
         indices: vec![],
@@ -147,7 +157,7 @@ fn default_mesh() -> Mesh {
 pub struct Vertex {
     pub position: Vector3<f32>,
     pub normal: Vector3<f32>,
-    pub color: Vector4<f32>,
+    pub color: Vector4<u8>,
     pub coord: Vector2<f32>,
     pub double_sided: bool,
 }
@@ -171,7 +181,7 @@ impl Vertex {
             position,
             normal,
             coord,
-            color: Vector4::from_value(1.0),
+            color: Vector4::from_value(255),
             double_sided: false,
         }
     }
@@ -182,7 +192,7 @@ impl Vertex {
             position,
             normal,
             coord: Vector2::from_value(0.0),
-            color: Vector4::from_value(1.0),
+            color: Vector4::from_value(255),
             double_sided: false,
         }
     }
@@ -193,13 +203,13 @@ impl Vertex {
             position,
             normal: Vector3::from_value(0.0),
             coord: Vector2::from_value(0.0),
-            color: Vector4::from_value(1.0),
+            color: Vector4::from_value(255),
             double_sided: false,
         }
     }
 }
 
-pub fn load_mesh_from_file(file: impl AsRef<Path>) -> Option<LoadedStaticMesh> {
+pub async fn load_mesh_from_file(file: impl AsRef<Path>) -> Option<LoadedStaticMesh> {
     let path = file.as_ref();
     let ext = path
         .extension()
@@ -212,7 +222,7 @@ pub fn load_mesh_from_file(file: impl AsRef<Path>) -> Option<LoadedStaticMesh> {
         _ => return None, // TODO: Use result not option
     };
 
-    let result = read_convert_utf8(path).ok()?; // TODO: Use result not option
+    let result = read_convert_utf8(path).await.ok()?; // TODO: Use result not option
 
     Some(generate_meshes(post_process(create_instructions(&result, file_type))))
 }

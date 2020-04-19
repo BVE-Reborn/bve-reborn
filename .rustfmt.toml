@@ -20,8 +20,6 @@ merge_imports = true
 
 overflow_delimited_expr = true
 
-reorder_impl_items = true
-
 use_field_init_shorthand = true
 use_try_shorthand = true
 

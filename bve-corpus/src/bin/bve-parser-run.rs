@@ -1,3 +1,7 @@
+use async_std::{
+    path::{Path, PathBuf},
+    task::block_on,
+};
 use bve::{
     filesystem::read_convert_utf8,
     parse::{
@@ -13,14 +17,7 @@ use bve::{
     },
 };
 use log::{error, info, warn};
-use std::{
-    convert::TryFrom,
-    io::stdout,
-    path::{Path, PathBuf},
-    process::exit,
-    str::FromStr,
-    time::Instant,
-};
+use std::{convert::TryFrom, io::stdout, process::exit, str::FromStr, time::Instant};
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum FileType {
@@ -147,8 +144,8 @@ impl Arguments {
     }
 }
 
-fn parse_file<T: FileParser>(source: &Path, options: &Arguments) {
-    let contents = read_convert_utf8(source).expect("Must be able to read file");
+async fn parse_file<T: FileParser>(source: &Path, options: &Arguments) {
+    let contents = read_convert_utf8(source).await.expect("Must be able to read file");
 
     let start = Instant::now();
     let ParserResult {
@@ -192,14 +189,14 @@ fn main() {
     bve::log::enable_logger(&options.log_output, options.quiet, options.debug, options.trace);
 
     match options.file_type {
-        FileType::AtsCfg => parse_file::<ParsedAtsConfig>(&options.source_file, &options),
-        FileType::B3D => parse_file::<ParsedStaticObjectB3D>(&options.source_file, &options),
-        FileType::CSV => parse_file::<ParsedStaticObjectCSV>(&options.source_file, &options),
-        FileType::Animated => parse_file::<ParsedAnimatedObject>(&options.source_file, &options),
-        FileType::TrainDat => parse_file::<ParsedTrainDat>(&options.source_file, &options),
-        FileType::ExtensionsCfg => parse_file::<ParsedExtensionsCfg>(&options.source_file, &options),
-        FileType::PanelCfg => parse_file::<ParsedPanel1Cfg>(&options.source_file, &options),
-        FileType::Panel2Cfg => parse_file::<ParsedPanel2Cfg>(&options.source_file, &options),
-        FileType::SoundCfg => parse_file::<ParsedSoundCfg>(&options.source_file, &options),
+        FileType::AtsCfg => block_on(parse_file::<ParsedAtsConfig>(&options.source_file, &options)),
+        FileType::B3D => block_on(parse_file::<ParsedStaticObjectB3D>(&options.source_file, &options)),
+        FileType::CSV => block_on(parse_file::<ParsedStaticObjectCSV>(&options.source_file, &options)),
+        FileType::Animated => block_on(parse_file::<ParsedAnimatedObject>(&options.source_file, &options)),
+        FileType::TrainDat => block_on(parse_file::<ParsedTrainDat>(&options.source_file, &options)),
+        FileType::ExtensionsCfg => block_on(parse_file::<ParsedExtensionsCfg>(&options.source_file, &options)),
+        FileType::PanelCfg => block_on(parse_file::<ParsedPanel1Cfg>(&options.source_file, &options)),
+        FileType::Panel2Cfg => block_on(parse_file::<ParsedPanel2Cfg>(&options.source_file, &options)),
+        FileType::SoundCfg => block_on(parse_file::<ParsedSoundCfg>(&options.source_file, &options)),
     }
 }

@@ -9,8 +9,8 @@ use winit::dpi::PhysicalSize;
 pub struct Vertex {
     pub pos: [f32; 3],
     pub _normal: [f32; 3],
-    pub _color: [f32; 4],
-    pub _tex_coord: [f32; 2],
+    pub _color: [u8; 4],
+    pub _texcoord: [f32; 2],
 }
 
 #[repr(C)]
@@ -123,6 +123,7 @@ pub fn create_pipeline(
     } else {
         BlendDescriptor::REPLACE
     };
+    let alpha_to_coverage = ty == PipelineType::Normal;
     device.create_render_pipeline(&RenderPipelineDescriptor {
         layout,
         vertex_stage: ProgrammableStageDescriptor {
@@ -142,7 +143,7 @@ pub fn create_pipeline(
         }),
         primitive_topology: PrimitiveTopology::TriangleList,
         color_states: &[ColorStateDescriptor {
-            format: TextureFormat::Bgra8UnormSrgb,
+            format: TextureFormat::Bgra8Unorm,
             color_blend: blend.clone(),
             alpha_blend: blend,
             write_mask: ColorWrite::ALL,
@@ -156,15 +157,17 @@ pub fn create_pipeline(
             stencil_read_mask: 0,
             stencil_write_mask: 0,
         }),
-        index_format: IndexFormat::Uint32,
-        vertex_buffers: &[VertexBufferDescriptor {
-            stride: size_of::<Vertex>() as BufferAddress,
-            step_mode: InputStepMode::Vertex,
-            attributes: &vertex_attr_array![0 => Float3, 1 => Float3, 2 => Float4, 3 => Float2],
-        }],
+        vertex_state: VertexStateDescriptor {
+            index_format: IndexFormat::Uint32,
+            vertex_buffers: &[VertexBufferDescriptor {
+                stride: size_of::<Vertex>() as BufferAddress,
+                step_mode: InputStepMode::Vertex,
+                attributes: &vertex_attr_array![0 => Float3, 1 => Float3, 2 => Uchar4, 3 => Float2],
+            }],
+        },
         sample_count: samples as u32,
         sample_mask: !0,
-        alpha_to_coverage_enabled: false,
+        alpha_to_coverage_enabled: alpha_to_coverage,
     })
 }
 
@@ -181,6 +184,7 @@ pub fn create_depth_buffer(device: &Device, size: PhysicalSize<u32>, samples: MS
         dimension: TextureDimension::D2,
         format: TextureFormat::Depth32Float,
         usage: TextureUsage::OUTPUT_ATTACHMENT,
+        label: Some("depth buffer"),
     });
     depth_texture.create_default_view()
 }
@@ -198,21 +202,31 @@ pub fn create_framebuffer(device: &Device, size: PhysicalSize<u32>, samples: MSA
         mip_level_count: 1,
         sample_count: samples as u32,
         dimension: TextureDimension::D2,
-        format: TextureFormat::Bgra8UnormSrgb,
+        format: TextureFormat::Bgra8Unorm,
         usage: TextureUsage::OUTPUT_ATTACHMENT,
+        label: Some("framebuffer"),
     });
     tex.create_default_view()
+}
+
+pub fn create_swapchain(device: &Device, surface: &Surface, screen_size: PhysicalSize<u32>) -> SwapChain {
+    device.create_swap_chain(surface, &SwapChainDescriptor {
+        usage: TextureUsage::OUTPUT_ATTACHMENT,
+        format: TextureFormat::Bgra8Unorm,
+        width: screen_size.width,
+        height: screen_size.height,
+        present_mode: PresentMode::Mailbox,
+    })
 }
 
 impl Renderer {
     pub async fn recompute_uniforms(&mut self) {
         let camera_mat = self.camera.compute_matrix();
+        let mut encoder = self.device.create_command_encoder(&CommandEncoderDescriptor {
+            label: Some("uniform updater"),
+        });
+
         for object in self.objects.values() {
-            let mut buf = object
-                .uniform_buffer
-                .map_write(0, size_of::<Uniforms>() as u64)
-                .await
-                .expect("Could not map buffer");
             let matrix = object::generate_matrix(
                 &camera_mat,
                 object.location,
@@ -223,13 +237,19 @@ impl Renderer {
                 _matrix: *matrix_ref,
                 _transparent: object.transparent as u32,
             };
-            buf.as_slice().copy_from_slice(uniforms.as_bytes());
+            let tmp_buf = self
+                .device
+                .create_buffer_with_data(uniforms.as_bytes(), BufferUsage::COPY_SRC);
+            encoder.copy_buffer_to_buffer(&tmp_buf, 0, &object.uniform_buffer, 0, size_of::<Uniforms>() as u64);
         }
+
+        self.command_buffers.push(encoder.finish());
     }
 
     pub fn compute_object_distances(&mut self) {
         for obj in self.objects.values_mut() {
-            let mesh_center: Vector3<f32> = obj.location + obj.mesh_center_offset;
+            let mesh = &self.mesh[&obj.mesh];
+            let mesh_center: Vector3<f32> = obj.location + mesh.mesh_center_offset;
             let camera_mesh_vector: Vector3<f32> = self.camera.location - mesh_center;
             let distance = camera_mesh_vector.magnitude2();
             obj.camera_distance = distance;

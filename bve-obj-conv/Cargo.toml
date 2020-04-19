@@ -1,24 +1,20 @@
 [package]
-name = "bve-native"
-version = "0.0.1"
-description = "Remaking OpenBVE using a modern architecture, using Rust. C API."
+name = "bve-obj-conv"
+version = "0.1.2"
+description = "Converter from .obj to .csv and back"
 license = "MPL-2.0"
 authors = ["Connor Fitzgerald <connorwadefitzgerald@gmail.com>"]
 edition = "2018"
 
 repository = "https://gitlab.bvereborn.com/bve-reborn/bve-reborn"
 readme = "README.md"
-categories = ["games", "parsing", "rendering::data-formats", "simulation"]
-keywords = ["bve", "serialization", "simulation"]
-
-[lib]
-crate-type = ["cdylib"]
+categories = ["parsing", "rendering::data-formats"]
+keywords = ["bve", "parsing", "conversion"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 async-std = "1.5.0"
-backtrace = "0.3.42"
 bve = { version = "0.0.1", path = "../bve" }
-bve-derive = { version = "0.0.1", path = "../bve-derive" }
-libc = "0.2.66"
+itertools = "0.9.0"
+obj = "0.9.1"

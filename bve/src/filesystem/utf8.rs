@@ -1,16 +1,17 @@
+use async_std::{fs::read, path::Path};
 use chardetng::EncodingDetector;
 use log::{debug, trace};
-use std::{fs::read, io::Result, path::Path};
+use std::io::Result;
 
 /// Reads a file, detects the encoding, and converts to utf8.
 ///
 /// # Errors
 ///
 /// Returns Err if opening/reading the file fails. All errors come from [`std::fs::read`].
-pub fn read_convert_utf8(filename: impl AsRef<Path>) -> Result<String> {
+pub async fn read_convert_utf8(filename: impl AsRef<Path>) -> Result<String> {
     debug!("Reading and converting {}", filename.as_ref().display());
 
-    let bytes = read(filename)?;
+    let bytes = read(filename).await?;
 
     Ok(convert_to_utf8(bytes))
 }

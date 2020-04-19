@@ -137,7 +137,7 @@ fn run_create_mesh_builder(ctx: &mut MeshBuildContext) {
         // these meshes get combined, this is the easiest and fastest way for shaders
         // to access the data
         for v in &mut ctx.current_mesh.vertices {
-            v.color = ctx.current_mesh.color.map(|i| i as f32 / 255.0);
+            v.color = ctx.current_mesh.color;
         }
         ctx.parsed
             .meshes
