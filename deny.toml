@@ -29,6 +29,9 @@ skip = [
 [advisories]
 vulnerability = "deny"
 unmaintained = "deny"
+ignore = [
+    "RUSTSEC-2019-0031" # spin is unmaintained, need to pester flume to remove it
+]
 
 [sources]
 unknown-registry = "deny"
