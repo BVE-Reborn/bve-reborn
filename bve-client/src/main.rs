@@ -143,15 +143,18 @@ fn main() {
     });
 
     block_on(async {
-        runtime
-            .add_static_object(
-                runtime::Location {
-                    chunk: runtime::ChunkAddress::new(0, 0),
-                    offset: runtime::ChunkOffset::new(0.0, 0.0, 0.0),
-                },
-                PathBuf::from(std::env::args().nth(1).expect("Must pass filename as first argument")),
-            )
-            .await
+        let path = PathBuf::from(std::env::args().nth(1).expect("Must pass filename as first argument"));
+        for x in 0..5 {
+            runtime
+                .add_static_object(
+                    runtime::Location {
+                        chunk: runtime::ChunkAddress::new(0, 0),
+                        offset: runtime::ChunkOffset::new(x as f32 * 5.0, 0.0, 0.0),
+                    },
+                    path.clone(),
+                )
+                .await
+        }
     });
 
     let mut mouse_pitch = 0.0_f32;
