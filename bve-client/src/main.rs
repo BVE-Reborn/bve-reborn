@@ -390,7 +390,7 @@ fn main() {
 
     if let Err(..) = result {
         println!("Fatal Error. Copy the above text and report the issue. Press enter to close.");
-        let mut _s = String::new();
-        std::io::stdin().read_line(&mut _s);
+        let mut s = String::new();
+        std::io::stdin().read_line(&mut s).expect("Could not read line");
     }
 }
