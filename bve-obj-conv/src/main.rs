@@ -108,7 +108,9 @@ fn polygon_to_indices(
             if let Some(texture_coords) = texture_coords_opt {
                 output.push_str(&format!(
                     "SetTextureCoordinates, {}, {}, {}\n",
-                    this_vert, texture_coords[0], texture_coords[1]
+                    this_vert,
+                    texture_coords[0],
+                    1.0 - texture_coords[1]
                 ));
             }
 
