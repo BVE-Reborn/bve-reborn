@@ -7,7 +7,7 @@ authors = ["Connor Fitzgerald <connorwadefitzgerald@gmail.com>"]
 edition = "2018"
 publish = false
 
-repository = "https://gitlab.bvereborn.com/bve-reborn/bve-reborn"
+repository = "https://github.com/BVE-Reborn/bve-reborn"
 readme = "README.md"
 categories = ["games", "simulation"]
 keywords = ["bve", "rex", "engine"]
