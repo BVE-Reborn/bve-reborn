@@ -75,7 +75,7 @@ fn polygon_to_indices(
     output: &mut String,
     vert_count: &mut usize,
     obj: &Obj<'_, SimplePolygon>,
-    translation: &mut HashMap<(usize, Option<usize>), usize>,
+    translation: &mut HashMap<(usize, Option<usize>, Option<usize>), usize>,
     polygon: &[IndexTuple],
 ) -> Vec<usize> {
     let mut indices = Vec::new();
@@ -83,7 +83,7 @@ fn polygon_to_indices(
         let position_idx = index_pair.0;
         let tex_coord_idx = index_pair.1.map(|v| v);
         let normal_idx = index_pair.2.map(|v| v);
-        let vertex_idx = if let Some(&existing_vert) = translation.get(&(position_idx, normal_idx)) {
+        let vertex_idx = if let Some(&existing_vert) = translation.get(&(position_idx, normal_idx, tex_coord_idx)) {
             existing_vert
         } else {
             let this_vert = *vert_count;
@@ -96,7 +96,7 @@ fn polygon_to_indices(
             if let Some(normal) = normal_opt {
                 output.push_str(&format!(
                     "AddVertex, {}, {}, {}, {}, {}, {}\n",
-                    position[0], position[1], position[2], normal[0], normal[1], normal[2]
+                    position[0], position[1], -position[2], normal[0], normal[1], normal[2]
                 ));
             } else {
                 output.push_str(&format!(
@@ -114,7 +114,7 @@ fn polygon_to_indices(
                 ));
             }
 
-            translation.insert((position_idx, normal_idx), this_vert);
+            translation.insert((position_idx, normal_idx, tex_coord_idx), this_vert);
 
             this_vert
         };
@@ -132,7 +132,7 @@ fn obj_to_csv(input_size: usize, obj: Obj<SimplePolygon>) -> String {
     output.reserve(input_size * 4);
     for object in &obj.objects {
         for group in &object.groups {
-            let mut translation: HashMap<(usize, Option<usize>), usize> = HashMap::new();
+            let mut translation: HashMap<(usize, Option<usize>, Option<usize>), usize> = HashMap::new();
             let mut vert_count = 0_usize;
             output.push_str("\nCreateMeshBuilder\n");
 
@@ -153,7 +153,7 @@ fn obj_to_csv(input_size: usize, obj: Obj<SimplePolygon>) -> String {
             for polygon in &group.polys {
                 let indices = polygon_to_indices(&mut output, &mut vert_count, &obj, &mut translation, polygon);
                 output.push_str("AddFace");
-                for index in indices {
+                for index in indices.into_iter().rev() {
                     output.push_str(&format!(", {}", index));
                 }
                 output.push('\n');
