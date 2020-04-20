@@ -2566,9 +2566,8 @@ checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 
 [[package]]
 name = "winit"
-version = "0.22.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "02e9092b71b48ad6a0d98835a786308d10760cc09369d02e4a166608327f1f26"
+version = "0.22.1"
+source = "git+https://github.com/Osspial/winit.git?rev=78a62ec5473e9cd5472c18f859103b0b0cb88362#78a62ec5473e9cd5472c18f859103b0b0cb88362"
 dependencies = [
  "android_glue",
  "bitflags",
