@@ -13,6 +13,7 @@ pub type ChunkAddress = Vector2<i32>;
 pub type ChunkOffset = Vector3<f32>;
 
 pub struct Chunk {
+    pub address: ChunkAddress,
     pub objects: DashSet<UnloadedObject>,
     pub state: AtomicU8,
 }
@@ -68,6 +69,7 @@ impl ChunkSet {
             Some(e) => Arc::clone(e.value()),
             None => {
                 let arc = Arc::new(Chunk {
+                    address,
                     objects: DashSet::new(),
                     state: AtomicU8::new(ChunkState::Unloaded as u8),
                 });

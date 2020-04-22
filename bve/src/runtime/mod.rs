@@ -89,6 +89,15 @@ impl<C: Client> Runtime<C> {
 
     // TODO: This probably should get refactored inside chunk
     pub async fn add_static_object(self: &Arc<Self>, location: Location, path: PathBuf) {
+        trace!(
+            "Adding object {} to chunk ({}, {}) at ({}, {}, {})",
+            path.display(),
+            location.chunk.x,
+            location.chunk.y,
+            location.offset.x,
+            location.offset.y,
+            location.offset.z,
+        );
         let chunk = self.chunks.get_chunk(location.chunk).await;
 
         chunk.objects.insert(UnloadedObject {
@@ -147,7 +156,10 @@ impl<C: Client> Runtime<C> {
         while let (Some(mesh_handle_pairs), Some(location)) = (mesh_futures.next().await, location_iter.next()) {
             let mut client = self.client.lock().await;
             for (mesh_handle, texture_handle) in mesh_handle_pairs {
-                let object_handle = client.add_object_texture(location, &mesh_handle, &texture_handle);
+                let render_location = Location::from_address_position(chunk.address, location)
+                    .to_relative_position(self.position.lock().await.chunk);
+
+                let object_handle = client.add_object_texture(render_location, &mesh_handle, &texture_handle);
                 object_textures.push(ObjectTexture {
                     mesh: mesh_handle,
                     texture: texture_handle,
