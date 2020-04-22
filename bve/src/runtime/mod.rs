@@ -109,7 +109,7 @@ impl<C: Client> Runtime<C> {
 
     // TODO: This probably should get refactored inside chunk
     pub async fn add_static_object(self: &Arc<Self>, location: Location, path: PathBuf) {
-        trace!("Adding object {} to chunk {}}", path.display(), location);
+        trace!("Adding object {} to chunk {}", path.display(), location);
         let chunk = self.chunks.get_chunk(location.chunk).await;
 
         chunk.objects.insert(UnloadedObject {
