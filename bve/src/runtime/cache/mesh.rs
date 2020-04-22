@@ -65,6 +65,8 @@ impl<C: Client> MeshCache<C> {
             mesh_data.textures.push(path_set.insert(path).await);
         }
 
+        trace!("Loaded  mesh {}", path.display());
+
         mesh_data
     }
 
@@ -72,6 +74,7 @@ impl<C: Client> MeshCache<C> {
         let canonicalized = path.canonicalize().await.ok()?;
         let path_handle = path_set.insert(canonicalized.clone()).await;
 
+        trace!("Checking if mesh {} is loaded", path_handle.0);
         let mesh = self
             .inner
             .get_or_insert(path_handle, async {
@@ -79,5 +82,19 @@ impl<C: Client> MeshCache<C> {
             })
             .await;
         Some(mesh)
+    }
+
+    pub async fn remove_mesh(&self, client: &Mutex<C>, path_handle: PathHandle) -> Option<Vec<PathHandle>> {
+        trace!("Checking mesh {}", path_handle.0);
+        self.inner
+            .remove(path_handle, async move |data| {
+                trace!("Removing mesh {}", path_handle.0);
+                let mut client_lock = client.lock().await;
+                for (handle, _) in data.handles {
+                    client_lock.remove_mesh(&handle);
+                }
+                data.textures
+            })
+            .await
     }
 }

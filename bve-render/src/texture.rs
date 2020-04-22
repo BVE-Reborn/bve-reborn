@@ -94,8 +94,8 @@ impl Renderer {
         TextureHandle(handle)
     }
 
-    #[must_use]
-    pub const fn get_default_texture() -> TextureHandle {
-        TextureHandle(0)
+    pub fn remove_texture(&mut self, TextureHandle(tex_idx): &TextureHandle) {
+        let _texture = self.textures.remove(tex_idx).expect("Invalid texture handle");
+        // Texture goes out of scope
     }
 }

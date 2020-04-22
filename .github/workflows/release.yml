@@ -78,13 +78,13 @@ jobs:
 
       - name: Build
         run: |
-          cargo build -Z unstable-options --profile lto -p bve-client -p bve-corpus
+          cargo build -Z unstable-options --profile lto -p bve-client -p bve-corpus -p bve-obj-conv
         shell: bash
 
       - name: Build
         run: |
           mkdir ${{ matrix.name }}
-          cp target/lto/bve-client${{ matrix.suffix }} target/lto/bve-corpus${{ matrix.suffix }} target/lto/bve-parser-run${{ matrix.suffix }} ${{ matrix.name }}
+          cp target/lto/bve-client${{ matrix.suffix }} target/lto/bve-corpus${{ matrix.suffix }} target/lto/bve-parser-run${{ matrix.suffix }} target/lto/bve-obj-conv${{ matrix.suffix }} ${{ matrix.name }}
         shell: bash
 
       - uses: actions/upload-artifact@v1

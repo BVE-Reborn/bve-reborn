@@ -2,17 +2,38 @@ use crate::runtime::cache::PathHandle;
 use async_std::sync::Arc;
 use cgmath::{Vector2, Vector3};
 use dashmap::{DashMap, DashSet};
+use derive_more::{AsMut, AsRef, Deref, Display, From, Into};
 use std::{
     hash::{Hash, Hasher},
     sync::atomic::AtomicU8,
 };
 
-pub const CHUNK_SIZE: f32 = 128.0;
+pub const CHUNK_SIZE: f32 = 64.0;
 
-pub type ChunkAddress = Vector2<i32>;
-pub type ChunkOffset = Vector3<f32>;
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Deref, From, Into, Display, AsRef, AsMut)]
+#[display(fmt = "({}, {})", "self.0.x", "self.0.y")]
+pub struct ChunkAddress(Vector2<i32>);
+
+impl ChunkAddress {
+    #[must_use]
+    pub const fn new(x: i32, y: i32) -> Self {
+        Self(Vector2::new(x, y))
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Deref, From, Into, Display, AsRef, AsMut)]
+#[display(fmt = "({}, {}, {})", "self.0.x", "self.0.y", "self.0.z")]
+pub struct ChunkOffset(Vector3<f32>);
+
+impl ChunkOffset {
+    #[must_use]
+    pub const fn new(x: f32, y: f32, z: f32) -> Self {
+        Self(Vector3::new(x, y, z))
+    }
+}
 
 pub struct Chunk {
+    pub address: ChunkAddress,
     pub objects: DashSet<UnloadedObject>,
     pub state: AtomicU8,
 }
@@ -23,6 +44,7 @@ pub enum ChunkState {
     Unloaded = 0,
     Loading = 1,
     Finished = 2,
+    Unloading = 3,
 }
 
 impl From<u8> for ChunkState {
@@ -31,6 +53,7 @@ impl From<u8> for ChunkState {
             0 => Self::Unloaded,
             1 => Self::Loading,
             2 => Self::Finished,
+            3 => Self::Unloading,
             _ => unreachable!(),
         }
     }
@@ -68,6 +91,7 @@ impl ChunkSet {
             Some(e) => Arc::clone(e.value()),
             None => {
                 let arc = Arc::new(Chunk {
+                    address,
                     objects: DashSet::new(),
                     state: AtomicU8::new(ChunkState::Unloaded as u8),
                 });

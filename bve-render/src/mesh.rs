@@ -101,4 +101,9 @@ impl Renderer {
 
         MeshHandle(handle)
     }
+
+    pub fn remove_mesh(&mut self, MeshHandle(mesh_idx): &MeshHandle) {
+        let _mesh = self.mesh.remove(mesh_idx).expect("Invalid mesh handle");
+        // Mesh goes out of scope
+    }
 }

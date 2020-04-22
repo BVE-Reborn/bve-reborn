@@ -57,7 +57,7 @@ use async_std::{
     sync::{Arc, Mutex},
     task::block_on,
 };
-use bve::{load::mesh::Vertex, runtime};
+use bve::{load::mesh::Vertex, runtime, runtime::Location};
 use bve_render::{MSAASetting, MeshHandle, ObjectHandle, Renderer, TextureHandle};
 use cgmath::{ElementWise, InnerSpace, Vector3};
 use circular_queue::CircularQueue;
@@ -116,6 +116,26 @@ impl runtime::Client for Client {
     fn add_texture(&mut self, image: &RgbaImage) -> Self::TextureHandle {
         self.renderer.add_texture(image)
     }
+
+    fn remove_object(&mut self, object: &Self::ObjectHandle) {
+        self.renderer.remove_object(object)
+    }
+
+    fn remove_mesh(&mut self, mesh: &Self::MeshHandle) {
+        self.renderer.remove_mesh(mesh)
+    }
+
+    fn remove_texture(&mut self, texture: &Self::TextureHandle) {
+        self.renderer.remove_texture(texture)
+    }
+
+    fn set_camera_location(&mut self, location: Vector3<f32>) {
+        self.renderer.set_camera_location(location);
+    }
+
+    fn set_object_location(&mut self, object: &Self::ObjectHandle, location: Vector3<f32>) {
+        self.renderer.set_location(object, location);
+    }
 }
 
 #[derive(Deserialize)]
@@ -172,14 +192,11 @@ fn client_main() {
             for idx in 0..object.count {
                 runtime
                     .add_static_object(
-                        runtime::Location {
-                            chunk: runtime::ChunkAddress::new(0, 0),
-                            offset: runtime::ChunkOffset::new(
-                                f32::mul_add(object.offset_x, idx as f32, object.x),
-                                0.0,
-                                f32::mul_add(object.offset_z, idx as f32, object.z),
-                            ),
-                        },
+                        runtime::Location::from_absolute_position(Vector3::new(
+                            f32::mul_add(object.offset_x, idx as f32, object.x),
+                            0.0,
+                            f32::mul_add(object.offset_z, idx as f32, object.z),
+                        )),
                         PathBuf::from(object.path.clone()),
                     )
                     .await
@@ -239,9 +256,15 @@ fn client_main() {
 
             camera_location = camera_location.add_element_wise(dir_vec);
 
-            block_on(async { client.lock().await.renderer.set_camera_location(camera_location) });
+            block_on(async {
+                runtime
+                    .set_location(Location::from_absolute_position(camera_location))
+                    .await;
+            });
 
-            block_on(async { runtime.tick().await });
+            block_on(async {
+                runtime.tick().await;
+            });
             window.request_redraw();
         }
         Event::WindowEvent {

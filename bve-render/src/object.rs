@@ -18,7 +18,7 @@ pub struct Object {
 }
 
 pub fn generate_matrix(mx_view: &Matrix4<f32>, location: Vector3<f32>, aspect_ratio: f32) -> Matrix4<f32> {
-    let mx_projection = cgmath::perspective(cgmath::Deg(55_f32), aspect_ratio, 0.1, 1000.0);
+    let mx_projection = cgmath::perspective(cgmath::Deg(45_f32), aspect_ratio, 0.1, 1000.0);
     let mx_model = Matrix4::from_translation(location);
     OPENGL_TO_WGPU_MATRIX * mx_projection * mx_view * mx_model
 }
@@ -38,7 +38,11 @@ impl Renderer {
         let tex: &texture::Texture = &self.textures[tex_idx];
         let transparent = mesh.transparent || tex.transparent;
 
-        let matrix = generate_matrix(&self.camera.compute_matrix(), location, 800.0 / 600.0);
+        let matrix = generate_matrix(
+            &self.camera.compute_matrix(),
+            location,
+            self.screen_size.width as f32 / self.screen_size.height as f32,
+        );
         let matrix_ref: &[f32; 16] = matrix.as_ref();
         let uniforms = render::Uniforms {
             _matrix: *matrix_ref,
@@ -82,5 +86,10 @@ impl Renderer {
             transparent,
         });
         ObjectHandle(handle)
+    }
+
+    pub fn remove_object(&mut self, ObjectHandle(obj_idx): &ObjectHandle) {
+        let _object = self.objects.remove(obj_idx).expect("Invalid object handle");
+        // Object goes out of scope
     }
 }
