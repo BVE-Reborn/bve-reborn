@@ -13,6 +13,7 @@ pub struct Location {
 }
 
 impl Location {
+    #[must_use]
     pub fn from_absolute_position(position: Vector3<f32>) -> Self {
         let x_chunk = (position.x / CHUNK_SIZE).floor();
         let y_chunk = (position.z / CHUNK_SIZE).floor();
@@ -28,10 +29,12 @@ impl Location {
         }
     }
 
-    pub fn from_address_position(chunk: ChunkAddress, offset: ChunkOffset) -> Self {
+    #[must_use]
+    pub const fn from_address_position(chunk: ChunkAddress, offset: ChunkOffset) -> Self {
         Self { chunk, offset }
     }
 
+    #[must_use]
     pub fn to_relative_position(&self, base_chunk: ChunkAddress) -> Vector3<f32> {
         let chunk_offset = self.chunk.as_ref().sub_element_wise(*base_chunk);
         Vector3::new(

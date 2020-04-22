@@ -200,12 +200,12 @@ impl<C: Client> Runtime<C> {
     }
 
     async fn deload_mesh(self: Arc<Self>, path_handle: PathHandle) {
-        let textures_opt = self.meshes.remove_mesh(&self.client, &path_handle).await;
+        let textures_opt = self.meshes.remove_mesh(&self.client, path_handle).await;
         if let Some(textures) = textures_opt {
             for texture_handle in textures {
                 // This could be a separate task, but I don't think this will really help things, there's
                 // no major operations going on here, just locks being grabbed
-                self.textures.remove_texture(&self.client, &texture_handle).await;
+                self.textures.remove_texture(&self.client, texture_handle).await;
             }
         }
     }
@@ -270,6 +270,7 @@ impl<C: Client> Runtime<C> {
         // Handle runtime location, and spawn off job to update positions if needed
         let mut runtime_location = self.location.lock().await;
         let location = runtime_location.location;
+        #[allow(clippy::if_not_else)]
         let location_update_job = if runtime_location.location.chunk != runtime_location.old_location.chunk {
             runtime_location.old_location = runtime_location.location;
             drop(runtime_location);

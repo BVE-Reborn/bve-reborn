@@ -84,7 +84,7 @@ impl<C: Client> MeshCache<C> {
         Some(mesh)
     }
 
-    pub async fn remove_mesh(&self, client: &Mutex<C>, path_handle: &PathHandle) -> Option<Vec<PathHandle>> {
+    pub async fn remove_mesh(&self, client: &Mutex<C>, path_handle: PathHandle) -> Option<Vec<PathHandle>> {
         trace!("Checking mesh {}", path_handle.0);
         self.inner
             .remove(path_handle, async move |data| {

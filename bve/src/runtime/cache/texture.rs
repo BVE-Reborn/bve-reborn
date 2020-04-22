@@ -71,7 +71,7 @@ impl<C: Client> TextureCache<C> {
         self.load_texture_handle_path(client, handle, resolved_path).await
     }
 
-    pub async fn remove_texture(&self, client: &Mutex<C>, path_handle: &PathHandle) -> Option<()> {
+    pub async fn remove_texture(&self, client: &Mutex<C>, path_handle: PathHandle) -> Option<()> {
         self.inner
             .remove(path_handle, async move |handle| {
                 let mut client_lock = client.lock().await;

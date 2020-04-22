@@ -134,7 +134,7 @@ impl runtime::Client for Client {
     }
 
     fn set_object_location(&mut self, object: &Self::ObjectHandle, location: Vector3<f32>) {
-        self.renderer.set_location(&object, location);
+        self.renderer.set_location(object, location);
     }
 }
 

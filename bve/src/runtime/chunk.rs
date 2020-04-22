@@ -15,7 +15,8 @@ pub const CHUNK_SIZE: f32 = 64.0;
 pub struct ChunkAddress(Vector2<i32>);
 
 impl ChunkAddress {
-    pub fn new(x: i32, y: i32) -> Self {
+    #[must_use]
+    pub const fn new(x: i32, y: i32) -> Self {
         Self(Vector2::new(x, y))
     }
 }
@@ -25,7 +26,8 @@ impl ChunkAddress {
 pub struct ChunkOffset(Vector3<f32>);
 
 impl ChunkOffset {
-    pub fn new(x: f32, y: f32, z: f32) -> Self {
+    #[must_use]
+    pub const fn new(x: f32, y: f32, z: f32) -> Self {
         Self(Vector3::new(x, y, z))
     }
 }
