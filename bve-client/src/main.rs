@@ -117,6 +117,18 @@ impl runtime::Client for Client {
         self.renderer.add_texture(image)
     }
 
+    fn remove_object(&mut self, object: &Self::ObjectHandle) {
+        self.renderer.remove_object(object)
+    }
+
+    fn remove_mesh(&mut self, mesh: &Self::MeshHandle) {
+        self.renderer.remove_mesh(mesh)
+    }
+
+    fn remove_texture(&mut self, texture: &Self::TextureHandle) {
+        self.renderer.remove_texture(texture)
+    }
+
     fn set_camera_location(&mut self, location: Vector3<f32>) {
         self.renderer.set_camera_location(location);
     }

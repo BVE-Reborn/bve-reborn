@@ -67,4 +67,36 @@ impl<D: Clone> Cache<D> {
             }
         }
     }
+
+    pub async fn remove<F, O>(&self, path_handle: &PathHandle, remove_data: impl FnOnce(D) -> F) -> Option<O>
+    where
+        F: Future<Output = O>,
+    {
+        let mut mutable_lock = self.0.lock().await;
+        if let Some(data_arc_ref) = mutable_lock.get(path_handle) {
+            let data_arc = Arc::clone(data_arc_ref);
+            let data = data_arc.read().await;
+            let cache_entry = data.as_ref().expect("Loaded mesh in cache without contents");
+            let current_ref_count = cache_entry.count.fetch_sub(1, Ordering::AcqRel) - 1;
+            drop(data);
+            if current_ref_count == 0 {
+                // Still have the index lock here, I am guaranteed to be the only one here
+                let contents = mutable_lock.remove(path_handle).expect("No item that we just found");
+                let mut content_guard = contents.write().await;
+                Some(
+                    remove_data(
+                        content_guard
+                            .take()
+                            .expect("Loaded mesh in cache without contents")
+                            .data,
+                    )
+                    .await,
+                )
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
 }

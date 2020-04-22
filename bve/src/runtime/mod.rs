@@ -1,5 +1,5 @@
 use crate::runtime::{
-    cache::{MeshCache, PathSet, TextureCache},
+    cache::{MeshCache, PathHandle, PathSet, TextureCache},
     chunk::{Chunk, ChunkSet, ChunkState, UnloadedObject, CHUNK_SIZE},
 };
 pub use crate::runtime::{
@@ -12,7 +12,10 @@ use async_std::{
     sync::{Arc, Mutex, RwLock},
     task::spawn,
 };
-use futures::{stream::FuturesOrdered, StreamExt};
+use futures::{
+    stream::{FuturesOrdered, FuturesUnordered},
+    StreamExt,
+};
 use hecs::World;
 use log::{debug, trace};
 use std::sync::atomic::{AtomicI32, Ordering};
@@ -35,13 +38,15 @@ mod location;
 
 struct RenderableObject<C: Client> {
     object: C::ObjectHandle,
-    mesh: C::MeshHandle,
-    texture: C::TextureHandle,
     location: Location,
 }
 
 struct RenderableComponent<C: Client> {
     subobjects: Vec<RenderableObject<C>>,
+}
+
+struct ChunkComponent {
+    address: ChunkAddress,
 }
 
 struct BoundingBox {
@@ -179,8 +184,6 @@ impl<C: Client> Runtime<C> {
 
                 let object_handle = client.add_object_texture(render_location, &mesh_handle, &texture_handle);
                 object_textures.push(RenderableObject {
-                    mesh: mesh_handle,
-                    texture: texture_handle,
                     object: object_handle,
                     location,
                 });
@@ -195,11 +198,57 @@ impl<C: Client> Runtime<C> {
 
         trace!("Adding chunk to ecs");
         let mut ecs = self.ecs.write().await;
-        ecs.spawn((RenderableComponent::<C> { subobjects },));
+        ecs.spawn((RenderableComponent::<C> { subobjects }, ChunkComponent {
+            address: chunk.address,
+        }));
         drop(ecs);
 
         chunk.state.store(ChunkState::Finished as u8, Ordering::Release);
         trace!("Chunk marked finished");
+    }
+
+    async fn deload_mesh(self: Arc<Self>, path_handle: PathHandle) {
+        let textures_opt = self.meshes.remove_mesh(&self.client, &path_handle).await;
+        if let Some(textures) = textures_opt {
+            for texture_handle in textures {
+                // This could be a separate task, but I don't think this will really help things, there's
+                // no major operations going on here, just locks being grabbed
+                self.textures.remove_texture(&self.client, &texture_handle).await;
+            }
+        }
+    }
+
+    async fn deload_chunk(self: Arc<Self>, chunk: Arc<Chunk>) {
+        let mut ecs = self.ecs.write().await;
+        let mut query = ecs.query::<(&RenderableComponent<C>, &ChunkComponent)>();
+        let mut iter = query.iter().filter(|(_, (_, c))| c.address == chunk.address);
+        if let Some((id, (renderable, _))) = iter.next() {
+            let mut client = self.client.lock().await;
+            let renderable: &RenderableComponent<C> = renderable;
+            for subobject in &renderable.subobjects {
+                client.remove_object(&subobject.object);
+            }
+            drop(query);
+            ecs.despawn(id).expect("Could not find entity");
+        } else {
+            drop(query);
+        }
+        drop(ecs);
+
+        let mut despawn_futures = FuturesUnordered::new();
+        for subobject in chunk.objects.iter() {
+            let mesh_path = subobject.path;
+            despawn_futures.push(spawn(
+                async_clone_own!(runtime = self; { runtime.deload_mesh(mesh_path).await }),
+            ));
+        }
+
+        while let Some(..) = despawn_futures.next().await {
+            // empty
+        }
+
+        // Everything is deloaded, lets mark it so
+        chunk.state.store(ChunkState::Unloaded as u8, Ordering::Release);
     }
 
     pub async fn set_location(&self, location: Location) {
@@ -225,7 +274,6 @@ impl<C: Client> Runtime<C> {
             let renderable: &RenderableComponent<C> = renderable;
             for object in &renderable.subobjects {
                 let render_location = object.location.to_relative_position(base_location.chunk);
-                dbg!(render_location);
                 client.set_object_location(&object.object, render_location);
             }
         }
@@ -262,11 +310,12 @@ impl<C: Client> Runtime<C> {
             let state = ChunkState::from(chunk.state.load(Ordering::Acquire));
             let inside = bounding_box.inside(location);
             if state == ChunkState::Finished && !inside {
-                // deload
+                debug!("Despawning chunk ({}, {})", location.x, location.y);
+                spawn(async_clone_own!(runtime = self; chunk = chunk; { runtime.deload_chunk(chunk).await }));
+                chunk.state.store(ChunkState::Unloading as u8, Ordering::Release);
             } else if state == ChunkState::Unloaded && inside {
                 debug!("Spawning chunk ({}, {})", location.x, location.y);
-                let other_self = Arc::clone(self);
-                spawn(other_self.load_chunk(Arc::clone(chunk)));
+                spawn(async_clone_own!(runtime = self; chunk = chunk; { runtime.load_chunk(chunk).await }));
                 chunk.state.store(ChunkState::Loading as u8, Ordering::Release);
             }
         }

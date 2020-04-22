@@ -2,7 +2,7 @@ use async_std::{path::PathBuf, sync::RwLock};
 use indexmap::IndexSet;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct PathHandle(usize);
+pub struct PathHandle(pub(crate) usize);
 
 pub struct PathSet {
     inner: RwLock<IndexSet<PathBuf>>,

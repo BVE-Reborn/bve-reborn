@@ -24,6 +24,7 @@ pub enum ChunkState {
     Unloaded = 0,
     Loading = 1,
     Finished = 2,
+    Unloading = 3,
 }
 
 impl From<u8> for ChunkState {
@@ -32,6 +33,7 @@ impl From<u8> for ChunkState {
             0 => Self::Unloaded,
             1 => Self::Loading,
             2 => Self::Finished,
+            3 => Self::Unloading,
             _ => unreachable!(),
         }
     }

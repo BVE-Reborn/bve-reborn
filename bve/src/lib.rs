@@ -1,5 +1,5 @@
 //! Implementation of the high performance runtime logic for the game BVE-Reborn.
-
+#![feature(async_closure)]
 // Rust warnings
 #![warn(unused)]
 #![deny(future_incompatible)]
