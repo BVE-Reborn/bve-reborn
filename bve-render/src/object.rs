@@ -8,7 +8,6 @@ pub struct Object {
     pub mesh: u64,
     pub texture: u64,
 
-    pub uniform_buffer: Buffer,
     pub bind_group: BindGroup,
 
     pub location: Vector3<f32>,
@@ -38,36 +37,15 @@ impl Renderer {
         let tex: &texture::Texture = &self.textures[tex_idx];
         let transparent = mesh.transparent || tex.transparent;
 
-        let matrix = generate_matrix(
-            &self.camera.compute_matrix(),
-            location,
-            self.screen_size.width as f32 / self.screen_size.height as f32,
-        );
-        let matrix_ref: &[f32; 16] = matrix.as_ref();
-        let uniforms = render::Uniforms {
-            _matrix: *matrix_ref,
-            _transparent: transparent as u32,
-        };
-        let uniform_buffer = self
-            .device
-            .create_buffer_with_data(uniforms.as_bytes(), BufferUsage::UNIFORM | BufferUsage::COPY_DST);
-
         let bind_group = self.device.create_bind_group(&BindGroupDescriptor {
             layout: &self.bind_group_layout,
             bindings: &[
                 Binding {
                     binding: 0,
-                    resource: BindingResource::Buffer {
-                        buffer: &uniform_buffer,
-                        range: 0..(size_of::<render::Uniforms>() as u64),
-                    },
-                },
-                Binding {
-                    binding: 1,
                     resource: BindingResource::TextureView(&tex.texture_view),
                 },
                 Binding {
-                    binding: 2,
+                    binding: 1,
                     resource: BindingResource::Sampler(&self.sampler),
                 },
             ],
@@ -80,7 +58,6 @@ impl Renderer {
             mesh: *mesh_idx,
             texture: *tex_idx,
             bind_group,
-            uniform_buffer,
             location,
             camera_distance: 0.0, // calculated later
             transparent,

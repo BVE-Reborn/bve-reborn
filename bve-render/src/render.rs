@@ -159,11 +159,18 @@ pub fn create_pipeline(
         }),
         vertex_state: VertexStateDescriptor {
             index_format: IndexFormat::Uint32,
-            vertex_buffers: &[VertexBufferDescriptor {
-                stride: size_of::<Vertex>() as BufferAddress,
-                step_mode: InputStepMode::Vertex,
-                attributes: &vertex_attr_array![0 => Float3, 1 => Float3, 2 => Uchar4, 3 => Float2],
-            }],
+            vertex_buffers: &[
+                VertexBufferDescriptor {
+                    stride: size_of::<Vertex>() as BufferAddress,
+                    step_mode: InputStepMode::Vertex,
+                    attributes: &vertex_attr_array![0 => Float3, 1 => Float3, 2 => Uchar4, 3 => Float2],
+                },
+                VertexBufferDescriptor {
+                    stride: size_of::<Uniforms>() as BufferAddress,
+                    step_mode: InputStepMode::Instance,
+                    attributes: &vertex_attr_array![4 => Float4, 5 => Float4, 6 => Float4, 7 => Float4, 8 => Int],
+                },
+            ],
         },
         sample_count: samples as u32,
         sample_mask: !0,
@@ -222,9 +229,8 @@ pub fn create_swapchain(device: &Device, surface: &Surface, screen_size: Physica
 impl Renderer {
     pub async fn recompute_uniforms(&mut self) {
         let camera_mat = self.camera.compute_matrix();
-        let mut encoder = self.device.create_command_encoder(&CommandEncoderDescriptor {
-            label: Some("uniform updater"),
-        });
+
+        let mut matrix_buffer = Vec::new();
 
         for object in self.objects.values() {
             let matrix = object::generate_matrix(
@@ -232,16 +238,11 @@ impl Renderer {
                 object.location,
                 self.screen_size.width as f32 / self.screen_size.height as f32,
             );
-            let matrix_ref: &[f32; 16] = matrix.as_ref();
-            let uniforms = Uniforms {
-                _matrix: *matrix_ref,
-                _transparent: object.transparent as u32,
-            };
-            let tmp_buf = self
-                .device
-                .create_buffer_with_data(uniforms.as_bytes(), BufferUsage::COPY_SRC);
-            encoder.copy_buffer_to_buffer(&tmp_buf, 0, &object.uniform_buffer, 0, size_of::<Uniforms>() as u64);
         }
+
+        let mut encoder = self.device.create_command_encoder(&CommandEncoderDescriptor {
+            label: Some("uniform updater"),
+        });
 
         self.command_buffers.push(encoder.finish());
     }
