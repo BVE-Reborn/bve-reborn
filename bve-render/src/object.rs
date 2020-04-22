@@ -1,5 +1,4 @@
 use crate::*;
-use std::mem::size_of;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ObjectHandle(pub(crate) u64);
@@ -7,8 +6,6 @@ pub struct ObjectHandle(pub(crate) u64);
 pub struct Object {
     pub mesh: u64,
     pub texture: u64,
-
-    pub bind_group: BindGroup,
 
     pub location: Vector3<f32>,
     pub camera_distance: f32,
@@ -37,27 +34,11 @@ impl Renderer {
         let tex: &texture::Texture = &self.textures[tex_idx];
         let transparent = mesh.transparent || tex.transparent;
 
-        let bind_group = self.device.create_bind_group(&BindGroupDescriptor {
-            layout: &self.bind_group_layout,
-            bindings: &[
-                Binding {
-                    binding: 0,
-                    resource: BindingResource::TextureView(&tex.texture_view),
-                },
-                Binding {
-                    binding: 1,
-                    resource: BindingResource::Sampler(&self.sampler),
-                },
-            ],
-            label: None,
-        });
-
         let handle = self.object_handle_count;
         self.object_handle_count += 1;
         self.objects.insert(handle, Object {
             mesh: *mesh_idx,
             texture: *tex_idx,
-            bind_group,
             location,
             camera_distance: 0.0, // calculated later
             transparent,

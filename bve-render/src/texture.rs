@@ -1,6 +1,5 @@
 use crate::*;
 use image::{Rgba, RgbaImage};
-use wgpu::TextureView;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TextureHandle(pub(crate) u64);
@@ -12,7 +11,7 @@ impl Default for TextureHandle {
 }
 
 pub struct Texture {
-    pub texture_view: TextureView,
+    pub bind_group: BindGroup,
     pub transparent: bool,
 }
 
@@ -84,11 +83,26 @@ impl Renderer {
 
         let texture_view = filtered_texture.create_default_view();
 
+        let bind_group = self.device.create_bind_group(&BindGroupDescriptor {
+            layout: &self.bind_group_layout,
+            bindings: &[
+                Binding {
+                    binding: 0,
+                    resource: BindingResource::TextureView(&texture_view),
+                },
+                Binding {
+                    binding: 1,
+                    resource: BindingResource::Sampler(&self.sampler),
+                },
+            ],
+            label: None,
+        });
+
         let handle = self.texture_handle_count;
         self.texture_handle_count += 1;
 
         self.textures.insert(handle, Texture {
-            texture_view,
+            bind_group,
             transparent,
         });
         TextureHandle(handle)

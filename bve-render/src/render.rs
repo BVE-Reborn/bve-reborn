@@ -1,7 +1,7 @@
 use crate::*;
 use cgmath::{InnerSpace, Vector2, Vector3};
 use num_traits::ToPrimitive;
-use std::{cmp::Ordering, mem::size_of};
+use std::mem::size_of;
 use winit::dpi::PhysicalSize;
 
 #[repr(C)]
@@ -227,24 +227,89 @@ pub fn create_swapchain(device: &Device, surface: &Surface, screen_size: Physica
 }
 
 impl Renderer {
-    pub async fn recompute_uniforms(&mut self) {
-        let camera_mat = self.camera.compute_matrix();
-
-        let mut matrix_buffer = Vec::new();
-
-        for object in self.objects.values() {
-            let matrix = object::generate_matrix(
-                &camera_mat,
-                object.location,
-                self.screen_size.width as f32 / self.screen_size.height as f32,
-            );
-        }
-
-        let mut encoder = self.device.create_command_encoder(&CommandEncoderDescriptor {
-            label: Some("uniform updater"),
+    pub fn sort_objects(&mut self) {
+        self.objects.sort_by(|_, lhs, _, rhs| {
+            lhs.transparent
+                .cmp(&rhs.transparent)
+                .then_with(|| lhs.mesh.cmp(&rhs.mesh))
+                .then_with(|| lhs.texture.cmp(&rhs.texture))
         });
 
+        // distance based sorting coming back later
+        // self.objects
+        //     .sort_by(|_, lhs: &object::Object, _, rhs: &object::Object| {
+        //         lhs.transparent.cmp(&rhs.transparent).then_with(|| {
+        //             if lhs.transparent {
+        //                 // we can only get here if they are both of the same transparency,
+        //                 // so I can use the transparency for one as the transparency for both
+        //                 rhs.camera_distance
+        //                     .partial_cmp(&lhs.camera_distance)
+        //                     .unwrap_or(Ordering::Equal)
+        //             } else {
+        //                 lhs.camera_distance
+        //                     .partial_cmp(&rhs.camera_distance)
+        //                     .unwrap_or(Ordering::Equal)
+        //             }
+        //         })
+        //     });
+    }
+
+    pub async fn recompute_uniforms(&mut self) -> Option<Buffer> {
+        if self.objects.is_empty() {
+            return None;
+        }
+
+        let camera_mat = self.camera.compute_matrix();
+
+        let mut matrix_buffer_data = Vec::new();
+
+        for ((_mesh_idx, _texture_idx, transparent), group) in
+            &self.objects.values().group_by(|o| (o.mesh, o.texture, o.transparent))
+        {
+            for object in group {
+                let matrix = object::generate_matrix(
+                    &camera_mat,
+                    object.location,
+                    self.screen_size.width as f32 / self.screen_size.height as f32,
+                );
+                let transparent = transparent as u32;
+                let uniforms = Uniforms {
+                    _matrix: *matrix.as_ref(),
+                    _transparent: transparent,
+                };
+                matrix_buffer_data.extend_from_slice(uniforms.as_bytes());
+            }
+            // alignment between groups is 256
+            while matrix_buffer_data.len() & 0xFF != 0 {
+                matrix_buffer_data.push(0x00_u8);
+            }
+        }
+
+        let tmp_buffer = self
+            .device
+            .create_buffer_with_data(&matrix_buffer_data, BufferUsage::COPY_SRC);
+
+        let matrix_buffer = self.device.create_buffer(&BufferDescriptor {
+            size: matrix_buffer_data.len() as BufferAddress,
+            usage: BufferUsage::COPY_DST | BufferUsage::VERTEX,
+            label: Some("matrix buffer"),
+        });
+
+        let mut encoder = self.device.create_command_encoder(&CommandEncoderDescriptor {
+            label: Some("matrix updater"),
+        });
+
+        encoder.copy_buffer_to_buffer(
+            &tmp_buffer,
+            0,
+            &matrix_buffer,
+            0,
+            matrix_buffer_data.len() as BufferAddress,
+        );
+
         self.command_buffers.push(encoder.finish());
+
+        Some(matrix_buffer)
     }
 
     pub fn compute_object_distances(&mut self) {
@@ -259,24 +324,5 @@ impl Renderer {
             //     obj.camera_distance, obj.transparent, obj.mesh_transparent, self.textures[&obj.texture].transparent
             // );
         }
-    }
-
-    pub fn sort_objects(&mut self) {
-        self.objects
-            .sort_by(|_, lhs: &object::Object, _, rhs: &object::Object| {
-                lhs.transparent.cmp(&rhs.transparent).then_with(|| {
-                    if lhs.transparent {
-                        // we can only get here if they are both of the same transparency,
-                        // so I can use the transparency for one as the transparency for both
-                        rhs.camera_distance
-                            .partial_cmp(&lhs.camera_distance)
-                            .unwrap_or(Ordering::Equal)
-                    } else {
-                        lhs.camera_distance
-                            .partial_cmp(&rhs.camera_distance)
-                            .unwrap_or(Ordering::Equal)
-                    }
-                })
-            });
     }
 }

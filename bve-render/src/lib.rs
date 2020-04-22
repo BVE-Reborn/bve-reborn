@@ -52,6 +52,7 @@
 #![allow(clippy::wildcard_enum_match_arm)]
 #![allow(clippy::wildcard_imports)]
 
+use crate::render::Uniforms;
 pub use crate::{mesh::MeshHandle, object::ObjectHandle, render::MSAASetting, texture::TextureHandle};
 use bve::load::mesh::Vertex as MeshVertex;
 use cgmath::{Matrix4, Vector2, Vector3};
@@ -59,7 +60,7 @@ use image::RgbaImage;
 use indexmap::map::IndexMap;
 use itertools::Itertools;
 use num_traits::{ToPrimitive, Zero};
-use std::io;
+use std::{io, mem::size_of};
 use wgpu::*;
 use winit::{dpi::PhysicalSize, window::Window};
 use zerocopy::{AsBytes, FromBytes};
@@ -215,11 +216,6 @@ impl Renderer {
             bindings: &[
                 BindGroupLayoutEntry {
                     binding: 0,
-                    visibility: ShaderStage::VERTEX | ShaderStage::FRAGMENT,
-                    ty: BindingType::UniformBuffer { dynamic: false },
-                },
-                BindGroupLayoutEntry {
-                    binding: 1,
                     visibility: ShaderStage::FRAGMENT,
                     ty: BindingType::SampledTexture {
                         multisampled: false,
@@ -228,7 +224,7 @@ impl Renderer {
                     },
                 },
                 BindGroupLayoutEntry {
-                    binding: 2,
+                    binding: 1,
                     visibility: ShaderStage::FRAGMENT,
                     ty: BindingType::Sampler { comparison: false },
                 },
@@ -354,9 +350,9 @@ impl Renderer {
                 rd.start_frame_capture(std::ptr::null(), std::ptr::null());
             }
         }
-        self.recompute_uniforms().await;
         self.compute_object_distances();
         self.sort_objects();
+        let matrix_buffer_opt = self.recompute_uniforms().await;
 
         let frame = self
             .swapchain
@@ -396,19 +392,35 @@ impl Renderer {
                     clear_stencil: 0,
                 }),
             });
-            let mut opaque_ended = false;
-            rpass.set_pipeline(&self.opaque_pipeline);
-            for object in self.objects.values() {
-                if object.transparent && !opaque_ended {
-                    rpass.set_pipeline(&self.alpha_pipeline);
-                    opaque_ended = true;
-                }
-                let mesh = &self.mesh[&object.mesh];
 
-                rpass.set_bind_group(0, &object.bind_group, &[]);
-                rpass.set_vertex_buffer(0, &mesh.vertex_buffer, 0, 0);
-                rpass.set_index_buffer(&mesh.index_buffer, 0, 0);
-                rpass.draw_indexed(0..(mesh.index_count as u32), 0, 0..1);
+            // If se don't have a matrix buffer we have nothing to render
+            if let Some(matrix_buffer) = matrix_buffer_opt.as_ref() {
+                let mut current_matrix_offset = 0 as BufferAddress;
+
+                let mut opaque_ended = false;
+                rpass.set_pipeline(&self.opaque_pipeline);
+                for ((mesh_idx, texture_idx, transparent), group) in
+                    &self.objects.values().group_by(|o| (o.mesh, o.texture, o.transparent))
+                {
+                    if transparent && !opaque_ended {
+                        rpass.set_pipeline(&self.alpha_pipeline);
+                        opaque_ended = true;
+                    }
+                    let mesh = &self.mesh[&mesh_idx];
+                    let texture_bind = &self.textures[&texture_idx].bind_group;
+                    let count = group.count();
+                    let matrix_buffer_size = (count * size_of::<Uniforms>()) as BufferAddress;
+
+                    rpass.set_bind_group(0, texture_bind, &[]);
+                    rpass.set_vertex_buffer(0, &mesh.vertex_buffer, 0, 0);
+                    rpass.set_vertex_buffer(1, matrix_buffer, current_matrix_offset, matrix_buffer_size);
+                    rpass.set_index_buffer(&mesh.index_buffer, 0, 0);
+                    rpass.draw_indexed(0..(mesh.index_count as u32), 0, 0..(count as u32));
+                    current_matrix_offset += matrix_buffer_size;
+                    if current_matrix_offset & 255 != 0 {
+                        current_matrix_offset += 256 - (current_matrix_offset & 255)
+                    }
+                }
             }
         }
 
