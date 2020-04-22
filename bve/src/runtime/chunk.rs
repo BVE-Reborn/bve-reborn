@@ -7,7 +7,7 @@ use std::{
     sync::atomic::AtomicU8,
 };
 
-pub const CHUNK_SIZE: f32 = 128.0;
+pub const CHUNK_SIZE: f32 = 64.0;
 
 pub type ChunkAddress = Vector2<i32>;
 pub type ChunkOffset = Vector3<f32>;

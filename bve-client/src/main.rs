@@ -57,7 +57,7 @@ use async_std::{
     sync::{Arc, Mutex},
     task::block_on,
 };
-use bve::{load::mesh::Vertex, runtime};
+use bve::{load::mesh::Vertex, runtime, runtime::Location};
 use bve_render::{MSAASetting, MeshHandle, ObjectHandle, Renderer, TextureHandle};
 use cgmath::{ElementWise, InnerSpace, Vector3};
 use circular_queue::CircularQueue;
@@ -115,6 +115,14 @@ impl runtime::Client for Client {
 
     fn add_texture(&mut self, image: &RgbaImage) -> Self::TextureHandle {
         self.renderer.add_texture(image)
+    }
+
+    fn set_camera_location(&mut self, location: Vector3<f32>) {
+        self.renderer.set_camera_location(location);
+    }
+
+    fn set_object_location(&mut self, object: &Self::ObjectHandle, location: Vector3<f32>) {
+        self.renderer.set_location(&object, location);
     }
 }
 
@@ -236,9 +244,15 @@ fn client_main() {
 
             camera_location = camera_location.add_element_wise(dir_vec);
 
-            block_on(async { client.lock().await.renderer.set_camera_location(camera_location) });
+            block_on(async {
+                runtime
+                    .set_location(Location::from_absolute_position(camera_location))
+                    .await;
+            });
 
-            block_on(async { runtime.tick().await });
+            block_on(async {
+                runtime.tick().await;
+            });
             window.request_redraw();
         }
         Event::WindowEvent {

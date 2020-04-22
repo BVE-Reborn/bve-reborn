@@ -17,4 +17,7 @@ pub trait Client: Send + Sync + 'static {
     ) -> Self::ObjectHandle;
     fn add_mesh(&mut self, mesh_verts: Vec<Vertex>, indices: &[usize]) -> Self::MeshHandle;
     fn add_texture(&mut self, image: &RgbaImage) -> Self::TextureHandle;
+
+    fn set_camera_location(&mut self, location: Vector3<f32>);
+    fn set_object_location(&mut self, object: &Self::ObjectHandle, location: Vector3<f32>);
 }

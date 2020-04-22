@@ -33,16 +33,15 @@ mod chunk;
 mod client;
 mod location;
 
-#[allow(unused)]
-struct ObjectTexture<C: Client> {
+struct RenderableObject<C: Client> {
     object: C::ObjectHandle,
     mesh: C::MeshHandle,
     texture: C::TextureHandle,
+    location: Location,
 }
 
-#[allow(unused)]
-pub struct Renderable<C: Client> {
-    handles: Vec<ObjectTexture<C>>,
+struct RenderableComponent<C: Client> {
+    subobjects: Vec<RenderableObject<C>>,
 }
 
 struct BoundingBox {
@@ -58,13 +57,23 @@ impl BoundingBox {
     }
 }
 
+#[derive(Debug, Copy, Clone)]
+struct RuntimeLocation {
+    location: Location,
+    old_location: Location,
+}
+
+const DEFAULT_RENDER_DISTANCE: f32 = CHUNK_SIZE;
+
+// Mutexes are always grabbed in the following order
+// ecs -> client -> location
 pub struct Runtime<C: Client> {
     client: Arc<Mutex<C>>,
     path_set: PathSet,
     chunks: ChunkSet,
     meshes: MeshCache<C>,
     textures: TextureCache<C>,
-    position: Mutex<Location>,
+    location: Mutex<RuntimeLocation>,
     view_distance: AtomicI32,
     ecs: RwLock<World>,
 }
@@ -78,11 +87,17 @@ impl<C: Client> Runtime<C> {
             chunks: ChunkSet::new(),
             meshes: MeshCache::new(),
             textures: TextureCache::new(),
-            position: Mutex::new(Location {
-                chunk: ChunkAddress::new(0, 0),
-                offset: ChunkOffset::new(0.0, 0.0, 0.0),
+            location: Mutex::new(RuntimeLocation {
+                location: Location {
+                    chunk: ChunkAddress::new(0, 0),
+                    offset: ChunkOffset::new(0.0, 0.0, 0.0),
+                },
+                old_location: Location {
+                    chunk: ChunkAddress::new(0, 0),
+                    offset: ChunkOffset::new(0.0, 0.0, 0.0),
+                },
             }),
-            view_distance: AtomicI32::new((2048.0 / CHUNK_SIZE) as i32),
+            view_distance: AtomicI32::new((DEFAULT_RENDER_DISTANCE / CHUNK_SIZE) as i32),
             ecs: RwLock::new(World::new()),
         })
     }
@@ -139,7 +154,7 @@ impl<C: Client> Runtime<C> {
         combined_handles
     }
 
-    async fn load_chunk_objects(self: &Arc<Self>, chunk: Arc<Chunk>) -> Vec<ObjectTexture<C>> {
+    async fn load_chunk_objects(self: &Arc<Self>, chunk: Arc<Chunk>) -> Vec<RenderableObject<C>> {
         let mut mesh_futures = FuturesOrdered::new();
         let mut mesh_locations = Vec::new();
         for unloaded_object in chunk.objects.iter() {
@@ -153,17 +168,21 @@ impl<C: Client> Runtime<C> {
         let mut object_textures = Vec::with_capacity(mesh_futures.len());
 
         let mut location_iter = mesh_locations.into_iter();
-        while let (Some(mesh_handle_pairs), Some(location)) = (mesh_futures.next().await, location_iter.next()) {
+        while let (Some(mesh_handle_pairs), Some(chunk_offset)) = (mesh_futures.next().await, location_iter.next()) {
             let mut client = self.client.lock().await;
+            // Because we have a lock on the client, we can't be in the middle of a location update operation
+            // so there is no need to keep accessing this data. We can just grab it and move on.
+            let base_chunk = self.location.lock().await.location.chunk;
             for (mesh_handle, texture_handle) in mesh_handle_pairs {
-                let render_location = Location::from_address_position(chunk.address, location)
-                    .to_relative_position(self.position.lock().await.chunk);
+                let location = Location::from_address_position(chunk.address, chunk_offset);
+                let render_location = location.to_relative_position(base_chunk);
 
                 let object_handle = client.add_object_texture(render_location, &mesh_handle, &texture_handle);
-                object_textures.push(ObjectTexture {
+                object_textures.push(RenderableObject {
                     mesh: mesh_handle,
                     texture: texture_handle,
                     object: object_handle,
+                    location,
                 });
             }
         }
@@ -172,25 +191,70 @@ impl<C: Client> Runtime<C> {
     }
 
     async fn load_chunk(self: Arc<Self>, chunk: Arc<Chunk>) {
-        let handles = self.load_chunk_objects(Arc::clone(&chunk)).await;
+        let subobjects = self.load_chunk_objects(Arc::clone(&chunk)).await;
 
         trace!("Adding chunk to ecs");
         let mut ecs = self.ecs.write().await;
-        ecs.spawn((Renderable::<C> { handles },));
+        ecs.spawn((RenderableComponent::<C> { subobjects },));
         drop(ecs);
 
         chunk.state.store(ChunkState::Finished as u8, Ordering::Release);
         trace!("Chunk marked finished");
     }
 
+    pub async fn set_location(&self, location: Location) {
+        let mut runtime_location = self.location.lock().await;
+        runtime_location.location = location;
+        drop(runtime_location);
+        let mut client = self.client.lock().await;
+        client.set_camera_location(location.offset);
+    }
+
+    async fn update_camera_position(self: Arc<Self>, base_location: Location) {
+        trace!(
+            "Updating to location: ({}, {}):({}, {}, {})",
+            base_location.chunk.x,
+            base_location.chunk.y,
+            base_location.offset.x,
+            base_location.offset.y,
+            base_location.offset.z
+        );
+        let ecs = self.ecs.read().await;
+        let mut client = self.client.lock().await;
+        for (_id, (renderable,)) in ecs.query::<(&RenderableComponent<C>,)>().iter() {
+            let renderable: &RenderableComponent<C> = renderable;
+            for object in &renderable.subobjects {
+                let render_location = object.location.to_relative_position(base_location.chunk);
+                dbg!(render_location);
+                client.set_object_location(&object.object, render_location);
+            }
+        }
+    }
+
     pub async fn tick(self: &Arc<Self>) {
         let view_distance = self.view_distance.load(Ordering::Relaxed);
-        let location = self.position.lock().await.chunk;
+
+        // Handle runtime location, and spawn off job to update positions if needed
+        let mut runtime_location = self.location.lock().await;
+        let location = runtime_location.location;
+        let location_update_job = if runtime_location.location.chunk != runtime_location.old_location.chunk {
+            runtime_location.old_location = runtime_location.location;
+            drop(runtime_location);
+            // We're no longer in the same chunk, so we need to update the positions of objects
+            Some(spawn(
+                async_clone_own!(runtime = self; {runtime.update_camera_position(location).await}),
+            ))
+        } else {
+            drop(runtime_location);
+            None
+        };
+        // self.location lock must not survive beyond this point
+
         let bounding_box = BoundingBox {
-            min_x: location.x - view_distance,
-            max_x: location.x + view_distance,
-            min_y: location.y - view_distance,
-            max_y: location.y + view_distance,
+            min_x: location.chunk.x - view_distance,
+            max_x: location.chunk.x + view_distance,
+            min_y: location.chunk.y - view_distance,
+            max_y: location.chunk.y + view_distance,
         };
 
         for chunk_ref in self.chunks.inner.iter() {
@@ -205,6 +269,10 @@ impl<C: Client> Runtime<C> {
                 spawn(other_self.load_chunk(Arc::clone(chunk)));
                 chunk.state.store(ChunkState::Loading as u8, Ordering::Release);
             }
+        }
+
+        if let Some(join_handle) = location_update_job {
+            join_handle.await;
         }
     }
 }
