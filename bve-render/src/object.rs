@@ -87,4 +87,9 @@ impl Renderer {
         });
         ObjectHandle(handle)
     }
+
+    pub fn remove_object(&mut self, ObjectHandle(obj_idx): &ObjectHandle) {
+        let _object = self.objects.remove(obj_idx).expect("Invalid object handle");
+        // Object goes out of scope
+    }
 }
