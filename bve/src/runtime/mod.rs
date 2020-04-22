@@ -109,15 +109,7 @@ impl<C: Client> Runtime<C> {
 
     // TODO: This probably should get refactored inside chunk
     pub async fn add_static_object(self: &Arc<Self>, location: Location, path: PathBuf) {
-        trace!(
-            "Adding object {} to chunk ({}, {}) at ({}, {}, {})",
-            path.display(),
-            location.chunk.x,
-            location.chunk.y,
-            location.offset.x,
-            location.offset.y,
-            location.offset.z,
-        );
+        trace!("Adding object {} to chunk {}}", path.display(), location);
         let chunk = self.chunks.get_chunk(location.chunk).await;
 
         chunk.objects.insert(UnloadedObject {
@@ -256,18 +248,11 @@ impl<C: Client> Runtime<C> {
         runtime_location.location = location;
         drop(runtime_location);
         let mut client = self.client.lock().await;
-        client.set_camera_location(location.offset);
+        client.set_camera_location(*location.offset);
     }
 
     async fn update_camera_position(self: Arc<Self>, base_location: Location) {
-        trace!(
-            "Updating to location: ({}, {}):({}, {}, {})",
-            base_location.chunk.x,
-            base_location.chunk.y,
-            base_location.offset.x,
-            base_location.offset.y,
-            base_location.offset.z
-        );
+        trace!("Updating camera to location: {}", base_location);
         let ecs = self.ecs.read().await;
         let mut client = self.client.lock().await;
         for (_id, (renderable,)) in ecs.query::<(&RenderableComponent<C>,)>().iter() {
@@ -310,11 +295,11 @@ impl<C: Client> Runtime<C> {
             let state = ChunkState::from(chunk.state.load(Ordering::Acquire));
             let inside = bounding_box.inside(location);
             if state == ChunkState::Finished && !inside {
-                debug!("Despawning chunk ({}, {})", location.x, location.y);
+                debug!("Deloading chunk ({}, {})", location.x, location.y);
                 spawn(async_clone_own!(runtime = self; chunk = chunk; { runtime.deload_chunk(chunk).await }));
                 chunk.state.store(ChunkState::Unloading as u8, Ordering::Release);
             } else if state == ChunkState::Unloaded && inside {
-                debug!("Spawning chunk ({}, {})", location.x, location.y);
+                debug!("Loading chunk ({}, {})", location.x, location.y);
                 spawn(async_clone_own!(runtime = self; chunk = chunk; { runtime.load_chunk(chunk).await }));
                 chunk.state.store(ChunkState::Loading as u8, Ordering::Release);
             }

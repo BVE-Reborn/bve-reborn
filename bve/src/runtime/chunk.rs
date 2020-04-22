@@ -2,6 +2,7 @@ use crate::runtime::cache::PathHandle;
 use async_std::sync::Arc;
 use cgmath::{Vector2, Vector3};
 use dashmap::{DashMap, DashSet};
+use derive_more::{AsMut, AsRef, Deref, Display, From, Into};
 use std::{
     hash::{Hash, Hasher},
     sync::atomic::AtomicU8,
@@ -9,8 +10,25 @@ use std::{
 
 pub const CHUNK_SIZE: f32 = 64.0;
 
-pub type ChunkAddress = Vector2<i32>;
-pub type ChunkOffset = Vector3<f32>;
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Deref, From, Into, Display, AsRef, AsMut)]
+#[display(fmt = "({}, {})", "self.0.x", "self.0.y")]
+pub struct ChunkAddress(Vector2<i32>);
+
+impl ChunkAddress {
+    pub fn new(x: i32, y: i32) -> Self {
+        Self(Vector2::new(x, y))
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Deref, From, Into, Display, AsRef, AsMut)]
+#[display(fmt = "({}, {}, {})", "self.0.x", "self.0.y", "self.0.z")]
+pub struct ChunkOffset(Vector3<f32>);
+
+impl ChunkOffset {
+    pub fn new(x: f32, y: f32, z: f32) -> Self {
+        Self(Vector3::new(x, y, z))
+    }
+}
 
 pub struct Chunk {
     pub address: ChunkAddress,

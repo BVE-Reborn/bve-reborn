@@ -1,5 +1,9 @@
 use crate::runtime::chunk::{ChunkAddress, ChunkOffset, CHUNK_SIZE};
 use cgmath::{ElementWise, Vector3};
+use std::{
+    fmt,
+    fmt::{Display, Formatter},
+};
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -29,11 +33,21 @@ impl Location {
     }
 
     pub fn to_relative_position(&self, base_chunk: ChunkAddress) -> Vector3<f32> {
-        let chunk_offset = self.chunk.sub_element_wise(base_chunk);
+        let chunk_offset = self.chunk.as_ref().sub_element_wise(*base_chunk);
         Vector3::new(
             chunk_offset.x as f32 * CHUNK_SIZE,
             0.0,
             chunk_offset.y as f32 * CHUNK_SIZE,
-        ) + self.offset
+        ) + *self.offset
+    }
+}
+
+impl Display for Location {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "({}, {}):({}, {}, {})",
+            self.chunk.x, self.chunk.y, self.offset.x, self.offset.y, self.offset.z
+        )
     }
 }
