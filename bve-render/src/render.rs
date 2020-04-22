@@ -1,7 +1,7 @@
 use crate::*;
 use cgmath::{InnerSpace, Vector2, Vector3};
 use num_traits::ToPrimitive;
-use std::mem::size_of;
+use std::{cmp::Ordering, mem::size_of};
 use winit::dpi::PhysicalSize;
 
 #[repr(C)]
@@ -227,36 +227,50 @@ pub fn create_swapchain(device: &Device, surface: &Surface, screen_size: Physica
 }
 
 impl Renderer {
-    pub fn sort_objects(&mut self) {
-        self.objects.sort_by(|_, lhs, _, rhs| {
-            lhs.transparent
-                .cmp(&rhs.transparent)
-                .then_with(|| lhs.mesh.cmp(&rhs.mesh))
-                .then_with(|| lhs.texture.cmp(&rhs.texture))
+    pub fn sort_objects(objects: &IndexMap<u64, object::Object>) -> Vec<&object::Object> {
+        // we faff around with references as it's faster
+
+        // Sort so groups are together
+        let grouped = objects
+            .values()
+            .sorted_by_key(|o| (o.transparent, o.mesh, o.texture))
+            .collect_vec();
+
+        // Split into the groups
+        let mut vector_of_groups = Vec::new();
+        for ((transparent, ..), group) in &grouped.into_iter().group_by(|o| (o.transparent, o.mesh, o.texture)) {
+            let mut vec: Vec<&object::Object> = group.collect_vec();
+            // Find average of the group's distance
+            let average: f32 = vec.iter().map(|v| v.camera_distance).sum::<f32>() / vec.len() as f32;
+            // Sort group by distance internally
+            vec.sort_by(|o1, o2| {
+                o1.camera_distance
+                    .partial_cmp(&o2.camera_distance)
+                    .unwrap_or(Ordering::Equal)
+            });
+            vector_of_groups.push((vec, transparent, average));
+        }
+
+        // Sort the groups by average distance, ensuring transparency stays together
+        vector_of_groups.sort_by(|(_, transparent1, dist1), (_, transparent2, dist2)| {
+            transparent1.cmp(&transparent2).then_with(|| {
+                if *transparent1 {
+                    dist2.partial_cmp(&dist1).unwrap_or(Ordering::Equal)
+                } else {
+                    dist1.partial_cmp(&dist2).unwrap_or(Ordering::Equal)
+                }
+            })
         });
 
-        // distance based sorting coming back later
-        // self.objects
-        //     .sort_by(|_, lhs: &object::Object, _, rhs: &object::Object| {
-        //         lhs.transparent.cmp(&rhs.transparent).then_with(|| {
-        //             if lhs.transparent {
-        //                 // we can only get here if they are both of the same transparency,
-        //                 // so I can use the transparency for one as the transparency for both
-        //                 rhs.camera_distance
-        //                     .partial_cmp(&lhs.camera_distance)
-        //                     .unwrap_or(Ordering::Equal)
-        //             } else {
-        //                 lhs.camera_distance
-        //                     .partial_cmp(&rhs.camera_distance)
-        //                     .unwrap_or(Ordering::Equal)
-        //             }
-        //         })
-        //     });
+        vector_of_groups
+            .into_iter()
+            .flat_map(|(group, ..)| group.into_iter())
+            .collect_vec()
     }
 
-    pub async fn recompute_uniforms(&mut self) -> Option<Buffer> {
-        if self.objects.is_empty() {
-            return None;
+    pub async fn recompute_uniforms(&self, objects: &[&object::Object]) -> (Option<CommandBuffer>, Option<Buffer>) {
+        if objects.is_empty() {
+            return (None, None);
         }
 
         let camera_mat = self.camera.compute_matrix();
@@ -264,7 +278,7 @@ impl Renderer {
         let mut matrix_buffer_data = Vec::new();
 
         for ((_mesh_idx, _texture_idx, transparent), group) in
-            &self.objects.values().group_by(|o| (o.mesh, o.texture, o.transparent))
+            &objects.into_iter().group_by(|o| (o.mesh, o.texture, o.transparent))
         {
             for object in group {
                 let matrix = object::generate_matrix(
@@ -307,9 +321,7 @@ impl Renderer {
             matrix_buffer_data.len() as BufferAddress,
         );
 
-        self.command_buffers.push(encoder.finish());
-
-        Some(matrix_buffer)
+        (Some(encoder.finish()), Some(matrix_buffer))
     }
 
     pub fn compute_object_distances(&mut self) {

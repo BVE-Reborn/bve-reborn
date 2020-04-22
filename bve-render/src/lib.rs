@@ -351,8 +351,11 @@ impl Renderer {
             }
         }
         self.compute_object_distances();
-        self.sort_objects();
-        let matrix_buffer_opt = self.recompute_uniforms().await;
+        let object_references = Self::sort_objects(&self.objects);
+        let (uniform_command_buffer_opt, matrix_buffer_opt) = self.recompute_uniforms(&object_references).await;
+        if let Some(uniform_command_buffer) = uniform_command_buffer_opt {
+            self.command_buffers.push(uniform_command_buffer);
+        }
 
         let frame = self
             .swapchain
@@ -399,8 +402,9 @@ impl Renderer {
 
                 let mut opaque_ended = false;
                 rpass.set_pipeline(&self.opaque_pipeline);
-                for ((mesh_idx, texture_idx, transparent), group) in
-                    &self.objects.values().group_by(|o| (o.mesh, o.texture, o.transparent))
+                for ((mesh_idx, texture_idx, transparent), group) in &object_references
+                    .into_iter()
+                    .group_by(|o| (o.mesh, o.texture, o.transparent))
                 {
                     if transparent && !opaque_ended {
                         rpass.set_pipeline(&self.alpha_pipeline);
