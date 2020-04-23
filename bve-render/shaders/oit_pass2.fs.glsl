@@ -13,7 +13,7 @@ struct Node {
 };
 
 layout(set = 1, binding = 0, r32ui) uniform uimage2D head_pointers;
-layout(set = 1, binding = 2) buffer NodeBuffer {
+layout(set = 1, binding = 2, std430) buffer NodeBuffer {
     uint next_index;
     Node nodes[];
 };
@@ -46,7 +46,7 @@ void main() {
         for (int i = 1; i < count; ++i) {
             color = mix(color, frags[i].color, frags[i].color.a);
         }
-        outColor = color;
+        outColor = vec4(pow(color.rgb, vec3(1.0 / 2.2)), color.a);
     } else {
         discard;
     }
