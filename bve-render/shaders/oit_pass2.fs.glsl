@@ -22,6 +22,7 @@ void main() {
     Node frags[MAX_NODES];
 
     uint n = imageLoad(head_pointers, ivec2(gl_FragCoord.xy)).r;
+    imageStore(head_pointers, ivec2(gl_FragCoord.xy), uvec4(0xFFFFFFFF));
 
     int count = 0;
     for(; n != 0xFFFFFFFF && count < MAX_NODES; ++count) {

@@ -240,7 +240,7 @@ impl Renderer {
 
         let transparency_processor = compute::CutoutTransparencyCompute::new(&device);
         let mip_creator = compute::MipmapCompute::new(&device);
-        let oit_renderer = oit::Oit::new(
+        let (oit_renderer, oit_command_buffer) = oit::Oit::new(
             &device,
             &vs_module,
             &texture_bind_group_layout,
@@ -285,7 +285,7 @@ impl Renderer {
             mip_creator,
             oit_renderer,
 
-            command_buffers: Vec::new(),
+            command_buffers: vec![oit_command_buffer],
             _renderdoc_capture: false,
         };
 

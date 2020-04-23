@@ -198,7 +198,11 @@ impl Oit {
         opaque_bind_group_layout: &BindGroupLayout,
         resolution: Vector2<u32>,
         samples: MSAASetting,
-    ) -> Self {
+    ) -> (Self, CommandBuffer) {
+        let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
+            label: Some("OIT texture creator"),
+        });
+
         let fx = include_shader!(vert "fx");
         let fx_module =
             device.create_shader_module(&read_spirv(io::Cursor::new(&fx[..])).expect("Could not read shader spirv"));
@@ -267,6 +271,26 @@ impl Oit {
             label: Some("head pointers"),
         });
 
+        encoder.copy_buffer_to_texture(
+            BufferCopyView {
+                buffer: &head_pointer_source_buffer,
+                bytes_per_row: resolution.x * 4,
+                rows_per_image: 0,
+                offset: 0,
+            },
+            TextureCopyView {
+                texture: &head_pointer_texture,
+                origin: Origin3d { x: 0, y: 0, z: 0 },
+                mip_level: 0,
+                array_layer: 0,
+            },
+            Extent3d {
+                width: resolution.x,
+                height: resolution.y,
+                depth: 1,
+            },
+        );
+
         let head_pointer_view = head_pointer_texture.create_default_view();
 
         let max_nodes = node_count(resolution);
@@ -308,46 +332,30 @@ impl Oit {
             label: Some("oit binding"),
         });
 
-        Self {
-            fx_module,
-            oit1_module,
-            oit2_module,
-            bind_group_layout,
-            pipeline_layout,
-            bind_group,
-            head_pointer_source_buffer,
-            head_pointer_texture,
-            head_pointer_view,
-            max_node_buffer,
-            node_source_buffer,
-            node_buffer,
-            screen_space_verts,
-            resolution,
-            pass1_pipeline,
-            pass2_pipeline,
-        }
+        (
+            Self {
+                fx_module,
+                oit1_module,
+                oit2_module,
+                bind_group_layout,
+                pipeline_layout,
+                bind_group,
+                head_pointer_source_buffer,
+                head_pointer_texture,
+                head_pointer_view,
+                max_node_buffer,
+                node_source_buffer,
+                node_buffer,
+                screen_space_verts,
+                resolution,
+                pass1_pipeline,
+                pass2_pipeline,
+            },
+            encoder.finish(),
+        )
     }
 
     pub fn clear_buffers(&self, encoder: &mut CommandEncoder) {
-        encoder.copy_buffer_to_texture(
-            BufferCopyView {
-                buffer: &self.head_pointer_source_buffer,
-                bytes_per_row: self.resolution.x * 4,
-                rows_per_image: 0,
-                offset: 0,
-            },
-            TextureCopyView {
-                texture: &self.head_pointer_texture,
-                origin: Origin3d { x: 0, y: 0, z: 0 },
-                mip_level: 0,
-                array_layer: 0,
-            },
-            Extent3d {
-                width: self.resolution.x,
-                height: self.resolution.y,
-                depth: 1,
-            },
-        );
         encoder.copy_buffer_to_buffer(&self.node_source_buffer, 0, &self.node_buffer, 0, 4);
     }
 
