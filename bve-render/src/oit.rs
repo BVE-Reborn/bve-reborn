@@ -71,13 +71,13 @@ fn create_pipeline_pass2(
     samples: MSAASetting,
 ) -> RenderPipeline {
     device.create_render_pipeline(&RenderPipelineDescriptor {
-        layout: &pipeline_layout,
+        layout: pipeline_layout,
         vertex_stage: ProgrammableStageDescriptor {
-            module: &fx_module,
+            module: fx_module,
             entry_point: "main",
         },
         fragment_stage: Some(ProgrammableStageDescriptor {
-            module: &oit2_module,
+            module: oit2_module,
             entry_point: "main",
         }),
         rasterization_state: Some(RasterizationStateDescriptor {
@@ -127,15 +127,15 @@ fn create_pipeline_pass2(
 
 const SIZE_OF_NODE: usize = 24;
 
-fn node_count(resolution: Vector2<u32>) -> u32 {
+const fn node_count(resolution: Vector2<u32>) -> u32 {
     resolution.x * resolution.y * 5
 }
 
-fn size_of_node_buffer(resolution: Vector2<u32>) -> BufferAddress {
+const fn size_of_node_buffer(resolution: Vector2<u32>) -> BufferAddress {
     (node_count(resolution) as usize * SIZE_OF_NODE + 4) as BufferAddress
 }
 
-fn create_node_buffer(count: u32) -> Vec<u8> {
+fn create_node_buffer() -> Vec<u8> {
     let mut vec = Vec::new();
     vec.extend_from_slice(0_u32.as_bytes());
 
@@ -148,7 +148,7 @@ struct ScreenSpaceVertex {
     _vertices: [f32; 2],
 }
 
-fn vert(arg: [f32; 2]) -> ScreenSpaceVertex {
+const fn vert(arg: [f32; 2]) -> ScreenSpaceVertex {
     ScreenSpaceVertex { _vertices: arg }
 }
 
@@ -174,7 +174,6 @@ pub struct Oit {
 
     bind_group: BindGroup,
 
-    head_pointer_source_buffer: Buffer,
     head_pointer_texture: Texture,
     head_pointer_view: TextureView,
 
@@ -248,7 +247,7 @@ impl Oit {
             bind_group_layouts: &[opaque_bind_group_layout, &bind_group_layout],
         });
 
-        let pass1_pipeline = create_pipeline_pass1(device, &pipeline_layout, &vert, &oit1_module, samples);
+        let pass1_pipeline = create_pipeline_pass1(device, &pipeline_layout, vert, &oit1_module, samples);
         let pass2_pipeline = create_pipeline_pass2(device, &pipeline_layout, &fx_module, &oit2_module, samples);
 
         let head_pointer_source_buffer = device.create_buffer_with_data(
@@ -296,7 +295,7 @@ impl Oit {
         let max_nodes = node_count(resolution);
         let max_node_buffer = device.create_buffer_with_data(max_nodes.as_bytes(), BufferUsage::UNIFORM);
 
-        let node_buffer_data = create_node_buffer(max_nodes);
+        let node_buffer_data = create_node_buffer();
         let node_source_buffer = device.create_buffer_with_data(&node_buffer_data, BufferUsage::COPY_SRC);
 
         let node_buffer = device.create_buffer(&BufferDescriptor {
@@ -340,7 +339,6 @@ impl Oit {
                 bind_group_layout,
                 pipeline_layout,
                 bind_group,
-                head_pointer_source_buffer,
                 head_pointer_texture,
                 head_pointer_view,
                 max_node_buffer,
