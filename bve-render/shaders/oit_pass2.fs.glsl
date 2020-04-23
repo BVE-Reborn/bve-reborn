@@ -33,7 +33,7 @@ void main() {
     for(uint i = 1; i < count; i++) {
         Node to_insert = frags[i];
         uint j = i;
-        while(j > 0 && to_insert.depth > frags[j-1].depth) {
+        while(j > 0 && to_insert.depth < frags[j-1].depth) {
             frags[j] = frags[j-1];
             j--;
         }

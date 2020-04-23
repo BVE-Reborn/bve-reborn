@@ -21,7 +21,7 @@ fn create_pipeline_pass1(
         }),
         rasterization_state: Some(RasterizationStateDescriptor {
             front_face: FrontFace::Cw,
-            cull_mode: CullMode::Back,
+            cull_mode: CullMode::None,
             depth_bias: 0,
             depth_bias_slope_scale: 0.0,
             depth_bias_clamp: 0.0,
@@ -130,7 +130,7 @@ const SIZE_OF_NODE: usize = 24;
 fn create_node_buffer(count: u32) -> Vec<u8> {
     let mut vec = Vec::new();
     vec.extend_from_slice(0_u32.as_bytes());
-    vec.resize(count as usize * SIZE_OF_NODE + 4, 0x00);
+    vec.resize(count as usize * SIZE_OF_NODE * 5 + 4, 0x00);
 
     vec
 }
@@ -346,7 +346,7 @@ impl Oit {
             0,
             &self.node_buffer,
             0,
-            (self.resolution.x * self.resolution.y * 3 * SIZE_OF_NODE as u32 + 4) as BufferAddress,
+            (self.resolution.x * self.resolution.y * 5 * SIZE_OF_NODE as u32 + 4) as BufferAddress,
         );
     }
 
