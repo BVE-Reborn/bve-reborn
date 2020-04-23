@@ -52,6 +52,7 @@
 #![allow(clippy::wildcard_enum_match_arm)]
 #![allow(clippy::wildcard_imports)]
 
+use crate::render::Uniforms;
 pub use crate::{mesh::MeshHandle, object::ObjectHandle, render::MSAASetting, texture::TextureHandle};
 use bve::load::mesh::Vertex as MeshVertex;
 use cgmath::{Matrix4, Vector2, Vector3};
@@ -59,7 +60,7 @@ use image::RgbaImage;
 use indexmap::map::IndexMap;
 use itertools::Itertools;
 use num_traits::{ToPrimitive, Zero};
-use std::io;
+use std::{io, mem::size_of};
 use wgpu::*;
 use winit::{dpi::PhysicalSize, window::Window};
 use zerocopy::{AsBytes, FromBytes};
@@ -148,7 +149,9 @@ pub struct Renderer {
     opaque_pipeline: RenderPipeline,
     alpha_pipeline: RenderPipeline,
     pipeline_layout: PipelineLayout,
-    bind_group_layout: BindGroupLayout,
+    texture_bind_group_layout: BindGroupLayout,
+    opaque_bind_group: BindGroup,
+    alpha_bind_group: BindGroup,
     sampler: Sampler,
 
     vert_shader: ShaderModule,
@@ -211,15 +214,10 @@ impl Renderer {
         let framebuffer = render::create_framebuffer(&device, screen_size, samples);
         let depth_buffer = render::create_depth_buffer(&device, screen_size, samples);
 
-        let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+        let texture_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             bindings: &[
                 BindGroupLayoutEntry {
                     binding: 0,
-                    visibility: ShaderStage::VERTEX | ShaderStage::FRAGMENT,
-                    ty: BindingType::UniformBuffer { dynamic: false },
-                },
-                BindGroupLayoutEntry {
-                    binding: 1,
                     visibility: ShaderStage::FRAGMENT,
                     ty: BindingType::SampledTexture {
                         multisampled: false,
@@ -228,15 +226,50 @@ impl Renderer {
                     },
                 },
                 BindGroupLayoutEntry {
-                    binding: 2,
+                    binding: 1,
                     visibility: ShaderStage::FRAGMENT,
                     ty: BindingType::Sampler { comparison: false },
                 },
             ],
-            label: None,
+            label: Some("texture and sampler"),
+        });
+        let transparency_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+            bindings: &[BindGroupLayoutEntry {
+                binding: 0,
+                visibility: ShaderStage::FRAGMENT,
+                ty: BindingType::UniformBuffer { dynamic: false },
+            }],
+            label: Some("transparency flag"),
         });
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
-            bind_group_layouts: &[&bind_group_layout],
+            bind_group_layouts: &[&texture_bind_group_layout, &transparency_bind_group_layout],
+        });
+
+        let opaque_uniform_buffer = device.create_buffer_with_data((false as u32).as_bytes(), BufferUsage::UNIFORM);
+        let alpha_uniform_buffer = device.create_buffer_with_data((true as u32).as_bytes(), BufferUsage::UNIFORM);
+
+        let opaque_bind_group = device.create_bind_group(&BindGroupDescriptor {
+            layout: &transparency_bind_group_layout,
+            bindings: &[Binding {
+                binding: 0,
+                resource: BindingResource::Buffer {
+                    buffer: &opaque_uniform_buffer,
+                    range: 0..4,
+                },
+            }],
+            label: Some("opaque transparency"),
+        });
+
+        let alpha_bind_group = device.create_bind_group(&BindGroupDescriptor {
+            layout: &transparency_bind_group_layout,
+            bindings: &[Binding {
+                binding: 0,
+                resource: BindingResource::Buffer {
+                    buffer: &alpha_uniform_buffer,
+                    range: 0..4,
+                },
+            }],
+            label: Some("alpha transparency"),
         });
 
         let opaque_pipeline = render::create_pipeline(
@@ -287,7 +320,9 @@ impl Renderer {
             opaque_pipeline,
             alpha_pipeline,
             pipeline_layout,
-            bind_group_layout,
+            texture_bind_group_layout,
+            opaque_bind_group,
+            alpha_bind_group,
             sampler,
 
             vert_shader: vs_module,
@@ -354,9 +389,12 @@ impl Renderer {
                 rd.start_frame_capture(std::ptr::null(), std::ptr::null());
             }
         }
-        self.recompute_uniforms().await;
         self.compute_object_distances();
-        self.sort_objects();
+        let object_references = Self::sort_objects(&self.objects);
+        let (uniform_command_buffer_opt, matrix_buffer_opt) = self.recompute_uniforms(&object_references).await;
+        if let Some(uniform_command_buffer) = uniform_command_buffer_opt {
+            self.command_buffers.push(uniform_command_buffer);
+        }
 
         let frame = self
             .swapchain
@@ -396,19 +434,38 @@ impl Renderer {
                     clear_stencil: 0,
                 }),
             });
-            let mut opaque_ended = false;
-            rpass.set_pipeline(&self.opaque_pipeline);
-            for object in self.objects.values() {
-                if object.transparent && !opaque_ended {
-                    rpass.set_pipeline(&self.alpha_pipeline);
-                    opaque_ended = true;
-                }
-                let mesh = &self.mesh[&object.mesh];
 
-                rpass.set_bind_group(0, &object.bind_group, &[]);
-                rpass.set_vertex_buffer(0, &mesh.vertex_buffer, 0, 0);
-                rpass.set_index_buffer(&mesh.index_buffer, 0, 0);
-                rpass.draw_indexed(0..(mesh.index_count as u32), 0, 0..1);
+            // If se don't have a matrix buffer we have nothing to render
+            if let Some(matrix_buffer) = matrix_buffer_opt.as_ref() {
+                let mut current_matrix_offset = 0 as BufferAddress;
+
+                let mut opaque_ended = false;
+                rpass.set_pipeline(&self.opaque_pipeline);
+                rpass.set_bind_group(1, &self.opaque_bind_group, &[]);
+                for ((mesh_idx, texture_idx, transparent), group) in &object_references
+                    .into_iter()
+                    .group_by(|o| (o.mesh, o.texture, o.transparent))
+                {
+                    if transparent && !opaque_ended {
+                        rpass.set_pipeline(&self.alpha_pipeline);
+                        rpass.set_bind_group(1, &self.alpha_bind_group, &[]);
+                        opaque_ended = true;
+                    }
+                    let mesh = &self.mesh[&mesh_idx];
+                    let texture_bind = &self.textures[&texture_idx].bind_group;
+                    let count = group.count();
+                    let matrix_buffer_size = (count * size_of::<Uniforms>()) as BufferAddress;
+
+                    rpass.set_bind_group(0, texture_bind, &[]);
+                    rpass.set_vertex_buffer(0, &mesh.vertex_buffer, 0, 0);
+                    rpass.set_vertex_buffer(1, matrix_buffer, current_matrix_offset, matrix_buffer_size);
+                    rpass.set_index_buffer(&mesh.index_buffer, 0, 0);
+                    rpass.draw_indexed(0..(mesh.index_count as u32), 0, 0..(count as u32));
+                    current_matrix_offset += matrix_buffer_size;
+                    if current_matrix_offset & 255 != 0 {
+                        current_matrix_offset += 256 - (current_matrix_offset & 255)
+                    }
+                }
             }
         }
 

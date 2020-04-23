@@ -1,6 +1,6 @@
 use crate::{
     filesystem::resolve_path,
-    load::mesh::load_mesh_from_file,
+    load::mesh::{load_mesh_from_file, LoadedStaticMesh, Vertex},
     runtime::{
         cache::{Cache, PathHandle, PathSet},
         client::Client,
@@ -10,7 +10,13 @@ use async_std::{
     path::{Path, PathBuf},
     sync::Mutex,
 };
+use itertools::Itertools;
 use log::trace;
+
+struct RawMeshData {
+    meshes: Vec<(Vec<Vertex>, Vec<usize>, Option<usize>)>,
+    textures: Vec<String>,
+}
 
 pub struct MeshData<C: Client> {
     pub handles: Vec<(C::MeshHandle, Option<usize>)>,
@@ -44,21 +50,43 @@ impl<C: Client> MeshCache<C> {
         Self { inner: Cache::new() }
     }
 
-    pub async fn load_mesh_impl(&self, client: &Mutex<C>, path_set: &PathSet, path: &Path) -> MeshData<C> {
+    fn combine_eligible_meshes(mut meta_mesh: LoadedStaticMesh) -> RawMeshData {
+        meta_mesh.meshes.sort_by_key(|m| m.texture.texture_id);
+        let mut meshes = Vec::new();
+        for (texture_id, group) in &meta_mesh.meshes.into_iter().group_by(|m| m.texture.texture_id) {
+            let mut verts = Vec::new();
+            let mut indices = Vec::new();
+            for mesh in group {
+                let vert_offset = verts.len();
+                verts.extend(mesh.vertices.into_iter());
+                indices.extend(mesh.indices.into_iter().map(|i| i + vert_offset));
+            }
+            meshes.push((verts, indices, texture_id));
+        }
+
+        RawMeshData {
+            meshes,
+            textures: meta_mesh.textures.into_iter().collect(),
+        }
+    }
+
+    async fn load_mesh_impl(&self, client: &Mutex<C>, path_set: &PathSet, path: &Path) -> MeshData<C> {
         trace!("Loading mesh {}", path.display());
-        let mesh = load_mesh_from_file(path)
+        let meta_mesh = load_mesh_from_file(path)
             .await
             .expect("Path invalid, should have been validated earlier");
+
+        let raw_mesh_data = Self::combine_eligible_meshes(meta_mesh);
 
         let parent_dir = path.parent().expect("File must be in directory");
 
         let mut mesh_data = MeshData::<C>::new();
-        for mesh in mesh.meshes {
-            let handle = client.lock().await.add_mesh(mesh.vertices, &mesh.indices);
-            mesh_data.handles.push((handle, mesh.texture.texture_id))
+        for (vertices, indices, texture_id) in raw_mesh_data.meshes {
+            let handle = client.lock().await.add_mesh(vertices, &indices);
+            mesh_data.handles.push((handle, texture_id))
         }
 
-        for texture in mesh.textures {
+        for texture in raw_mesh_data.textures {
             let path = resolve_path(parent_dir, PathBuf::from(texture))
                 .await
                 .expect("Could not find texture");
