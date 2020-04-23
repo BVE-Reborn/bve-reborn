@@ -127,10 +127,17 @@ fn create_pipeline_pass2(
 
 const SIZE_OF_NODE: usize = 24;
 
+fn node_count(resolution: Vector2<u32>) -> u32 {
+    resolution.x * resolution.y * 5
+}
+
+fn size_of_node_buffer(resolution: Vector2<u32>) -> BufferAddress {
+    (node_count(resolution) as usize * SIZE_OF_NODE + 4) as BufferAddress
+}
+
 fn create_node_buffer(count: u32) -> Vec<u8> {
     let mut vec = Vec::new();
     vec.extend_from_slice(0_u32.as_bytes());
-    vec.resize(count as usize * SIZE_OF_NODE * 5 + 4, 0x00);
 
     vec
 }
@@ -262,14 +269,14 @@ impl Oit {
 
         let head_pointer_view = head_pointer_texture.create_default_view();
 
-        let max_nodes = resolution.x * resolution.y * 5;
+        let max_nodes = node_count(resolution);
         let max_node_buffer = device.create_buffer_with_data(max_nodes.as_bytes(), BufferUsage::UNIFORM);
 
         let node_buffer_data = create_node_buffer(max_nodes);
         let node_source_buffer = device.create_buffer_with_data(&node_buffer_data, BufferUsage::COPY_SRC);
 
         let node_buffer = device.create_buffer(&BufferDescriptor {
-            size: (max_nodes * 5 * SIZE_OF_NODE as u32 + 4) as BufferAddress,
+            size: size_of_node_buffer(resolution),
             usage: BufferUsage::COPY_DST | BufferUsage::STORAGE | BufferUsage::STORAGE_READ,
             label: Some("oit node buffer"),
         });
@@ -294,7 +301,7 @@ impl Oit {
                     binding: 2,
                     resource: BindingResource::Buffer {
                         buffer: &node_buffer,
-                        range: 0..(node_buffer_data.len() as BufferAddress),
+                        range: 0..size_of_node_buffer(resolution),
                     },
                 },
             ],
@@ -341,7 +348,7 @@ impl Oit {
                 depth: 1,
             },
         );
-        encoder.copy_buffer_to_buffer(&self.node_source_buffer, 0, &self.node_buffer, 0, (4) as BufferAddress);
+        encoder.copy_buffer_to_buffer(&self.node_source_buffer, 0, &self.node_buffer, 0, 4);
     }
 
     pub fn prepare_rendering<'a>(&'a self, rpass: &mut RenderPass<'a>) {
