@@ -116,6 +116,7 @@ mod camera;
 mod compute;
 mod mesh;
 mod object;
+mod oit;
 mod render;
 mod texture;
 
@@ -147,7 +148,6 @@ pub struct Renderer {
     framebuffer: TextureView,
     depth_buffer: TextureView,
     opaque_pipeline: RenderPipeline,
-    alpha_pipeline: RenderPipeline,
     pipeline_layout: PipelineLayout,
     texture_bind_group_layout: BindGroupLayout,
     sampler: Sampler,
@@ -157,6 +157,7 @@ pub struct Renderer {
 
     transparency_processor: compute::CutoutTransparencyCompute,
     mip_creator: compute::MipmapCompute,
+    oit_renderer: oit::Oit,
 
     command_buffers: Vec<CommandBuffer>,
     _renderdoc_capture: bool,
@@ -235,25 +236,17 @@ impl Renderer {
             bind_group_layouts: &[&texture_bind_group_layout],
         });
 
-        let opaque_pipeline = render::create_pipeline(
-            &device,
-            &pipeline_layout,
-            &vs_module,
-            &fs_module,
-            render::PipelineType::Normal,
-            samples,
-        );
-        let alpha_pipeline = render::create_pipeline(
-            &device,
-            &pipeline_layout,
-            &vs_module,
-            &fs_module,
-            render::PipelineType::Alpha,
-            samples,
-        );
+        let opaque_pipeline = render::create_pipeline(&device, &pipeline_layout, &vs_module, &fs_module, samples);
 
         let transparency_processor = compute::CutoutTransparencyCompute::new(&device);
         let mip_creator = compute::MipmapCompute::new(&device);
+        let oit_renderer = oit::Oit::new(
+            &device,
+            &vs_module,
+            &texture_bind_group_layout,
+            Vector2::new(screen_size.width, screen_size.height),
+            samples,
+        );
 
         // Create the Renderer object early so we can can call methods on it.
         let mut renderer = Self {
@@ -281,7 +274,6 @@ impl Renderer {
             framebuffer,
             depth_buffer,
             opaque_pipeline,
-            alpha_pipeline,
             pipeline_layout,
             texture_bind_group_layout,
             sampler,
@@ -291,6 +283,7 @@ impl Renderer {
 
             transparency_processor,
             mip_creator,
+            oit_renderer,
 
             command_buffers: Vec::new(),
             _renderdoc_capture: false,
@@ -329,15 +322,6 @@ impl Renderer {
             &self.pipeline_layout,
             &self.vert_shader,
             &self.frag_shader,
-            render::PipelineType::Normal,
-            samples,
-        );
-        self.alpha_pipeline = render::create_pipeline(
-            &self.device,
-            &self.pipeline_layout,
-            &self.vert_shader,
-            &self.frag_shader,
-            render::PipelineType::Alpha,
             samples,
         );
         self.samples = samples;
@@ -367,6 +351,7 @@ impl Renderer {
             .create_command_encoder(&CommandEncoderDescriptor { label: Some("primary") });
 
         {
+            self.oit_renderer.clear_buffers(&mut encoder);
             let (attachment, resolve_target) = if self.samples == render::MSAASetting::X1 {
                 (&frame.view, None)
             } else {
@@ -400,16 +385,17 @@ impl Renderer {
             if let Some(matrix_buffer) = matrix_buffer_opt.as_ref() {
                 let mut current_matrix_offset = 0 as BufferAddress;
 
-                let mut opaque_ended = false;
+                let mut rendering_opaque = true;
                 rpass.set_pipeline(&self.opaque_pipeline);
                 for ((mesh_idx, texture_idx, transparent), group) in &object_references
                     .into_iter()
                     .group_by(|o| (o.mesh, o.texture, o.transparent))
                 {
-                    if transparent && !opaque_ended {
-                        rpass.set_pipeline(&self.alpha_pipeline);
-                        opaque_ended = true;
+                    if transparent && rendering_opaque {
+                        self.oit_renderer.prepare_rendering(&mut rpass);
+                        rendering_opaque = false;
                     }
+
                     let mesh = &self.mesh[&mesh_idx];
                     let texture_bind = &self.textures[&texture_idx].bind_group;
                     let count = group.count();
@@ -420,11 +406,13 @@ impl Renderer {
                     rpass.set_vertex_buffer(1, matrix_buffer, current_matrix_offset, matrix_buffer_size);
                     rpass.set_index_buffer(&mesh.index_buffer, 0, 0);
                     rpass.draw_indexed(0..(mesh.index_count as u32), 0, 0..(count as u32));
+
                     current_matrix_offset += matrix_buffer_size;
                     if current_matrix_offset & 255 != 0 {
                         current_matrix_offset += 256 - (current_matrix_offset & 255)
                     }
                 }
+                self.oit_renderer.render_transparent(&mut rpass);
             }
         }
 

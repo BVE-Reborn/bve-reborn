@@ -19,12 +19,6 @@ pub struct Uniforms {
     pub _matrix: [f32; 16],
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum PipelineType {
-    Normal,
-    Alpha,
-}
-
 // TODO: This isn't strictly true, is this just true due to WGPU? Either way I should more elegantly support this
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 #[repr(u32)]
@@ -110,19 +104,8 @@ pub fn create_pipeline(
     layout: &PipelineLayout,
     vs: &ShaderModule,
     fs: &ShaderModule,
-    ty: PipelineType,
     samples: MSAASetting,
 ) -> RenderPipeline {
-    let blend = if ty == PipelineType::Alpha {
-        BlendDescriptor {
-            src_factor: BlendFactor::SrcAlpha,
-            dst_factor: BlendFactor::OneMinusSrcAlpha,
-            operation: BlendOperation::Add,
-        }
-    } else {
-        BlendDescriptor::REPLACE
-    };
-    let alpha_to_coverage = ty == PipelineType::Normal;
     device.create_render_pipeline(&RenderPipelineDescriptor {
         layout,
         vertex_stage: ProgrammableStageDescriptor {
@@ -143,8 +126,8 @@ pub fn create_pipeline(
         primitive_topology: PrimitiveTopology::TriangleList,
         color_states: &[ColorStateDescriptor {
             format: TextureFormat::Bgra8Unorm,
-            color_blend: blend.clone(),
-            alpha_blend: blend,
+            color_blend: BlendDescriptor::REPLACE,
+            alpha_blend: BlendDescriptor::REPLACE,
             write_mask: ColorWrite::ALL,
         }],
         depth_stencil_state: Some(DepthStencilStateDescriptor {
@@ -173,7 +156,7 @@ pub fn create_pipeline(
         },
         sample_count: samples as u32,
         sample_mask: !0,
-        alpha_to_coverage_enabled: alpha_to_coverage,
+        alpha_to_coverage_enabled: true,
     })
 }
 
