@@ -262,14 +262,14 @@ impl Oit {
 
         let head_pointer_view = head_pointer_texture.create_default_view();
 
-        let max_nodes = resolution.x * resolution.y * 3;
+        let max_nodes = resolution.x * resolution.y * 5;
         let max_node_buffer = device.create_buffer_with_data(max_nodes.as_bytes(), BufferUsage::UNIFORM);
 
         let node_buffer_data = create_node_buffer(max_nodes);
         let node_source_buffer = device.create_buffer_with_data(&node_buffer_data, BufferUsage::COPY_SRC);
 
         let node_buffer = device.create_buffer(&BufferDescriptor {
-            size: node_buffer_data.len() as BufferAddress,
+            size: (max_nodes * 5 * SIZE_OF_NODE as u32 + 4) as BufferAddress,
             usage: BufferUsage::COPY_DST | BufferUsage::STORAGE | BufferUsage::STORAGE_READ,
             label: Some("oit node buffer"),
         });
@@ -341,13 +341,7 @@ impl Oit {
                 depth: 1,
             },
         );
-        encoder.copy_buffer_to_buffer(
-            &self.node_source_buffer,
-            0,
-            &self.node_buffer,
-            0,
-            (self.resolution.x * self.resolution.y * 5 * SIZE_OF_NODE as u32 + 4) as BufferAddress,
-        );
+        encoder.copy_buffer_to_buffer(&self.node_source_buffer, 0, &self.node_buffer, 0, (4) as BufferAddress);
     }
 
     pub fn prepare_rendering<'a>(&'a self, rpass: &mut RenderPass<'a>) {
