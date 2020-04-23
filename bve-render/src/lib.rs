@@ -307,6 +307,9 @@ impl Renderer {
         self.screen_size = screen_size;
 
         self.swapchain = render::create_swapchain(&self.device, &self.surface, screen_size);
+
+        self.oit_renderer
+            .resize(&self.device, Vector2::new(screen_size.width, screen_size.height));
     }
 
     #[must_use]
@@ -325,6 +328,8 @@ impl Renderer {
             samples,
         );
         self.samples = samples;
+
+        self.oit_renderer.set_samples(&self.device, &self.vert_shader, samples);
     }
 
     pub async fn render(&mut self) {
