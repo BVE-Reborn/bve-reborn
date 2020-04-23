@@ -149,7 +149,9 @@ pub struct Renderer {
     opaque_pipeline: RenderPipeline,
     alpha_pipeline: RenderPipeline,
     pipeline_layout: PipelineLayout,
-    bind_group_layout: BindGroupLayout,
+    texture_bind_group_layout: BindGroupLayout,
+    opaque_bind_group: BindGroup,
+    alpha_bind_group: BindGroup,
     sampler: Sampler,
 
     vert_shader: ShaderModule,
@@ -212,7 +214,7 @@ impl Renderer {
         let framebuffer = render::create_framebuffer(&device, screen_size, samples);
         let depth_buffer = render::create_depth_buffer(&device, screen_size, samples);
 
-        let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+        let texture_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             bindings: &[
                 BindGroupLayoutEntry {
                     binding: 0,
@@ -229,10 +231,45 @@ impl Renderer {
                     ty: BindingType::Sampler { comparison: false },
                 },
             ],
-            label: None,
+            label: Some("texture and sampler"),
+        });
+        let transparency_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+            bindings: &[BindGroupLayoutEntry {
+                binding: 0,
+                visibility: ShaderStage::FRAGMENT,
+                ty: BindingType::UniformBuffer { dynamic: false },
+            }],
+            label: Some("transparency flag"),
         });
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
-            bind_group_layouts: &[&bind_group_layout],
+            bind_group_layouts: &[&texture_bind_group_layout, &transparency_bind_group_layout],
+        });
+
+        let opaque_uniform_buffer = device.create_buffer_with_data((false as u32).as_bytes(), BufferUsage::UNIFORM);
+        let alpha_uniform_buffer = device.create_buffer_with_data((true as u32).as_bytes(), BufferUsage::UNIFORM);
+
+        let opaque_bind_group = device.create_bind_group(&BindGroupDescriptor {
+            layout: &transparency_bind_group_layout,
+            bindings: &[Binding {
+                binding: 0,
+                resource: BindingResource::Buffer {
+                    buffer: &opaque_uniform_buffer,
+                    range: 0..4,
+                },
+            }],
+            label: Some("opaque transparency"),
+        });
+
+        let alpha_bind_group = device.create_bind_group(&BindGroupDescriptor {
+            layout: &transparency_bind_group_layout,
+            bindings: &[Binding {
+                binding: 0,
+                resource: BindingResource::Buffer {
+                    buffer: &alpha_uniform_buffer,
+                    range: 0..4,
+                },
+            }],
+            label: Some("alpha transparency"),
         });
 
         let opaque_pipeline = render::create_pipeline(
@@ -283,7 +320,9 @@ impl Renderer {
             opaque_pipeline,
             alpha_pipeline,
             pipeline_layout,
-            bind_group_layout,
+            texture_bind_group_layout,
+            opaque_bind_group,
+            alpha_bind_group,
             sampler,
 
             vert_shader: vs_module,
@@ -402,12 +441,14 @@ impl Renderer {
 
                 let mut opaque_ended = false;
                 rpass.set_pipeline(&self.opaque_pipeline);
+                rpass.set_bind_group(1, &self.opaque_bind_group, &[]);
                 for ((mesh_idx, texture_idx, transparent), group) in &object_references
                     .into_iter()
                     .group_by(|o| (o.mesh, o.texture, o.transparent))
                 {
                     if transparent && !opaque_ended {
                         rpass.set_pipeline(&self.alpha_pipeline);
+                        rpass.set_bind_group(1, &self.alpha_bind_group, &[]);
                         opaque_ended = true;
                     }
                     let mesh = &self.mesh[&mesh_idx];

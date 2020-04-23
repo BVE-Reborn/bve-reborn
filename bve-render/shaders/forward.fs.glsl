@@ -3,11 +3,13 @@
 layout(location = 0) in vec2 texcoord;
 layout(location = 1) in vec3 normal;
 layout(location = 2) flat in vec4 mesh_color;
-layout(location = 3) flat in int transparent;
 layout(location = 0) out vec4 outColor;
 
 layout(set = 0, binding = 0) uniform utexture2D colorTexture;
 layout(set = 0, binding = 1) uniform sampler main_sampler;
+layout(set = 1, binding = 0) uniform Transparency {
+    int transparent;
+};
 
 void main() {
     vec4 tex_color = pow(vec4(texture(usampler2D(colorTexture, main_sampler), texcoord)) / 255, vec4(2.2));

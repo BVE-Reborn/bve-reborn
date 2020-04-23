@@ -17,7 +17,6 @@ pub struct Vertex {
 #[derive(AsBytes)]
 pub struct Uniforms {
     pub _matrix: [f32; 16],
-    pub _transparent: u32,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -168,7 +167,7 @@ pub fn create_pipeline(
                 VertexBufferDescriptor {
                     stride: size_of::<Uniforms>() as BufferAddress,
                     step_mode: InputStepMode::Instance,
-                    attributes: &vertex_attr_array![4 => Float4, 5 => Float4, 6 => Float4, 7 => Float4, 8 => Int],
+                    attributes: &vertex_attr_array![4 => Float4, 5 => Float4, 6 => Float4, 7 => Float4],
                 },
             ],
         },
@@ -277,19 +276,15 @@ impl Renderer {
 
         let mut matrix_buffer_data = Vec::new();
 
-        for ((_mesh_idx, _texture_idx, transparent), group) in
-            &objects.into_iter().group_by(|o| (o.mesh, o.texture, o.transparent))
-        {
+        for (_, group) in &objects.into_iter().group_by(|o| (o.mesh, o.texture, o.transparent)) {
             for object in group {
                 let matrix = object::generate_matrix(
                     &camera_mat,
                     object.location,
                     self.screen_size.width as f32 / self.screen_size.height as f32,
                 );
-                let transparent = transparent as u32;
                 let uniforms = Uniforms {
                     _matrix: *matrix.as_ref(),
-                    _transparent: transparent,
                 };
                 matrix_buffer_data.extend_from_slice(uniforms.as_bytes());
             }

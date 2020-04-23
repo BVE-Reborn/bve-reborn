@@ -84,7 +84,7 @@ impl Renderer {
         let texture_view = filtered_texture.create_default_view();
 
         let bind_group = self.device.create_bind_group(&BindGroupDescriptor {
-            layout: &self.bind_group_layout,
+            layout: &self.texture_bind_group_layout,
             bindings: &[
                 Binding {
                     binding: 0,
