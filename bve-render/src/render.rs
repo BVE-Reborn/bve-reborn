@@ -226,6 +226,7 @@ pub fn create_swapchain(device: &Device, surface: &Surface, screen_size: Physica
 }
 
 impl Renderer {
+    #[must_use]
     pub fn sort_objects(objects: &IndexMap<u64, object::Object>) -> Vec<&object::Object> {
         // we faff around with references as it's faster
 
@@ -252,11 +253,11 @@ impl Renderer {
 
         // Sort the groups by average distance, ensuring transparency stays together
         vector_of_groups.sort_by(|(_, transparent1, dist1), (_, transparent2, dist2)| {
-            transparent1.cmp(&transparent2).then_with(|| {
+            transparent1.cmp(transparent2).then_with(|| {
                 if *transparent1 {
-                    dist2.partial_cmp(&dist1).unwrap_or(Ordering::Equal)
+                    dist2.partial_cmp(dist1).unwrap_or(Ordering::Equal)
                 } else {
-                    dist1.partial_cmp(&dist2).unwrap_or(Ordering::Equal)
+                    dist1.partial_cmp(dist2).unwrap_or(Ordering::Equal)
                 }
             })
         });
@@ -276,7 +277,7 @@ impl Renderer {
 
         let mut matrix_buffer_data = Vec::new();
 
-        for (_, group) in &objects.into_iter().group_by(|o| (o.mesh, o.texture, o.transparent)) {
+        for (_, group) in &objects.iter().group_by(|o| (o.mesh, o.texture, o.transparent)) {
             for object in group {
                 let matrix = object::generate_matrix(
                     &camera_mat,
