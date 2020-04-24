@@ -244,6 +244,7 @@ impl Renderer {
             &device,
             &vs_module,
             &texture_bind_group_layout,
+            &framebuffer,
             Vector2::new(screen_size.width, screen_size.height),
             samples,
         );
@@ -311,6 +312,7 @@ impl Renderer {
         self.oit_renderer.resize(
             &self.device,
             Vector2::new(screen_size.width, screen_size.height),
+            &self.framebuffer,
             self.samples,
         );
     }
@@ -335,6 +337,7 @@ impl Renderer {
         self.oit_renderer.set_samples(
             &self.device,
             &self.vert_shader,
+            &self.framebuffer,
             Vector2::new(self.resolution.width, self.resolution.height),
             samples,
         );
@@ -365,21 +368,16 @@ impl Renderer {
 
         {
             self.oit_renderer.clear_buffers(&mut encoder);
-            let (attachment, resolve_target) = if self.samples == render::MSAASetting::X1 {
-                (&frame.view, None)
-            } else {
-                (&self.framebuffer, Some(&frame.view))
-            };
             let mut rpass = encoder.begin_render_pass(&RenderPassDescriptor {
                 color_attachments: &[RenderPassColorAttachmentDescriptor {
-                    attachment,
-                    resolve_target,
+                    attachment: &self.framebuffer,
+                    resolve_target: None,
                     load_op: LoadOp::Clear,
                     store_op: StoreOp::Store,
                     clear_color: Color {
-                        r: 0.3_f64.powf(1.0 / 2.2),
-                        g: 0.3_f64.powf(1.0 / 2.2),
-                        b: 0.3_f64.powf(1.0 / 2.2),
+                        r: 0.3,
+                        g: 0.3,
+                        b: 0.3,
                         a: 1.0,
                     },
                 }],
@@ -425,8 +423,20 @@ impl Renderer {
                         current_matrix_offset += 256 - (current_matrix_offset & 255)
                     }
                 }
-                self.oit_renderer.render_transparent(&mut rpass);
             }
+        }
+        {
+            let mut rpass = encoder.begin_render_pass(&RenderPassDescriptor {
+                color_attachments: &[RenderPassColorAttachmentDescriptor {
+                    attachment: &frame.view,
+                    resolve_target: None,
+                    load_op: LoadOp::Clear,
+                    store_op: StoreOp::Store,
+                    clear_color: Color::BLACK,
+                }],
+                depth_stencil_attachment: None,
+            });
+            self.oit_renderer.render_transparent(&mut rpass);
         }
 
         self.command_buffers.push(encoder.finish());

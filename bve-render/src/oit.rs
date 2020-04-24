@@ -67,7 +67,6 @@ fn create_pipeline_pass2(
     pipeline_layout: &PipelineLayout,
     fx_module: &ShaderModule,
     oit2_module: &ShaderModule,
-    samples: MSAASetting,
 ) -> RenderPipeline {
     device.create_render_pipeline(&RenderPipelineDescriptor {
         layout: pipeline_layout,
@@ -89,27 +88,11 @@ fn create_pipeline_pass2(
         primitive_topology: PrimitiveTopology::TriangleList,
         color_states: &[ColorStateDescriptor {
             format: TextureFormat::Bgra8Unorm,
-            color_blend: BlendDescriptor {
-                src_factor: BlendFactor::SrcAlpha,
-                dst_factor: BlendFactor::OneMinusSrcAlpha,
-                operation: BlendOperation::Add,
-            },
-            alpha_blend: BlendDescriptor {
-                src_factor: BlendFactor::SrcAlpha,
-                dst_factor: BlendFactor::OneMinusSrcAlpha,
-                operation: BlendOperation::Add,
-            },
+            color_blend: BlendDescriptor::REPLACE,
+            alpha_blend: BlendDescriptor::REPLACE,
             write_mask: ColorWrite::ALL,
         }],
-        depth_stencil_state: Some(DepthStencilStateDescriptor {
-            format: TextureFormat::Depth32Float,
-            depth_write_enabled: false,
-            depth_compare: CompareFunction::Always,
-            stencil_front: StencilStateFaceDescriptor::IGNORE,
-            stencil_back: StencilStateFaceDescriptor::IGNORE,
-            stencil_read_mask: 0,
-            stencil_write_mask: 0,
-        }),
+        depth_stencil_state: None,
         vertex_state: VertexStateDescriptor {
             index_format: IndexFormat::Uint32,
             vertex_buffers: &[VertexBufferDescriptor {
@@ -118,7 +101,7 @@ fn create_pipeline_pass2(
                 attributes: &vertex_attr_array![0 => Float2],
             }],
         },
-        sample_count: samples as u32,
+        sample_count: 1,
         sample_mask: !0,
         alpha_to_coverage_enabled: false,
     })
@@ -133,12 +116,15 @@ struct OitUniforms {
 
 fn create_uniform_buffer(
     device: &Device,
-    bind_group_layout: &BindGroupLayout,
+    oit_bind_group_layout: &BindGroupLayout,
+    framebuffer_bind_group_layout: &BindGroupLayout,
     head_pointer_view: &TextureView,
     node_buffer: &Buffer,
+    framebuffer: &TextureView,
+    framebuffer_sampler: &Sampler,
     resolution: Vector2<u32>,
     samples: MSAASetting,
-) -> (Buffer, BindGroup) {
+) -> (Buffer, BindGroup, BindGroup) {
     let max_nodes = node_count(resolution);
     let uniforms = OitUniforms {
         _max_nodes: max_nodes,
@@ -146,8 +132,8 @@ fn create_uniform_buffer(
     };
     let uniform_buffer = device.create_buffer_with_data(uniforms.as_bytes(), BufferUsage::UNIFORM);
 
-    let bind_group = device.create_bind_group(&BindGroupDescriptor {
-        layout: bind_group_layout,
+    let oit_bind_group = device.create_bind_group(&BindGroupDescriptor {
+        layout: oit_bind_group_layout,
         bindings: &[
             Binding {
                 binding: 0,
@@ -171,16 +157,34 @@ fn create_uniform_buffer(
         label: Some("oit binding"),
     });
 
-    (uniform_buffer, bind_group)
+    let framebuffer_bind_group = device.create_bind_group(&BindGroupDescriptor {
+        layout: framebuffer_bind_group_layout,
+        bindings: &[
+            Binding {
+                binding: 0,
+                resource: BindingResource::TextureView(framebuffer),
+            },
+            Binding {
+                binding: 1,
+                resource: BindingResource::Sampler(framebuffer_sampler),
+            },
+        ],
+        label: Some("framebuffer binding"),
+    });
+
+    (uniform_buffer, oit_bind_group, framebuffer_bind_group)
 }
 
 fn create_oit_buffers(
     device: &Device,
     encoder: &mut CommandEncoder,
-    bind_group_layout: &BindGroupLayout,
+    oit_bind_group_layout: &BindGroupLayout,
+    framebuffer_bind_group_layout: &BindGroupLayout,
+    framebuffer: &TextureView,
+    framebuffer_sampler: &Sampler,
     resolution: Vector2<u32>,
     samples: MSAASetting,
-) -> (TextureView, Buffer, Buffer, BindGroup) {
+) -> (TextureView, Buffer, Buffer, BindGroup, BindGroup) {
     let head_pointer_source_buffer = device.create_buffer_with_data(
         &vec![0xFF; (resolution.x * resolution.y * 4) as usize],
         BufferUsage::COPY_SRC,
@@ -229,16 +233,25 @@ fn create_oit_buffers(
         label: Some("oit node buffer"),
     });
 
-    let (uniform_buffer, bind_group) = create_uniform_buffer(
+    let (uniform_buffer, oit_bind_group, framebuffer_bind_group) = create_uniform_buffer(
         device,
-        bind_group_layout,
+        oit_bind_group_layout,
+        framebuffer_bind_group_layout,
         &head_pointer_view,
         &node_buffer,
+        framebuffer,
+        framebuffer_sampler,
         resolution,
         samples,
     );
 
-    (head_pointer_view, uniform_buffer, node_buffer, bind_group)
+    (
+        head_pointer_view,
+        uniform_buffer,
+        node_buffer,
+        oit_bind_group,
+        framebuffer_bind_group,
+    )
 }
 
 const SIZE_OF_NODE: usize = 28;
@@ -278,10 +291,13 @@ pub struct Oit {
     oit1_module: ShaderModule,
     oit2_module: ShaderModule,
 
-    bind_group_layout: BindGroupLayout,
-    pipeline_layout: PipelineLayout,
+    oit_bind_group_layout: BindGroupLayout,
+    framebuffer_bind_group_layout: BindGroupLayout,
+    pass1_pipeline_layout: PipelineLayout,
+    pass2_pipeline_layout: PipelineLayout,
 
-    bind_group: BindGroup,
+    oit_bind_group: BindGroup,
+    framebuffer_bind_group: BindGroup,
 
     head_pointer_view: TextureView,
 
@@ -289,6 +305,8 @@ pub struct Oit {
 
     node_source_buffer: Buffer,
     node_buffer: Buffer,
+
+    framebuffer_sampler: Sampler,
 
     screen_space_verts: Buffer,
 
@@ -303,6 +321,7 @@ impl Oit {
         device: &Device,
         vert: &ShaderModule,
         opaque_bind_group_layout: &BindGroupLayout,
+        framebuffer: &TextureView,
         resolution: Vector2<u32>,
         samples: MSAASetting,
     ) -> (Self, CommandBuffer) {
@@ -322,7 +341,7 @@ impl Oit {
         let oit2_module =
             device.create_shader_module(&read_spirv(io::Cursor::new(&oit2[..])).expect("Could not read shader spirv"));
 
-        let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+        let oit_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             bindings: &[
                 BindGroupLayoutEntry {
                     binding: 0,
@@ -351,18 +370,62 @@ impl Oit {
             label: Some("oit binding"),
         });
 
-        let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
-            bind_group_layouts: &[opaque_bind_group_layout, &bind_group_layout],
+        let framebuffer_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+            bindings: &[
+                BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: ShaderStage::FRAGMENT,
+                    ty: BindingType::SampledTexture {
+                        component_type: TextureComponentType::Float,
+                        dimension: TextureViewDimension::D2,
+                        multisampled: true,
+                    },
+                },
+                BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: ShaderStage::FRAGMENT,
+                    ty: BindingType::Sampler { comparison: false },
+                },
+            ],
+            label: Some("framebuffer binding"),
         });
 
-        let pass1_pipeline = create_pipeline_pass1(device, &pipeline_layout, vert, &oit1_module, samples);
-        let pass2_pipeline = create_pipeline_pass2(device, &pipeline_layout, &fx_module, &oit2_module, samples);
+        let pass1_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
+            bind_group_layouts: &[opaque_bind_group_layout, &oit_bind_group_layout],
+        });
+        let pass2_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
+            bind_group_layouts: &[&oit_bind_group_layout, &framebuffer_bind_group_layout],
+        });
+
+        let pass1_pipeline = create_pipeline_pass1(device, &pass1_pipeline_layout, vert, &oit1_module, samples);
+        let pass2_pipeline = create_pipeline_pass2(device, &pass2_pipeline_layout, &fx_module, &oit2_module);
 
         let node_buffer_data = create_node_buffer_header();
         let node_source_buffer = device.create_buffer_with_data(&node_buffer_data, BufferUsage::COPY_SRC);
 
-        let (head_pointer_view, uniform_buffer, node_buffer, bind_group) =
-            create_oit_buffers(device, &mut encoder, &bind_group_layout, resolution, samples);
+        let framebuffer_sampler = device.create_sampler(&SamplerDescriptor {
+            address_mode_u: AddressMode::ClampToEdge,
+            address_mode_v: AddressMode::ClampToEdge,
+            address_mode_w: AddressMode::ClampToEdge,
+            mag_filter: FilterMode::Nearest,
+            min_filter: FilterMode::Nearest,
+            mipmap_filter: FilterMode::Nearest,
+            lod_min_clamp: -100.0,
+            lod_max_clamp: 100.0,
+            compare: CompareFunction::Never,
+        });
+
+        let (head_pointer_view, uniform_buffer, node_buffer, oit_bind_group, framebuffer_bind_group) =
+            create_oit_buffers(
+                device,
+                &mut encoder,
+                &oit_bind_group_layout,
+                &framebuffer_bind_group_layout,
+                framebuffer,
+                &framebuffer_sampler,
+                resolution,
+                samples,
+            );
 
         let screen_space_verts = create_screen_space_verts(device);
 
@@ -371,13 +434,17 @@ impl Oit {
                 fx_module,
                 oit1_module,
                 oit2_module,
-                bind_group_layout,
-                pipeline_layout,
-                bind_group,
+                oit_bind_group_layout,
+                framebuffer_bind_group_layout,
+                pass1_pipeline_layout,
+                pass2_pipeline_layout,
+                oit_bind_group,
+                framebuffer_bind_group,
                 head_pointer_view,
                 uniform_buffer,
                 node_source_buffer,
                 node_buffer,
+                framebuffer_sampler,
                 screen_space_verts,
                 resolution,
                 pass1_pipeline,
@@ -387,18 +454,34 @@ impl Oit {
         )
     }
 
-    pub fn resize(&mut self, device: &Device, resolution: Vector2<u32>, samples: MSAASetting) -> CommandBuffer {
+    pub fn resize(
+        &mut self,
+        device: &Device,
+        resolution: Vector2<u32>,
+        framebuffer: &TextureView,
+        samples: MSAASetting,
+    ) -> CommandBuffer {
         let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
             label: Some("oit resize"),
         });
 
-        let (head_pointer_view, max_node_buffer, node_buffer, bind_group) =
-            create_oit_buffers(device, &mut encoder, &self.bind_group_layout, resolution, samples);
+        let (head_pointer_view, max_node_buffer, node_buffer, oit_bind_group, framebuffer_bind_group) =
+            create_oit_buffers(
+                device,
+                &mut encoder,
+                &self.oit_bind_group_layout,
+                &self.framebuffer_bind_group_layout,
+                framebuffer,
+                &self.framebuffer_sampler,
+                resolution,
+                samples,
+            );
 
         self.head_pointer_view = head_pointer_view;
         self.uniform_buffer = max_node_buffer;
         self.node_buffer = node_buffer;
-        self.bind_group = bind_group;
+        self.oit_bind_group = oit_bind_group;
+        self.framebuffer_bind_group = framebuffer_bind_group;
         self.resolution = resolution;
 
         encoder.finish()
@@ -408,27 +491,28 @@ impl Oit {
         &mut self,
         device: &Device,
         vert: &ShaderModule,
+        framebuffer: &TextureView,
         resolution: Vector2<u32>,
         samples: MSAASetting,
     ) {
-        self.pass1_pipeline = create_pipeline_pass1(device, &self.pipeline_layout, vert, &self.oit1_module, samples);
-        self.pass2_pipeline = create_pipeline_pass2(
+        self.pass1_pipeline =
+            create_pipeline_pass1(device, &self.pass1_pipeline_layout, vert, &self.oit1_module, samples);
+        self.pass2_pipeline =
+            create_pipeline_pass2(device, &self.pass2_pipeline_layout, &self.fx_module, &self.oit2_module);
+        let (uniform_buffer, oit_bind_group, framebuffer_bind_group) = create_uniform_buffer(
             device,
-            &self.pipeline_layout,
-            &self.fx_module,
-            &self.oit2_module,
-            samples,
-        );
-        let (uniform_buffer, bind_group) = create_uniform_buffer(
-            device,
-            &self.bind_group_layout,
+            &self.oit_bind_group_layout,
+            &self.framebuffer_bind_group_layout,
             &self.head_pointer_view,
             &self.node_buffer,
+            framebuffer,
+            &self.framebuffer_sampler,
             resolution,
             samples,
         );
         self.uniform_buffer = uniform_buffer;
-        self.bind_group = bind_group;
+        self.oit_bind_group = oit_bind_group;
+        self.framebuffer_bind_group = framebuffer_bind_group;
     }
 
     pub fn clear_buffers(&self, encoder: &mut CommandEncoder) {
@@ -437,12 +521,13 @@ impl Oit {
 
     pub fn prepare_rendering<'a>(&'a self, rpass: &mut RenderPass<'a>) {
         rpass.set_pipeline(&self.pass1_pipeline);
-        rpass.set_bind_group(1, &self.bind_group, &[]);
+        rpass.set_bind_group(1, &self.oit_bind_group, &[]);
     }
 
     pub fn render_transparent<'a>(&'a self, rpass: &mut RenderPass<'a>) {
         rpass.set_pipeline(&self.pass2_pipeline);
-        rpass.set_bind_group(1, &self.bind_group, &[]);
+        rpass.set_bind_group(0, &self.oit_bind_group, &[]);
+        rpass.set_bind_group(1, &self.framebuffer_bind_group, &[]);
         rpass.set_vertex_buffer(0, &self.screen_space_verts, 0, 0);
         rpass.draw(0..3, 0..1);
     }

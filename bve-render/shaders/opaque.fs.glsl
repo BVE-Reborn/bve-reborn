@@ -16,5 +16,5 @@ void main() {
     } else {
         color.a = 1.0;
     }
-    outColor = vec4(pow(color.rgb, vec3(1 / 2.2)), color.a);
+    outColor = color;
 }

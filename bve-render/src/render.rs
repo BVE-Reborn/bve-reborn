@@ -192,7 +192,7 @@ pub fn create_framebuffer(device: &Device, size: PhysicalSize<u32>, samples: MSA
         sample_count: samples as u32,
         dimension: TextureDimension::D2,
         format: TextureFormat::Bgra8Unorm,
-        usage: TextureUsage::OUTPUT_ATTACHMENT,
+        usage: TextureUsage::OUTPUT_ATTACHMENT | TextureUsage::SAMPLED,
         label: Some("framebuffer"),
     });
     tex.create_default_view()
