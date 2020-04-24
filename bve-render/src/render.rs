@@ -265,7 +265,7 @@ impl Renderer {
                 let matrix = object::generate_matrix(
                     &camera_mat,
                     object.location,
-                    self.screen_size.width as f32 / self.screen_size.height as f32,
+                    self.resolution.width as f32 / self.resolution.height as f32,
                 );
                 let uniforms = Uniforms {
                     _matrix: *matrix.as_ref(),

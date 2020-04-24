@@ -10,6 +10,7 @@ layout(location = 0) out vec4 outColor;
 struct Node {
     vec4 color;
     float depth;
+    int coverage;
     uint next;
 };
 
@@ -18,6 +19,7 @@ layout(set = 0, binding = 1) uniform sampler main_sampler;
 layout(set = 1, binding = 0, r32ui) uniform uimage2D head_pointers;
 layout(set = 1, binding = 1) uniform OIT {
     uint max_nodes;
+    uint samples;
 };
 layout(set = 1, binding = 2, std430) buffer NodeBuffer {
     uint next_index;
@@ -38,6 +40,7 @@ void main() {
 
         nodes[node_idx].color = color;
         nodes[node_idx].depth = gl_FragCoord.z;
+        nodes[node_idx].coverage = gl_SampleMaskIn[0];
         nodes[node_idx].next = prev_head;
     }
 }

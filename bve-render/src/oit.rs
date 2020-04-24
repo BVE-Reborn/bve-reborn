@@ -1,5 +1,4 @@
 use crate::*;
-use std::mem::size_of_val;
 use zerocopy::AsBytes;
 
 fn create_pipeline_pass1(
@@ -125,11 +124,62 @@ fn create_pipeline_pass2(
     })
 }
 
+#[derive(AsBytes)]
+#[repr(C)]
+struct OitUniforms {
+    _max_nodes: u32,
+    _sample_count: u32,
+}
+
+fn create_uniform_buffer(
+    device: &Device,
+    bind_group_layout: &BindGroupLayout,
+    head_pointer_view: &TextureView,
+    node_buffer: &Buffer,
+    resolution: Vector2<u32>,
+    samples: MSAASetting,
+) -> (Buffer, BindGroup) {
+    let max_nodes = node_count(resolution);
+    let uniforms = OitUniforms {
+        _max_nodes: max_nodes,
+        _sample_count: samples as u32,
+    };
+    let uniform_buffer = device.create_buffer_with_data(uniforms.as_bytes(), BufferUsage::UNIFORM);
+
+    let bind_group = device.create_bind_group(&BindGroupDescriptor {
+        layout: bind_group_layout,
+        bindings: &[
+            Binding {
+                binding: 0,
+                resource: BindingResource::TextureView(&head_pointer_view),
+            },
+            Binding {
+                binding: 1,
+                resource: BindingResource::Buffer {
+                    buffer: &uniform_buffer,
+                    range: 0..size_of::<OitUniforms>() as BufferAddress,
+                },
+            },
+            Binding {
+                binding: 2,
+                resource: BindingResource::Buffer {
+                    buffer: &node_buffer,
+                    range: 0..size_of_node_buffer(resolution),
+                },
+            },
+        ],
+        label: Some("oit binding"),
+    });
+
+    (uniform_buffer, bind_group)
+}
+
 fn create_oit_buffers(
     device: &Device,
     encoder: &mut CommandEncoder,
     bind_group_layout: &BindGroupLayout,
     resolution: Vector2<u32>,
+    samples: MSAASetting,
 ) -> (TextureView, Buffer, Buffer, BindGroup) {
     let head_pointer_source_buffer = device.create_buffer_with_data(
         &vec![0xFF; (resolution.x * resolution.y * 4) as usize],
@@ -173,44 +223,25 @@ fn create_oit_buffers(
 
     let head_pointer_view = head_pointer_texture.create_default_view();
 
-    let max_nodes = node_count(resolution);
-    let max_node_buffer = device.create_buffer_with_data(max_nodes.as_bytes(), BufferUsage::UNIFORM);
-
     let node_buffer = device.create_buffer(&BufferDescriptor {
         size: size_of_node_buffer(resolution),
         usage: BufferUsage::COPY_DST | BufferUsage::STORAGE | BufferUsage::STORAGE_READ,
         label: Some("oit node buffer"),
     });
 
-    let bind_group = device.create_bind_group(&BindGroupDescriptor {
-        layout: bind_group_layout,
-        bindings: &[
-            Binding {
-                binding: 0,
-                resource: BindingResource::TextureView(&head_pointer_view),
-            },
-            Binding {
-                binding: 1,
-                resource: BindingResource::Buffer {
-                    buffer: &max_node_buffer,
-                    range: 0..size_of_val(&max_nodes) as BufferAddress,
-                },
-            },
-            Binding {
-                binding: 2,
-                resource: BindingResource::Buffer {
-                    buffer: &node_buffer,
-                    range: 0..size_of_node_buffer(resolution),
-                },
-            },
-        ],
-        label: Some("oit binding"),
-    });
+    let (uniform_buffer, bind_group) = create_uniform_buffer(
+        device,
+        bind_group_layout,
+        &head_pointer_view,
+        &node_buffer,
+        resolution,
+        samples,
+    );
 
-    (head_pointer_view, max_node_buffer, node_buffer, bind_group)
+    (head_pointer_view, uniform_buffer, node_buffer, bind_group)
 }
 
-const SIZE_OF_NODE: usize = 24;
+const SIZE_OF_NODE: usize = 28;
 
 const fn node_count(resolution: Vector2<u32>) -> u32 {
     resolution.x * resolution.y * 5
@@ -238,14 +269,7 @@ const fn vert(arg: [f32; 2]) -> ScreenSpaceVertex {
 }
 
 fn create_screen_space_verts(device: &Device) -> Buffer {
-    let data = vec![
-        vert([-1.0, -1.0]),
-        vert([1.0, -1.0]),
-        vert([1.0, 1.0]),
-        vert([-1.0, -1.0]),
-        vert([1.0, 1.0]),
-        vert([-1.0, 1.0]),
-    ];
+    let data = vec![vert([-3.0, -2.0]), vert([3.0, -3.0]), vert([0.0, 3.0])];
     device.create_buffer_with_data(data.as_bytes(), BufferUsage::VERTEX)
 }
 
@@ -261,7 +285,7 @@ pub struct Oit {
 
     head_pointer_view: TextureView,
 
-    max_node_buffer: Buffer,
+    uniform_buffer: Buffer,
 
     node_source_buffer: Buffer,
     node_buffer: Buffer,
@@ -337,8 +361,8 @@ impl Oit {
         let node_buffer_data = create_node_buffer_header();
         let node_source_buffer = device.create_buffer_with_data(&node_buffer_data, BufferUsage::COPY_SRC);
 
-        let (head_pointer_view, max_node_buffer, node_buffer, bind_group) =
-            create_oit_buffers(device, &mut encoder, &bind_group_layout, resolution);
+        let (head_pointer_view, uniform_buffer, node_buffer, bind_group) =
+            create_oit_buffers(device, &mut encoder, &bind_group_layout, resolution, samples);
 
         let screen_space_verts = create_screen_space_verts(device);
 
@@ -351,7 +375,7 @@ impl Oit {
                 pipeline_layout,
                 bind_group,
                 head_pointer_view,
-                max_node_buffer,
+                uniform_buffer,
                 node_source_buffer,
                 node_buffer,
                 screen_space_verts,
@@ -363,16 +387,16 @@ impl Oit {
         )
     }
 
-    pub fn resize(&mut self, device: &Device, resolution: Vector2<u32>) -> CommandBuffer {
+    pub fn resize(&mut self, device: &Device, resolution: Vector2<u32>, samples: MSAASetting) -> CommandBuffer {
         let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
             label: Some("oit resize"),
         });
 
         let (head_pointer_view, max_node_buffer, node_buffer, bind_group) =
-            create_oit_buffers(device, &mut encoder, &self.bind_group_layout, resolution);
+            create_oit_buffers(device, &mut encoder, &self.bind_group_layout, resolution, samples);
 
         self.head_pointer_view = head_pointer_view;
-        self.max_node_buffer = max_node_buffer;
+        self.uniform_buffer = max_node_buffer;
         self.node_buffer = node_buffer;
         self.bind_group = bind_group;
         self.resolution = resolution;
@@ -380,7 +404,13 @@ impl Oit {
         encoder.finish()
     }
 
-    pub fn set_samples(&mut self, device: &Device, vert: &ShaderModule, samples: MSAASetting) {
+    pub fn set_samples(
+        &mut self,
+        device: &Device,
+        vert: &ShaderModule,
+        resolution: Vector2<u32>,
+        samples: MSAASetting,
+    ) {
         self.pass1_pipeline = create_pipeline_pass1(device, &self.pipeline_layout, vert, &self.oit1_module, samples);
         self.pass2_pipeline = create_pipeline_pass2(
             device,
@@ -389,6 +419,16 @@ impl Oit {
             &self.oit2_module,
             samples,
         );
+        let (uniform_buffer, bind_group) = create_uniform_buffer(
+            device,
+            &self.bind_group_layout,
+            &self.head_pointer_view,
+            &self.node_buffer,
+            resolution,
+            samples,
+        );
+        self.uniform_buffer = uniform_buffer;
+        self.bind_group = bind_group;
     }
 
     pub fn clear_buffers(&self, encoder: &mut CommandEncoder) {
@@ -404,6 +444,6 @@ impl Oit {
         rpass.set_pipeline(&self.pass2_pipeline);
         rpass.set_bind_group(1, &self.bind_group, &[]);
         rpass.set_vertex_buffer(0, &self.screen_space_verts, 0, 0);
-        rpass.draw(0..6, 0..1);
+        rpass.draw(0..3, 0..1);
     }
 }

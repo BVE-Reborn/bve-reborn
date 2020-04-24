@@ -138,7 +138,7 @@ pub struct Renderer {
     texture_handle_count: u64,
 
     camera: camera::Camera,
-    screen_size: PhysicalSize<u32>,
+    resolution: PhysicalSize<u32>,
     samples: render::MSAASetting,
 
     surface: Surface,
@@ -264,7 +264,7 @@ impl Renderer {
                 pitch: 0.0,
                 yaw: 0.0,
             },
-            screen_size,
+            resolution: screen_size,
             samples,
 
             surface,
@@ -304,12 +304,15 @@ impl Renderer {
     pub fn resize(&mut self, screen_size: PhysicalSize<u32>) {
         self.framebuffer = render::create_framebuffer(&self.device, screen_size, self.samples);
         self.depth_buffer = render::create_depth_buffer(&self.device, screen_size, self.samples);
-        self.screen_size = screen_size;
+        self.resolution = screen_size;
 
         self.swapchain = render::create_swapchain(&self.device, &self.surface, screen_size);
 
-        self.oit_renderer
-            .resize(&self.device, Vector2::new(screen_size.width, screen_size.height));
+        self.oit_renderer.resize(
+            &self.device,
+            Vector2::new(screen_size.width, screen_size.height),
+            self.samples,
+        );
     }
 
     #[must_use]
@@ -318,8 +321,8 @@ impl Renderer {
     }
 
     pub fn set_samples(&mut self, samples: render::MSAASetting) {
-        self.framebuffer = render::create_framebuffer(&self.device, self.screen_size, samples);
-        self.depth_buffer = render::create_depth_buffer(&self.device, self.screen_size, samples);
+        self.framebuffer = render::create_framebuffer(&self.device, self.resolution, samples);
+        self.depth_buffer = render::create_depth_buffer(&self.device, self.resolution, samples);
         self.opaque_pipeline = render::create_pipeline(
             &self.device,
             &self.pipeline_layout,
@@ -329,7 +332,12 @@ impl Renderer {
         );
         self.samples = samples;
 
-        self.oit_renderer.set_samples(&self.device, &self.vert_shader, samples);
+        self.oit_renderer.set_samples(
+            &self.device,
+            &self.vert_shader,
+            Vector2::new(self.resolution.width, self.resolution.height),
+            samples,
+        );
     }
 
     pub async fn render(&mut self) {
