@@ -2,7 +2,7 @@
 
 layout(early_fragment_tests) in;
 
-#define MAX_NODES 64
+#define MAX_NODES 8
 #define MAX_SAMPLES 8
 
 layout(location = 0) out vec4 outColor;
