@@ -1,7 +1,7 @@
 use itertools::Itertools;
 use nom::{
     branch::alt,
-    bytes::complete::{tag, tag_no_case, take_while},
+    bytes::complete::{is_a, tag, tag_no_case, take_while},
     combinator::opt,
     multi::{many0, separated_list},
     sequence::{delimited, preceded, tuple},
@@ -23,12 +23,14 @@ pub struct ShaderCombination<'a> {
 }
 
 pub fn parse_shader_compile_file(input: &str) -> Option<impl Iterator<Item = ShaderCombination<'_>>> {
-    many0(parse_shader_directive)(input).ok().and_then(|(str, v)| {
-        if str.is_empty() {
-            return None;
-        }
-        Some(v.into_iter().flatten())
-    })
+    separated_list(alt((tag("\r\n"), tag("\n"))), parse_shader_directive)(input)
+        .ok()
+        .and_then(|(str, v)| {
+            // if str.is_empty() {
+            //     return None;
+            // }
+            Some(v.into_iter().flatten())
+        })
 }
 
 /// Takes a parser and wraps it so it delimited with whitespace
@@ -39,9 +41,9 @@ where
 {
     move |input| {
         delimited(
-            take_while(char::is_whitespace), //
+            take_while(|c: char| c.is_whitespace() && c != '\n' && c != '\r'), //
             &func,
-            take_while(char::is_whitespace),
+            take_while(|c: char| c.is_whitespace() && c != '\n' && c != '\r'),
         )(input)
     }
 }
@@ -78,7 +80,7 @@ fn parse_shader_directive(input: &str) -> IResult<&str, Vec<ShaderCombination<'_
 }
 
 fn parse_word(input: &str) -> IResult<&str, &str> {
-    let res = take_while(|c: char| c.is_alphanumeric())(input);
+    let res = take_while(|c: char| c.is_alphanumeric() || c == '_')(input);
     dbg!(&res);
     res
 }
