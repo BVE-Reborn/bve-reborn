@@ -357,10 +357,16 @@ impl Renderer {
             self.command_buffers.push(uniform_command_buffer);
         }
 
-        let frame = self
-            .swapchain
-            .get_next_texture()
-            .expect("Could not get next swapchain texture");
+        // Retry getting a swapchain texture a couple times to smooth over spurious timeouts when tons of state changes
+        let mut frame_res = self.swapchain.get_next_texture();
+        for _ in 1..=3 {
+            if let Ok(..) = &frame_res {
+                break;
+            }
+            frame_res = self.swapchain.get_next_texture();
+        }
+
+        let frame = frame_res.expect("Could not get next swapchain texture");
 
         let mut encoder = self
             .device
