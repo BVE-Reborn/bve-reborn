@@ -46,13 +46,25 @@
 #![allow(clippy::unreachable)]
 #![allow(clippy::wildcard_enum_match_arm)]
 
+use itertools::Itertools;
+use nom::{
+    branch::alt,
+    bytes::complete::{tag, tag_no_case, take_while},
+    combinator::opt,
+    multi::{fold_many1, separated_list},
+    sequence::{delimited, preceded, tuple},
+    IResult, InputTakeAtPosition,
+};
 use std::{
     borrow::Cow,
+    collections::HashMap,
     ffi::OsStr,
-    fs::{metadata, read_dir},
+    fs::{metadata, read, read_dir, read_to_string},
     path::Path,
     process::{exit, Command},
 };
+
+mod shaders;
 
 #[allow(clippy::struct_excessive_bools)]
 struct Options {
@@ -168,6 +180,11 @@ fn generate_c_bindings() {
 }
 
 fn build_shaders() {
+    dbg!(
+        shaders::parse_shader_compile_file(&read_to_string("bve-render/shaders/compile").unwrap())
+            .map(Itertools::collect_vec)
+    );
+    return;
     for content in read_dir("bve-render/shaders").unwrap() {
         let entry = content.expect("IO error");
         if !entry.file_type().unwrap().is_dir()

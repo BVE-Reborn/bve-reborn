@@ -1,0 +1,7 @@
+fx - vertex:
+mipmap - compute:
+oit_pass1 - fragment:
+oit_pass2 - fragment: MULTISAMPLE OR NOT MULTISAMPLE AND MAX_NODES=4 OR MAX_NODES=8 OR MAX_NODES=16
+opaque - vertex:
+opaque - fragment:
+transparency - compute:

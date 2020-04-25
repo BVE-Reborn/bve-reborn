@@ -237,6 +237,8 @@ dependencies = [
 name = "bve-build"
 version = "0.1.0"
 dependencies = [
+ "itertools",
+ "nom",
  "pico-args",
 ]
 
