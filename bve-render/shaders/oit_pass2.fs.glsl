@@ -55,7 +55,7 @@ void main() {
     for (int s = 0; s < samples; ++s) {
         sample_color[s] = texelFetch(sampler2DMS(framebuffer, framebuffer_sampler), ivec2(gl_FragCoord.xy), s);
     }
-    for (int i = 1; i < count; ++i) {
+    for (int i = 0; i < count; ++i) {
         for (int s = 0; s < samples; ++s) {
             if ((frags[i].coverage & (1 << s)) != 0) {
                 sample_color[s] = mix(sample_color[s], frags[i].color, frags[i].color.a);
