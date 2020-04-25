@@ -207,9 +207,8 @@ fn client_main() {
     let mut mouse_pitch = 0.0_f32;
     let mut mouse_yaw = 0.0_f32;
 
-    // TODO: Do 0.1 second/1 second/5 seconds/15 second rolling average
     let mut frame_count = 0_u64;
-    let mut frame_times = CircularQueue::with_capacity(50);
+    let mut frame_times = Vec::with_capacity(3000);
     let mut last_frame_instant = Instant::now();
     let mut last_printed_instant = Instant::now();
 
@@ -364,7 +363,7 @@ fn client_main() {
             frame_times.push(duration);
 
             if now - last_printed_instant >= Duration::from_secs(1) {
-                let sorted = frame_times.iter().map(Duration::clone).sorted().collect_vec();
+                let sorted = frame_times.drain(0..).sorted().collect_vec();
 
                 let low = *sorted.first().expect("Could not get first value");
                 let percentile_1th = sorted[sorted.len() / 100];
@@ -392,6 +391,8 @@ fn client_main() {
                     p(percentile_99th),
                     p(high)
                 );
+
+                frame_times.clear();
 
                 last_printed_instant = now;
             }
