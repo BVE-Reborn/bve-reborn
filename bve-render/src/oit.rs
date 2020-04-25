@@ -267,7 +267,6 @@ const fn size_of_node_buffer(resolution: Vector2<u32>) -> BufferAddress {
 fn create_node_buffer_header() -> Vec<u8> {
     let mut vec = Vec::new();
     vec.extend_from_slice(0_u32.as_bytes());
-    vec.resize(2 << 20, 0x00); // If this buffer is < 1mb, this will leak. No idea why.
 
     vec
 }
