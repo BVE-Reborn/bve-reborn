@@ -1,9 +1,9 @@
 use itertools::Itertools;
 use nom::{
     branch::alt,
-    bytes::complete::{is_a, tag, tag_no_case, take_while},
+    bytes::complete::{tag, tag_no_case, take_while},
     combinator::opt,
-    multi::{many0, separated_list},
+    multi::separated_list,
     sequence::{delimited, preceded, tuple},
     IResult, InputTakeAtPosition,
 };
@@ -17,19 +17,19 @@ pub enum ShaderType {
 
 #[derive(Debug, Clone)]
 pub struct ShaderCombination<'a> {
-    name: &'a str,
-    ty: ShaderType,
-    defines: Vec<SingleDefine<'a>>,
+    pub name: &'a str,
+    pub ty: ShaderType,
+    pub defines: Vec<SingleDefine<'a>>,
 }
 
-pub fn parse_shader_compile_file(input: &str) -> Option<impl Iterator<Item = ShaderCombination<'_>>> {
+pub fn parse_shader_compile_file(input: &str) -> Result<impl Iterator<Item = ShaderCombination<'_>>, &str> {
     separated_list(alt((tag("\r\n"), tag("\n"))), parse_shader_directive)(input)
-        .ok()
+        .map_err(|_| "parsing error")
         .and_then(|(str, v)| {
-            // if str.is_empty() {
-            //     return None;
-            // }
-            Some(v.into_iter().flatten())
+            if !str.is_empty() {
+                return Err(str);
+            }
+            Ok(v.into_iter().flatten())
         })
 }
 
@@ -80,13 +80,11 @@ fn parse_shader_directive(input: &str) -> IResult<&str, Vec<ShaderCombination<'_
 }
 
 fn parse_word(input: &str) -> IResult<&str, &str> {
-    let res = take_while(|c: char| c.is_alphanumeric() || c == '_')(input);
-    dbg!(&res);
-    res
+    take_while(|c: char| c.is_alphanumeric() || c == '_')(input)
 }
 
 fn parse_shader_type(input: &str) -> IResult<&str, ShaderType> {
-    let res = alt((
+    alt((
         tag_no_case("vertex"),
         tag_no_case("vert"),
         tag_no_case("fragment"),
@@ -101,13 +99,11 @@ fn parse_shader_type(input: &str) -> IResult<&str, ShaderType> {
             "comp" | "compute" => ShaderType::Compute,
             _ => unreachable!(),
         })
-    });
-    dbg!(&res);
-    res
+    })
 }
 
 #[derive(Debug, Clone)]
-enum SingleDefine<'a> {
+pub enum SingleDefine<'a> {
     Defined(&'a str, &'a str),
     Undefined(&'a str),
 }

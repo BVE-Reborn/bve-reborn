@@ -2,9 +2,6 @@
 
 layout(early_fragment_tests) in;
 
-#define MAX_NODES 8
-#define MAX_SAMPLES 8
-
 layout(location = 0) out vec4 outColor;
 
 struct Node {
@@ -23,7 +20,11 @@ layout(set = 0, binding = 2, std430) buffer NodeBuffer {
     uint next_index;
     Node nodes[];
 };
-layout(set = 1, binding = 0) uniform texture2DMS framebuffer;
+#if MAX_SAMPLES != 0
+    layout(set = 1, binding = 0) uniform texture2DMS framebuffer;
+#else
+    layout(set = 1, binding = 0) uniform texture2D framebuffer;
+#endif
 layout(set = 1, binding = 1) uniform sampler framebuffer_sampler;
 
 void main() {
@@ -53,7 +54,11 @@ void main() {
 
     vec4 sample_color[MAX_SAMPLES];
     for (int s = 0; s < samples; ++s) {
-        sample_color[s] = texelFetch(sampler2DMS(framebuffer, framebuffer_sampler), ivec2(gl_FragCoord.xy), s);
+        #if MAX_SAMPLES != 0
+            sample_color[s] = texelFetch(sampler2DMS(framebuffer, framebuffer_sampler), ivec2(gl_FragCoord.xy), s);
+        #else
+            sample_color[s] = texelFetch(sampler2D(framebuffer, framebuffer_sampler), ivec2(gl_FragCoord.xy), s);
+        #endif
     }
     for (int i = 0; i < count; ++i) {
         for (int s = 0; s < samples; ++s) {

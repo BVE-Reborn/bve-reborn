@@ -16,3 +16,4 @@ log.*
 *.cfg
 
 cmake-*/
+bve-render/shaders/spirv/
