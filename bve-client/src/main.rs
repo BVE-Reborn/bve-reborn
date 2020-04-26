@@ -169,7 +169,7 @@ fn client_main() {
     let (mut forward, mut left, mut back, mut right, mut up, mut down, mut shift) =
         (false, false, false, false, false, false, false);
 
-    let mut sample_count = MSAASetting::X2;
+    let mut sample_count = MSAASetting::X1;
     let client = block_on(async { Client::new(&window, sample_count).await });
     let runtime = runtime::Runtime::new(Arc::clone(&client));
 
