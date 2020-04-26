@@ -26,7 +26,7 @@ pub fn find_shader_module(device: &Device, name: String) -> Arc<ShaderModule> {
 
 #[macro_export]
 #[doc(hidden)]
-#[cfg(debug)]
+#[cfg(debug_assertions)]
 macro_rules! spirv_suffix {
     () => {
         ".spv"
@@ -35,7 +35,7 @@ macro_rules! spirv_suffix {
 
 #[macro_export]
 #[doc(hidden)]
-#[cfg(not(debug))]
+#[cfg(not(debug_assertions))]
 macro_rules! spirv_suffix {
     () => {
         ".spv.opt"
