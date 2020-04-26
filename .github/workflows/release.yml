@@ -117,7 +117,7 @@ jobs:
       - name: Build
         run: |
           mkdir ${{ matrix.name }}
-          cp target/lto/bve-client${{ matrix.suffix }} target/lto/bve-corpus${{ matrix.suffix }} target/lto/bve-parser-run${{ matrix.suffix }} target/lto/bve-obj-conv${{ matrix.suffix }} ${{ matrix.name }}
+          cp -r target/lto/bve-client${{ matrix.suffix }} target/lto/bve-corpus${{ matrix.suffix }} target/lto/bve-parser-run${{ matrix.suffix }} target/lto/bve-obj-conv${{ matrix.suffix }} bve-render/shaders/spirv ${{ matrix.name }}
         shell: bash
 
       - uses: actions/upload-artifact@v1
