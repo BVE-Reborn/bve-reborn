@@ -254,6 +254,7 @@ fn create_oit_buffers(
 fn create_pass2_pipeline_layout(
     device: &Device,
     oit_bind_group_layout: &BindGroupLayout,
+    samples: MSAASetting,
 ) -> (BindGroupLayout, PipelineLayout) {
     let framebuffer_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
         bindings: &[
@@ -263,7 +264,7 @@ fn create_pass2_pipeline_layout(
                 ty: BindingType::SampledTexture {
                     component_type: TextureComponentType::Float,
                     dimension: TextureViewDimension::D2,
-                    multisampled: true,
+                    multisampled: samples != MSAASetting::X1,
                 },
             },
             BindGroupLayoutEntry {
@@ -384,7 +385,7 @@ impl Oit {
             bind_group_layouts: &[opaque_bind_group_layout, &oit_bind_group_layout],
         });
         let (framebuffer_bind_group_layout, pass2_pipeline_layout) =
-            create_pass2_pipeline_layout(device, &oit_bind_group_layout);
+            create_pass2_pipeline_layout(device, &oit_bind_group_layout, samples);
 
         let pass1_pipeline = create_pipeline_pass1(device, &pass1_pipeline_layout, vert, samples);
         let pass2_pipeline = create_pipeline_pass2(device, &pass2_pipeline_layout, samples);
@@ -482,7 +483,7 @@ impl Oit {
         samples: MSAASetting,
     ) {
         let (framebuffer_bind_group_layout, pass2_pipeline_layout) =
-            create_pass2_pipeline_layout(device, &self.oit_bind_group_layout);
+            create_pass2_pipeline_layout(device, &self.oit_bind_group_layout, samples);
         self.framebuffer_bind_group_layout = framebuffer_bind_group_layout;
         self.pass2_pipeline_layout = pass2_pipeline_layout;
         self.pass1_pipeline = create_pipeline_pass1(device, &self.pass1_pipeline_layout, vert, samples);
