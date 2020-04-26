@@ -53,7 +53,7 @@ macro_rules! shader {
     (@$name:ident = $value:expr) => {
         format!(concat!("_", stringify!($name), "_{}"), $value)
     };
-    (@NOT $name:ident) => {
+    (@$name:ident) => {
         format!(concat!("_U", stringify!($name)))
     };
     (@@vert) => {
