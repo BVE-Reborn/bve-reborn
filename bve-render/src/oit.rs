@@ -1,14 +1,13 @@
 use crate::*;
-use std::sync::Arc;
 use zerocopy::AsBytes;
 
 fn create_pipeline_pass1(
     device: &Device,
     pipeline_layout: &PipelineLayout,
     vert: &ShaderModule,
-    oit1_module: &ShaderModule,
     samples: MSAASetting,
 ) -> RenderPipeline {
+    let oit1_module = shader!(device; oit_pass1 - frag);
     device.create_render_pipeline(&RenderPipelineDescriptor {
         layout: pipeline_layout,
         vertex_stage: ProgrammableStageDescriptor {
@@ -16,7 +15,7 @@ fn create_pipeline_pass1(
             entry_point: "main",
         },
         fragment_stage: Some(ProgrammableStageDescriptor {
-            module: oit1_module,
+            module: &oit1_module,
             entry_point: "main",
         }),
         rasterization_state: Some(RasterizationStateDescriptor {
@@ -63,20 +62,17 @@ fn create_pipeline_pass1(
     })
 }
 
-fn create_pipeline_pass2(
-    device: &Device,
-    pipeline_layout: &PipelineLayout,
-    fx_module: &ShaderModule,
-    oit2_module: &ShaderModule,
-) -> RenderPipeline {
+fn create_pipeline_pass2(device: &Device, pipeline_layout: &PipelineLayout, samples: MSAASetting) -> RenderPipeline {
+    let fx_module = shader!(device; fx - vert);
+    let oit2_module = shader!(device; oit_pass2 - frag: MAX_SAMPLES = samples as u8; MAX_NODES = 8);
     device.create_render_pipeline(&RenderPipelineDescriptor {
         layout: pipeline_layout,
         vertex_stage: ProgrammableStageDescriptor {
-            module: fx_module,
+            module: &fx_module,
             entry_point: "main",
         },
         fragment_stage: Some(ProgrammableStageDescriptor {
-            module: oit2_module,
+            module: &oit2_module,
             entry_point: "main",
         }),
         rasterization_state: Some(RasterizationStateDescriptor {
@@ -255,6 +251,35 @@ fn create_oit_buffers(
     )
 }
 
+fn create_pass2_pipeline_layout(
+    device: &Device,
+    oit_bind_group_layout: &BindGroupLayout,
+) -> (BindGroupLayout, PipelineLayout) {
+    let framebuffer_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+        bindings: &[
+            BindGroupLayoutEntry {
+                binding: 0,
+                visibility: ShaderStage::FRAGMENT,
+                ty: BindingType::SampledTexture {
+                    component_type: TextureComponentType::Float,
+                    dimension: TextureViewDimension::D2,
+                    multisampled: true,
+                },
+            },
+            BindGroupLayoutEntry {
+                binding: 1,
+                visibility: ShaderStage::FRAGMENT,
+                ty: BindingType::Sampler { comparison: false },
+            },
+        ],
+        label: Some("framebuffer binding"),
+    });
+    let pass2_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
+        bind_group_layouts: &[&oit_bind_group_layout, &framebuffer_bind_group_layout],
+    });
+    (framebuffer_bind_group_layout, pass2_pipeline_layout)
+}
+
 const SIZE_OF_NODE: usize = 28;
 
 const fn node_count(resolution: Vector2<u32>) -> u32 {
@@ -288,10 +313,6 @@ fn create_screen_space_verts(device: &Device) -> Buffer {
 }
 
 pub struct Oit {
-    fx_module: Arc<ShaderModule>,
-    oit1_module: Arc<ShaderModule>,
-    oit2_module: Arc<ShaderModule>,
-
     oit_bind_group_layout: BindGroupLayout,
     framebuffer_bind_group_layout: BindGroupLayout,
     pass1_pipeline_layout: PipelineLayout,
@@ -330,12 +351,6 @@ impl Oit {
             label: Some("OIT texture creator"),
         });
 
-        let fx_module = shader!(device; fx - vert);
-
-        let oit1_module = shader!(device; oit_pass1 - frag);
-
-        let oit2_module = shader!(device; oit_pass2 - frag: MAX_SAMPLES = 2; MAX_NODES = 8);
-
         let oit_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             bindings: &[
                 BindGroupLayoutEntry {
@@ -365,35 +380,14 @@ impl Oit {
             label: Some("oit binding"),
         });
 
-        let framebuffer_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            bindings: &[
-                BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: ShaderStage::FRAGMENT,
-                    ty: BindingType::SampledTexture {
-                        component_type: TextureComponentType::Float,
-                        dimension: TextureViewDimension::D2,
-                        multisampled: true,
-                    },
-                },
-                BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: ShaderStage::FRAGMENT,
-                    ty: BindingType::Sampler { comparison: false },
-                },
-            ],
-            label: Some("framebuffer binding"),
-        });
-
         let pass1_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             bind_group_layouts: &[opaque_bind_group_layout, &oit_bind_group_layout],
         });
-        let pass2_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
-            bind_group_layouts: &[&oit_bind_group_layout, &framebuffer_bind_group_layout],
-        });
+        let (framebuffer_bind_group_layout, pass2_pipeline_layout) =
+            create_pass2_pipeline_layout(device, &oit_bind_group_layout);
 
-        let pass1_pipeline = create_pipeline_pass1(device, &pass1_pipeline_layout, vert, &oit1_module, samples);
-        let pass2_pipeline = create_pipeline_pass2(device, &pass2_pipeline_layout, &fx_module, &oit2_module);
+        let pass1_pipeline = create_pipeline_pass1(device, &pass1_pipeline_layout, vert, samples);
+        let pass2_pipeline = create_pipeline_pass2(device, &pass2_pipeline_layout, samples);
 
         let node_buffer_data = create_node_buffer_header();
         let node_source_buffer = device.create_buffer_with_data(&node_buffer_data, BufferUsage::COPY_SRC);
@@ -426,9 +420,6 @@ impl Oit {
 
         (
             Self {
-                fx_module,
-                oit1_module,
-                oit2_module,
                 oit_bind_group_layout,
                 framebuffer_bind_group_layout,
                 pass1_pipeline_layout,
@@ -490,10 +481,12 @@ impl Oit {
         resolution: Vector2<u32>,
         samples: MSAASetting,
     ) {
-        self.pass1_pipeline =
-            create_pipeline_pass1(device, &self.pass1_pipeline_layout, vert, &self.oit1_module, samples);
-        self.pass2_pipeline =
-            create_pipeline_pass2(device, &self.pass2_pipeline_layout, &self.fx_module, &self.oit2_module);
+        let (framebuffer_bind_group_layout, pass2_pipeline_layout) =
+            create_pass2_pipeline_layout(device, &self.oit_bind_group_layout);
+        self.framebuffer_bind_group_layout = framebuffer_bind_group_layout;
+        self.pass2_pipeline_layout = pass2_pipeline_layout;
+        self.pass1_pipeline = create_pipeline_pass1(device, &self.pass1_pipeline_layout, vert, samples);
+        self.pass2_pipeline = create_pipeline_pass2(device, &self.pass2_pipeline_layout, samples);
         let (uniform_buffer, oit_bind_group, framebuffer_bind_group) = create_uniform_buffer(
             device,
             &self.oit_bind_group_layout,

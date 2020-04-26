@@ -26,9 +26,28 @@ pub fn find_shader_module(device: &Device, name: String) -> Arc<ShaderModule> {
 
 #[macro_export]
 #[doc(hidden)]
+#[cfg(debug)]
+macro_rules! spirv_suffix {
+    () => {
+        ".spv"
+    };
+}
+
+#[macro_export]
+#[doc(hidden)]
+#[cfg(not(debug))]
+macro_rules! spirv_suffix {
+    () => {
+        ".spv.opt"
+    };
+}
+
+#[macro_export]
+#[doc(hidden)]
 macro_rules! shader {
     ($device:expr; $shader_name:ident - $ty:ident$(: $($name:ident $($eq:tt $value:expr)?);*)?) => {{
         use itertools::Itertools;
+        // Please do not read this, it's fun
         $crate::shader::find_shader_module($device, format!(concat!(stringify!($shader_name), "{}", shader!(@@$ty)), (&[$($(shader!(@$name $($eq $value)?)),*)?] as &[String]).iter().join("")))
     }};
     (@$name:ident = $value:expr) => {
@@ -38,21 +57,21 @@ macro_rules! shader {
         format!(concat!("_U", stringify!($name)))
     };
     (@@vert) => {
-        ".vs.spv"
+        concat!(".vs", spirv_suffix!())
     };
     (@@vertex) => {
-        ".vs.spv"
+        concat!(".vs", spirv_suffix!())
     };
     (@@frag) => {
-        ".fs.spv"
+        concat!(".fs", spirv_suffix!())
     };
     (@@fragment) => {
-        ".fs.spv"
+        concat!(".fs", spirv_suffix!())
     };
     (@@comp) => {
-        ".cs.spv"
+        concat!(".cs", spirv_suffix!())
     };
     (@@compute) => {
-        ".cs.spv"
+        concat!(".cs", spirv_suffix!())
     };
 }
