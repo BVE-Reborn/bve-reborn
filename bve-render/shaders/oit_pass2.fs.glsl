@@ -20,7 +20,7 @@ layout(set = 0, binding = 2, std430) buffer NodeBuffer {
     uint next_index;
     Node nodes[];
 };
-#if MAX_SAMPLES != 0
+#if MAX_SAMPLES != 1
     layout(set = 1, binding = 0) uniform texture2DMS framebuffer;
 #else
     layout(set = 1, binding = 0) uniform texture2D framebuffer;
@@ -53,24 +53,24 @@ void main() {
 
 
     vec4 sample_color[MAX_SAMPLES];
-    for (int s = 0; s < samples; ++s) {
-        #if MAX_SAMPLES != 0
+    for (int s = 0; s < MAX_SAMPLES; ++s) {
+        #if MAX_SAMPLES != 1
             sample_color[s] = texelFetch(sampler2DMS(framebuffer, framebuffer_sampler), ivec2(gl_FragCoord.xy), s);
         #else
             sample_color[s] = texelFetch(sampler2D(framebuffer, framebuffer_sampler), ivec2(gl_FragCoord.xy), s);
         #endif
     }
     for (int i = 0; i < count; ++i) {
-        for (int s = 0; s < samples; ++s) {
+        for (int s = 0; s < MAX_SAMPLES; ++s) {
             if ((frags[i].coverage & (1 << s)) != 0) {
                 sample_color[s] = mix(sample_color[s], frags[i].color, frags[i].color.a);
             }
         }
     }
     vec4 color_sum = vec4(0);
-    for (int s = 0; s < samples; ++s) {
+    for (int s = 0; s < MAX_SAMPLES; ++s) {
         color_sum += sample_color[s];
     }
-    vec4 color = color_sum / vec4(samples);
+    vec4 color = color_sum / vec4(MAX_SAMPLES);
     outColor = vec4(pow(color.rgb, vec3(1.0 / 2.2)), color.a);
 }

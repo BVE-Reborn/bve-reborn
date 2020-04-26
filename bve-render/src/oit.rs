@@ -1,4 +1,5 @@
 use crate::*;
+use std::sync::Arc;
 use zerocopy::AsBytes;
 
 fn create_pipeline_pass1(
@@ -287,9 +288,9 @@ fn create_screen_space_verts(device: &Device) -> Buffer {
 }
 
 pub struct Oit {
-    fx_module: ShaderModule,
-    oit1_module: ShaderModule,
-    oit2_module: ShaderModule,
+    fx_module: Arc<ShaderModule>,
+    oit1_module: Arc<ShaderModule>,
+    oit2_module: Arc<ShaderModule>,
 
     oit_bind_group_layout: BindGroupLayout,
     framebuffer_bind_group_layout: BindGroupLayout,
@@ -329,17 +330,11 @@ impl Oit {
             label: Some("OIT texture creator"),
         });
 
-        let fx = include_shader!(vert "fx");
-        let fx_module =
-            device.create_shader_module(&read_spirv(io::Cursor::new(&fx[..])).expect("Could not read shader spirv"));
+        let fx_module = shader!(device; fx - vert);
 
-        let oit1 = include_shader!(frag "oit_pass1");
-        let oit1_module =
-            device.create_shader_module(&read_spirv(io::Cursor::new(&oit1[..])).expect("Could not read shader spirv"));
+        let oit1_module = shader!(device; oit_pass1 - frag);
 
-        let oit2 = include_shader!(frag "oit_pass2");
-        let oit2_module =
-            device.create_shader_module(&read_spirv(io::Cursor::new(&oit2[..])).expect("Could not read shader spirv"));
+        let oit2_module = shader!(device; oit_pass2 - frag: MAX_SAMPLES = 2; MAX_NODES = 8);
 
         let oit_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             bindings: &[

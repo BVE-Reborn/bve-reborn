@@ -60,30 +60,10 @@ use image::RgbaImage;
 use indexmap::map::IndexMap;
 use itertools::Itertools;
 use num_traits::{ToPrimitive, Zero};
-use std::{io, mem::size_of};
+use std::{mem::size_of, sync::Arc};
 use wgpu::*;
 use winit::{dpi::PhysicalSize, window::Window};
 use zerocopy::{AsBytes, FromBytes};
-
-#[cfg(debug_assertions)]
-macro_rules! shader_path {
-    ($name:literal, $suffix:literal) => {
-        include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/shaders/", $name, $suffix, ".spv"))
-    };
-}
-
-#[cfg(not(debug_assertions))]
-macro_rules! shader_path {
-    ($name:literal, $suffix:literal) => {
-        include_bytes!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/shaders/",
-            $name,
-            $suffix,
-            ".spv.opt"
-        ))
-    };
-}
 
 #[cfg(feature = "renderdoc")]
 macro_rules! renderdoc {
@@ -97,27 +77,13 @@ macro_rules! renderdoc {
     ($($tokens:tt)*) => {};
 }
 
-macro_rules! include_shader {
-    (vert $name:literal) => {
-        shader_path!($name, ".vs")
-    };
-    (geo $name:literal) => {
-        shader_path!($name, ".gs")
-    };
-    (frag $name:literal) => {
-        shader_path!($name, ".fs")
-    };
-    (comp $name:literal) => {
-        shader_path!($name, ".cs")
-    };
-}
-
 mod camera;
 mod compute;
 mod mesh;
 mod object;
 mod oit;
 mod render;
+mod shader;
 mod texture;
 
 pub const OPENGL_TO_WGPU_MATRIX: Matrix4<f32> = Matrix4::new(
@@ -152,8 +118,8 @@ pub struct Renderer {
     texture_bind_group_layout: BindGroupLayout,
     sampler: Sampler,
 
-    vert_shader: ShaderModule,
-    frag_shader: ShaderModule,
+    vert_shader: Arc<ShaderModule>,
+    frag_shader: Arc<ShaderModule>,
 
     transparency_processor: compute::CutoutTransparencyCompute,
     mip_creator: compute::MipmapCompute,
@@ -190,13 +156,9 @@ impl Renderer {
 
         let swapchain = render::create_swapchain(&device, &surface, screen_size);
 
-        let vs = include_shader!(vert "opaque");
-        let vs_module =
-            device.create_shader_module(&read_spirv(io::Cursor::new(&vs[..])).expect("Could not read shader spirv"));
+        let vs_module = shader!(&device; opaque - vert);
 
-        let fs = include_shader!(frag "opaque");
-        let fs_module =
-            device.create_shader_module(&read_spirv(io::Cursor::new(&fs[..])).expect("Could not read shader spirv"));
+        let fs_module = shader!(&device; opaque - frag);
 
         let sampler = device.create_sampler(&SamplerDescriptor {
             address_mode_u: AddressMode::Repeat,

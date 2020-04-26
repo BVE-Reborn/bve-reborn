@@ -49,7 +49,7 @@
 use crate::shaders::{ShaderCombination, ShaderType, SingleDefine};
 use itertools::Itertools;
 use std::{
-    fs::{create_dir_all, metadata, read_to_string, remove_dir, remove_dir_all, File},
+    fs::{create_dir_all, metadata, read_to_string, remove_dir_all, File},
     path::Path,
     process::{exit, Command},
 };

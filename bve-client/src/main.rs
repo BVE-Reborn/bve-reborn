@@ -60,7 +60,6 @@ use async_std::{
 use bve::{load::mesh::Vertex, runtime, runtime::Location};
 use bve_render::{MSAASetting, MeshHandle, ObjectHandle, Renderer, TextureHandle};
 use cgmath::{ElementWise, InnerSpace, Vector3};
-use circular_queue::CircularQueue;
 use image::RgbaImage;
 use itertools::Itertools;
 use num_traits::Zero;
