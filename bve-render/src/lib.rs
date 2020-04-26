@@ -54,7 +54,9 @@
 #![allow(clippy::wildcard_imports)]
 
 use crate::render::Uniforms;
-pub use crate::{mesh::MeshHandle, object::ObjectHandle, render::MSAASetting, texture::TextureHandle};
+pub use crate::{
+    mesh::MeshHandle, object::ObjectHandle, oit::OITNodeCount, render::MSAASetting, texture::TextureHandle,
+};
 use bve::load::mesh::Vertex as MeshVertex;
 use cgmath::{Matrix4, Vector2, Vector3};
 use image::RgbaImage;
@@ -106,6 +108,7 @@ pub struct Renderer {
 
     camera: camera::Camera,
     resolution: PhysicalSize<u32>,
+    oit_node_count: oit::OITNodeCount,
     samples: render::MSAASetting,
 
     surface: Surface,
@@ -131,7 +134,7 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    pub async fn new(window: &Window, samples: render::MSAASetting) -> Self {
+    pub async fn new(window: &Window, oit_node_count: OITNodeCount, samples: render::MSAASetting) -> Self {
         let screen_size = window.inner_size();
 
         let surface = Surface::create(window);
@@ -209,6 +212,7 @@ impl Renderer {
             &texture_bind_group_layout,
             &framebuffer,
             Vector2::new(screen_size.width, screen_size.height),
+            oit_node_count,
             samples,
         );
 
@@ -230,6 +234,7 @@ impl Renderer {
             },
             resolution: screen_size,
             samples,
+            oit_node_count,
 
             surface,
             device,
@@ -280,11 +285,6 @@ impl Renderer {
         );
     }
 
-    #[must_use]
-    pub const fn get_samples(&self) -> render::MSAASetting {
-        self.samples
-    }
-
     pub fn set_samples(&mut self, samples: render::MSAASetting) {
         self.framebuffer = render::create_framebuffer(&self.device, self.resolution, samples);
         self.depth_buffer = render::create_depth_buffer(&self.device, self.resolution, samples);
@@ -302,8 +302,15 @@ impl Renderer {
             &self.vert_shader,
             &self.framebuffer,
             Vector2::new(self.resolution.width, self.resolution.height),
+            self.oit_node_count,
             samples,
         );
+    }
+
+    pub fn set_oit_node_count(&mut self, oit_node_count: oit::OITNodeCount) {
+        self.oit_renderer
+            .set_node_count(&self.device, oit_node_count, self.samples);
+        self.oit_node_count = oit_node_count;
     }
 
     pub async fn render(&mut self) {

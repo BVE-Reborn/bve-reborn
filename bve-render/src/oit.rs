@@ -1,6 +1,33 @@
 use crate::*;
 use zerocopy::AsBytes;
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[repr(u32)]
+pub enum OITNodeCount {
+    Four = 4,
+    Eight = 8,
+    Sixteen = 16,
+    ThirtyTwo = 32,
+}
+
+impl OITNodeCount {
+    #[must_use]
+    pub fn increment(self) -> Self {
+        match self {
+            Self::Four => Self::Eight,
+            _ => Self::Sixteen,
+        }
+    }
+
+    #[must_use]
+    pub fn decrement(self) -> Self {
+        match self {
+            Self::Sixteen => Self::Eight,
+            _ => Self::Four,
+        }
+    }
+}
+
 fn create_pipeline_pass1(
     device: &Device,
     pipeline_layout: &PipelineLayout,
@@ -62,9 +89,14 @@ fn create_pipeline_pass1(
     })
 }
 
-fn create_pipeline_pass2(device: &Device, pipeline_layout: &PipelineLayout, samples: MSAASetting) -> RenderPipeline {
+fn create_pipeline_pass2(
+    device: &Device,
+    pipeline_layout: &PipelineLayout,
+    node_count: OITNodeCount,
+    samples: MSAASetting,
+) -> RenderPipeline {
     let fx_module = shader!(device; fx - vert);
-    let oit2_module = shader!(device; oit_pass2 - frag: MAX_SAMPLES = samples as u8; MAX_NODES = 8);
+    let oit2_module = shader!(device; oit_pass2 - frag: MAX_SAMPLES = samples as u8; MAX_NODES = node_count as u8);
     device.create_render_pipeline(&RenderPipelineDescriptor {
         layout: pipeline_layout,
         vertex_stage: ProgrammableStageDescriptor {
@@ -346,6 +378,7 @@ impl Oit {
         opaque_bind_group_layout: &BindGroupLayout,
         framebuffer: &TextureView,
         resolution: Vector2<u32>,
+        oit_node_count: OITNodeCount,
         samples: MSAASetting,
     ) -> (Self, CommandBuffer) {
         let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
@@ -388,7 +421,7 @@ impl Oit {
             create_pass2_pipeline_layout(device, &oit_bind_group_layout, samples);
 
         let pass1_pipeline = create_pipeline_pass1(device, &pass1_pipeline_layout, vert, samples);
-        let pass2_pipeline = create_pipeline_pass2(device, &pass2_pipeline_layout, samples);
+        let pass2_pipeline = create_pipeline_pass2(device, &pass2_pipeline_layout, oit_node_count, samples);
 
         let node_buffer_data = create_node_buffer_header();
         let node_source_buffer = device.create_buffer_with_data(&node_buffer_data, BufferUsage::COPY_SRC);
@@ -480,6 +513,7 @@ impl Oit {
         vert: &ShaderModule,
         framebuffer: &TextureView,
         resolution: Vector2<u32>,
+        oit_node_count: OITNodeCount,
         samples: MSAASetting,
     ) {
         let (framebuffer_bind_group_layout, pass2_pipeline_layout) =
@@ -487,7 +521,7 @@ impl Oit {
         self.framebuffer_bind_group_layout = framebuffer_bind_group_layout;
         self.pass2_pipeline_layout = pass2_pipeline_layout;
         self.pass1_pipeline = create_pipeline_pass1(device, &self.pass1_pipeline_layout, vert, samples);
-        self.pass2_pipeline = create_pipeline_pass2(device, &self.pass2_pipeline_layout, samples);
+        self.pass2_pipeline = create_pipeline_pass2(device, &self.pass2_pipeline_layout, oit_node_count, samples);
         let (uniform_buffer, oit_bind_group, framebuffer_bind_group) = create_uniform_buffer(
             device,
             &self.oit_bind_group_layout,
@@ -502,6 +536,10 @@ impl Oit {
         self.uniform_buffer = uniform_buffer;
         self.oit_bind_group = oit_bind_group;
         self.framebuffer_bind_group = framebuffer_bind_group;
+    }
+
+    pub fn set_node_count(&mut self, device: &Device, oit_node_count: OITNodeCount, samples: MSAASetting) {
+        self.pass2_pipeline = create_pipeline_pass2(device, &self.pass2_pipeline_layout, oit_node_count, samples);
     }
 
     pub fn clear_buffers(&self, encoder: &mut CommandEncoder) {

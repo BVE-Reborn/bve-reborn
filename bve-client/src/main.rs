@@ -58,7 +58,7 @@ use async_std::{
     task::block_on,
 };
 use bve::{load::mesh::Vertex, runtime, runtime::Location};
-use bve_render::{MSAASetting, MeshHandle, ObjectHandle, Renderer, TextureHandle};
+use bve_render::{MSAASetting, MeshHandle, OITNodeCount, ObjectHandle, Renderer, TextureHandle};
 use cgmath::{ElementWise, InnerSpace, Vector3};
 use image::RgbaImage;
 use itertools::Itertools;
@@ -83,9 +83,9 @@ struct Client {
 }
 
 impl Client {
-    async fn new(window: &Window, samples: MSAASetting) -> Arc<Mutex<Self>> {
+    async fn new(window: &Window, oit_node_count: OITNodeCount, samples: MSAASetting) -> Arc<Mutex<Self>> {
         Arc::new(Mutex::new(Self {
-            renderer: Renderer::new(window, samples).await,
+            renderer: Renderer::new(window, oit_node_count, samples).await,
         }))
     }
 }
@@ -170,7 +170,8 @@ fn client_main() {
         (false, false, false, false, false, false, false);
 
     let mut sample_count = MSAASetting::X1;
-    let client = block_on(async { Client::new(&window, sample_count).await });
+    let mut oit_node_count = OITNodeCount::Four;
+    let client = block_on(async { Client::new(&window, oit_node_count, sample_count).await });
     let runtime = runtime::Runtime::new(Arc::clone(&client));
 
     let mut camera_location = Vector3::new(-7.0, 3.0, 0.0);
@@ -291,15 +292,12 @@ fn client_main() {
                 Scancodes::SHIFT => &mut shift,
                 _ => {
                     match scancode {
-                        // Esc
                         Scancodes::ESCAPE => *control_flow = ControlFlow::Exit,
-                        // left alt
                         Scancodes::LALT => {
                             if state == ElementState::Pressed {
                                 grabber.grab(&window, !grabber.get_grabbed());
                             }
                         }
-                        // comma
                         Scancodes::COMMA => {
                             if state == ElementState::Pressed {
                                 sample_count = sample_count.decrement();
@@ -307,12 +305,26 @@ fn client_main() {
                                 block_on(async { client.lock().await.renderer.set_samples(sample_count) });
                             }
                         }
-                        // period
                         Scancodes::PERIOD => {
                             if state == ElementState::Pressed {
                                 sample_count = sample_count.increment();
                                 println!("MSAA: x{}", sample_count as u32);
                                 block_on(async { client.lock().await.renderer.set_samples(sample_count) });
+                            }
+                        }
+                        Scancodes::SEMICOLON => {
+                            if state == ElementState::Pressed {
+                                oit_node_count = oit_node_count.decrement();
+                                println!("Node Count: {}", oit_node_count as u32);
+                                block_on(async { client.lock().await.renderer.set_oit_node_count(oit_node_count) });
+                            }
+                        }
+                        // period
+                        Scancodes::QUOTE => {
+                            if state == ElementState::Pressed {
+                                oit_node_count = oit_node_count.increment();
+                                println!("Node Count: {}", oit_node_count as u32);
+                                block_on(async { client.lock().await.renderer.set_oit_node_count(oit_node_count) });
                             }
                         }
                         _ => {}
