@@ -11,9 +11,9 @@ const COMPILED_SHADERS: Dir<'static> = include_dir::include_dir!("shaders/spirv"
 
 static SHADER_MODULES: Lazy<Mutex<HashMap<String, Arc<ShaderModule>>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 
-pub fn find_shader_module(device: &Device, name: String) -> Arc<ShaderModule> {
+pub fn find_shader_module(device: &Device, name: &str) -> Arc<ShaderModule> {
     let mut map = SHADER_MODULES.lock().expect("Could not lock mutex");
-    Arc::clone(map.entry(name.clone()).or_insert_with(|| {
+    Arc::clone(map.entry(name.to_string()).or_insert_with(|| {
         let source = COMPILED_SHADERS
             .get_file(&name)
             .unwrap_or_else(|| panic!("Shader {} not found", name))
@@ -48,7 +48,7 @@ macro_rules! shader {
     ($device:expr; $shader_name:ident - $ty:ident$(: $($name:ident $($eq:tt $value:expr)?);*)?) => {{
         use itertools::Itertools;
         // Please do not read this, it's fun
-        $crate::shader::find_shader_module($device, format!(concat!(stringify!($shader_name), "{}", shader!(@@$ty)), (&[$($(shader!(@$name $($eq $value)?)),*)?] as &[String]).iter().join("")))
+        $crate::shader::find_shader_module($device, &format!(concat!(stringify!($shader_name), "{}", shader!(@@$ty)), (&[$($(shader!(@$name $($eq $value)?)),*)?] as &[String]).iter().join("")))
     }};
     (@$name:ident = $value:expr) => {
         format!(concat!("_", stringify!($name), "_{}"), $value)

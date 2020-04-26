@@ -48,6 +48,7 @@
 #![allow(clippy::shadow_reuse)]
 #![allow(clippy::shadow_same)]
 #![allow(clippy::string_add)]
+#![allow(clippy::too_many_arguments)]
 #![allow(clippy::unreachable)]
 #![allow(clippy::wildcard_enum_match_arm)]
 #![allow(clippy::wildcard_imports)]

@@ -134,7 +134,7 @@ fn create_uniform_buffer(
         bindings: &[
             Binding {
                 binding: 0,
-                resource: BindingResource::TextureView(&head_pointer_view),
+                resource: BindingResource::TextureView(head_pointer_view),
             },
             Binding {
                 binding: 1,
@@ -146,7 +146,7 @@ fn create_uniform_buffer(
             Binding {
                 binding: 2,
                 resource: BindingResource::Buffer {
-                    buffer: &node_buffer,
+                    buffer: node_buffer,
                     range: 0..size_of_node_buffer(resolution),
                 },
             },
@@ -276,7 +276,7 @@ fn create_pass2_pipeline_layout(
         label: Some("framebuffer binding"),
     });
     let pass2_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
-        bind_group_layouts: &[&oit_bind_group_layout, &framebuffer_bind_group_layout],
+        bind_group_layouts: &[oit_bind_group_layout, &framebuffer_bind_group_layout],
     });
     (framebuffer_bind_group_layout, pass2_pipeline_layout)
 }
