@@ -20,26 +20,15 @@ pub struct Uniforms {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum PipelineType {
-    Normal,
-    Alpha,
-}
-
-// TODO: This isn't strictly true, is this just true due to WGPU? Either way I should more elegantly support this
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 #[repr(u32)]
 pub enum MSAASetting {
     X1 = 1,
-    #[cfg(not(target_os = "macos"))]
     X2 = 2,
-    #[cfg(not(target_os = "macos"))]
     X4 = 4,
-    #[cfg(not(target_os = "macos"))]
     X8 = 8,
 }
 
 impl MSAASetting {
-    #[cfg(not(target_os = "macos"))]
     #[must_use]
     pub fn increment(self) -> Self {
         match self {
@@ -49,13 +38,6 @@ impl MSAASetting {
         }
     }
 
-    #[cfg(target_os = "macos")]
-    #[must_use]
-    pub fn increment(self) -> Self {
-        Self::X1
-    }
-
-    #[cfg(not(target_os = "macos"))]
     #[must_use]
     pub fn decrement(self) -> Self {
         match self {
@@ -63,12 +45,6 @@ impl MSAASetting {
             Self::X4 => Self::X2,
             _ => Self::X1,
         }
-    }
-
-    #[cfg(target_os = "macos")]
-    #[must_use]
-    pub fn decrement(self) -> Self {
-        Self::X1
     }
 }
 
@@ -110,19 +86,8 @@ pub fn create_pipeline(
     layout: &PipelineLayout,
     vs: &ShaderModule,
     fs: &ShaderModule,
-    ty: PipelineType,
     samples: MSAASetting,
 ) -> RenderPipeline {
-    let blend = if ty == PipelineType::Alpha {
-        BlendDescriptor {
-            src_factor: BlendFactor::SrcAlpha,
-            dst_factor: BlendFactor::OneMinusSrcAlpha,
-            operation: BlendOperation::Add,
-        }
-    } else {
-        BlendDescriptor::REPLACE
-    };
-    let alpha_to_coverage = ty == PipelineType::Normal;
     device.create_render_pipeline(&RenderPipelineDescriptor {
         layout,
         vertex_stage: ProgrammableStageDescriptor {
@@ -143,8 +108,8 @@ pub fn create_pipeline(
         primitive_topology: PrimitiveTopology::TriangleList,
         color_states: &[ColorStateDescriptor {
             format: TextureFormat::Bgra8Unorm,
-            color_blend: blend.clone(),
-            alpha_blend: blend,
+            color_blend: BlendDescriptor::REPLACE,
+            alpha_blend: BlendDescriptor::REPLACE,
             write_mask: ColorWrite::ALL,
         }],
         depth_stencil_state: Some(DepthStencilStateDescriptor {
@@ -173,7 +138,7 @@ pub fn create_pipeline(
         },
         sample_count: samples as u32,
         sample_mask: !0,
-        alpha_to_coverage_enabled: alpha_to_coverage,
+        alpha_to_coverage_enabled: true,
     })
 }
 
@@ -209,7 +174,7 @@ pub fn create_framebuffer(device: &Device, size: PhysicalSize<u32>, samples: MSA
         sample_count: samples as u32,
         dimension: TextureDimension::D2,
         format: TextureFormat::Bgra8Unorm,
-        usage: TextureUsage::OUTPUT_ATTACHMENT,
+        usage: TextureUsage::OUTPUT_ATTACHMENT | TextureUsage::SAMPLED,
         label: Some("framebuffer"),
     });
     tex.create_default_view()
@@ -282,7 +247,7 @@ impl Renderer {
                 let matrix = object::generate_matrix(
                     &camera_mat,
                     object.location,
-                    self.screen_size.width as f32 / self.screen_size.height as f32,
+                    self.resolution.width as f32 / self.resolution.height as f32,
                 );
                 let uniforms = Uniforms {
                     _matrix: *matrix.as_ref(),

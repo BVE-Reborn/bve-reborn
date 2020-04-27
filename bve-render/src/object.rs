@@ -1,4 +1,5 @@
 use crate::*;
+use cgmath::{Rad, SquareMatrix};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ObjectHandle(pub(crate) u64);
@@ -13,8 +14,27 @@ pub struct Object {
     pub transparent: bool,
 }
 
+pub fn perspective_matrix(fovy: impl Into<Rad<f32>>, aspect: f32, z_near: f32) -> Matrix4<f32> {
+    let range = (fovy.into().0 / 2.0).tan() * z_near;
+
+    let left = -range * aspect;
+    let right = range * aspect;
+    let bottom = -range;
+    let top = range;
+
+    let mut result = Matrix4::from_value(0.0);
+
+    result.x.x = (2.0 * z_near) / (right - left);
+    result.y.y = (2.0 * z_near) / (top - bottom);
+    result.z.z = -1.0;
+    result.z.w = -1.0;
+    result.w.z = -2.0 * z_near;
+
+    result
+}
+
 pub fn generate_matrix(mx_view: &Matrix4<f32>, location: Vector3<f32>, aspect_ratio: f32) -> Matrix4<f32> {
-    let mx_projection = cgmath::perspective(cgmath::Deg(45_f32), aspect_ratio, 0.1, 1000.0);
+    let mx_projection = perspective_matrix(cgmath::Deg(45_f32), aspect_ratio, 0.1);
     let mx_model = Matrix4::from_translation(location);
     OPENGL_TO_WGPU_MATRIX * mx_projection * mx_view * mx_model
 }

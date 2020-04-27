@@ -7,6 +7,8 @@ pub mod Scancodes {
     pub const D: u32 = 0x20;
     pub const Q: u32 = 0x10;
     pub const Z: u32 = 0x2C;
+    pub const SEMICOLON: u32 = 0x27;
+    pub const QUOTE: u32 = 0x28;
     pub const COMMA: u32 = 0x33;
     pub const PERIOD: u32 = 0x34;
     pub const SHIFT: u32 = 0x2A;
@@ -24,6 +26,8 @@ pub mod Scancodes {
     pub const D: u32 = 0x02;
     pub const Q: u32 = 0x0C;
     pub const Z: u32 = 0x06;
+    pub const SEMICOLON: u32 = 0x29;
+    pub const QUOTE: u32 = 0x27;
     pub const COMMA: u32 = 0x2B;
     pub const PERIOD: u32 = 0x2F;
     pub const SHIFT: u32 = 0x38;

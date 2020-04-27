@@ -9,10 +9,10 @@ struct Uniforms {
     _max_size: [u32; 2],
 }
 
-fn create_texture_compute_pipeline(device: &Device, source: &[u8]) -> (ComputePipeline, BindGroupLayout) {
-    let shader_module =
-        device.create_shader_module(&read_spirv(std::io::Cursor::new(source)).expect("Cannot read shader spirv"));
-
+fn create_texture_compute_pipeline(
+    device: &Device,
+    shader_module: &ShaderModule,
+) -> (ComputePipeline, BindGroupLayout) {
     let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
         bindings: &[
             BindGroupLayoutEntry {
@@ -51,7 +51,7 @@ fn create_texture_compute_pipeline(device: &Device, source: &[u8]) -> (ComputePi
     let pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
         layout: &pipeline_layout,
         compute_stage: ProgrammableStageDescriptor {
-            module: &shader_module,
+            module: shader_module,
             entry_point: "main",
         },
     });
@@ -112,8 +112,7 @@ pub struct MipmapCompute {
 
 impl MipmapCompute {
     pub fn new(device: &Device) -> Self {
-        let shader_source = include_shader!(comp "mipmap");
-        let (pipeline, bind_group_layout) = create_texture_compute_pipeline(device, shader_source);
+        let (pipeline, bind_group_layout) = create_texture_compute_pipeline(device, &*shader!(device; mipmap - comp));
 
         Self {
             pipeline,
@@ -172,8 +171,8 @@ pub struct CutoutTransparencyCompute {
 
 impl CutoutTransparencyCompute {
     pub fn new(device: &Device) -> Self {
-        let shader_source = include_shader!(comp "transparency");
-        let (pipeline, bind_group_layout) = create_texture_compute_pipeline(device, shader_source);
+        let (pipeline, bind_group_layout) =
+            create_texture_compute_pipeline(device, &*shader!(device; transparency - comp));
 
         Self {
             pipeline,

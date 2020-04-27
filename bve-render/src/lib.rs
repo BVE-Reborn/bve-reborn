@@ -48,42 +48,25 @@
 #![allow(clippy::shadow_reuse)]
 #![allow(clippy::shadow_same)]
 #![allow(clippy::string_add)]
+#![allow(clippy::too_many_arguments)]
 #![allow(clippy::unreachable)]
 #![allow(clippy::wildcard_enum_match_arm)]
 #![allow(clippy::wildcard_imports)]
 
 use crate::render::Uniforms;
-pub use crate::{mesh::MeshHandle, object::ObjectHandle, render::MSAASetting, texture::TextureHandle};
+pub use crate::{
+    mesh::MeshHandle, object::ObjectHandle, oit::OITNodeCount, render::MSAASetting, texture::TextureHandle,
+};
 use bve::load::mesh::Vertex as MeshVertex;
 use cgmath::{Matrix4, Vector2, Vector3};
 use image::RgbaImage;
 use indexmap::map::IndexMap;
 use itertools::Itertools;
 use num_traits::{ToPrimitive, Zero};
-use std::{io, mem::size_of};
+use std::{mem::size_of, sync::Arc};
 use wgpu::*;
 use winit::{dpi::PhysicalSize, window::Window};
 use zerocopy::{AsBytes, FromBytes};
-
-#[cfg(debug_assertions)]
-macro_rules! shader_path {
-    ($name:literal, $suffix:literal) => {
-        include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/shaders/", $name, $suffix, ".spv"))
-    };
-}
-
-#[cfg(not(debug_assertions))]
-macro_rules! shader_path {
-    ($name:literal, $suffix:literal) => {
-        include_bytes!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/shaders/",
-            $name,
-            $suffix,
-            ".spv.opt"
-        ))
-    };
-}
 
 #[cfg(feature = "renderdoc")]
 macro_rules! renderdoc {
@@ -97,26 +80,13 @@ macro_rules! renderdoc {
     ($($tokens:tt)*) => {};
 }
 
-macro_rules! include_shader {
-    (vert $name:literal) => {
-        shader_path!($name, ".vs")
-    };
-    (geo $name:literal) => {
-        shader_path!($name, ".gs")
-    };
-    (frag $name:literal) => {
-        shader_path!($name, ".fs")
-    };
-    (comp $name:literal) => {
-        shader_path!($name, ".cs")
-    };
-}
-
 mod camera;
 mod compute;
 mod mesh;
 mod object;
+mod oit;
 mod render;
+mod shader;
 mod texture;
 
 pub const OPENGL_TO_WGPU_MATRIX: Matrix4<f32> = Matrix4::new(
@@ -137,7 +107,8 @@ pub struct Renderer {
     texture_handle_count: u64,
 
     camera: camera::Camera,
-    screen_size: PhysicalSize<u32>,
+    resolution: PhysicalSize<u32>,
+    oit_node_count: oit::OITNodeCount,
     samples: render::MSAASetting,
 
     surface: Surface,
@@ -147,25 +118,23 @@ pub struct Renderer {
     framebuffer: TextureView,
     depth_buffer: TextureView,
     opaque_pipeline: RenderPipeline,
-    alpha_pipeline: RenderPipeline,
     pipeline_layout: PipelineLayout,
     texture_bind_group_layout: BindGroupLayout,
-    opaque_bind_group: BindGroup,
-    alpha_bind_group: BindGroup,
     sampler: Sampler,
 
-    vert_shader: ShaderModule,
-    frag_shader: ShaderModule,
+    vert_shader: Arc<ShaderModule>,
+    frag_shader: Arc<ShaderModule>,
 
     transparency_processor: compute::CutoutTransparencyCompute,
     mip_creator: compute::MipmapCompute,
+    oit_renderer: oit::Oit,
 
     command_buffers: Vec<CommandBuffer>,
     _renderdoc_capture: bool,
 }
 
 impl Renderer {
-    pub async fn new(window: &Window, samples: render::MSAASetting) -> Self {
+    pub async fn new(window: &Window, oit_node_count: OITNodeCount, samples: render::MSAASetting) -> Self {
         let screen_size = window.inner_size();
 
         let surface = Surface::create(window);
@@ -191,13 +160,9 @@ impl Renderer {
 
         let swapchain = render::create_swapchain(&device, &surface, screen_size);
 
-        let vs = include_shader!(vert "forward");
-        let vs_module =
-            device.create_shader_module(&read_spirv(io::Cursor::new(&vs[..])).expect("Could not read shader spirv"));
+        let vs_module = shader!(&device; opaque - vert);
 
-        let fs = include_shader!(frag "forward");
-        let fs_module =
-            device.create_shader_module(&read_spirv(io::Cursor::new(&fs[..])).expect("Could not read shader spirv"));
+        let fs_module = shader!(&device; opaque - frag);
 
         let sampler = device.create_sampler(&SamplerDescriptor {
             address_mode_u: AddressMode::Repeat,
@@ -233,64 +198,23 @@ impl Renderer {
             ],
             label: Some("texture and sampler"),
         });
-        let transparency_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            bindings: &[BindGroupLayoutEntry {
-                binding: 0,
-                visibility: ShaderStage::FRAGMENT,
-                ty: BindingType::UniformBuffer { dynamic: false },
-            }],
-            label: Some("transparency flag"),
-        });
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
-            bind_group_layouts: &[&texture_bind_group_layout, &transparency_bind_group_layout],
+            bind_group_layouts: &[&texture_bind_group_layout],
         });
 
-        let opaque_uniform_buffer = device.create_buffer_with_data((false as u32).as_bytes(), BufferUsage::UNIFORM);
-        let alpha_uniform_buffer = device.create_buffer_with_data((true as u32).as_bytes(), BufferUsage::UNIFORM);
-
-        let opaque_bind_group = device.create_bind_group(&BindGroupDescriptor {
-            layout: &transparency_bind_group_layout,
-            bindings: &[Binding {
-                binding: 0,
-                resource: BindingResource::Buffer {
-                    buffer: &opaque_uniform_buffer,
-                    range: 0..4,
-                },
-            }],
-            label: Some("opaque transparency"),
-        });
-
-        let alpha_bind_group = device.create_bind_group(&BindGroupDescriptor {
-            layout: &transparency_bind_group_layout,
-            bindings: &[Binding {
-                binding: 0,
-                resource: BindingResource::Buffer {
-                    buffer: &alpha_uniform_buffer,
-                    range: 0..4,
-                },
-            }],
-            label: Some("alpha transparency"),
-        });
-
-        let opaque_pipeline = render::create_pipeline(
-            &device,
-            &pipeline_layout,
-            &vs_module,
-            &fs_module,
-            render::PipelineType::Normal,
-            samples,
-        );
-        let alpha_pipeline = render::create_pipeline(
-            &device,
-            &pipeline_layout,
-            &vs_module,
-            &fs_module,
-            render::PipelineType::Alpha,
-            samples,
-        );
+        let opaque_pipeline = render::create_pipeline(&device, &pipeline_layout, &vs_module, &fs_module, samples);
 
         let transparency_processor = compute::CutoutTransparencyCompute::new(&device);
         let mip_creator = compute::MipmapCompute::new(&device);
+        let (oit_renderer, oit_command_buffer) = oit::Oit::new(
+            &device,
+            &vs_module,
+            &texture_bind_group_layout,
+            &framebuffer,
+            Vector2::new(screen_size.width, screen_size.height),
+            oit_node_count,
+            samples,
+        );
 
         // Create the Renderer object early so we can can call methods on it.
         let mut renderer = Self {
@@ -308,8 +232,9 @@ impl Renderer {
                 pitch: 0.0,
                 yaw: 0.0,
             },
-            screen_size,
+            resolution: screen_size,
             samples,
+            oit_node_count,
 
             surface,
             device,
@@ -318,11 +243,8 @@ impl Renderer {
             framebuffer,
             depth_buffer,
             opaque_pipeline,
-            alpha_pipeline,
             pipeline_layout,
             texture_bind_group_layout,
-            opaque_bind_group,
-            alpha_bind_group,
             sampler,
 
             vert_shader: vs_module,
@@ -330,8 +252,9 @@ impl Renderer {
 
             transparency_processor,
             mip_creator,
+            oit_renderer,
 
-            command_buffers: Vec::new(),
+            command_buffers: vec![oit_command_buffer],
             _renderdoc_capture: false,
         };
 
@@ -350,36 +273,44 @@ impl Renderer {
     pub fn resize(&mut self, screen_size: PhysicalSize<u32>) {
         self.framebuffer = render::create_framebuffer(&self.device, screen_size, self.samples);
         self.depth_buffer = render::create_depth_buffer(&self.device, screen_size, self.samples);
-        self.screen_size = screen_size;
+        self.resolution = screen_size;
 
         self.swapchain = render::create_swapchain(&self.device, &self.surface, screen_size);
-    }
 
-    #[must_use]
-    pub const fn get_samples(&self) -> render::MSAASetting {
-        self.samples
+        self.oit_renderer.resize(
+            &self.device,
+            Vector2::new(screen_size.width, screen_size.height),
+            &self.framebuffer,
+            self.samples,
+        );
     }
 
     pub fn set_samples(&mut self, samples: render::MSAASetting) {
-        self.framebuffer = render::create_framebuffer(&self.device, self.screen_size, samples);
-        self.depth_buffer = render::create_depth_buffer(&self.device, self.screen_size, samples);
+        self.framebuffer = render::create_framebuffer(&self.device, self.resolution, samples);
+        self.depth_buffer = render::create_depth_buffer(&self.device, self.resolution, samples);
         self.opaque_pipeline = render::create_pipeline(
             &self.device,
             &self.pipeline_layout,
             &self.vert_shader,
             &self.frag_shader,
-            render::PipelineType::Normal,
-            samples,
-        );
-        self.alpha_pipeline = render::create_pipeline(
-            &self.device,
-            &self.pipeline_layout,
-            &self.vert_shader,
-            &self.frag_shader,
-            render::PipelineType::Alpha,
             samples,
         );
         self.samples = samples;
+
+        self.oit_renderer.set_samples(
+            &self.device,
+            &self.vert_shader,
+            &self.framebuffer,
+            Vector2::new(self.resolution.width, self.resolution.height),
+            self.oit_node_count,
+            samples,
+        );
+    }
+
+    pub fn set_oit_node_count(&mut self, oit_node_count: oit::OITNodeCount) {
+        self.oit_renderer
+            .set_node_count(&self.device, oit_node_count, self.samples);
+        self.oit_node_count = oit_node_count;
     }
 
     pub async fn render(&mut self) {
@@ -396,31 +327,33 @@ impl Renderer {
             self.command_buffers.push(uniform_command_buffer);
         }
 
-        let frame = self
-            .swapchain
-            .get_next_texture()
-            .expect("Could not get next swapchain texture");
+        // Retry getting a swapchain texture a couple times to smooth over spurious timeouts when tons of state changes
+        let mut frame_res = self.swapchain.get_next_texture();
+        for _ in 1..=3 {
+            if let Ok(..) = &frame_res {
+                break;
+            }
+            frame_res = self.swapchain.get_next_texture();
+        }
+
+        let frame = frame_res.expect("Could not get next swapchain texture");
 
         let mut encoder = self
             .device
             .create_command_encoder(&CommandEncoderDescriptor { label: Some("primary") });
 
         {
-            let (attachment, resolve_target) = if self.samples == render::MSAASetting::X1 {
-                (&frame.view, None)
-            } else {
-                (&self.framebuffer, Some(&frame.view))
-            };
+            self.oit_renderer.clear_buffers(&mut encoder);
             let mut rpass = encoder.begin_render_pass(&RenderPassDescriptor {
                 color_attachments: &[RenderPassColorAttachmentDescriptor {
-                    attachment,
-                    resolve_target,
+                    attachment: &self.framebuffer,
+                    resolve_target: None,
                     load_op: LoadOp::Clear,
                     store_op: StoreOp::Store,
                     clear_color: Color {
-                        r: 0.3_f64.powf(1.0 / 2.2),
-                        g: 0.3_f64.powf(1.0 / 2.2),
-                        b: 0.3_f64.powf(1.0 / 2.2),
+                        r: 0.3,
+                        g: 0.3,
+                        b: 0.3,
                         a: 1.0,
                     },
                 }],
@@ -439,18 +372,17 @@ impl Renderer {
             if let Some(matrix_buffer) = matrix_buffer_opt.as_ref() {
                 let mut current_matrix_offset = 0 as BufferAddress;
 
-                let mut opaque_ended = false;
+                let mut rendering_opaque = true;
                 rpass.set_pipeline(&self.opaque_pipeline);
-                rpass.set_bind_group(1, &self.opaque_bind_group, &[]);
                 for ((mesh_idx, texture_idx, transparent), group) in &object_references
                     .into_iter()
                     .group_by(|o| (o.mesh, o.texture, o.transparent))
                 {
-                    if transparent && !opaque_ended {
-                        rpass.set_pipeline(&self.alpha_pipeline);
-                        rpass.set_bind_group(1, &self.alpha_bind_group, &[]);
-                        opaque_ended = true;
+                    if transparent && rendering_opaque {
+                        self.oit_renderer.prepare_rendering(&mut rpass);
+                        rendering_opaque = false;
                     }
+
                     let mesh = &self.mesh[&mesh_idx];
                     let texture_bind = &self.textures[&texture_idx].bind_group;
                     let count = group.count();
@@ -461,12 +393,26 @@ impl Renderer {
                     rpass.set_vertex_buffer(1, matrix_buffer, current_matrix_offset, matrix_buffer_size);
                     rpass.set_index_buffer(&mesh.index_buffer, 0, 0);
                     rpass.draw_indexed(0..(mesh.index_count as u32), 0, 0..(count as u32));
+
                     current_matrix_offset += matrix_buffer_size;
                     if current_matrix_offset & 255 != 0 {
                         current_matrix_offset += 256 - (current_matrix_offset & 255)
                     }
                 }
             }
+        }
+        {
+            let mut rpass = encoder.begin_render_pass(&RenderPassDescriptor {
+                color_attachments: &[RenderPassColorAttachmentDescriptor {
+                    attachment: &frame.view,
+                    resolve_target: None,
+                    load_op: LoadOp::Clear,
+                    store_op: StoreOp::Store,
+                    clear_color: Color::BLACK,
+                }],
+                depth_stencil_attachment: None,
+            });
+            self.oit_renderer.render_transparent(&mut rpass);
         }
 
         self.command_buffers.push(encoder.finish());

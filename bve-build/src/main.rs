@@ -43,16 +43,20 @@
 #![allow(clippy::result_unwrap_used)] // Doesn't play nice with structopt
 #![allow(clippy::shadow_reuse)]
 #![allow(clippy::shadow_same)]
+#![allow(clippy::string_add)]
+#![allow(clippy::string_add_assign)]
 #![allow(clippy::unreachable)]
 #![allow(clippy::wildcard_enum_match_arm)]
 
+use crate::shaders::{ShaderCombination, ShaderType, SingleDefine};
+use itertools::Itertools;
 use std::{
-    borrow::Cow,
-    ffi::OsStr,
-    fs::{metadata, read_dir},
+    fs::{create_dir_all, metadata, read_to_string, remove_dir_all, File},
     path::Path,
     process::{exit, Command},
 };
+
+mod shaders;
 
 #[allow(clippy::struct_excessive_bools)]
 struct Options {
@@ -167,91 +171,126 @@ fn generate_c_bindings() {
     };
 }
 
+fn mangle_shader_name(combination: &ShaderCombination<'_>) -> String {
+    let mut input = combination.name.to_string();
+    if !combination.defines.is_empty() {
+        input.push('_');
+        input.push_str(
+            &combination
+                .defines
+                .iter()
+                .map(|define| match define {
+                    shaders::SingleDefine::Defined(key, value) => format!("{}_{}", key, value),
+                    shaders::SingleDefine::Undefined(key) => format!("U{}", key),
+                })
+                .join("_"),
+        );
+    }
+    match combination.ty {
+        ShaderType::Vertex => {
+            input.push_str(".vs.spv");
+        }
+        ShaderType::Fragment => {
+            input.push_str(".fs.spv");
+        }
+        ShaderType::Compute => {
+            input.push_str(".cs.spv");
+        }
+    };
+    format!("bve-render/shaders/spirv/{}", input)
+}
+
 fn build_shaders() {
-    for content in read_dir("bve-render/shaders").unwrap() {
-        let entry = content.expect("IO error");
-        if !entry.file_type().unwrap().is_dir()
-            && entry.path().extension().map(OsStr::to_string_lossy) == Some(Cow::Borrowed("glsl"))
+    if Path::new("bve-render/shaders/spirv/.timestamp").exists()
+        && out_of_date("bve-render/shaders/compile", "bve-render/shaders/spirv/.timestamp")
+    {
+        remove_dir_all("bve-render/shaders/spirv").expect("Could not remove directory");
+        println!("Removing out of date spirv directory")
+    }
+    create_dir_all("bve-render/shaders/spirv").expect("Could not create spirv directory");
+    File::create("bve-render/shaders/spirv/.timestamp").expect("Could not create timestamp");
+    for combination in
+        shaders::parse_shader_compile_file(&read_to_string("bve-render/shaders/compile").unwrap()).unwrap()
+    {
+        let mut source_name = format!("bve-render/shaders/{}", &combination.name);
+        let spirv_name = mangle_shader_name(&combination);
+        let stage = match combination.ty {
+            ShaderType::Vertex => {
+                source_name.push_str(".vs.glsl");
+                "-fshader-stage=vertex"
+            }
+            ShaderType::Fragment => {
+                source_name.push_str(".fs.glsl");
+                "-fshader-stage=fragment"
+            }
+            ShaderType::Compute => {
+                source_name.push_str(".cs.glsl");
+                "-fshader-stage=compute"
+            }
+        };
+
+        let define_flags = combination
+            .defines
+            .into_iter()
+            .filter_map(|define| {
+                if let SingleDefine::Defined(key, value) = define {
+                    Some(format!("-D{}={}", key, value))
+                } else {
+                    None
+                }
+            })
+            .collect_vec();
+
         {
-            let name = entry.file_name().to_string_lossy().to_string();
-            let stage = if name.contains(".vs") {
-                "-fshader-stage=vert"
-            } else if name.contains(".gs") {
-                "-fshader-stage=geom"
-            } else if name.contains(".fs") {
-                "-fshader-stage=frag"
-            } else if name.contains(".cs") {
-                "-fshader-stage=comp"
-            } else {
-                break;
-            };
+            if out_of_date(&source_name, &spirv_name) {
+                println!("Compiling {} to {}", source_name, spirv_name);
 
-            {
-                let spirv_name = name.replace(".glsl", ".spv");
-                let out_path = entry.path().parent().expect("Must have parent").join(&spirv_name);
+                let mut flags = define_flags.clone();
+                flags.extend(
+                    ["-x", "glsl", "-g", "-O", stage, &source_name, "-o", &spirv_name]
+                        .iter()
+                        .map(|&s| s.to_string()),
+                );
+                let mut child = Command::new("glslc").args(&flags).spawn().expect(
+                    "Unable to find glslc in PATH. glslc must be installed. See https://github.com/google/shaderc",
+                );
 
-                if out_of_date(entry.path(), &out_path) {
-                    println!("Compiling {} to {}", name, spirv_name);
-
-                    let mut child = Command::new("glslc")
-                        .args(&[
-                            "-x",
-                            "glsl",
-                            "-g",
-                            "-O",
-                            stage,
-                            &format!("{}", entry.path().display()),
-                            "-o",
-                            &format!("{}", out_path.display()),
-                        ])
-                        .spawn()
-                        .expect(
-                            "Unable to find glslc in PATH. glslc must be installed. See https://github.com/google/shaderc",
-                        );
-
-                    let result = child.wait().expect("Unable to wait for child");
-                    if !result.success() {
-                        println!(
-                            "glslc failed on file {} with error code {}",
-                            name,
-                            result.code().expect("Unable to get error code")
-                        );
-                        exit(1);
-                    }
+                let result = child.wait().expect("Unable to wait for child");
+                if !result.success() {
+                    println!(
+                        "glslc failed on file {} with error code {}",
+                        source_name,
+                        result.code().expect("Unable to get error code")
+                    );
+                    exit(1);
                 }
             }
+        }
 
-            {
-                let spirv_name_opt = name.replace(".glsl", ".spv.opt");
-                let out_path_opt = entry.path().parent().expect("Must have parent").join(&spirv_name_opt);
+        {
+            let spirv_name_opt = spirv_name + ".opt";
 
-                if out_of_date(entry.path(), &out_path_opt) {
-                    println!("Compiling {} to {}", name, spirv_name_opt);
+            if out_of_date(&source_name, &spirv_name_opt) {
+                println!("Compiling {} to {}", source_name, spirv_name_opt);
 
-                    let mut child = Command::new("glslc")
-                        .args(&[
-                            "-x",
-                            "glsl",
-                            "-O",
-                            stage,
-                            &format!("{}", entry.path().display()),
-                            "-o",
-                            &format!("{}", out_path_opt.display()),
-                        ])
-                        .spawn()
-                        .expect(
-                            "Unable to find glslc in PATH. glslc must be installed. See https://github.com/google/shaderc",
-                        );
+                let mut flags = define_flags.clone();
+                flags.extend(
+                    ["-x", "glsl", "-O", stage, &source_name, "-o", &spirv_name_opt]
+                        .iter()
+                        .map(|&s| s.to_string()),
+                );
+                let mut child = Command::new("glslc").args(&flags).spawn().expect(
+                    "Unable to find glslc in PATH. glslc must be installed. See https://github.com/google/shaderc",
+                );
 
-                    let result = child.wait().expect("Unable to wait for child");
-                    if !result.success() {
-                        println!(
-                            "glslc failed on file {} with error code {}",
-                            name,
-                            result.code().expect("Unable to get error code")
-                        );
-                        exit(1);
-                    }
+                let result = child.wait().expect("Unable to wait for child");
+                if !result.success() {
+                    println!(
+                        "glslc failed on file {} with error code {}",
+                        source_name,
+                        result.code().expect("Unable to get error code")
+                    );
+                    exit(1);
                 }
             }
         }

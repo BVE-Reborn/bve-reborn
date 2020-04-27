@@ -82,10 +82,43 @@ jobs:
           rustup set profile minimal
         shell: bash
 
+      - name: Install GLSLC (win)
+        run: |
+          curl https://ci.bvereborn.com/glslc-win.7z -o $env:USERPROFILE\glslc-win.7z
+          7z x $env:USERPROFILE\glslc-win.7z -o"$env:USERPROFILE"
+          ls $HOME
+          echo "::add-path::$env:USERPROFILE"
+        shell: powershell
+        if: matrix.os == 'windows-2019'
+
+      - name: Install GLSLC (mac)
+        run: |
+          curl https://ci.bvereborn.com/glslc-mac.tar.xz -o $HOME/glslc-mac.tar.xz
+          tar -xf $HOME/glslc-mac.tar.xz -C $HOME
+          ls $HOME
+          echo "::add-path::$HOME"
+        shell: bash
+        if: matrix.os == 'macos-latest'
+
+      - name: Install GLSLC (linux)
+        run: |
+          curl https://ci.bvereborn.com/glslc-linux.7z -o $HOME/glslc-linux.7z
+          7z x $HOME/glslc-linux.7z -o$HOME
+          chmod +x $HOME/glslc
+          ls -lah $HOME
+          echo "::add-path::$HOME"
+        shell: bash
+        if: matrix.os == 'ubuntu-18.04'
+
       - name: Install Rust ${{ matrix.rust }}
         run: |
           rustup set default-host ${{ matrix.triple }}
           rustup toolchain install ${{ matrix.rust }}
+        shell: bash
+
+      - name: Build Shaders
+        run: |
+          cargo run --package bve-build -- --shaderc
         shell: bash
 
       - name: Build
@@ -125,6 +158,17 @@ jobs:
           target/capi/debug/Debug/bve-native-c.exe
         shell: bash
         if: matrix.os == 'windows-2019'
+
+      - name: Prepare for artifact upload
+        run: |
+          mkdir ${{ matrix.name }}
+          cp -r target/debug/bve-client${{ matrix.suffix }} target/debug/bve-corpus${{ matrix.suffix }} target/debug/bve-parser-run${{ matrix.suffix }} target/debug/bve-obj-conv${{ matrix.suffix }} bve-render/shaders/spirv ${{ matrix.name }}
+        shell: bash
+
+      - uses: actions/upload-artifact@v1
+        with:
+          name: bve-${{ matrix.name }}-debug
+          path: ${{ matrix.name }}
 
 #      - name: Run C API (unix)
 #        run: |
