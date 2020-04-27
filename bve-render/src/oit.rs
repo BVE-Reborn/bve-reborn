@@ -15,13 +15,15 @@ impl OITNodeCount {
     pub fn increment(self) -> Self {
         match self {
             Self::Four => Self::Eight,
-            _ => Self::Sixteen,
+            Self::Eight => Self::Sixteen,
+            _ => Self::ThirtyTwo,
         }
     }
 
     #[must_use]
     pub fn decrement(self) -> Self {
         match self {
+            Self::ThirtyTwo => Self::Sixteen,
             Self::Sixteen => Self::Eight,
             _ => Self::Four,
         }
@@ -341,7 +343,7 @@ const fn vert(arg: [f32; 2]) -> ScreenSpaceVertex {
 }
 
 fn create_screen_space_verts(device: &Device) -> Buffer {
-    let data = vec![vert([-3.0, -2.0]), vert([3.0, -3.0]), vert([0.0, 3.0])];
+    let data = vec![vert([-3.0, -3.0]), vert([3.0, -3.0]), vert([0.0, 3.0])];
     device.create_buffer_with_data(data.as_bytes(), BufferUsage::VERTEX)
 }
 
