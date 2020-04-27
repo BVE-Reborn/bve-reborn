@@ -1,14 +1,19 @@
 #version 450
 
-layout(location = 0) in vec3 view_position;
+layout(location = 0) in vec2 clip_position;
 layout(location = 0) out vec4 outColor;
 
-layout(set = 1, binding = 1) uniform texture2D skybox;
-layout(set = 1, binding = 2) uniform sampler skybox_sampler;
+layout(set = 0, binding = 0) uniform Matrices {
+    mat4 inv_view_proj;
+};
+layout(set = 1, binding = 0) uniform texture2D skybox;
+layout(set = 1, binding = 1) uniform sampler skybox_sampler;
 
 void main() {
-    float yaw = acos(dot(vec3(0.0, 0.0, 1.0), normalize(vec3(view_position.x, 0.0, view_position.z))));
-    float pitch = acos(dot(vec3(1.0, 0.0, 0.0), normalize(vec3(0.0, view_position.y, view_position.z))));
+    vec4 clip = vec4(clip_position, 1.0, 1.0);
+    vec4 world = inv_view_proj * clip;
+    world.xyz /= world.w;
+    world.xy *= -1.0;
 
-    outColor = vec4(normalize(view_position), 1.0);
+    outColor = vec4(pow(vec3(normalize(world)), vec3(1 / 2.2)), 1.0);
 }

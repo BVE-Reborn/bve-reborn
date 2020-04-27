@@ -86,6 +86,7 @@ mod mesh;
 mod object;
 mod oit;
 mod render;
+mod screenspace;
 mod shader;
 mod skybox;
 mod texture;
@@ -93,7 +94,7 @@ mod texture;
 pub const OPENGL_TO_WGPU_MATRIX: Matrix4<f32> = Matrix4::new(
     1.0, 0.0, 0.0, 0.0, //
     0.0, 1.0, 0.0, 0.0, //
-    0.0, 0.0, -0.5, 0.5, //
+    0.0, 0.0, -0.5, 0.0, //
     0.0, 0.0, 0.5, 1.0,
 );
 
@@ -127,6 +128,8 @@ pub struct Renderer {
 
     vert_shader: Arc<ShaderModule>,
     frag_shader: Arc<ShaderModule>,
+
+    screenspace_triangle_verts: Buffer,
 
     transparency_processor: compute::CutoutTransparencyCompute,
     mip_creator: compute::MipmapCompute,
@@ -221,10 +224,10 @@ impl Renderer {
         );
         let skybox_renderer = skybox::Skybox::new(&device, &texture_bind_group_layout, samples);
 
+        let screenspace_triangle_verts = screenspace::create_screen_space_verts(&device);
+
         let projection_matrix =
             perspective_matrix(Deg(45_f32), screen_size.width as f32 / screen_size.height as f32, 0.1);
-
-        dbg!(size_of::<Renderer>());
 
         // Create the Renderer object early so we can can call methods on it.
         let mut renderer = Self {
@@ -260,6 +263,8 @@ impl Renderer {
 
             vert_shader: vs_module,
             frag_shader: fs_module,
+
+            screenspace_triangle_verts,
 
             transparency_processor,
             mip_creator,
@@ -387,6 +392,12 @@ impl Renderer {
                 }),
             });
 
+            self.skybox_renderer.render_skybox(
+                &mut rpass,
+                &self.textures[&0].bind_group,
+                &self.screenspace_triangle_verts,
+            );
+
             // If se don't have a matrix buffer we have nothing to render
             if let Some(matrix_buffer) = matrix_buffer_opt.as_ref() {
                 let mut current_matrix_offset = 0 as BufferAddress;
@@ -418,9 +429,6 @@ impl Renderer {
                         current_matrix_offset += 256 - (current_matrix_offset & 255)
                     }
                 }
-
-                self.skybox_renderer
-                    .render_skybox(&mut rpass, &self.textures[&0].bind_group);
             }
         }
         {
@@ -434,7 +442,8 @@ impl Renderer {
                 }],
                 depth_stencil_attachment: None,
             });
-            self.oit_renderer.render_transparent(&mut rpass);
+            self.oit_renderer
+                .render_transparent(&mut rpass, &self.screenspace_triangle_verts);
         }
 
         self.command_buffers.push(encoder.finish());

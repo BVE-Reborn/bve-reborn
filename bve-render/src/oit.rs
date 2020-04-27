@@ -1,7 +1,4 @@
-use crate::{
-    render::{vert, ScreenSpaceVertex},
-    *,
-};
+use crate::{screenspace::ScreenSpaceVertex, *};
 use zerocopy::AsBytes;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -59,7 +56,7 @@ fn create_pipeline_pass1(
         }),
         primitive_topology: PrimitiveTopology::TriangleList,
         color_states: &[ColorStateDescriptor {
-            format: TextureFormat::Bgra8Unorm,
+            format: TextureFormat::Rgba32Float,
             color_blend: BlendDescriptor::REPLACE,
             alpha_blend: BlendDescriptor::REPLACE,
             write_mask: ColorWrite::empty(),
@@ -335,11 +332,6 @@ fn create_node_buffer_header() -> Vec<u8> {
     vec
 }
 
-fn create_screen_space_verts(device: &Device) -> Buffer {
-    let data = [vert([-3.0, -3.0]), vert([3.0, -3.0]), vert([0.0, 3.0])];
-    device.create_buffer_with_data(data.as_bytes(), BufferUsage::VERTEX)
-}
-
 pub struct Oit {
     oit_bind_group_layout: BindGroupLayout,
     framebuffer_bind_group_layout: BindGroupLayout,
@@ -357,8 +349,6 @@ pub struct Oit {
     node_buffer: Buffer,
 
     framebuffer_sampler: Sampler,
-
-    screen_space_verts: Buffer,
 
     resolution: Vector2<u32>,
 
@@ -445,8 +435,6 @@ impl Oit {
                 samples,
             );
 
-        let screen_space_verts = create_screen_space_verts(device);
-
         (
             Self {
                 oit_bind_group_layout,
@@ -460,7 +448,6 @@ impl Oit {
                 node_source_buffer,
                 node_buffer,
                 framebuffer_sampler,
-                screen_space_verts,
                 resolution,
                 pass1_pipeline,
                 pass2_pipeline,
@@ -546,11 +533,11 @@ impl Oit {
         rpass.set_bind_group(1, &self.oit_bind_group, &[]);
     }
 
-    pub fn render_transparent<'a>(&'a self, rpass: &mut RenderPass<'a>) {
+    pub fn render_transparent<'a>(&'a self, rpass: &mut RenderPass<'a>, screenspace_verts: &'a Buffer) {
         rpass.set_pipeline(&self.pass2_pipeline);
         rpass.set_bind_group(0, &self.oit_bind_group, &[]);
         rpass.set_bind_group(1, &self.framebuffer_bind_group, &[]);
-        rpass.set_vertex_buffer(0, &self.screen_space_verts, 0, 0);
+        rpass.set_vertex_buffer(0, screenspace_verts, 0, 0);
         rpass.draw(0..3, 0..1);
     }
 }

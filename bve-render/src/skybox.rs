@@ -1,41 +1,11 @@
-use crate::*;
+use crate::{screenspace::ScreenSpaceVertex, *};
+use cgmath::SquareMatrix;
 use zerocopy::AsBytes;
 
 #[derive(AsBytes)]
 #[repr(C)]
-pub struct SkyboxVertex {
-    _vertex: [f32; 3],
-}
-
-#[derive(AsBytes)]
-#[repr(C)]
 pub struct SkyboxUniforms {
-    _mvp: [f32; 16],
-    _mv: [f32; 16],
-}
-
-pub fn sb_vert(vertex: [f32; 3]) -> SkyboxVertex {
-    SkyboxVertex { _vertex: vertex }
-}
-
-pub fn create_box_buffers(device: &Device) -> (Buffer, Buffer) {
-    let vertices = [
-        sb_vert([-1.0, -1.0, 1.0]),
-        sb_vert([1.0, -1.0, 1.0]),
-        sb_vert([-1.0, 1.0, 1.0]),
-        sb_vert([1.0, 1.0, 1.0]),
-        sb_vert([-1.0, -1.0, -1.0]),
-        sb_vert([1.0, -1.0, -1.0]),
-        sb_vert([-1.0, 1.0, -1.0]),
-        sb_vert([1.0, 1.0, -1.0]),
-    ];
-
-    let indices = [0, 1, 2, 3, 7, 1, 5, 4, 7, 6, 2, 4, 0, 1];
-
-    let v_buf = device.create_buffer_with_data(vertices.as_bytes(), BufferUsage::VERTEX);
-    let i_buf = device.create_buffer_with_data(indices.as_bytes(), BufferUsage::INDEX);
-
-    (v_buf, i_buf)
+    _inv_view_proj: [f32; 16],
 }
 
 fn create_pipeline(device: &Device, pipeline_layout: &PipelineLayout, samples: MSAASetting) -> RenderPipeline {
@@ -60,7 +30,7 @@ fn create_pipeline(device: &Device, pipeline_layout: &PipelineLayout, samples: M
         }),
         primitive_topology: PrimitiveTopology::TriangleStrip,
         color_states: &[ColorStateDescriptor {
-            format: TextureFormat::Bgra8Unorm,
+            format: TextureFormat::Rgba32Float,
             color_blend: BlendDescriptor::REPLACE,
             alpha_blend: BlendDescriptor::REPLACE,
             write_mask: ColorWrite::ALL,
@@ -68,7 +38,7 @@ fn create_pipeline(device: &Device, pipeline_layout: &PipelineLayout, samples: M
         depth_stencil_state: Some(DepthStencilStateDescriptor {
             format: TextureFormat::Depth32Float,
             depth_write_enabled: false,
-            depth_compare: CompareFunction::GreaterEqual,
+            depth_compare: CompareFunction::Always,
             stencil_front: StencilStateFaceDescriptor::IGNORE,
             stencil_back: StencilStateFaceDescriptor::IGNORE,
             stencil_read_mask: 0,
@@ -77,9 +47,9 @@ fn create_pipeline(device: &Device, pipeline_layout: &PipelineLayout, samples: M
         vertex_state: VertexStateDescriptor {
             index_format: IndexFormat::Uint32,
             vertex_buffers: &[VertexBufferDescriptor {
-                stride: size_of::<SkyboxVertex>() as BufferAddress,
+                stride: size_of::<ScreenSpaceVertex>() as BufferAddress,
                 step_mode: InputStepMode::Vertex,
-                attributes: &vertex_attr_array![0 => Float3],
+                attributes: &vertex_attr_array![0 => Float2],
             }],
         },
         sample_count: samples as u32,
@@ -94,16 +64,13 @@ pub struct Skybox {
     bind_group: BindGroup,
 
     uniform_buffer: Buffer,
-
-    vertices_buffer: Buffer,
-    indices_buffer: Buffer,
 }
 impl Skybox {
     pub fn new(device: &Device, texture_bind_group_layout: &BindGroupLayout, samples: MSAASetting) -> Self {
         let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             bindings: &[BindGroupLayoutEntry {
                 binding: 0,
-                visibility: ShaderStage::VERTEX,
+                visibility: ShaderStage::FRAGMENT,
                 ty: BindingType::UniformBuffer { dynamic: false },
             }],
             label: Some("skybox"),
@@ -132,15 +99,11 @@ impl Skybox {
             label: Some("skybox"),
         });
 
-        let (vertices_buffer, indices_buffer) = create_box_buffers(device);
-
         Self {
             pipeline,
             pipeline_layout,
             bind_group,
             uniform_buffer,
-            vertices_buffer,
-            indices_buffer,
         }
     }
 
@@ -152,14 +115,12 @@ impl Skybox {
         mx_proj: &Matrix4<f32>,
     ) {
         let mx_view = camera.compute_origin_matrix();
-        // Everything is at 0.0, so we care only about V and P
-        let mx_mvp = mx_proj * Matrix4::from(mx_view);
-        let mx_view_bytes: &[f32; 16] = mx_proj.as_ref();
-        let mx_mvp_bytes: &[f32; 16] = mx_mvp.as_ref();
+        let mx_view_proj: Matrix4<f32> = OPENGL_TO_WGPU_MATRIX * mx_proj * mx_view;
+        let mx_inv_view_proj = mx_view_proj.invert().expect("Could not invert matrix");
+        let mx_inv_view_proj_bytes: &[f32; 16] = mx_inv_view_proj.as_ref();
 
         let uniform = SkyboxUniforms {
-            _mvp: mx_mvp_bytes.clone(),
-            _mv: mx_view_bytes.clone(),
+            _inv_view_proj: *mx_inv_view_proj_bytes,
         };
 
         let tmp_buffer = device.create_buffer_with_data(uniform.as_bytes(), BufferUsage::COPY_SRC);
@@ -177,12 +138,16 @@ impl Skybox {
         self.pipeline = create_pipeline(device, &self.pipeline_layout, samples);
     }
 
-    pub fn render_skybox<'a>(&'a self, rpass: &mut RenderPass<'a>, texture_bind_group: &'a BindGroup) {
+    pub fn render_skybox<'a>(
+        &'a self,
+        rpass: &mut RenderPass<'a>,
+        texture_bind_group: &'a BindGroup,
+        screenspace_verts: &'a Buffer,
+    ) {
         rpass.set_pipeline(&self.pipeline);
         rpass.set_bind_group(0, &self.bind_group, &[]);
-        rpass.set_bind_group(1, &texture_bind_group, &[]);
-        rpass.set_vertex_buffer(0, &self.vertices_buffer, 0, 0);
-        rpass.set_index_buffer(&self.indices_buffer, 0, 0);
-        rpass.draw_indexed(0..14, 0, 0..1);
+        rpass.set_bind_group(1, texture_bind_group, &[]);
+        rpass.set_vertex_buffer(0, screenspace_verts, 0, 0);
+        rpass.draw(0..3, 0..1);
     }
 }

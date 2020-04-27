@@ -4,16 +4,6 @@ use num_traits::ToPrimitive;
 use std::{cmp::Ordering, mem::size_of};
 use winit::dpi::PhysicalSize;
 
-#[derive(AsBytes)]
-#[repr(C)]
-pub struct ScreenSpaceVertex {
-    _vertices: [f32; 2],
-}
-
-pub const fn vert(arg: [f32; 2]) -> ScreenSpaceVertex {
-    ScreenSpaceVertex { _vertices: arg }
-}
-
 #[repr(C)]
 #[derive(Clone, Copy, AsBytes, FromBytes)]
 pub struct Vertex {
@@ -117,7 +107,7 @@ pub fn create_pipeline(
         }),
         primitive_topology: PrimitiveTopology::TriangleList,
         color_states: &[ColorStateDescriptor {
-            format: TextureFormat::Bgra8Unorm,
+            format: TextureFormat::Rgba32Float,
             color_blend: BlendDescriptor::REPLACE,
             alpha_blend: BlendDescriptor::REPLACE,
             write_mask: ColorWrite::ALL,
@@ -183,7 +173,7 @@ pub fn create_framebuffer(device: &Device, size: PhysicalSize<u32>, samples: MSA
         mip_level_count: 1,
         sample_count: samples as u32,
         dimension: TextureDimension::D2,
-        format: TextureFormat::Bgra8Unorm,
+        format: TextureFormat::Rgba32Float,
         usage: TextureUsage::OUTPUT_ATTACHMENT | TextureUsage::SAMPLED,
         label: Some("framebuffer"),
     });
