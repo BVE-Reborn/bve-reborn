@@ -85,11 +85,6 @@ jobs:
           cargo install-update -a -i cargo-deny
         shell: bash
 
-          - name: Build Shaders
-            run: |
-
-            shell: bash
-
       - name: Install GLSLC (clippy)
         run: |
           curl https://ci.bvereborn.com/glslc-linux.7z -o $HOME/glslc-linux.7z
@@ -106,7 +101,7 @@ jobs:
           cargo clean
         shell: bash
         if: matrix.tool == 'clippy'
-        
+
       - name: Run Clippy
         if: matrix.tool == 'clippy'
         run: |
