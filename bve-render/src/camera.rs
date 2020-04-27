@@ -1,5 +1,5 @@
 use crate::*;
-use cgmath::{EuclideanSpace, Matrix3, Matrix4, Point3, Rad, SquareMatrix, Vector3, Vector4};
+use cgmath::{Array, EuclideanSpace, Matrix3, Matrix4, Point3, Rad, SquareMatrix, Vector3, Vector4};
 
 pub struct Camera {
     pub location: Vector3<f32>,
@@ -10,17 +10,33 @@ pub struct Camera {
 }
 
 impl Camera {
-    pub fn compute_matrix(&self) -> Matrix4<f32> {
+    pub fn compute_look_offset(&self) -> Vector3<f32> {
         // This is pre z-inversion, so z is flipped here
-        let look_offset = Matrix3::from_diagonal(Vector3::new(1.0, 1.0, -1.0))
+        Matrix3::from_diagonal(Vector3::new(1.0, 1.0, -1.0))
             * Matrix3::from_axis_angle(Vector3::unit_y(), Rad(self.yaw))
             * Matrix3::from_axis_angle(Vector3::unit_x(), Rad(self.pitch))
-            * Vector3::unit_z();
+            * Vector3::unit_z()
+    }
+
+    pub fn compute_matrix(&self) -> Matrix4<f32> {
+        let look_offset = self.compute_look_offset();
 
         Matrix4::from_diagonal(Vector4::new(1.0, 1.0, -1.0, 1.0))
             * Matrix4::look_at(
                 Point3::from_vec(self.location),
                 Point3::from_vec(self.location + look_offset),
+                Vector3::unit_y(),
+            )
+    }
+
+    pub fn compute_origin_matrix(&self) -> Matrix4<f32> {
+        // This is pre z-inversion, so z is flipped here
+        let look_offset = self.compute_look_offset();
+
+        Matrix4::from_diagonal(Vector4::new(1.0, 1.0, -1.0, 1.0))
+            * Matrix4::look_at(
+                Point3::from_value(0.0),
+                Point3::from_vec(look_offset),
                 Vector3::unit_y(),
             )
     }

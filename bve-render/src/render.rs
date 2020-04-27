@@ -4,6 +4,16 @@ use num_traits::ToPrimitive;
 use std::{cmp::Ordering, mem::size_of};
 use winit::dpi::PhysicalSize;
 
+#[derive(AsBytes)]
+#[repr(C)]
+pub struct ScreenSpaceVertex {
+    _vertices: [f32; 2],
+}
+
+pub const fn vert(arg: [f32; 2]) -> ScreenSpaceVertex {
+    ScreenSpaceVertex { _vertices: arg }
+}
+
 #[repr(C)]
 #[derive(Clone, Copy, AsBytes, FromBytes)]
 pub struct Vertex {
@@ -233,9 +243,13 @@ impl Renderer {
             .collect_vec()
     }
 
-    pub async fn recompute_uniforms(&self, objects: &[&object::Object]) -> (Option<CommandBuffer>, Option<Buffer>) {
+    pub async fn recompute_uniforms(
+        &self,
+        encoder: &mut CommandEncoder,
+        objects: &[&object::Object],
+    ) -> Option<Buffer> {
         if objects.is_empty() {
-            return (None, None);
+            return None;
         }
 
         let camera_mat = self.camera.compute_matrix();
@@ -244,11 +258,7 @@ impl Renderer {
 
         for (_, group) in &objects.iter().group_by(|o| (o.mesh, o.texture, o.transparent)) {
             for object in group {
-                let matrix = object::generate_matrix(
-                    &camera_mat,
-                    object.location,
-                    self.resolution.width as f32 / self.resolution.height as f32,
-                );
+                let matrix = object::generate_matrix(&self.projection_matrix, &camera_mat, object.location);
                 let uniforms = Uniforms {
                     _matrix: *matrix.as_ref(),
                 };
@@ -270,10 +280,6 @@ impl Renderer {
             label: Some("matrix buffer"),
         });
 
-        let mut encoder = self.device.create_command_encoder(&CommandEncoderDescriptor {
-            label: Some("matrix updater"),
-        });
-
         encoder.copy_buffer_to_buffer(
             &tmp_buffer,
             0,
@@ -282,7 +288,7 @@ impl Renderer {
             matrix_buffer_data.len() as BufferAddress,
         );
 
-        (Some(encoder.finish()), Some(matrix_buffer))
+        Some(matrix_buffer)
     }
 
     pub fn compute_object_distances(&mut self) {

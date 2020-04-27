@@ -53,12 +53,12 @@
 #![allow(clippy::wildcard_enum_match_arm)]
 #![allow(clippy::wildcard_imports)]
 
-use crate::render::Uniforms;
 pub use crate::{
     mesh::MeshHandle, object::ObjectHandle, oit::OITNodeCount, render::MSAASetting, texture::TextureHandle,
 };
+use crate::{object::perspective_matrix, render::Uniforms};
 use bve::load::mesh::Vertex as MeshVertex;
-use cgmath::{Matrix4, Vector2, Vector3};
+use cgmath::{Deg, Matrix4, Vector2, Vector3};
 use image::RgbaImage;
 use indexmap::map::IndexMap;
 use itertools::Itertools;
@@ -87,6 +87,7 @@ mod object;
 mod oit;
 mod render;
 mod shader;
+mod skybox;
 mod texture;
 
 pub const OPENGL_TO_WGPU_MATRIX: Matrix4<f32> = Matrix4::new(
@@ -111,6 +112,8 @@ pub struct Renderer {
     oit_node_count: oit::OITNodeCount,
     samples: render::MSAASetting,
 
+    projection_matrix: Matrix4<f32>,
+
     surface: Surface,
     device: Device,
     queue: Queue,
@@ -128,6 +131,7 @@ pub struct Renderer {
     transparency_processor: compute::CutoutTransparencyCompute,
     mip_creator: compute::MipmapCompute,
     oit_renderer: oit::Oit,
+    skybox_renderer: skybox::Skybox,
 
     command_buffers: Vec<CommandBuffer>,
     _renderdoc_capture: bool,
@@ -215,6 +219,12 @@ impl Renderer {
             oit_node_count,
             samples,
         );
+        let skybox_renderer = skybox::Skybox::new(&device, &texture_bind_group_layout, samples);
+
+        let projection_matrix =
+            perspective_matrix(Deg(45_f32), screen_size.width as f32 / screen_size.height as f32, 0.1);
+
+        dbg!(size_of::<Renderer>());
 
         // Create the Renderer object early so we can can call methods on it.
         let mut renderer = Self {
@@ -235,6 +245,7 @@ impl Renderer {
             resolution: screen_size,
             samples,
             oit_node_count,
+            projection_matrix,
 
             surface,
             device,
@@ -253,6 +264,7 @@ impl Renderer {
             transparency_processor,
             mip_creator,
             oit_renderer,
+            skybox_renderer,
 
             command_buffers: vec![oit_command_buffer],
             _renderdoc_capture: false,
@@ -283,6 +295,9 @@ impl Renderer {
             &self.framebuffer,
             self.samples,
         );
+
+        self.projection_matrix =
+            perspective_matrix(Deg(45_f32), screen_size.width as f32 / screen_size.height as f32, 0.1);
     }
 
     pub fn set_samples(&mut self, samples: render::MSAASetting) {
@@ -305,6 +320,7 @@ impl Renderer {
             self.oit_node_count,
             samples,
         );
+        self.skybox_renderer.set_samples(&self.device, samples);
     }
 
     pub fn set_oit_node_count(&mut self, oit_node_count: oit::OITNodeCount) {
@@ -320,12 +336,19 @@ impl Renderer {
                 rd.start_frame_capture(std::ptr::null(), std::ptr::null());
             }
         }
+
+        let mut encoder = self
+            .device
+            .create_command_encoder(&CommandEncoderDescriptor { label: Some("primary") });
+
+        // Update skybox
+        self.skybox_renderer
+            .update(&self.device, &mut encoder, &self.camera, &self.projection_matrix);
+
+        // Update objects and uniforms
         self.compute_object_distances();
         let object_references = Self::sort_objects(&self.objects);
-        let (uniform_command_buffer_opt, matrix_buffer_opt) = self.recompute_uniforms(&object_references).await;
-        if let Some(uniform_command_buffer) = uniform_command_buffer_opt {
-            self.command_buffers.push(uniform_command_buffer);
-        }
+        let matrix_buffer_opt = self.recompute_uniforms(&mut encoder, &object_references).await;
 
         // Retry getting a swapchain texture a couple times to smooth over spurious timeouts when tons of state changes
         let mut frame_res = self.swapchain.get_next_texture();
@@ -337,10 +360,6 @@ impl Renderer {
         }
 
         let frame = frame_res.expect("Could not get next swapchain texture");
-
-        let mut encoder = self
-            .device
-            .create_command_encoder(&CommandEncoderDescriptor { label: Some("primary") });
 
         {
             self.oit_renderer.clear_buffers(&mut encoder);
@@ -399,6 +418,9 @@ impl Renderer {
                         current_matrix_offset += 256 - (current_matrix_offset & 255)
                     }
                 }
+
+                self.skybox_renderer
+                    .render_skybox(&mut rpass, &self.textures[&0].bind_group);
             }
         }
         {

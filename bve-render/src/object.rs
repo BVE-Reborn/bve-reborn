@@ -33,10 +33,9 @@ pub fn perspective_matrix(fovy: impl Into<Rad<f32>>, aspect: f32, z_near: f32) -
     result
 }
 
-pub fn generate_matrix(mx_view: &Matrix4<f32>, location: Vector3<f32>, aspect_ratio: f32) -> Matrix4<f32> {
-    let mx_projection = perspective_matrix(cgmath::Deg(45_f32), aspect_ratio, 0.1);
+pub fn generate_matrix(mx_proj: &Matrix4<f32>, mx_view: &Matrix4<f32>, location: Vector3<f32>) -> Matrix4<f32> {
     let mx_model = Matrix4::from_translation(location);
-    OPENGL_TO_WGPU_MATRIX * mx_projection * mx_view * mx_model
+    OPENGL_TO_WGPU_MATRIX * mx_proj * mx_view * mx_model
 }
 
 impl Renderer {

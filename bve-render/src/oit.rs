@@ -1,4 +1,7 @@
-use crate::*;
+use crate::{
+    render::{vert, ScreenSpaceVertex},
+    *,
+};
 use zerocopy::AsBytes;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -332,18 +335,8 @@ fn create_node_buffer_header() -> Vec<u8> {
     vec
 }
 
-#[derive(AsBytes)]
-#[repr(C)]
-struct ScreenSpaceVertex {
-    _vertices: [f32; 2],
-}
-
-const fn vert(arg: [f32; 2]) -> ScreenSpaceVertex {
-    ScreenSpaceVertex { _vertices: arg }
-}
-
 fn create_screen_space_verts(device: &Device) -> Buffer {
-    let data = vec![vert([-3.0, -3.0]), vert([3.0, -3.0]), vert([0.0, 3.0])];
+    let data = [vert([-3.0, -3.0]), vert([3.0, -3.0]), vert([0.0, 3.0])];
     device.create_buffer_with_data(data.as_bytes(), BufferUsage::VERTEX)
 }
 
