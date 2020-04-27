@@ -1,4 +1,5 @@
 use crate::{screenspace::ScreenSpaceVertex, *};
+use nalgebra_glm::UVec2;
 use zerocopy::AsBytes;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -64,7 +65,7 @@ fn create_pipeline_pass1(
         depth_stencil_state: Some(DepthStencilStateDescriptor {
             format: TextureFormat::Depth32Float,
             depth_write_enabled: false,
-            depth_compare: CompareFunction::GreaterEqual,
+            depth_compare: CompareFunction::LessEqual,
             stencil_front: StencilStateFaceDescriptor::IGNORE,
             stencil_back: StencilStateFaceDescriptor::IGNORE,
             stencil_read_mask: 0,
@@ -153,7 +154,7 @@ fn create_uniform_buffer(
     node_buffer: &Buffer,
     framebuffer: &TextureView,
     framebuffer_sampler: &Sampler,
-    resolution: Vector2<u32>,
+    resolution: UVec2,
     samples: MSAASetting,
 ) -> (Buffer, BindGroup, BindGroup) {
     let max_nodes = node_count(resolution);
@@ -213,7 +214,7 @@ fn create_oit_buffers(
     framebuffer_bind_group_layout: &BindGroupLayout,
     framebuffer: &TextureView,
     framebuffer_sampler: &Sampler,
-    resolution: Vector2<u32>,
+    resolution: UVec2,
     samples: MSAASetting,
 ) -> (TextureView, Buffer, Buffer, BindGroup, BindGroup) {
     let head_pointer_source_buffer = device.create_buffer_with_data(
@@ -317,11 +318,11 @@ fn create_pass2_pipeline_layout(
 
 const SIZE_OF_NODE: usize = 28;
 
-const fn node_count(resolution: Vector2<u32>) -> u32 {
+fn node_count(resolution: UVec2) -> u32 {
     resolution.x * resolution.y * 5
 }
 
-const fn size_of_node_buffer(resolution: Vector2<u32>) -> BufferAddress {
+fn size_of_node_buffer(resolution: UVec2) -> BufferAddress {
     (node_count(resolution) as usize * SIZE_OF_NODE + 4) as BufferAddress
 }
 
@@ -350,7 +351,7 @@ pub struct Oit {
 
     framebuffer_sampler: Sampler,
 
-    resolution: Vector2<u32>,
+    resolution: UVec2,
 
     pass1_pipeline: RenderPipeline,
     pass2_pipeline: RenderPipeline,
@@ -362,7 +363,7 @@ impl Oit {
         vert: &ShaderModule,
         opaque_bind_group_layout: &BindGroupLayout,
         framebuffer: &TextureView,
-        resolution: Vector2<u32>,
+        resolution: UVec2,
         oit_node_count: OITNodeCount,
         samples: MSAASetting,
     ) -> (Self, CommandBuffer) {
@@ -459,7 +460,7 @@ impl Oit {
     pub fn resize(
         &mut self,
         device: &Device,
-        resolution: Vector2<u32>,
+        resolution: UVec2,
         framebuffer: &TextureView,
         samples: MSAASetting,
     ) -> CommandBuffer {
@@ -494,7 +495,7 @@ impl Oit {
         device: &Device,
         vert: &ShaderModule,
         framebuffer: &TextureView,
-        resolution: Vector2<u32>,
+        resolution: UVec2,
         oit_node_count: OITNodeCount,
         samples: MSAASetting,
     ) {

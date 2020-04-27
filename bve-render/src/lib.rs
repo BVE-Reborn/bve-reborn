@@ -58,10 +58,10 @@ pub use crate::{
 };
 use crate::{object::perspective_matrix, render::Uniforms};
 use bve::load::mesh::Vertex as MeshVertex;
-use cgmath::{Deg, Matrix4, Vector2, Vector3};
 use image::RgbaImage;
 use indexmap::map::IndexMap;
 use itertools::Itertools;
+use nalgebra_glm::{make_vec2, make_vec3, Mat4, Vec3};
 use num_traits::{ToPrimitive, Zero};
 use std::{mem::size_of, sync::Arc};
 use wgpu::*;
@@ -91,13 +91,6 @@ mod shader;
 mod skybox;
 mod texture;
 
-pub const OPENGL_TO_WGPU_MATRIX: Matrix4<f32> = Matrix4::new(
-    1.0, 0.0, 0.0, 0.0, //
-    0.0, 1.0, 0.0, 0.0, //
-    0.0, 0.0, -0.5, 0.0, //
-    0.0, 0.0, 0.5, 1.0,
-);
-
 pub struct Renderer {
     objects: IndexMap<u64, object::Object>,
     object_handle_count: u64,
@@ -113,7 +106,7 @@ pub struct Renderer {
     oit_node_count: oit::OITNodeCount,
     samples: render::MSAASetting,
 
-    projection_matrix: Matrix4<f32>,
+    projection_matrix: Mat4,
 
     surface: Surface,
     device: Device,
@@ -218,7 +211,7 @@ impl Renderer {
             &vs_module,
             &texture_bind_group_layout,
             &framebuffer,
-            Vector2::new(screen_size.width, screen_size.height),
+            make_vec2(&[screen_size.width, screen_size.height]),
             oit_node_count,
             samples,
         );
@@ -226,8 +219,10 @@ impl Renderer {
 
         let screenspace_triangle_verts = screenspace::create_screen_space_verts(&device);
 
-        let projection_matrix =
-            perspective_matrix(Deg(45_f32), screen_size.width as f32 / screen_size.height as f32, 0.1);
+        let projection_matrix = perspective_matrix(
+            45_f32.to_radians(),
+            screen_size.width as f32 / screen_size.height as f32,
+        );
 
         // Create the Renderer object early so we can can call methods on it.
         let mut renderer = Self {
@@ -241,7 +236,7 @@ impl Renderer {
             texture_handle_count: 0,
 
             camera: camera::Camera {
-                location: Vector3::new(-6.0, 0.0, 0.0),
+                location: make_vec3(&[-6.0, 0.0, 0.0]),
                 pitch: 0.0,
                 yaw: 0.0,
             },
@@ -281,7 +276,7 @@ impl Renderer {
         renderer
     }
 
-    pub fn set_location(&mut self, object::ObjectHandle(handle): &object::ObjectHandle, location: Vector3<f32>) {
+    pub fn set_location(&mut self, object::ObjectHandle(handle): &object::ObjectHandle, location: Vec3) {
         let object: &mut object::Object = &mut self.objects[handle];
 
         object.location = location;
@@ -296,13 +291,15 @@ impl Renderer {
 
         self.oit_renderer.resize(
             &self.device,
-            Vector2::new(screen_size.width, screen_size.height),
+            make_vec2(&[screen_size.width, screen_size.height]),
             &self.framebuffer,
             self.samples,
         );
 
-        self.projection_matrix =
-            perspective_matrix(Deg(45_f32), screen_size.width as f32 / screen_size.height as f32, 0.1);
+        self.projection_matrix = perspective_matrix(
+            45_f32.to_radians(),
+            screen_size.width as f32 / screen_size.height as f32,
+        );
     }
 
     pub fn set_samples(&mut self, samples: render::MSAASetting) {
@@ -321,7 +318,7 @@ impl Renderer {
             &self.device,
             &self.vert_shader,
             &self.framebuffer,
-            Vector2::new(self.resolution.width, self.resolution.height),
+            make_vec2(&[self.resolution.width, self.resolution.height]),
             self.oit_node_count,
             samples,
         );
@@ -387,7 +384,7 @@ impl Renderer {
                     depth_store_op: StoreOp::Store,
                     stencil_load_op: LoadOp::Clear,
                     stencil_store_op: StoreOp::Store,
-                    clear_depth: 0.0,
+                    clear_depth: 1.0,
                     clear_stencil: 0,
                 }),
             });

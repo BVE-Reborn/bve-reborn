@@ -13,7 +13,6 @@ void main() {
     vec4 clip = vec4(clip_position, 1.0, 1.0);
     vec4 world = inv_view_proj * clip;
     world.xyz /= world.w;
-    world.xy *= -1.0;
 
     outColor = vec4(pow(vec3(normalize(world)), vec3(1 / 2.2)), 1.0);
 }

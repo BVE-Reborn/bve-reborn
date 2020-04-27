@@ -1,11 +1,11 @@
 use crate::{screenspace::ScreenSpaceVertex, *};
-use cgmath::SquareMatrix;
+use nalgebra_glm::inverse;
 use zerocopy::AsBytes;
 
 #[derive(AsBytes)]
 #[repr(C)]
 pub struct SkyboxUniforms {
-    _inv_view_proj: [f32; 16],
+    _inv_view_proj: [[f32; 4]; 4],
 }
 
 fn create_pipeline(device: &Device, pipeline_layout: &PipelineLayout, samples: MSAASetting) -> RenderPipeline {
@@ -107,17 +107,11 @@ impl Skybox {
         }
     }
 
-    pub fn update(
-        &mut self,
-        device: &Device,
-        encoder: &mut CommandEncoder,
-        camera: &camera::Camera,
-        mx_proj: &Matrix4<f32>,
-    ) {
+    pub fn update(&mut self, device: &Device, encoder: &mut CommandEncoder, camera: &camera::Camera, mx_proj: &Mat4) {
         let mx_view = camera.compute_origin_matrix();
-        let mx_view_proj: Matrix4<f32> = OPENGL_TO_WGPU_MATRIX * mx_proj * mx_view;
-        let mx_inv_view_proj = mx_view_proj.invert().expect("Could not invert matrix");
-        let mx_inv_view_proj_bytes: &[f32; 16] = mx_inv_view_proj.as_ref();
+        let mx_view_proj: Mat4 = mx_proj * mx_view;
+        let mx_inv_view_proj = inverse(&mx_view_proj);
+        let mx_inv_view_proj_bytes: &[[f32; 4]; 4] = mx_inv_view_proj.as_ref();
 
         let uniform = SkyboxUniforms {
             _inv_view_proj: *mx_inv_view_proj_bytes,

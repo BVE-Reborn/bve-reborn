@@ -25,6 +25,7 @@ bve-render = { version = "0.0.1", path = "../bve-render" }
 cgmath = "0.17.0"
 env_logger = "0.7.1"
 image = { version = "0.23.2", default-features = false, features = ["bmp", "gif", "png"] }
+nalgebra-glm = "0.7.0"
 num-traits = "0.2.11"
 itertools = "0.9"
 log = "0.4.8"

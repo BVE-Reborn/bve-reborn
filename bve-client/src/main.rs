@@ -62,6 +62,7 @@ use bve_render::{MSAASetting, MeshHandle, OITNodeCount, ObjectHandle, Renderer, 
 use cgmath::{ElementWise, InnerSpace, Vector3};
 use image::RgbaImage;
 use itertools::Itertools;
+use nalgebra_glm::Vec3;
 use num_traits::Zero;
 use serde::Deserialize;
 use std::{
@@ -95,13 +96,13 @@ impl runtime::Client for Client {
     type MeshHandle = MeshHandle;
     type TextureHandle = TextureHandle;
 
-    fn add_object(&mut self, location: Vector3<f32>, mesh: &Self::MeshHandle) -> Self::ObjectHandle {
+    fn add_object(&mut self, location: Vec3, mesh: &Self::MeshHandle) -> Self::ObjectHandle {
         self.renderer.add_object(location, mesh)
     }
 
     fn add_object_texture(
         &mut self,
-        location: Vector3<f32>,
+        location: Vec3,
         mesh: &Self::MeshHandle,
         texture: &Self::TextureHandle,
     ) -> Self::ObjectHandle {
@@ -128,11 +129,11 @@ impl runtime::Client for Client {
         self.renderer.remove_texture(texture)
     }
 
-    fn set_camera_location(&mut self, location: Vector3<f32>) {
+    fn set_camera_location(&mut self, location: Vec3) {
         self.renderer.set_camera_location(location);
     }
 
-    fn set_object_location(&mut self, object: &Self::ObjectHandle, location: Vector3<f32>) {
+    fn set_object_location(&mut self, object: &Self::ObjectHandle, location: Vec3) {
         self.renderer.set_location(object, location);
     }
 }
@@ -348,8 +349,8 @@ fn client_main() {
             if !grabber.get_grabbed() {
                 return;
             }
-            mouse_yaw += (-delta_x / 1000.0) as f32;
-            mouse_pitch += (-delta_y / 1000.0) as f32;
+            mouse_yaw += (delta_x / 1000.0) as f32;
+            mouse_pitch += (delta_y / 1000.0) as f32;
             if mouse_yaw < 0.0 {
                 mouse_yaw += TAU;
             } else if mouse_yaw >= TAU {

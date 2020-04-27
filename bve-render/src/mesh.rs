@@ -1,4 +1,5 @@
 use crate::*;
+use nalgebra_glm::zero;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MeshHandle(pub(crate) u64);
@@ -9,7 +10,7 @@ pub struct Mesh {
     pub index_buffer: Buffer,
     pub index_count: u32,
 
-    pub mesh_center_offset: Vector3<f32>,
+    pub mesh_center_offset: Vec3,
     pub transparent: bool,
 }
 
@@ -52,20 +53,20 @@ pub fn convert_mesh_verts_to_render_verts(
     (out_verts, indices)
 }
 
-pub fn find_mesh_center(mesh: &[render::Vertex]) -> Vector3<f32> {
+pub fn find_mesh_center(mesh: &[render::Vertex]) -> Vec3 {
     let first = if let Some(first) = mesh.first() {
         *first
     } else {
-        return Vector3::zero();
+        return zero();
     };
     // Bounding box time baby!
-    let mut max: Vector3<f32> = first.pos.into();
-    let mut min: Vector3<f32> = first.pos.into();
+    let mut max: Vec3 = make_vec3(&first.pos);
+    let mut min: Vec3 = make_vec3(&first.pos);
 
     for vert in mesh.iter().skip(1) {
-        let pos: Vector3<f32> = vert.pos.into();
-        max = max.zip(pos, |left, right| left.max(right));
-        min = min.zip(pos, |left, right| left.min(right));
+        let pos: Vec3 = vert.pos.into();
+        max = max.zip_map(&pos, |left, right| left.max(right));
+        min = min.zip_map(&pos, |left, right| left.min(right));
     }
 
     (max + min) / 2.0

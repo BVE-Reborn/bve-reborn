@@ -1,8 +1,8 @@
 use crate::*;
-use cgmath::{EuclideanSpace, Matrix3, Matrix4, Point3, Rad, SquareMatrix, Vector3, Vector4};
+use nalgebra_glm::{look_at_lh, make_vec3, rotate_vec3, Vec3};
 
 pub struct Camera {
-    pub location: Vector3<f32>,
+    pub location: Vec3,
     /// radians
     pub pitch: f32,
     /// radians
@@ -10,32 +10,27 @@ pub struct Camera {
 }
 
 impl Camera {
-    pub fn compute_look_offset(&self) -> Vector3<f32> {
-        // This is pre z-inversion, so z is flipped here
-        Matrix3::from_diagonal(Vector3::new(1.0, 1.0, -1.0))
-            * Matrix3::from_axis_angle(Vector3::unit_y(), Rad(self.yaw))
-            * Matrix3::from_axis_angle(Vector3::unit_x(), Rad(self.pitch))
-            * Vector3::unit_z()
+    pub fn compute_look_offset(&self) -> Vec3 {
+        let starting = make_vec3(&[0.0, 0.0, 1.0]);
+        let post_pitch = rotate_vec3(&starting, self.pitch, &make_vec3(&[1.0, 0.0, 0.0]));
+        rotate_vec3(&post_pitch, self.yaw, &make_vec3(&[0.0, 1.0, 0.0]))
     }
 
-    pub fn compute_matrix(&self) -> Matrix4<f32> {
+    pub fn compute_matrix(&self) -> Mat4 {
         let look_offset = self.compute_look_offset();
 
-        Matrix4::from_diagonal(Vector4::new(1.0, 1.0, -1.0, 1.0))
-            * Matrix4::look_at(
-                Point3::from_vec(self.location),
-                Point3::from_vec(self.location + look_offset),
-                Vector3::unit_y(),
-            )
-    }
-
-    pub fn compute_origin_matrix(&self) -> Matrix4<f32> {
-        // This is pre z-inversion, so z is flipped here
-        let look_offset = self.compute_look_offset();
-
-        Matrix4::from(
-            Matrix3::from_diagonal(Vector3::new(-1.0, 1.0, -1.0)) * Matrix3::look_at(look_offset, -Vector3::unit_y()),
+        look_at_lh(
+            &self.location,
+            &(self.location + look_offset),
+            &make_vec3(&[0.0, 1.0, 0.0]),
         )
+    }
+
+    pub fn compute_origin_matrix(&self) -> Mat4 {
+        // This is pre z-inversion, so z is flipped here
+        let look_offset = self.compute_look_offset();
+
+        look_at_lh(&make_vec3(&[0.0, 0.0, 0.0]), &look_offset, &make_vec3(&[0.0, 1.0, 0.0]))
     }
 }
 
@@ -45,7 +40,7 @@ impl Renderer {
         self.camera.yaw = yaw;
     }
 
-    pub fn set_camera_location(&mut self, location: Vector3<f32>) {
+    pub fn set_camera_location(&mut self, location: Vec3) {
         self.camera.location = location;
     }
 }

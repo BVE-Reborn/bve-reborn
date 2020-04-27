@@ -1,6 +1,5 @@
 use crate::*;
-use cgmath::{InnerSpace, Vector2, Vector3};
-use num_traits::ToPrimitive;
+use nalgebra_glm::UVec2;
 use std::{cmp::Ordering, mem::size_of};
 use winit::dpi::PhysicalSize;
 
@@ -16,7 +15,7 @@ pub struct Vertex {
 #[repr(C)]
 #[derive(AsBytes)]
 pub struct Uniforms {
-    pub _matrix: [f32; 16],
+    pub _matrix: [[f32; 4]; 4],
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -48,27 +47,24 @@ impl MSAASetting {
     }
 }
 
-pub fn mip_levels(size: Vector2<impl ToPrimitive>) -> u32 {
-    let float_size = size.map(|v| v.to_f32().expect("Cannot convert to f32"));
+pub fn mip_levels(size: UVec2) -> u32 {
+    let float_size = size.map(|f| f as f32);
     let shortest = float_size.x.min(float_size.y);
     let mips = shortest.log2().floor();
     (mips as u32) + 1
 }
 
-pub fn enumerate_mip_levels(size: Vector2<impl ToPrimitive>) -> MipIterator {
-    MipIterator {
-        count: 0,
-        size: size.map(|v| v.to_u32().expect("Cannot convert to u32")),
-    }
+pub const fn enumerate_mip_levels(size: UVec2) -> MipIterator {
+    MipIterator { count: 0, size }
 }
 
 pub struct MipIterator {
     pub count: u32,
-    pub size: Vector2<u32>,
+    pub size: UVec2,
 }
 
 impl Iterator for MipIterator {
-    type Item = (u32, Vector2<u32>);
+    type Item = (u32, UVec2);
 
     fn next(&mut self) -> Option<Self::Item> {
         self.size /= 2;
@@ -115,7 +111,7 @@ pub fn create_pipeline(
         depth_stencil_state: Some(DepthStencilStateDescriptor {
             format: TextureFormat::Depth32Float,
             depth_write_enabled: true,
-            depth_compare: CompareFunction::GreaterEqual,
+            depth_compare: CompareFunction::LessEqual,
             stencil_front: StencilStateFaceDescriptor::IGNORE,
             stencil_back: StencilStateFaceDescriptor::IGNORE,
             stencil_read_mask: 0,
@@ -284,9 +280,9 @@ impl Renderer {
     pub fn compute_object_distances(&mut self) {
         for obj in self.objects.values_mut() {
             let mesh = &self.mesh[&obj.mesh];
-            let mesh_center: Vector3<f32> = obj.location + mesh.mesh_center_offset;
-            let camera_mesh_vector: Vector3<f32> = self.camera.location - mesh_center;
-            let distance = camera_mesh_vector.magnitude2();
+            let mesh_center: Vec3 = obj.location + mesh.mesh_center_offset;
+            let camera_mesh_vector: Vec3 = self.camera.location - mesh_center;
+            let distance = camera_mesh_vector.magnitude_squared();
             obj.camera_distance = distance;
             // println!(
             //     "{} - {} {} {}",
