@@ -149,7 +149,14 @@ struct Object {
 }
 
 #[derive(Deserialize)]
+struct Background {
+    path: std::path::PathBuf,
+    repeats: f32,
+}
+
+#[derive(Deserialize)]
 struct Loading {
+    background: Background,
     objects: Vec<Object>,
 }
 
@@ -203,6 +210,16 @@ fn client_main() {
                     .await
             }
         }
+
+        let image_contents = async_std::fs::read(&loading.background.path)
+            .await
+            .expect("Could not load background image");
+        let rgba = image::load_from_memory(&image_contents)
+            .expect("Could not load background image")
+            .into_rgba();
+        let mut client = client.lock().await;
+        let handle = client.renderer.add_texture(&rgba);
+        client.renderer.set_skybox_image(&handle, loading.background.repeats);
     });
 
     let mut mouse_pitch = 0.0_f32;
