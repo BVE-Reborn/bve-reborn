@@ -389,12 +389,6 @@ impl Renderer {
                 }),
             });
 
-            self.skybox_renderer.render_skybox(
-                &mut rpass,
-                &self.textures[&0].bind_group,
-                &self.screenspace_triangle_verts,
-            );
-
             // If se don't have a matrix buffer we have nothing to render
             if let Some(matrix_buffer) = matrix_buffer_opt.as_ref() {
                 let mut current_matrix_offset = 0 as BufferAddress;
@@ -427,6 +421,12 @@ impl Renderer {
                     }
                 }
             }
+
+            self.skybox_renderer.render_skybox(
+                &mut rpass,
+                &self.textures[&0].bind_group,
+                &self.screenspace_triangle_verts,
+            );
         }
         {
             let mut rpass = encoder.begin_render_pass(&RenderPassDescriptor {
