@@ -1256,6 +1256,7 @@ dependencies = [
  "bytemuck",
  "byteorder",
  "gif",
+ "jpeg-decoder",
  "num-iter",
  "num-rational",
  "num-traits",
@@ -1388,6 +1389,15 @@ name = "itoa"
 version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b8b7a7c0c47db5545ed3fef7468ee7bb5b74691498139e4b3f6a20685dc6dd8e"
+
+[[package]]
+name = "jpeg-decoder"
+version = "0.1.19"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5b47b4c4e017b01abdc5bcc126d2d1002e5a75bbe3ce73f9f4f311a916363704"
+dependencies = [
+ "byteorder",
+]
 
 [[package]]
 name = "js-sys"

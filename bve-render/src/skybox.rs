@@ -29,7 +29,7 @@ fn create_pipeline(device: &Device, pipeline_layout: &PipelineLayout, samples: M
             depth_bias_slope_scale: 0.0,
             depth_bias_clamp: 0.0,
         }),
-        primitive_topology: PrimitiveTopology::TriangleStrip,
+        primitive_topology: PrimitiveTopology::TriangleList,
         color_states: &[ColorStateDescriptor {
             format: TextureFormat::Rgba32Float,
             color_blend: BlendDescriptor::REPLACE,
