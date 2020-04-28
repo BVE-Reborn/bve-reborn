@@ -6,10 +6,11 @@
 #define TAU  6.2831853071795865
 
 layout(location = 0) in vec2 clip_position;
-layout(location = 0) out vec3 outColor;
+layout(location = 0) out vec4 outColor;
 
 layout(set = 0, binding = 0) uniform Matrices {
     mat4 inv_view_proj;
+    float repeats;
 };
 layout(set = 1, binding = 0) uniform utexture2D skybox;
 layout(set = 1, binding = 1) uniform sampler skybox_sampler;
@@ -31,7 +32,8 @@ void main() {
     float pitch = asin(world_dir.y) * 2 + PI;
 
     // Add PI/3 so that the split point is 60 deg to the left of +z
-    float x_coord = wrap(inv_yaw + PI_3, 0, TAU) / TAU;
+    float x_coord = wrap(inv_yaw + PI_3, 0.0, TAU) / TAU;
+    x_coord *= repeats;
     float y_coord;
     if (pitch <= PI) {
         // Below the horizon only gets 25% of the image
@@ -42,10 +44,8 @@ void main() {
         y_coord = (pitch / TAU) * 1.5 - 0.5;
     }
 
-    vec4 texture_srgb = vec4(texture(usampler2D(skybox, skybox_sampler), vec2(x_coord, y_coord))) / 255;
-    vec4 texture = vec4(pow(texture_srgb.rgb, vec3(1 / 2.2)), texture_srgb.a);
+    vec4 texture_srgb = vec4(texture(usampler2D(skybox, skybox_sampler), vec2(x_coord, 1 - y_coord))) / 255;
+    vec3 texture = pow(texture_srgb.rgb, vec3(2.2));
 
-    vec3 blended = mix(vec3(0.0), texture.rgb, texture.a);
-
-    outColor = blended;
+    outColor = vec4(texture, 1.0);
 }

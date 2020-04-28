@@ -6,6 +6,7 @@ use zerocopy::AsBytes;
 #[repr(C)]
 pub struct SkyboxUniforms {
     _inv_view_proj: [[f32; 4]; 4],
+    _repeats: f32,
 }
 
 fn create_pipeline(device: &Device, pipeline_layout: &PipelineLayout, samples: MSAASetting) -> RenderPipeline {
@@ -64,6 +65,9 @@ pub struct Skybox {
     bind_group: BindGroup,
 
     uniform_buffer: Buffer,
+
+    pub texture_id: u64,
+    pub repeats: f32,
 }
 impl Skybox {
     pub fn new(device: &Device, texture_bind_group_layout: &BindGroupLayout, samples: MSAASetting) -> Self {
@@ -104,6 +108,8 @@ impl Skybox {
             pipeline_layout,
             bind_group,
             uniform_buffer,
+            texture_id: 0,
+            repeats: 1.0,
         }
     }
 
@@ -115,6 +121,7 @@ impl Skybox {
 
         let uniform = SkyboxUniforms {
             _inv_view_proj: *mx_inv_view_proj_bytes,
+            _repeats: self.repeats,
         };
 
         let tmp_buffer = device.create_buffer_with_data(uniform.as_bytes(), BufferUsage::COPY_SRC);
@@ -143,5 +150,12 @@ impl Skybox {
         rpass.set_bind_group(1, texture_bind_group, &[]);
         rpass.set_vertex_buffer(0, screenspace_verts, 0, 0);
         rpass.draw(0..3, 0..1);
+    }
+}
+
+impl Renderer {
+    pub fn set_skybox_image(&mut self, TextureHandle(tex_id): &TextureHandle, repeats: f32) {
+        self.skybox_renderer.texture_id = *tex_id;
+        self.skybox_renderer.repeats = repeats;
     }
 }

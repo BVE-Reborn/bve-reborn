@@ -424,7 +424,7 @@ impl Renderer {
 
             self.skybox_renderer.render_skybox(
                 &mut rpass,
-                &self.textures[&0].bind_group,
+                &self.textures[&self.skybox_renderer.texture_id].bind_group,
                 &self.screenspace_triangle_verts,
             );
         }
