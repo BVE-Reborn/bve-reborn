@@ -44,8 +44,8 @@ void main() {
         y_coord = (pitch / TAU) * 1.5 - 0.5;
     }
 
-    vec4 texture_srgb = vec4(texture(usampler2D(skybox, skybox_sampler), vec2(x_coord, 1 - y_coord))) / 255;
-    vec3 texture = pow(texture_srgb.rgb, vec3(2.2));
+    vec4 background_srgb = vec4(texture(usampler2D(skybox, skybox_sampler), vec2(x_coord, 1 - y_coord))) / 255;
+    vec3 background = pow(background_srgb.rgb, vec3(2.2));
 
-    outColor = vec4(texture, 1.0);
+    outColor = vec4(background, 1.0);
 }
