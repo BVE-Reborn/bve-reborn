@@ -63,14 +63,14 @@ impl Frustum {
             a: matrix.m41 - matrix.m21,
             b: matrix.m42 - matrix.m22,
             c: matrix.m43 - matrix.m23,
-            d: matrix.m44 - matrix.m23,
+            d: matrix.m44 - matrix.m24,
         };
 
         let bottom = Plane {
             a: matrix.m41 + matrix.m21,
             b: matrix.m42 + matrix.m22,
             c: matrix.m43 + matrix.m23,
-            d: matrix.m44 + matrix.m23,
+            d: matrix.m44 + matrix.m24,
         };
 
         let near = Plane {
