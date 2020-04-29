@@ -1,4 +1,4 @@
-//! This entire module only exists because of [https://www.gamedevs.org/uploads/fast-extraction-viewing-frustum-planes-from-world-view-projection-matrix.pdf]
+//! This entire module only exists because of <https://www.gamedevs.org/uploads/fast-extraction-viewing-frustum-planes-from-world-view-projection-matrix.pdf/>
 //! and contains basically zero original work
 
 use nalgebra_glm::{Mat4, Vec3};
@@ -18,12 +18,8 @@ pub struct Plane {
 }
 
 impl Plane {
-    pub const fn new(a: f32, b: f32, c: f32, d: f32) -> Self {
-        Self { a, b, c, d }
-    }
-
     pub fn normalize(mut self) -> Self {
-        let mag = (self.a * self.a + self.b * self.b + self.c * self.c).sqrt();
+        let mag = f32::mul_add(self.a, self.a, f32::mul_add(self.b, self.b, self.c * self.c)).sqrt();
 
         self.a /= mag;
         self.b /= mag;
@@ -34,7 +30,11 @@ impl Plane {
     }
 
     pub fn distance(&self, point: Vec3) -> f32 {
-        self.a * point.x + self.b * point.y + self.c * point.z + self.d
+        f32::mul_add(
+            self.a,
+            point.x,
+            f32::mul_add(self.b, point.y, f32::mul_add(self.c, point.z, self.d)),
+        )
     }
 }
 

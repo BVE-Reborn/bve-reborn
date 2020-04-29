@@ -1,5 +1,5 @@
 use crate::*;
-use nalgebra_glm::{length, zero};
+use nalgebra_glm::zero;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MeshHandle(pub(crate) u64);
