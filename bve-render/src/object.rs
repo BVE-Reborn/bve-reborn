@@ -15,22 +15,6 @@ pub struct Object {
 }
 
 pub fn perspective_matrix(fovy: f32, aspect: f32) -> Mat4 {
-    // let range = (fovy / 2.0).tan() * z_near;
-    //
-    // let left = -range * aspect;
-    // let right = range * aspect;
-    // let bottom = -range;
-    // let top = range;
-    //
-    // let mut result: Mat4 = zero();
-    //
-    // result.m11 = (2.0 * z_near) / (right - left);
-    // result.m22 = (2.0 * z_near) / (top - bottom);
-    // result.m33 = 1.0;
-    // result.m34 = 1.0;
-    // result.m43 = -2.0 * z_near;
-
-    // result
     perspective_lh_zo(aspect, fovy, 0.1, 10000.0)
 }
 
