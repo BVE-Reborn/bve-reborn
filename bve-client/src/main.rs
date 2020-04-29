@@ -62,6 +62,7 @@ use bve_render::{MSAASetting, MeshHandle, OITNodeCount, ObjectHandle, Renderer, 
 use cgmath::{ElementWise, InnerSpace, Vector3};
 use image::RgbaImage;
 use itertools::Itertools;
+use nalgebra_glm::Vec3;
 use num_traits::Zero;
 use serde::Deserialize;
 use std::{
@@ -95,13 +96,13 @@ impl runtime::Client for Client {
     type MeshHandle = MeshHandle;
     type TextureHandle = TextureHandle;
 
-    fn add_object(&mut self, location: Vector3<f32>, mesh: &Self::MeshHandle) -> Self::ObjectHandle {
+    fn add_object(&mut self, location: Vec3, mesh: &Self::MeshHandle) -> Self::ObjectHandle {
         self.renderer.add_object(location, mesh)
     }
 
     fn add_object_texture(
         &mut self,
-        location: Vector3<f32>,
+        location: Vec3,
         mesh: &Self::MeshHandle,
         texture: &Self::TextureHandle,
     ) -> Self::ObjectHandle {
@@ -128,11 +129,11 @@ impl runtime::Client for Client {
         self.renderer.remove_texture(texture)
     }
 
-    fn set_camera_location(&mut self, location: Vector3<f32>) {
+    fn set_camera_location(&mut self, location: Vec3) {
         self.renderer.set_camera_location(location);
     }
 
-    fn set_object_location(&mut self, object: &Self::ObjectHandle, location: Vector3<f32>) {
+    fn set_object_location(&mut self, object: &Self::ObjectHandle, location: Vec3) {
         self.renderer.set_location(object, location);
     }
 }
@@ -148,7 +149,14 @@ struct Object {
 }
 
 #[derive(Deserialize)]
+struct Background {
+    path: std::path::PathBuf,
+    repeats: f32,
+}
+
+#[derive(Deserialize)]
 struct Loading {
+    background: Background,
     objects: Vec<Object>,
 }
 
@@ -202,6 +210,16 @@ fn client_main() {
                     .await
             }
         }
+
+        let image_contents = async_std::fs::read(&loading.background.path)
+            .await
+            .expect("Could not load background image");
+        let rgba = image::load_from_memory(&image_contents)
+            .expect("Could not load background image")
+            .into_rgba();
+        let mut client = client.lock().await;
+        let handle = client.renderer.add_texture(&rgba);
+        client.renderer.set_skybox_image(&handle, loading.background.repeats);
     });
 
     let mut mouse_pitch = 0.0_f32;
@@ -348,8 +366,8 @@ fn client_main() {
             if !grabber.get_grabbed() {
                 return;
             }
-            mouse_yaw += (-delta_x / 1000.0) as f32;
-            mouse_pitch += (-delta_y / 1000.0) as f32;
+            mouse_yaw += (delta_x / 1000.0) as f32;
+            mouse_pitch += (delta_y / 1000.0) as f32;
             if mouse_yaw < 0.0 {
                 mouse_yaw += TAU;
             } else if mouse_yaw >= TAU {

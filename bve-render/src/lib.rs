@@ -53,15 +53,15 @@
 #![allow(clippy::wildcard_enum_match_arm)]
 #![allow(clippy::wildcard_imports)]
 
-use crate::render::Uniforms;
 pub use crate::{
     mesh::MeshHandle, object::ObjectHandle, oit::OITNodeCount, render::MSAASetting, texture::TextureHandle,
 };
+use crate::{object::perspective_matrix, render::Uniforms};
 use bve::load::mesh::Vertex as MeshVertex;
-use cgmath::{Matrix4, Vector2, Vector3};
 use image::RgbaImage;
 use indexmap::map::IndexMap;
 use itertools::Itertools;
+use nalgebra_glm::{make_vec2, make_vec3, Mat4, Vec3};
 use num_traits::{ToPrimitive, Zero};
 use std::{mem::size_of, sync::Arc};
 use wgpu::*;
@@ -86,15 +86,10 @@ mod mesh;
 mod object;
 mod oit;
 mod render;
+mod screenspace;
 mod shader;
+mod skybox;
 mod texture;
-
-pub const OPENGL_TO_WGPU_MATRIX: Matrix4<f32> = Matrix4::new(
-    1.0, 0.0, 0.0, 0.0, //
-    0.0, 1.0, 0.0, 0.0, //
-    0.0, 0.0, -0.5, 0.5, //
-    0.0, 0.0, 0.5, 1.0,
-);
 
 pub struct Renderer {
     objects: IndexMap<u64, object::Object>,
@@ -111,6 +106,8 @@ pub struct Renderer {
     oit_node_count: oit::OITNodeCount,
     samples: render::MSAASetting,
 
+    projection_matrix: Mat4,
+
     surface: Surface,
     device: Device,
     queue: Queue,
@@ -125,9 +122,12 @@ pub struct Renderer {
     vert_shader: Arc<ShaderModule>,
     frag_shader: Arc<ShaderModule>,
 
+    screenspace_triangle_verts: Buffer,
+
     transparency_processor: compute::CutoutTransparencyCompute,
     mip_creator: compute::MipmapCompute,
     oit_renderer: oit::Oit,
+    skybox_renderer: skybox::Skybox,
 
     command_buffers: Vec<CommandBuffer>,
     _renderdoc_capture: bool,
@@ -211,9 +211,17 @@ impl Renderer {
             &vs_module,
             &texture_bind_group_layout,
             &framebuffer,
-            Vector2::new(screen_size.width, screen_size.height),
+            make_vec2(&[screen_size.width, screen_size.height]),
             oit_node_count,
             samples,
+        );
+        let skybox_renderer = skybox::Skybox::new(&device, &texture_bind_group_layout, samples);
+
+        let screenspace_triangle_verts = screenspace::create_screen_space_verts(&device);
+
+        let projection_matrix = perspective_matrix(
+            45_f32.to_radians(),
+            screen_size.width as f32 / screen_size.height as f32,
         );
 
         // Create the Renderer object early so we can can call methods on it.
@@ -228,13 +236,14 @@ impl Renderer {
             texture_handle_count: 0,
 
             camera: camera::Camera {
-                location: Vector3::new(-6.0, 0.0, 0.0),
+                location: make_vec3(&[-6.0, 0.0, 0.0]),
                 pitch: 0.0,
                 yaw: 0.0,
             },
             resolution: screen_size,
             samples,
             oit_node_count,
+            projection_matrix,
 
             surface,
             device,
@@ -250,9 +259,12 @@ impl Renderer {
             vert_shader: vs_module,
             frag_shader: fs_module,
 
+            screenspace_triangle_verts,
+
             transparency_processor,
             mip_creator,
             oit_renderer,
+            skybox_renderer,
 
             command_buffers: vec![oit_command_buffer],
             _renderdoc_capture: false,
@@ -264,7 +276,7 @@ impl Renderer {
         renderer
     }
 
-    pub fn set_location(&mut self, object::ObjectHandle(handle): &object::ObjectHandle, location: Vector3<f32>) {
+    pub fn set_location(&mut self, object::ObjectHandle(handle): &object::ObjectHandle, location: Vec3) {
         let object: &mut object::Object = &mut self.objects[handle];
 
         object.location = location;
@@ -279,9 +291,14 @@ impl Renderer {
 
         self.oit_renderer.resize(
             &self.device,
-            Vector2::new(screen_size.width, screen_size.height),
+            make_vec2(&[screen_size.width, screen_size.height]),
             &self.framebuffer,
             self.samples,
+        );
+
+        self.projection_matrix = perspective_matrix(
+            45_f32.to_radians(),
+            screen_size.width as f32 / screen_size.height as f32,
         );
     }
 
@@ -301,10 +318,11 @@ impl Renderer {
             &self.device,
             &self.vert_shader,
             &self.framebuffer,
-            Vector2::new(self.resolution.width, self.resolution.height),
+            make_vec2(&[self.resolution.width, self.resolution.height]),
             self.oit_node_count,
             samples,
         );
+        self.skybox_renderer.set_samples(&self.device, samples);
     }
 
     pub fn set_oit_node_count(&mut self, oit_node_count: oit::OITNodeCount) {
@@ -320,12 +338,19 @@ impl Renderer {
                 rd.start_frame_capture(std::ptr::null(), std::ptr::null());
             }
         }
+
+        let mut encoder = self
+            .device
+            .create_command_encoder(&CommandEncoderDescriptor { label: Some("primary") });
+
+        // Update skybox
+        self.skybox_renderer
+            .update(&self.device, &mut encoder, &self.camera, &self.projection_matrix);
+
+        // Update objects and uniforms
         self.compute_object_distances();
         let object_references = Self::sort_objects(&self.objects);
-        let (uniform_command_buffer_opt, matrix_buffer_opt) = self.recompute_uniforms(&object_references).await;
-        if let Some(uniform_command_buffer) = uniform_command_buffer_opt {
-            self.command_buffers.push(uniform_command_buffer);
-        }
+        let matrix_buffer_opt = self.recompute_uniforms(&mut encoder, &object_references).await;
 
         // Retry getting a swapchain texture a couple times to smooth over spurious timeouts when tons of state changes
         let mut frame_res = self.swapchain.get_next_texture();
@@ -337,10 +362,6 @@ impl Renderer {
         }
 
         let frame = frame_res.expect("Could not get next swapchain texture");
-
-        let mut encoder = self
-            .device
-            .create_command_encoder(&CommandEncoderDescriptor { label: Some("primary") });
 
         {
             self.oit_renderer.clear_buffers(&mut encoder);
@@ -363,7 +384,7 @@ impl Renderer {
                     depth_store_op: StoreOp::Store,
                     stencil_load_op: LoadOp::Clear,
                     stencil_store_op: StoreOp::Store,
-                    clear_depth: 0.0,
+                    clear_depth: 1.0,
                     clear_stencil: 0,
                 }),
             });
@@ -400,6 +421,12 @@ impl Renderer {
                     }
                 }
             }
+
+            self.skybox_renderer.render_skybox(
+                &mut rpass,
+                &self.textures[&self.skybox_renderer.texture_id].bind_group,
+                &self.screenspace_triangle_verts,
+            );
         }
         {
             let mut rpass = encoder.begin_render_pass(&RenderPassDescriptor {
@@ -412,7 +439,8 @@ impl Renderer {
                 }],
                 depth_stencil_attachment: None,
             });
-            self.oit_renderer.render_transparent(&mut rpass);
+            self.oit_renderer
+                .render_transparent(&mut rpass, &self.screenspace_triangle_verts);
         }
 
         self.command_buffers.push(encoder.finish());

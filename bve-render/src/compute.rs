@@ -1,5 +1,5 @@
 use crate::*;
-use cgmath::Vector2;
+use nalgebra_glm::UVec2;
 use std::mem::size_of;
 use zerocopy::AsBytes;
 
@@ -59,7 +59,7 @@ fn create_texture_compute_pipeline(
     (pipeline, bind_group_layout)
 }
 
-fn create_uniform_buffer(device: &Device, encoder: &mut CommandEncoder, max_size: Vector2<u32>) -> Buffer {
+fn create_uniform_buffer(device: &Device, encoder: &mut CommandEncoder, max_size: UVec2) -> Buffer {
     let uniforms = Uniforms {
         _max_size: *max_size.as_ref(),
     };
@@ -120,7 +120,7 @@ impl MipmapCompute {
         }
     }
 
-    pub fn compute_mipmaps(&self, device: &Device, texture: &Texture, dimensions: Vector2<u32>) -> Vec<CommandBuffer> {
+    pub fn compute_mipmaps(&self, device: &Device, texture: &Texture, dimensions: UVec2) -> Vec<CommandBuffer> {
         let mut buffers = Vec::new();
 
         for (level, dimensions) in render::enumerate_mip_levels(dimensions) {
@@ -185,7 +185,7 @@ impl CutoutTransparencyCompute {
         device: &Device,
         texture: &Texture,
         texture_dst: &Texture,
-        dimensions: Vector2<u32>,
+        dimensions: UVec2,
     ) -> CommandBuffer {
         let view = TextureViewDescriptor {
             dimension: TextureViewDimension::D2,

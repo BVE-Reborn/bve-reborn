@@ -51,7 +51,7 @@
 use crate::shaders::{ShaderCombination, ShaderType, SingleDefine};
 use itertools::Itertools;
 use std::{
-    fs::{create_dir_all, metadata, read_to_string, remove_dir_all, File},
+    fs::{create_dir_all, metadata, read_to_string, remove_dir_all},
     path::Path,
     process::{exit, Command},
 };
@@ -201,14 +201,13 @@ fn mangle_shader_name(combination: &ShaderCombination<'_>) -> String {
 }
 
 fn build_shaders() {
-    if Path::new("bve-render/shaders/spirv/.timestamp").exists()
-        && out_of_date("bve-render/shaders/compile", "bve-render/shaders/spirv/.timestamp")
+    if Path::new("bve-render/shaders/spirv").exists()
+        && out_of_date("bve-render/shaders/compile", "bve-render/shaders/spirv/")
     {
         remove_dir_all("bve-render/shaders/spirv").expect("Could not remove directory");
         println!("Removing out of date spirv directory")
     }
     create_dir_all("bve-render/shaders/spirv").expect("Could not create spirv directory");
-    File::create("bve-render/shaders/spirv/.timestamp").expect("Could not create timestamp");
     for combination in
         shaders::parse_shader_compile_file(&read_to_string("bve-render/shaders/compile").unwrap()).unwrap()
     {

@@ -18,6 +18,7 @@ use futures::{
 };
 use hecs::World;
 use log::{debug, trace};
+use nalgebra_glm::make_vec3;
 use std::sync::atomic::{AtomicI32, Ordering};
 
 macro_rules! async_clone_own {
@@ -174,7 +175,11 @@ impl<C: Client> Runtime<C> {
                 let location = Location::from_address_position(chunk.address, chunk_offset);
                 let render_location = location.to_relative_position(base_chunk);
 
-                let object_handle = client.add_object_texture(render_location, &mesh_handle, &texture_handle);
+                let object_handle = client.add_object_texture(
+                    make_vec3(&[render_location.x, render_location.y, render_location.z]),
+                    &mesh_handle,
+                    &texture_handle,
+                );
                 object_textures.push(RenderableObject {
                     object: object_handle,
                     location,
@@ -248,7 +253,7 @@ impl<C: Client> Runtime<C> {
         runtime_location.location = location;
         drop(runtime_location);
         let mut client = self.client.lock().await;
-        client.set_camera_location(*location.offset);
+        client.set_camera_location(make_vec3(&[location.offset.x, location.offset.y, location.offset.z]));
     }
 
     async fn update_camera_position(self: Arc<Self>, base_location: Location) {
@@ -259,7 +264,10 @@ impl<C: Client> Runtime<C> {
             let renderable: &RenderableComponent<C> = renderable;
             for object in &renderable.subobjects {
                 let render_location = object.location.to_relative_position(base_location.chunk);
-                client.set_object_location(&object.object, render_location);
+                client.set_object_location(
+                    &object.object,
+                    make_vec3(&[render_location.x, render_location.y, render_location.z]),
+                );
             }
         }
     }

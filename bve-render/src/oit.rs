@@ -1,4 +1,5 @@
-use crate::*;
+use crate::{screenspace::ScreenSpaceVertex, *};
+use nalgebra_glm::UVec2;
 use zerocopy::AsBytes;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -56,7 +57,7 @@ fn create_pipeline_pass1(
         }),
         primitive_topology: PrimitiveTopology::TriangleList,
         color_states: &[ColorStateDescriptor {
-            format: TextureFormat::Bgra8Unorm,
+            format: TextureFormat::Rgba32Float,
             color_blend: BlendDescriptor::REPLACE,
             alpha_blend: BlendDescriptor::REPLACE,
             write_mask: ColorWrite::empty(),
@@ -64,7 +65,7 @@ fn create_pipeline_pass1(
         depth_stencil_state: Some(DepthStencilStateDescriptor {
             format: TextureFormat::Depth32Float,
             depth_write_enabled: false,
-            depth_compare: CompareFunction::GreaterEqual,
+            depth_compare: CompareFunction::LessEqual,
             stencil_front: StencilStateFaceDescriptor::IGNORE,
             stencil_back: StencilStateFaceDescriptor::IGNORE,
             stencil_read_mask: 0,
@@ -153,7 +154,7 @@ fn create_uniform_buffer(
     node_buffer: &Buffer,
     framebuffer: &TextureView,
     framebuffer_sampler: &Sampler,
-    resolution: Vector2<u32>,
+    resolution: UVec2,
     samples: MSAASetting,
 ) -> (Buffer, BindGroup, BindGroup) {
     let max_nodes = node_count(resolution);
@@ -213,7 +214,7 @@ fn create_oit_buffers(
     framebuffer_bind_group_layout: &BindGroupLayout,
     framebuffer: &TextureView,
     framebuffer_sampler: &Sampler,
-    resolution: Vector2<u32>,
+    resolution: UVec2,
     samples: MSAASetting,
 ) -> (TextureView, Buffer, Buffer, BindGroup, BindGroup) {
     let head_pointer_source_buffer = device.create_buffer_with_data(
@@ -317,11 +318,11 @@ fn create_pass2_pipeline_layout(
 
 const SIZE_OF_NODE: usize = 28;
 
-const fn node_count(resolution: Vector2<u32>) -> u32 {
+fn node_count(resolution: UVec2) -> u32 {
     resolution.x * resolution.y * 5
 }
 
-const fn size_of_node_buffer(resolution: Vector2<u32>) -> BufferAddress {
+fn size_of_node_buffer(resolution: UVec2) -> BufferAddress {
     (node_count(resolution) as usize * SIZE_OF_NODE + 4) as BufferAddress
 }
 
@@ -330,21 +331,6 @@ fn create_node_buffer_header() -> Vec<u8> {
     vec.extend_from_slice(0_u32.as_bytes());
 
     vec
-}
-
-#[derive(AsBytes)]
-#[repr(C)]
-struct ScreenSpaceVertex {
-    _vertices: [f32; 2],
-}
-
-const fn vert(arg: [f32; 2]) -> ScreenSpaceVertex {
-    ScreenSpaceVertex { _vertices: arg }
-}
-
-fn create_screen_space_verts(device: &Device) -> Buffer {
-    let data = vec![vert([-3.0, -3.0]), vert([3.0, -3.0]), vert([0.0, 3.0])];
-    device.create_buffer_with_data(data.as_bytes(), BufferUsage::VERTEX)
 }
 
 pub struct Oit {
@@ -365,9 +351,7 @@ pub struct Oit {
 
     framebuffer_sampler: Sampler,
 
-    screen_space_verts: Buffer,
-
-    resolution: Vector2<u32>,
+    resolution: UVec2,
 
     pass1_pipeline: RenderPipeline,
     pass2_pipeline: RenderPipeline,
@@ -379,7 +363,7 @@ impl Oit {
         vert: &ShaderModule,
         opaque_bind_group_layout: &BindGroupLayout,
         framebuffer: &TextureView,
-        resolution: Vector2<u32>,
+        resolution: UVec2,
         oit_node_count: OITNodeCount,
         samples: MSAASetting,
     ) -> (Self, CommandBuffer) {
@@ -452,8 +436,6 @@ impl Oit {
                 samples,
             );
 
-        let screen_space_verts = create_screen_space_verts(device);
-
         (
             Self {
                 oit_bind_group_layout,
@@ -467,7 +449,6 @@ impl Oit {
                 node_source_buffer,
                 node_buffer,
                 framebuffer_sampler,
-                screen_space_verts,
                 resolution,
                 pass1_pipeline,
                 pass2_pipeline,
@@ -479,7 +460,7 @@ impl Oit {
     pub fn resize(
         &mut self,
         device: &Device,
-        resolution: Vector2<u32>,
+        resolution: UVec2,
         framebuffer: &TextureView,
         samples: MSAASetting,
     ) -> CommandBuffer {
@@ -514,7 +495,7 @@ impl Oit {
         device: &Device,
         vert: &ShaderModule,
         framebuffer: &TextureView,
-        resolution: Vector2<u32>,
+        resolution: UVec2,
         oit_node_count: OITNodeCount,
         samples: MSAASetting,
     ) {
@@ -553,11 +534,11 @@ impl Oit {
         rpass.set_bind_group(1, &self.oit_bind_group, &[]);
     }
 
-    pub fn render_transparent<'a>(&'a self, rpass: &mut RenderPass<'a>) {
+    pub fn render_transparent<'a>(&'a self, rpass: &mut RenderPass<'a>, screenspace_verts: &'a Buffer) {
         rpass.set_pipeline(&self.pass2_pipeline);
         rpass.set_bind_group(0, &self.oit_bind_group, &[]);
         rpass.set_bind_group(1, &self.framebuffer_bind_group, &[]);
-        rpass.set_vertex_buffer(0, &self.screen_space_verts, 0, 0);
+        rpass.set_vertex_buffer(0, screenspace_verts, 0, 0);
         rpass.draw(0..3, 0..1);
     }
 }

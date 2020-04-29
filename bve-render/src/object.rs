@@ -1,5 +1,5 @@
 use crate::*;
-use cgmath::{Rad, SquareMatrix};
+use nalgebra_glm::{perspective_lh_zo, translation, Mat4, Vec3};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ObjectHandle(pub(crate) u64);
@@ -8,45 +8,29 @@ pub struct Object {
     pub mesh: u64,
     pub texture: u64,
 
-    pub location: Vector3<f32>,
+    pub location: Vec3,
     pub camera_distance: f32,
 
     pub transparent: bool,
 }
 
-pub fn perspective_matrix(fovy: impl Into<Rad<f32>>, aspect: f32, z_near: f32) -> Matrix4<f32> {
-    let range = (fovy.into().0 / 2.0).tan() * z_near;
-
-    let left = -range * aspect;
-    let right = range * aspect;
-    let bottom = -range;
-    let top = range;
-
-    let mut result = Matrix4::from_value(0.0);
-
-    result.x.x = (2.0 * z_near) / (right - left);
-    result.y.y = (2.0 * z_near) / (top - bottom);
-    result.z.z = -1.0;
-    result.z.w = -1.0;
-    result.w.z = -2.0 * z_near;
-
-    result
+pub fn perspective_matrix(fovy: f32, aspect: f32) -> Mat4 {
+    perspective_lh_zo(aspect, fovy, 0.1, 10000.0)
 }
 
-pub fn generate_matrix(mx_view: &Matrix4<f32>, location: Vector3<f32>, aspect_ratio: f32) -> Matrix4<f32> {
-    let mx_projection = perspective_matrix(cgmath::Deg(45_f32), aspect_ratio, 0.1);
-    let mx_model = Matrix4::from_translation(location);
-    OPENGL_TO_WGPU_MATRIX * mx_projection * mx_view * mx_model
+pub fn generate_matrix(mx_proj: &Mat4, mx_view: &Mat4, location: Vec3) -> Mat4 {
+    let mx_model = translation(&location);
+    mx_proj * mx_view * mx_model
 }
 
 impl Renderer {
-    pub fn add_object(&mut self, location: Vector3<f32>, mesh_handle: &mesh::MeshHandle) -> ObjectHandle {
+    pub fn add_object(&mut self, location: Vec3, mesh_handle: &mesh::MeshHandle) -> ObjectHandle {
         self.add_object_texture(location, mesh_handle, &texture::TextureHandle::default())
     }
 
     pub fn add_object_texture(
         &mut self,
-        location: Vector3<f32>,
+        location: Vec3,
         mesh::MeshHandle(mesh_idx): &mesh::MeshHandle,
         texture::TextureHandle(tex_idx): &texture::TextureHandle,
     ) -> ObjectHandle {
