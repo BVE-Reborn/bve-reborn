@@ -11,6 +11,7 @@ pub struct Mesh {
     pub index_count: u32,
 
     pub mesh_center_offset: Vec3,
+    pub mesh_bounding_sphere_radius: f32,
     pub transparent: bool,
 }
 
@@ -72,6 +73,12 @@ pub fn find_mesh_center(mesh: &[render::Vertex]) -> Vec3 {
     (max + min) / 2.0
 }
 
+pub fn find_mesh_bounding_sphere_radius(mesh_center: Vec3, mesh: &[render::Vertex]) -> f32 {
+    mesh.iter().fold(0.0, |distance, vert| {
+        distance.max((make_vec3(&vert.pos) - mesh_center).magnitude())
+    })
+}
+
 impl Renderer {
     pub fn add_mesh(&mut self, mesh_verts: Vec<MeshVertex>, indices: &[impl ToPrimitive]) -> MeshHandle {
         let transparent = is_mesh_transparent(&mesh_verts);
@@ -89,6 +96,7 @@ impl Renderer {
             .create_buffer_with_data(indices.as_bytes(), BufferUsage::INDEX);
 
         let mesh_center_offset = find_mesh_center(&vertices);
+        let mesh_bounding_sphere_radius = find_mesh_bounding_sphere_radius(mesh_center_offset, &vertices);
 
         let handle = self.mesh_handle_count;
         self.mesh_handle_count += 1;
@@ -97,6 +105,7 @@ impl Renderer {
             index_buffer,
             index_count: indices.len() as u32,
             mesh_center_offset,
+            mesh_bounding_sphere_radius,
             transparent,
         });
 

@@ -188,18 +188,34 @@ pub fn create_swapchain(device: &Device, surface: &Surface, screen_size: Physica
 
 impl Renderer {
     #[must_use]
-    pub fn sort_objects(objects: &IndexMap<u64, object::Object>) -> Vec<&object::Object> {
+    pub fn frustum_culling<'a>(
+        &self,
+        mx_view_proj: Mat4,
+        mut objects: Vec<&'a object::Object>,
+    ) -> Vec<&'a object::Object> {
+        let frustum = frustum::Frustum::from_matrix(mx_view_proj);
+        objects.retain(|object| {
+            let mesh: &mesh::Mesh = &self.mesh[&object.mesh];
+            let object_center = object.location + mesh.mesh_center_offset;
+            let sphere = frustum::Sphere {
+                location: object_center,
+                radius: mesh.mesh_bounding_sphere_radius,
+            };
+            frustum.contains_sphere(sphere)
+        });
+        objects
+    }
+
+    #[must_use]
+    pub fn sort_objects(mut objects: Vec<&object::Object>) -> Vec<&object::Object> {
         // we faff around with references as it's faster
 
         // Sort so groups are together
-        let grouped = objects
-            .values()
-            .sorted_by_key(|o| (o.transparent, o.mesh, o.texture))
-            .collect_vec();
+        objects.sort_by_key(|o| (o.transparent, o.mesh, o.texture));
 
         // Split into the groups
         let mut vector_of_groups = Vec::new();
-        for ((transparent, ..), group) in &grouped.into_iter().group_by(|o| (o.transparent, o.mesh, o.texture)) {
+        for ((transparent, ..), group) in &objects.into_iter().group_by(|o| (o.transparent, o.mesh, o.texture)) {
             let mut vec: Vec<&object::Object> = group.collect_vec();
             // Find average of the group's distance
             let average: f32 = vec.iter().map(|v| v.camera_distance).sum::<f32>() / vec.len() as f32;

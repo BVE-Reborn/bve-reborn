@@ -82,6 +82,7 @@ macro_rules! renderdoc {
 
 mod camera;
 mod compute;
+mod frustum;
 mod mesh;
 mod object;
 mod oit;
@@ -349,7 +350,10 @@ impl Renderer {
 
         // Update objects and uniforms
         self.compute_object_distances();
-        let object_references = Self::sort_objects(&self.objects);
+        let object_references = self.objects.values().collect_vec();
+        let object_references =
+            self.frustum_culling(self.projection_matrix * self.camera.compute_matrix(), object_references);
+        let object_references = Self::sort_objects(object_references);
         let matrix_buffer_opt = self.recompute_uniforms(&mut encoder, &object_references).await;
 
         // Retry getting a swapchain texture a couple times to smooth over spurious timeouts when tons of state changes
