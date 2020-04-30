@@ -50,6 +50,12 @@ impl Renderer {
         ObjectHandle(handle)
     }
 
+    pub fn set_location(&mut self, object::ObjectHandle(handle): &object::ObjectHandle, location: Vec3) {
+        let object: &mut object::Object = &mut self.objects[handle];
+
+        object.location = location;
+    }
+
     pub fn remove_object(&mut self, ObjectHandle(obj_idx): &ObjectHandle) {
         let _object = self.objects.remove(obj_idx).expect("Invalid object handle");
         // Object goes out of scope

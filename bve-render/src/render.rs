@@ -47,6 +47,12 @@ impl MSAASetting {
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum Vsync {
+    Enabled,
+    Disabled,
+}
+
 pub fn mip_levels(size: UVec2) -> u32 {
     let float_size = size.map(|f| f as f32);
     let shortest = float_size.x.min(float_size.y);
@@ -176,13 +182,17 @@ pub fn create_framebuffer(device: &Device, size: PhysicalSize<u32>, samples: MSA
     tex.create_default_view()
 }
 
-pub const fn create_swapchain_descriptor(screen_size: PhysicalSize<u32>) -> SwapChainDescriptor {
+pub const fn create_swapchain_descriptor(screen_size: PhysicalSize<u32>, vsync: Vsync) -> SwapChainDescriptor {
     SwapChainDescriptor {
         usage: TextureUsage::OUTPUT_ATTACHMENT,
         format: TextureFormat::Bgra8Unorm,
         width: screen_size.width,
         height: screen_size.height,
-        present_mode: PresentMode::Mailbox,
+        present_mode: if vsync == Vsync::Enabled {
+            PresentMode::Fifo
+        } else {
+            PresentMode::Mailbox
+        },
     }
 }
 

@@ -54,7 +54,11 @@
 #![allow(clippy::wildcard_imports)]
 
 pub use crate::{
-    mesh::MeshHandle, object::ObjectHandle, oit::OITNodeCount, render::MSAASetting, statistics::RendererStatistics,
+    mesh::MeshHandle,
+    object::ObjectHandle,
+    oit::OITNodeCount,
+    render::{MSAASetting, Vsync},
+    statistics::RendererStatistics,
     texture::TextureHandle,
 };
 use crate::{object::perspective_matrix, render::Uniforms};
@@ -118,6 +122,7 @@ pub struct Renderer {
     resolution: PhysicalSize<u32>,
     oit_node_count: oit::OITNodeCount,
     samples: render::MSAASetting,
+    vsync: render::Vsync,
 
     projection_matrix: Mat4,
 
@@ -153,6 +158,7 @@ impl Renderer {
         imgui_context: &mut imgui::Context,
         oit_node_count: OITNodeCount,
         samples: render::MSAASetting,
+        vsync: render::Vsync,
     ) -> Self {
         let screen_size = window.inner_size();
 
@@ -177,7 +183,7 @@ impl Renderer {
             })
             .await;
 
-        let swapchain_desc = render::create_swapchain_descriptor(screen_size);
+        let swapchain_desc = render::create_swapchain_descriptor(screen_size, vsync);
         let swapchain = device.create_swap_chain(&surface, &swapchain_desc);
 
         let vs_module = shader!(&device; opaque - vert);
@@ -265,6 +271,7 @@ impl Renderer {
             samples,
             oit_node_count,
             projection_matrix,
+            vsync,
 
             surface,
             device,
@@ -298,20 +305,15 @@ impl Renderer {
         renderer
     }
 
-    pub fn set_location(&mut self, object::ObjectHandle(handle): &object::ObjectHandle, location: Vec3) {
-        let object: &mut object::Object = &mut self.objects[handle];
-
-        object.location = location;
-    }
-
     pub fn resize(&mut self, screen_size: PhysicalSize<u32>) {
         self.framebuffer = render::create_framebuffer(&self.device, screen_size, self.samples);
         self.depth_buffer = render::create_depth_buffer(&self.device, screen_size, self.samples);
         self.resolution = screen_size;
 
-        self.swapchain = self
-            .device
-            .create_swap_chain(&self.surface, &render::create_swapchain_descriptor(screen_size));
+        self.swapchain = self.device.create_swap_chain(
+            &self.surface,
+            &render::create_swapchain_descriptor(screen_size, self.vsync),
+        );
 
         self.oit_renderer.resize(
             &self.device,
@@ -353,6 +355,13 @@ impl Renderer {
         self.oit_renderer
             .set_node_count(&self.device, oit_node_count, self.samples);
         self.oit_node_count = oit_node_count;
+    }
+
+    pub fn set_vsync(&mut self, vsync: Vsync) {
+        self.swapchain = self.device.create_swap_chain(
+            &self.surface,
+            &render::create_swapchain_descriptor(self.resolution, vsync),
+        )
     }
 
     pub async fn render(&mut self, imgui_frame_opt: Option<imgui::Ui<'_>>) -> statistics::RendererStatistics {
@@ -412,7 +421,7 @@ impl Renderer {
                 color_attachments: &[RenderPassColorAttachmentDescriptor {
                     attachment: &self.framebuffer,
                     resolve_target: None,
-                    load_op: LoadOp::Load,
+                    load_op: LoadOp::Clear,
                     store_op: StoreOp::Store,
                     clear_color: Color {
                         r: 0.3,
