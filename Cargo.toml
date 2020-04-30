@@ -5,6 +5,9 @@ members = ["bve*"]
 
 [patch.crates-io]
 cgmath = { git = "https://github.com/rustgd/cgmath.git", rev = "50a345b7c439c492a9c658dbb432f6cbd70a0557" }
+imgui = { git = "https://github.com/jaynus/imgui-rs", rev = "fd3caf3e5b1141e8af3725f8c6898524c14426b0" }
+imgui-wgpu = { git = "https://github.com/BVE-Reborn/imgui-wgpu-rs.git", rev = "bbaa701361680f22dededc2f21b467db47f4f968" }
+imgui-winit-support = { git = "https://github.com/jaynus/imgui-rs.git", rev = "fd3caf3e5b1141e8af3725f8c6898524c14426b0" }
 obj = { git = "https://github.com/kvark/obj.git", rev = "a1df2284ea11112aba5ee38b39b208344b634d7d" }
 winit = { git = "https://github.com/Osspial/winit.git", rev = "78a62ec5473e9cd5472c18f859103b0b0cb88362" }
 
@@ -22,6 +25,7 @@ opt-level = 1
 opt-level = 3
 
 [profile.release]
+incremental = true
 overflow-checks = true
 debug-assertions = true
 debug = true
