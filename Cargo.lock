@@ -332,6 +332,7 @@ dependencies = [
  "bve",
  "dashmap",
  "image",
+ "imgui",
  "imgui-wgpu",
  "include_dir",
  "indexmap",

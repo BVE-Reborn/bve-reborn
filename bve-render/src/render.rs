@@ -176,14 +176,14 @@ pub fn create_framebuffer(device: &Device, size: PhysicalSize<u32>, samples: MSA
     tex.create_default_view()
 }
 
-pub fn create_swapchain(device: &Device, surface: &Surface, screen_size: PhysicalSize<u32>) -> SwapChain {
-    device.create_swap_chain(surface, &SwapChainDescriptor {
+pub const fn create_swapchain_descriptor(screen_size: PhysicalSize<u32>) -> SwapChainDescriptor {
+    SwapChainDescriptor {
         usage: TextureUsage::OUTPUT_ATTACHMENT,
         format: TextureFormat::Bgra8Unorm,
         width: screen_size.width,
         height: screen_size.height,
         present_mode: PresentMode::Mailbox,
-    })
+    }
 }
 
 impl Renderer {

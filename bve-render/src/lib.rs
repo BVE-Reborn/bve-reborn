@@ -129,13 +129,19 @@ pub struct Renderer {
     mip_creator: compute::MipmapCompute,
     oit_renderer: oit::Oit,
     skybox_renderer: skybox::Skybox,
+    imgui_renderer: imgui_wgpu::Renderer,
 
     command_buffers: Vec<CommandBuffer>,
     _renderdoc_capture: bool,
 }
 
 impl Renderer {
-    pub async fn new(window: &Window, oit_node_count: OITNodeCount, samples: render::MSAASetting) -> Self {
+    pub async fn new(
+        window: &Window,
+        imgui_context: &mut imgui::Context,
+        oit_node_count: OITNodeCount,
+        samples: render::MSAASetting,
+    ) -> Self {
         let screen_size = window.inner_size();
 
         let surface = Surface::create(window);
@@ -150,7 +156,7 @@ impl Renderer {
         .await
         .expect("Could not create Adapter");
 
-        let (device, queue) = adapter
+        let (device, mut queue) = adapter
             .request_device(&DeviceDescriptor {
                 extensions: Extensions {
                     anisotropic_filtering: true,
@@ -159,7 +165,8 @@ impl Renderer {
             })
             .await;
 
-        let swapchain = render::create_swapchain(&device, &surface, screen_size);
+        let swapchain_desc = render::create_swapchain_descriptor(screen_size);
+        let swapchain = device.create_swap_chain(&surface, &swapchain_desc);
 
         let vs_module = shader!(&device; opaque - vert);
 
@@ -217,6 +224,7 @@ impl Renderer {
             samples,
         );
         let skybox_renderer = skybox::Skybox::new(&device, &texture_bind_group_layout, samples);
+        let imgui_renderer = imgui_wgpu::Renderer::new(imgui_context, &device, &mut queue, swapchain_desc.format, None);
 
         let screenspace_triangle_verts = screenspace::create_screen_space_verts(&device);
 
@@ -266,6 +274,7 @@ impl Renderer {
             mip_creator,
             oit_renderer,
             skybox_renderer,
+            imgui_renderer,
 
             command_buffers: vec![oit_command_buffer],
             _renderdoc_capture: false,
@@ -288,7 +297,9 @@ impl Renderer {
         self.depth_buffer = render::create_depth_buffer(&self.device, screen_size, self.samples);
         self.resolution = screen_size;
 
-        self.swapchain = render::create_swapchain(&self.device, &self.surface, screen_size);
+        self.swapchain = self
+            .device
+            .create_swap_chain(&self.surface, &render::create_swapchain_descriptor(screen_size));
 
         self.oit_renderer.resize(
             &self.device,
@@ -332,7 +343,7 @@ impl Renderer {
         self.oit_node_count = oit_node_count;
     }
 
-    pub async fn render(&mut self) {
+    pub async fn render(&mut self, imgui_frame_opt: Option<imgui::Ui<'_>>) {
         renderdoc! {
             let mut rd = renderdoc::RenderDoc::<renderdoc::V140>::new().expect("Could not initialize renderdoc");
             if self._renderdoc_capture {
@@ -373,7 +384,7 @@ impl Renderer {
                 color_attachments: &[RenderPassColorAttachmentDescriptor {
                     attachment: &self.framebuffer,
                     resolve_target: None,
-                    load_op: LoadOp::Clear,
+                    load_op: LoadOp::Load,
                     store_op: StoreOp::Store,
                     clear_color: Color {
                         r: 0.3,
@@ -437,7 +448,7 @@ impl Renderer {
                 color_attachments: &[RenderPassColorAttachmentDescriptor {
                     attachment: &frame.view,
                     resolve_target: None,
-                    load_op: LoadOp::Clear,
+                    load_op: LoadOp::Load,
                     store_op: StoreOp::Store,
                     clear_color: Color::BLACK,
                 }],
@@ -445,6 +456,12 @@ impl Renderer {
             });
             self.oit_renderer
                 .render_transparent(&mut rpass, &self.screenspace_triangle_verts);
+        }
+
+        if let Some(imgui_frame) = imgui_frame_opt {
+            self.imgui_renderer
+                .render(imgui_frame.render(), &self.device, &mut encoder, &frame.view)
+                .expect("Imgui rendering failed");
         }
 
         self.command_buffers.push(encoder.finish());
