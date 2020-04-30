@@ -58,9 +58,12 @@ use async_std::{
     task::block_on,
 };
 use bve::{load::mesh::Vertex, runtime, runtime::Location};
-use bve_render::{MSAASetting, MeshHandle, OITNodeCount, ObjectHandle, Renderer, TextureHandle};
+use bve_render::{
+    MSAASetting, MeshHandle, OITNodeCount, ObjectHandle, Renderer, RendererStatistics, TextureHandle, Vsync,
+};
 use cgmath::{ElementWise, InnerSpace, Vector3};
 use image::RgbaImage;
+use imgui::{im_str, FontSource};
 use itertools::Itertools;
 use nalgebra_glm::Vec3;
 use num_traits::Zero;
@@ -74,6 +77,7 @@ use std::{
 use winit::{
     event::{DeviceEvent, ElementState, Event, KeyboardInput, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
+    platform::desktop::EventLoopExtDesktop,
     window::{Window, WindowBuilder},
 };
 
@@ -84,9 +88,15 @@ struct Client {
 }
 
 impl Client {
-    async fn new(window: &Window, oit_node_count: OITNodeCount, samples: MSAASetting) -> Arc<Mutex<Self>> {
+    async fn new(
+        window: &Window,
+        imgui_context: &mut imgui::Context,
+        oit_node_count: OITNodeCount,
+        samples: MSAASetting,
+        vsync: Vsync,
+    ) -> Arc<Mutex<Self>> {
         Arc::new(Mutex::new(Self {
-            renderer: Renderer::new(window, oit_node_count, samples).await,
+            renderer: Renderer::new(window, imgui_context, oit_node_count, samples, vsync).await,
         }))
     }
 }
@@ -161,7 +171,7 @@ struct Loading {
 }
 
 fn client_main() {
-    let event_loop = EventLoop::new();
+    let mut event_loop = EventLoop::new();
 
     env_logger::init();
 
@@ -174,12 +184,27 @@ fn client_main() {
     let mut window_size = window.inner_size();
     let mut grabber = grabber::Grabber::new(&window, true);
 
+    // Setup imgui
+    let mut imgui = imgui::Context::create();
+    let mut platform = imgui_winit_support::WinitPlatform::init(&mut imgui);
+    platform.attach_window(imgui.io_mut(), &window, imgui_winit_support::HiDpiMode::Default);
+    imgui.set_ini_filename(None);
+    imgui.fonts().add_font(&[FontSource::DefaultFontData {
+        config: Some(imgui::FontConfig {
+            oversample_h: 1,
+            pixel_snap_h: true,
+            size_pixels: 13.0,
+            ..imgui::FontConfig::default()
+        }),
+    }]);
+
     let (mut forward, mut left, mut back, mut right, mut up, mut down, mut shift) =
         (false, false, false, false, false, false, false);
 
     let mut sample_count = MSAASetting::X1;
     let mut oit_node_count = OITNodeCount::Four;
-    let client = block_on(async { Client::new(&window, oit_node_count, sample_count).await });
+    let mut vsync = Vsync::Enabled;
+    let client = block_on(async { Client::new(&window, &mut imgui, oit_node_count, sample_count, vsync).await });
     let runtime = runtime::Runtime::new(Arc::clone(&client));
 
     let mut camera_location = Vector3::new(-7.0, 3.0, 0.0);
@@ -229,213 +254,304 @@ fn client_main() {
     let mut frame_times = Vec::with_capacity(3000);
     let mut last_frame_instant = Instant::now();
     let mut last_printed_instant = Instant::now();
+    let (
+        mut low,
+        mut percentile_1th,
+        mut percentile_5th,
+        mut percentile_50th,
+        mut percentile_95th,
+        mut percentile_99th,
+        mut high,
+        mut fps,
+    ) = (0.0_f32, 0.0_f32, 0.0_f32, 0.0_f32, 0.0_f32, 0.0_f32, 0.0_f32, 0.0_f32);
 
-    event_loop.run(move |event, _, control_flow| match event {
-        Event::MainEventsCleared => {
-            let last_frame_time = frame_times
-                .iter()
-                .map(Duration::clone)
-                .next()
-                .unwrap_or_else(|| Duration::from_secs(0));
+    let mut renderer_stats = RendererStatistics::default();
+    let mut last_renderer_stats_instant = Instant::now();
+    let mut last_cursor = None;
 
-            grabber.tick(&window, window_size);
+    event_loop.run_return(move |event, _, control_flow| {
+        match event {
+            Event::MainEventsCleared => {
+                let last_frame_time = frame_times
+                    .iter()
+                    .map(Duration::clone)
+                    .next()
+                    .unwrap_or_else(|| Duration::from_secs(0));
 
-            let speed = if shift { 20.0 } else { 2.0 };
+                grabber.tick(&window, window_size);
 
-            let raw_dir_vec: Vector3<f32> = Vector3::new(
-                if left {
-                    -1.0
-                } else if right {
-                    1.0
+                let speed = if shift { 20.0 } else { 2.0 };
+
+                let raw_dir_vec: Vector3<f32> = Vector3::new(
+                    if left {
+                        -1.0
+                    } else if right {
+                        1.0
+                    } else {
+                        0.0
+                    },
+                    if up {
+                        1.0
+                    } else if down {
+                        -1.0
+                    } else {
+                        0.0
+                    },
+                    if forward {
+                        1.0
+                    } else if back {
+                        -1.0
+                    } else {
+                        0.0
+                    },
+                );
+                let dir_vec = if raw_dir_vec.is_zero() {
+                    Vector3::zero()
                 } else {
-                    0.0
-                },
-                if up {
-                    1.0
-                } else if down {
-                    -1.0
-                } else {
-                    0.0
-                },
-                if forward {
-                    1.0
-                } else if back {
-                    -1.0
-                } else {
-                    0.0
-                },
-            );
-            let dir_vec = if raw_dir_vec.is_zero() {
-                Vector3::zero()
-            } else {
-                raw_dir_vec.normalize_to(speed)
-            } * last_frame_time.as_secs_f32();
+                    raw_dir_vec.normalize_to(speed)
+                } * last_frame_time.as_secs_f32();
 
-            camera_location = camera_location.add_element_wise(dir_vec);
+                camera_location = camera_location.add_element_wise(dir_vec);
 
-            block_on(async {
-                runtime
-                    .set_location(Location::from_absolute_position(camera_location))
-                    .await;
-            });
+                block_on(async {
+                    runtime
+                        .set_location(Location::from_absolute_position(camera_location))
+                        .await;
+                });
 
-            block_on(async {
-                runtime.tick().await;
-            });
-            window.request_redraw();
-        }
-        Event::WindowEvent {
-            event: WindowEvent::Resized(size),
-            ..
-        } => {
-            window_size = size;
-            block_on(async { client.lock().await.renderer.resize(size) });
-        }
-        Event::WindowEvent {
-            event:
-                WindowEvent::KeyboardInput {
-                    input: KeyboardInput { scancode, state, .. },
-                    ..
-                },
-            ..
-        } => {
-            println!("scancode: 0x{:x}", scancode);
-            *match scancode {
-                Scancodes::W => &mut forward,
-                Scancodes::A => &mut left,
-                Scancodes::S => &mut back,
-                Scancodes::D => &mut right,
-                Scancodes::Q => &mut up,
-                Scancodes::Z => &mut down,
-                Scancodes::SHIFT => &mut shift,
-                _ => {
-                    match scancode {
-                        Scancodes::ESCAPE => *control_flow = ControlFlow::Exit,
-                        Scancodes::LALT => {
-                            if state == ElementState::Pressed {
-                                grabber.grab(&window, !grabber.get_grabbed());
+                block_on(async {
+                    runtime.tick().await;
+                });
+                window.request_redraw();
+            }
+            Event::WindowEvent {
+                event: WindowEvent::Resized(size),
+                ..
+            } => {
+                window_size = size;
+                block_on(async { client.lock().await.renderer.resize(size) });
+            }
+            Event::WindowEvent {
+                event:
+                    WindowEvent::KeyboardInput {
+                        input: KeyboardInput { scancode, state, .. },
+                        ..
+                    },
+                ..
+            } => {
+                println!("scancode: 0x{:x}", scancode);
+                *match scancode {
+                    Scancodes::W => &mut forward,
+                    Scancodes::A => &mut left,
+                    Scancodes::S => &mut back,
+                    Scancodes::D => &mut right,
+                    Scancodes::Q => &mut up,
+                    Scancodes::Z => &mut down,
+                    Scancodes::SHIFT => &mut shift,
+                    _ => {
+                        match scancode {
+                            Scancodes::ESCAPE => *control_flow = ControlFlow::Exit,
+                            Scancodes::LALT => {
+                                if state == ElementState::Pressed {
+                                    grabber.grab(&window, !grabber.get_grabbed());
+                                }
                             }
+                            _ => {}
                         }
-                        Scancodes::COMMA => {
-                            if state == ElementState::Pressed {
-                                sample_count = sample_count.decrement();
-                                println!("MSAA: x{}", sample_count as u32);
-                                block_on(async { client.lock().await.renderer.set_samples(sample_count) });
-                            }
-                        }
-                        Scancodes::PERIOD => {
-                            if state == ElementState::Pressed {
-                                sample_count = sample_count.increment();
-                                println!("MSAA: x{}", sample_count as u32);
-                                block_on(async { client.lock().await.renderer.set_samples(sample_count) });
-                            }
-                        }
-                        Scancodes::SEMICOLON => {
-                            if state == ElementState::Pressed {
-                                oit_node_count = oit_node_count.decrement();
-                                println!("Node Count: {}", oit_node_count as u32);
-                                block_on(async { client.lock().await.renderer.set_oit_node_count(oit_node_count) });
-                            }
-                        }
-                        // period
-                        Scancodes::QUOTE => {
-                            if state == ElementState::Pressed {
-                                oit_node_count = oit_node_count.increment();
-                                println!("Node Count: {}", oit_node_count as u32);
-                                block_on(async { client.lock().await.renderer.set_oit_node_count(oit_node_count) });
-                            }
-                        }
-                        _ => {}
+                        return;
                     }
+                } = match state {
+                    ElementState::Pressed => true,
+                    ElementState::Released => false,
+                };
+            }
+            Event::DeviceEvent {
+                event:
+                    DeviceEvent::MouseMotion {
+                        delta: (delta_x, delta_y),
+                        ..
+                    },
+                ..
+            } => {
+                use std::f32::consts::TAU;
+                if !grabber.get_grabbed() {
                     return;
                 }
-            } = match state {
-                ElementState::Pressed => true,
-                ElementState::Released => false,
-            };
-        }
-        Event::DeviceEvent {
-            event:
-                DeviceEvent::MouseMotion {
-                    delta: (delta_x, delta_y),
-                    ..
-                },
-            ..
-        } => {
-            use std::f32::consts::TAU;
-            if !grabber.get_grabbed() {
-                return;
-            }
-            mouse_yaw += (delta_x / 1000.0) as f32;
-            mouse_pitch += (delta_y / 1000.0) as f32;
-            if mouse_yaw < 0.0 {
-                mouse_yaw += TAU;
-            } else if mouse_yaw >= TAU {
-                mouse_yaw -= TAU;
-            }
-            mouse_pitch = mouse_pitch.clamp(
-                -std::f32::consts::FRAC_PI_2 + 0.0001,
-                std::f32::consts::FRAC_PI_2 - 0.0001,
-            );
-
-            block_on(async {
-                client
-                    .lock()
-                    .await
-                    .renderer
-                    .set_camera_orientation(mouse_pitch, mouse_yaw)
-            });
-        }
-        Event::RedrawRequested(_) => {
-            let now = Instant::now();
-            let duration = now - last_frame_instant;
-            frame_times.push(duration);
-
-            if now - last_printed_instant >= Duration::from_secs(1) {
-                let sorted = frame_times.drain(0..).sorted().collect_vec();
-
-                let low = *sorted.first().expect("Could not get first value");
-                let percentile_1th = sorted[sorted.len() / 100];
-                let percentile_5th = sorted[sorted.len() * 5 / 100];
-                let percentile_50th = sorted[sorted.len() * 50 / 100];
-                let percentile_95th = sorted[sorted.len() * 95 / 100];
-                let percentile_99th = sorted[sorted.len() * 99 / 100];
-                let high = *sorted.last().expect("Could not get last value");
-
-                let sum: Duration = sorted.iter().sum();
-                let average = sum / (sorted.len() as u32);
-                let fps = 1.0 / average.as_secs_f32();
-
-                let p = |d: Duration| d.as_secs_f32() * 1000.0;
-
-                println!(
-                    "Frame {} ({:.1} fps): ({:.2}, {:.2}, {:.2}, {:.2}, {:.2}, {:.2}, {:.2})",
-                    frame_count,
-                    fps,
-                    p(low),
-                    p(percentile_1th),
-                    p(percentile_5th),
-                    p(percentile_50th),
-                    p(percentile_95th),
-                    p(percentile_99th),
-                    p(high)
+                mouse_yaw += (delta_x / 1000.0) as f32;
+                mouse_pitch += (delta_y / 1000.0) as f32;
+                if mouse_yaw < 0.0 {
+                    mouse_yaw += TAU;
+                } else if mouse_yaw >= TAU {
+                    mouse_yaw -= TAU;
+                }
+                mouse_pitch = mouse_pitch.clamp(
+                    -std::f32::consts::FRAC_PI_2 + 0.0001,
+                    std::f32::consts::FRAC_PI_2 - 0.0001,
                 );
 
-                frame_times.clear();
-
-                last_printed_instant = now;
+                block_on(async {
+                    client
+                        .lock()
+                        .await
+                        .renderer
+                        .set_camera_orientation(mouse_pitch, mouse_yaw)
+                });
             }
-            frame_count += 1;
-            last_frame_instant = now;
+            Event::RedrawRequested(_) => {
+                let now = Instant::now();
+                let duration = now - last_frame_instant;
+                frame_times.push(duration);
 
-            block_on(async { client.lock().await.renderer.render().await });
+                if now - last_printed_instant >= Duration::from_secs(1) {
+                    let sorted = frame_times.drain(0..).sorted().collect_vec();
+
+                    low = (*sorted.first().expect("Could not get first value")).as_secs_f32() * 1000.0;
+                    percentile_1th = sorted[sorted.len() / 100].as_secs_f32() * 1000.0;
+                    percentile_5th = sorted[sorted.len() * 5 / 100].as_secs_f32() * 1000.0;
+                    percentile_50th = sorted[sorted.len() * 50 / 100].as_secs_f32() * 1000.0;
+                    percentile_95th = sorted[sorted.len() * 95 / 100].as_secs_f32() * 1000.0;
+                    percentile_99th = sorted[sorted.len() * 99 / 100].as_secs_f32() * 1000.0;
+                    high = (*sorted.last().expect("Could not get last value")).as_secs_f32() * 1000.0;
+
+                    let sum: Duration = sorted.iter().sum();
+                    let average = sum / (sorted.len() as u32);
+                    fps = 1.0 / average.as_secs_f32();
+
+                    frame_times.clear();
+
+                    last_printed_instant = now;
+                }
+                frame_count += 1;
+                last_frame_instant = now;
+
+                platform
+                    .prepare_frame(imgui.io_mut(), &window)
+                    .expect("Failed to prepare frame");
+
+                let frame = imgui.frame();
+
+                {
+                    let window = imgui::Window::new(im_str!("Renderer"));
+                    window
+                        .always_auto_resize(true)
+                        .position([25.0, 25.0], imgui::Condition::FirstUseEver)
+                        .build(&frame, || {
+                            frame.text(format!("Frame Rate: {:.0}fps", fps));
+                            frame.text(im_str!("Frame Times (last 1s):"));
+                            frame.text(format!("         Average: {:.1}ms", 1000.0 / fps));
+                            frame.text(format!("  0th percentile: {:.1}ms", low));
+                            frame.text(format!("  1st percentile: {:.1}ms", percentile_1th));
+                            frame.text(format!("  5th percentile: {:.1}ms", percentile_5th));
+                            frame.text(format!(" 50th percentile: {:.1}ms", percentile_50th));
+                            frame.text(format!(" 95th percentile: {:.1}ms", percentile_95th));
+                            frame.text(format!(" 99th percentile: {:.1}ms", percentile_99th));
+                            frame.text(format!("100th percentile: {:.1}ms", high));
+                            frame.separator();
+                            frame.text(im_str!("Resources:"));
+                            frame.text(format!("Objects: {}", renderer_stats.objects));
+                            frame.text(format!("Meshes: {}", renderer_stats.meshes));
+                            frame.text(format!("Textures: {}", renderer_stats.textures));
+                            frame.separator();
+                            frame.text(im_str!("Visible Objects:"));
+                            frame.text(format!("Opaque: {}", renderer_stats.visible_opaque_objects));
+                            frame.text(format!("Transparent: {}", renderer_stats.visible_transparent_objects));
+                            frame.text(format!("Total: {}", renderer_stats.total_visible_objects));
+                            frame.separator();
+                            frame.text(im_str!("Draws:"));
+                            frame.text(format!("Opaque: {}", renderer_stats.opaque_draws));
+                            frame.text(format!("Transparent: {}", renderer_stats.transparent_draws));
+                            frame.text(format!("Total: {}", renderer_stats.total_draws));
+                            frame.separator();
+                            frame.text(im_str!("Timings:"));
+                            frame.text(format!(
+                                "Skybox Update: {:.3}ms",
+                                renderer_stats.compute_skybox_update_time
+                            ));
+                            frame.text(format!(
+                                "Object Distances: {:.3}ms",
+                                renderer_stats.compute_object_distance_time
+                            ));
+                            frame.text(format!(
+                                "Collect Object Refs: {:.3}ms",
+                                renderer_stats.collect_object_refs_time
+                            ));
+                            frame.text(format!(
+                                "Frustum Culling: {:.3}ms",
+                                renderer_stats.compute_frustum_culling_time
+                            ));
+                            frame.text(format!(
+                                "Object Sorting: {:.3}ms",
+                                renderer_stats.compute_object_sorting_time
+                            ));
+                            frame.text(format!(
+                                "Update Matrices: {:.3}ms",
+                                renderer_stats.compute_uniforms_time
+                            ));
+                            frame.text(format!("Main Render: {:.3}ms", renderer_stats.render_main_cpu_time));
+                            frame.text(format!("imgui Render: {:.3}ms", renderer_stats.render_imgui_cpu_time));
+                            frame.text(format!("wgpu Render: {:.3}ms", renderer_stats.render_wgpu_cpu_time));
+                            frame.separator();
+                            frame.text(format!("Total: {:.3}ms", renderer_stats.total_renderer_tick_time));
+                            frame.separator();
+                            frame.text("Settings");
+                            let mut current_vsync = vsync.into_selection_boolean();
+                            let res = frame.checkbox(im_str!("Vsync"), &mut current_vsync);
+                            if res {
+                                vsync = Vsync::from_selection_boolean(current_vsync);
+                                block_on(async { client.lock().await.renderer.set_vsync(vsync) });
+                            }
+                            let mut current_msaa = sample_count.into_selection_integer();
+                            if imgui::ComboBox::new(im_str!("Antialiasing"))
+                                .flags(imgui::ComboBoxFlags::NO_PREVIEW)
+                                .build_simple_string(&frame, &mut current_msaa, &[
+                                    im_str!("MSAAx1"),
+                                    im_str!("MSAAx2"),
+                                    im_str!("MSAAx4"),
+                                    im_str!("MSAAx8"),
+                                ])
+                            {
+                                sample_count = MSAASetting::from_selection_integer(current_msaa);
+                                block_on(async { client.lock().await.renderer.set_samples(sample_count) });
+                            };
+
+                            let mut current_transparency = sample_count.into_selection_integer();
+                            if imgui::ComboBox::new(im_str!("Transparency Depth"))
+                                .flags(imgui::ComboBoxFlags::NO_PREVIEW)
+                                .build_simple_string(&frame, &mut current_transparency, &[
+                                    im_str!("4"),
+                                    im_str!("8"),
+                                    im_str!("16"),
+                                    im_str!("32"),
+                                ])
+                            {
+                                oit_node_count = OITNodeCount::from_selection_integer(current_transparency);
+                                block_on(async { client.lock().await.renderer.set_oit_node_count(oit_node_count) });
+                            };
+                        });
+                }
+
+                let current_cursor = frame.mouse_cursor();
+                if last_cursor != current_cursor && !grabber.get_grabbed() {
+                    last_cursor = current_cursor;
+                    platform.prepare_render(&frame, &window);
+                }
+
+                let tmp_renderer_stats = block_on(async { client.lock().await.renderer.render(Some(frame)).await });
+                if now - last_renderer_stats_instant >= Duration::from_millis(200) {
+                    last_renderer_stats_instant = now;
+                    renderer_stats = tmp_renderer_stats;
+                }
+            }
+            Event::WindowEvent {
+                event: WindowEvent::CloseRequested,
+                ..
+            } => *control_flow = ControlFlow::Exit,
+            _ => {}
+        };
+        if !grabber.get_grabbed() {
+            platform.handle_event(imgui.io_mut(), &window, &event)
         }
-        Event::WindowEvent {
-            event: WindowEvent::CloseRequested,
-            ..
-        } => *control_flow = ControlFlow::Exit,
-        _ => {}
-    })
+    });
 }
 
 fn main() {

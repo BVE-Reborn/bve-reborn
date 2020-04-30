@@ -1,4 +1,5 @@
 use crate::*;
+use log::trace;
 use nalgebra_glm::UVec2;
 use std::{cmp::Ordering, mem::size_of};
 use winit::dpi::PhysicalSize;
@@ -29,6 +30,27 @@ pub enum MSAASetting {
 
 impl MSAASetting {
     #[must_use]
+    pub fn from_selection_integer(value: usize) -> Self {
+        match value {
+            0 => Self::X1,
+            1 => Self::X2,
+            2 => Self::X4,
+            3 => Self::X8,
+            _ => unreachable!(),
+        }
+    }
+
+    #[must_use]
+    pub fn into_selection_integer(self) -> usize {
+        match self {
+            Self::X1 => 0,
+            Self::X2 => 1,
+            Self::X4 => 2,
+            Self::X8 => 3,
+        }
+    }
+
+    #[must_use]
     pub fn increment(self) -> Self {
         match self {
             Self::X1 => Self::X2,
@@ -43,6 +65,30 @@ impl MSAASetting {
             Self::X8 => Self::X4,
             Self::X4 => Self::X2,
             _ => Self::X1,
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum Vsync {
+    Enabled,
+    Disabled,
+}
+
+impl Vsync {
+    #[must_use]
+    pub fn from_selection_boolean(value: bool) -> Self {
+        match value {
+            false => Self::Disabled,
+            true => Self::Enabled,
+        }
+    }
+
+    #[must_use]
+    pub fn into_selection_boolean(self) -> bool {
+        match self {
+            Self::Enabled => true,
+            Self::Disabled => false,
         }
     }
 }
@@ -176,14 +222,24 @@ pub fn create_framebuffer(device: &Device, size: PhysicalSize<u32>, samples: MSA
     tex.create_default_view()
 }
 
-pub fn create_swapchain(device: &Device, surface: &Surface, screen_size: PhysicalSize<u32>) -> SwapChain {
-    device.create_swap_chain(surface, &SwapChainDescriptor {
+pub fn create_swapchain_descriptor(screen_size: PhysicalSize<u32>, vsync: Vsync) -> SwapChainDescriptor {
+    trace!(
+        "Creating swapchain descriptor: {}x{}; Vsync: {:?}",
+        screen_size.width,
+        screen_size.height,
+        vsync
+    );
+    SwapChainDescriptor {
         usage: TextureUsage::OUTPUT_ATTACHMENT,
         format: TextureFormat::Bgra8Unorm,
         width: screen_size.width,
         height: screen_size.height,
-        present_mode: PresentMode::Mailbox,
-    })
+        present_mode: if vsync == Vsync::Enabled {
+            PresentMode::Fifo
+        } else {
+            PresentMode::Mailbox
+        },
+    }
 }
 
 impl Renderer {

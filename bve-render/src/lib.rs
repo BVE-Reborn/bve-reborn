@@ -54,16 +54,22 @@
 #![allow(clippy::wildcard_imports)]
 
 pub use crate::{
-    mesh::MeshHandle, object::ObjectHandle, oit::OITNodeCount, render::MSAASetting, texture::TextureHandle,
+    mesh::MeshHandle,
+    object::ObjectHandle,
+    oit::OITNodeCount,
+    render::{MSAASetting, Vsync},
+    statistics::RendererStatistics,
+    texture::TextureHandle,
 };
 use crate::{object::perspective_matrix, render::Uniforms};
 use bve::load::mesh::Vertex as MeshVertex;
 use image::RgbaImage;
 use indexmap::map::IndexMap;
 use itertools::Itertools;
+use log::error;
 use nalgebra_glm::{make_vec2, make_vec3, Mat4, Vec3};
 use num_traits::{ToPrimitive, Zero};
-use std::{mem::size_of, sync::Arc};
+use std::{mem::size_of, sync::Arc, time::Instant};
 use wgpu::*;
 use winit::{dpi::PhysicalSize, window::Window};
 use zerocopy::{AsBytes, FromBytes};
@@ -90,7 +96,14 @@ mod render;
 mod screenspace;
 mod shader;
 mod skybox;
+mod statistics;
 mod texture;
+
+fn create_timestamp(duration: &mut f32, prev: Instant) -> Instant {
+    let now = Instant::now();
+    *duration = (now - prev).as_secs_f32() * 1000.0;
+    now
+}
 
 pub struct Renderer {
     objects: IndexMap<u64, object::Object>,
@@ -106,6 +119,7 @@ pub struct Renderer {
     resolution: PhysicalSize<u32>,
     oit_node_count: oit::OITNodeCount,
     samples: render::MSAASetting,
+    vsync: render::Vsync,
 
     projection_matrix: Mat4,
 
@@ -129,13 +143,20 @@ pub struct Renderer {
     mip_creator: compute::MipmapCompute,
     oit_renderer: oit::Oit,
     skybox_renderer: skybox::Skybox,
+    imgui_renderer: imgui_wgpu::Renderer,
 
     command_buffers: Vec<CommandBuffer>,
     _renderdoc_capture: bool,
 }
 
 impl Renderer {
-    pub async fn new(window: &Window, oit_node_count: OITNodeCount, samples: render::MSAASetting) -> Self {
+    pub async fn new(
+        window: &Window,
+        imgui_context: &mut imgui::Context,
+        oit_node_count: OITNodeCount,
+        samples: render::MSAASetting,
+        vsync: render::Vsync,
+    ) -> Self {
         let screen_size = window.inner_size();
 
         let surface = Surface::create(window);
@@ -150,7 +171,7 @@ impl Renderer {
         .await
         .expect("Could not create Adapter");
 
-        let (device, queue) = adapter
+        let (device, mut queue) = adapter
             .request_device(&DeviceDescriptor {
                 extensions: Extensions {
                     anisotropic_filtering: true,
@@ -159,7 +180,8 @@ impl Renderer {
             })
             .await;
 
-        let swapchain = render::create_swapchain(&device, &surface, screen_size);
+        let swapchain_desc = render::create_swapchain_descriptor(screen_size, vsync);
+        let swapchain = device.create_swap_chain(&surface, &swapchain_desc);
 
         let vs_module = shader!(&device; opaque - vert);
 
@@ -217,6 +239,7 @@ impl Renderer {
             samples,
         );
         let skybox_renderer = skybox::Skybox::new(&device, &texture_bind_group_layout, samples);
+        let imgui_renderer = imgui_wgpu::Renderer::new(imgui_context, &device, &mut queue, swapchain_desc.format, None);
 
         let screenspace_triangle_verts = screenspace::create_screen_space_verts(&device);
 
@@ -245,6 +268,7 @@ impl Renderer {
             samples,
             oit_node_count,
             projection_matrix,
+            vsync,
 
             surface,
             device,
@@ -266,6 +290,7 @@ impl Renderer {
             mip_creator,
             oit_renderer,
             skybox_renderer,
+            imgui_renderer,
 
             command_buffers: vec![oit_command_buffer],
             _renderdoc_capture: false,
@@ -277,18 +302,15 @@ impl Renderer {
         renderer
     }
 
-    pub fn set_location(&mut self, object::ObjectHandle(handle): &object::ObjectHandle, location: Vec3) {
-        let object: &mut object::Object = &mut self.objects[handle];
-
-        object.location = location;
-    }
-
     pub fn resize(&mut self, screen_size: PhysicalSize<u32>) {
         self.framebuffer = render::create_framebuffer(&self.device, screen_size, self.samples);
         self.depth_buffer = render::create_depth_buffer(&self.device, screen_size, self.samples);
         self.resolution = screen_size;
 
-        self.swapchain = render::create_swapchain(&self.device, &self.surface, screen_size);
+        self.swapchain = self.device.create_swap_chain(
+            &self.surface,
+            &render::create_swapchain_descriptor(screen_size, self.vsync),
+        );
 
         self.oit_renderer.resize(
             &self.device,
@@ -332,7 +354,15 @@ impl Renderer {
         self.oit_node_count = oit_node_count;
     }
 
-    pub async fn render(&mut self) {
+    pub fn set_vsync(&mut self, vsync: Vsync) {
+        self.swapchain = self.device.create_swap_chain(
+            &self.surface,
+            &render::create_swapchain_descriptor(self.resolution, vsync),
+        );
+        self.vsync = vsync;
+    }
+
+    pub async fn render(&mut self, imgui_frame_opt: Option<imgui::Ui<'_>>) -> statistics::RendererStatistics {
         renderdoc! {
             let mut rd = renderdoc::RenderDoc::<renderdoc::V140>::new().expect("Could not initialize renderdoc");
             if self._renderdoc_capture {
@@ -340,21 +370,37 @@ impl Renderer {
             }
         }
 
+        let mut stats = statistics::RendererStatistics::default();
+        stats.objects = self.objects.len();
+        stats.meshes = self.mesh.len();
+        stats.textures = self.textures.len();
+
         let mut encoder = self
             .device
             .create_command_encoder(&CommandEncoderDescriptor { label: Some("primary") });
 
+        let ts_start = Instant::now();
         // Update skybox
         self.skybox_renderer
             .update(&self.device, &mut encoder, &self.camera, &self.projection_matrix);
+        let ts_skybox = create_timestamp(&mut stats.compute_skybox_update_time, ts_start);
 
         // Update objects and uniforms
         self.compute_object_distances();
+        let ts_obj_distance = create_timestamp(&mut stats.compute_object_distance_time, ts_skybox);
+
         let object_references = self.objects.values().collect_vec();
+        let ts_collect = create_timestamp(&mut stats.collect_object_refs_time, ts_obj_distance);
+
         let object_references =
             self.frustum_culling(self.projection_matrix * self.camera.compute_matrix(), object_references);
+        let ts_frustum = create_timestamp(&mut stats.compute_frustum_culling_time, ts_collect);
+
         let object_references = Self::sort_objects(object_references);
+        let ts_sorting = create_timestamp(&mut stats.compute_object_sorting_time, ts_frustum);
+
         let matrix_buffer_opt = self.recompute_uniforms(&mut encoder, &object_references).await;
+        let ts_uniforms = create_timestamp(&mut stats.compute_uniforms_time, ts_sorting);
 
         // Retry getting a swapchain texture a couple times to smooth over spurious timeouts when tons of state changes
         let mut frame_res = self.swapchain.get_next_texture();
@@ -362,6 +408,7 @@ impl Renderer {
             if let Ok(..) = &frame_res {
                 break;
             }
+            error!("Dropping frame");
             frame_res = self.swapchain.get_next_texture();
         }
 
@@ -423,7 +470,19 @@ impl Renderer {
                     if current_matrix_offset & 255 != 0 {
                         current_matrix_offset += 256 - (current_matrix_offset & 255)
                     }
+
+                    // statistics
+                    if transparent {
+                        stats.visible_transparent_objects += count;
+                        stats.transparent_draws += 1;
+                    } else {
+                        stats.visible_opaque_objects += count;
+                        stats.opaque_draws += 1;
+                    }
                 }
+
+                stats.total_visible_objects = stats.visible_transparent_objects + stats.visible_opaque_objects;
+                stats.total_draws = stats.transparent_draws + stats.opaque_draws;
             }
 
             self.skybox_renderer.render_skybox(
@@ -437,7 +496,7 @@ impl Renderer {
                 color_attachments: &[RenderPassColorAttachmentDescriptor {
                     attachment: &frame.view,
                     resolve_target: None,
-                    load_op: LoadOp::Clear,
+                    load_op: LoadOp::Load,
                     store_op: StoreOp::Store,
                     clear_color: Color::BLACK,
                 }],
@@ -447,15 +506,32 @@ impl Renderer {
                 .render_transparent(&mut rpass, &self.screenspace_triangle_verts);
         }
 
+        let ts_main_render = create_timestamp(&mut stats.render_main_cpu_time, ts_uniforms);
+
+        if let Some(imgui_frame) = imgui_frame_opt {
+            self.imgui_renderer
+                .render(imgui_frame.render(), &self.device, &mut encoder, &frame.view)
+                .expect("Imgui rendering failed");
+        }
+
+        let ts_imgui_render = create_timestamp(&mut stats.render_imgui_cpu_time, ts_main_render);
+
         self.command_buffers.push(encoder.finish());
 
         self.queue.submit(&self.command_buffers);
         self.command_buffers.clear();
+
+        let _ts_wgpu_time = create_timestamp(&mut stats.render_wgpu_cpu_time, ts_imgui_render);
+
+        create_timestamp(&mut stats.total_renderer_tick_time, ts_start);
+
         renderdoc! {
             if self._renderdoc_capture {
                 rd.end_frame_capture(std::ptr::null(), std::ptr::null());
                 self._renderdoc_capture = false;
             }
         }
+
+        stats
     }
 }

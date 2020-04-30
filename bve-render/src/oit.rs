@@ -13,6 +13,27 @@ pub enum OITNodeCount {
 
 impl OITNodeCount {
     #[must_use]
+    pub fn from_selection_integer(value: usize) -> Self {
+        match value {
+            0 => Self::Four,
+            1 => Self::Eight,
+            2 => Self::Sixteen,
+            3 => Self::ThirtyTwo,
+            _ => unreachable!(),
+        }
+    }
+
+    #[must_use]
+    pub fn into_selection_integer(self) -> usize {
+        match self {
+            Self::Four => 0,
+            Self::Eight => 1,
+            Self::Sixteen => 2,
+            Self::ThirtyTwo => 3,
+        }
+    }
+
+    #[must_use]
     pub fn increment(self) -> Self {
         match self {
             Self::Four => Self::Eight,

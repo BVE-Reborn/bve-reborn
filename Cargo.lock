@@ -253,6 +253,8 @@ dependencies = [
  "cgmath",
  "env_logger",
  "image",
+ "imgui",
+ "imgui-winit-support",
  "itertools",
  "log",
  "nalgebra-glm",
@@ -330,9 +332,12 @@ dependencies = [
  "bve",
  "dashmap",
  "image",
+ "imgui",
+ "imgui-wgpu",
  "include_dir",
  "indexmap",
  "itertools",
+ "log",
  "nalgebra-glm",
  "num-traits",
  "once_cell",
@@ -1261,6 +1266,44 @@ dependencies = [
  "num-rational",
  "num-traits",
  "png",
+]
+
+[[package]]
+name = "imgui"
+version = "0.4.0-pre"
+source = "git+https://github.com/jaynus/imgui-rs?rev=fd3caf3e5b1141e8af3725f8c6898524c14426b0#fd3caf3e5b1141e8af3725f8c6898524c14426b0"
+dependencies = [
+ "bitflags",
+ "imgui-sys",
+ "lazy_static",
+ "parking_lot",
+]
+
+[[package]]
+name = "imgui-sys"
+version = "0.4.0-pre"
+source = "git+https://github.com/jaynus/imgui-rs?rev=fd3caf3e5b1141e8af3725f8c6898524c14426b0#fd3caf3e5b1141e8af3725f8c6898524c14426b0"
+dependencies = [
+ "cc",
+]
+
+[[package]]
+name = "imgui-wgpu"
+version = "0.6.0"
+source = "git+https://github.com/BVE-Reborn/imgui-wgpu-rs.git?rev=bbaa701361680f22dededc2f21b467db47f4f968#bbaa701361680f22dededc2f21b467db47f4f968"
+dependencies = [
+ "imgui",
+ "log",
+ "wgpu",
+]
+
+[[package]]
+name = "imgui-winit-support"
+version = "0.4.0-pre"
+source = "git+https://github.com/jaynus/imgui-rs?rev=fd3caf3e5b1141e8af3725f8c6898524c14426b0#fd3caf3e5b1141e8af3725f8c6898524c14426b0"
+dependencies = [
+ "imgui",
+ "winit",
 ]
 
 [[package]]
