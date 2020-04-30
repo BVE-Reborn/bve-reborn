@@ -337,6 +337,7 @@ dependencies = [
  "include_dir",
  "indexmap",
  "itertools",
+ "log",
  "nalgebra-glm",
  "num-traits",
  "once_cell",

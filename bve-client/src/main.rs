@@ -254,6 +254,16 @@ fn client_main() {
     let mut frame_times = Vec::with_capacity(3000);
     let mut last_frame_instant = Instant::now();
     let mut last_printed_instant = Instant::now();
+    let (
+        mut low,
+        mut percentile_1th,
+        mut percentile_5th,
+        mut percentile_50th,
+        mut percentile_95th,
+        mut percentile_99th,
+        mut high,
+        mut fps,
+    ) = (0.0_f32, 0.0_f32, 0.0_f32, 0.0_f32, 0.0_f32, 0.0_f32, 0.0_f32, 0.0_f32);
 
     let mut renderer_stats = RendererStatistics::default();
     let mut last_renderer_stats_instant = Instant::now();
@@ -424,32 +434,17 @@ fn client_main() {
                 if now - last_printed_instant >= Duration::from_secs(1) {
                     let sorted = frame_times.drain(0..).sorted().collect_vec();
 
-                    let low = *sorted.first().expect("Could not get first value");
-                    let percentile_1th = sorted[sorted.len() / 100];
-                    let percentile_5th = sorted[sorted.len() * 5 / 100];
-                    let percentile_50th = sorted[sorted.len() * 50 / 100];
-                    let percentile_95th = sorted[sorted.len() * 95 / 100];
-                    let percentile_99th = sorted[sorted.len() * 99 / 100];
-                    let high = *sorted.last().expect("Could not get last value");
+                    low = (*sorted.first().expect("Could not get first value")).as_secs_f32() * 1000.0;
+                    percentile_1th = sorted[sorted.len() / 100].as_secs_f32() * 1000.0;
+                    percentile_5th = sorted[sorted.len() * 5 / 100].as_secs_f32() * 1000.0;
+                    percentile_50th = sorted[sorted.len() * 50 / 100].as_secs_f32() * 1000.0;
+                    percentile_95th = sorted[sorted.len() * 95 / 100].as_secs_f32() * 1000.0;
+                    percentile_99th = sorted[sorted.len() * 99 / 100].as_secs_f32() * 1000.0;
+                    high = (*sorted.last().expect("Could not get last value")).as_secs_f32() * 1000.0;
 
                     let sum: Duration = sorted.iter().sum();
                     let average = sum / (sorted.len() as u32);
-                    let fps = 1.0 / average.as_secs_f32();
-
-                    let p = |d: Duration| d.as_secs_f32() * 1000.0;
-
-                    println!(
-                        "Frame {} ({:.1} fps): ({:.2}, {:.2}, {:.2}, {:.2}, {:.2}, {:.2}, {:.2})",
-                        frame_count,
-                        fps,
-                        p(low),
-                        p(percentile_1th),
-                        p(percentile_5th),
-                        p(percentile_50th),
-                        p(percentile_95th),
-                        p(percentile_99th),
-                        p(high)
-                    );
+                    fps = 1.0 / average.as_secs_f32();
 
                     frame_times.clear();
 
@@ -470,6 +465,17 @@ fn client_main() {
                         .always_auto_resize(true)
                         .position([25.0, 25.0], imgui::Condition::FirstUseEver)
                         .build(&frame, || {
+                            frame.text(format!("Frame Rate: {:.0}fps", fps));
+                            frame.text(im_str!("Frame Times (last 1s):"));
+                            frame.text(format!("         Average: {:.1}ms", 1000.0 / fps));
+                            frame.text(format!("  0th percentile: {:.1}ms", low));
+                            frame.text(format!("  1st percentile: {:.1}ms", percentile_1th));
+                            frame.text(format!("  5th percentile: {:.1}ms", percentile_5th));
+                            frame.text(format!(" 50th percentile: {:.1}ms", percentile_50th));
+                            frame.text(format!(" 95th percentile: {:.1}ms", percentile_95th));
+                            frame.text(format!(" 99th percentile: {:.1}ms", percentile_99th));
+                            frame.text(format!("100th percentile: {:.1}ms", high));
+                            frame.separator();
                             frame.text(im_str!("Resources:"));
                             frame.text(format!("Objects: {}", renderer_stats.objects));
                             frame.text(format!("Meshes: {}", renderer_stats.meshes));
@@ -518,7 +524,8 @@ fn client_main() {
                             frame.separator();
                             frame.text("Settings");
                             let mut current_vsync = vsync.into_selection_boolean();
-                            if frame.checkbox(im_str!("Vsync"), &mut current_vsync) {
+                            let res = frame.checkbox(im_str!("Vsync"), &mut current_vsync);
+                            if res {
                                 vsync = Vsync::from_selection_boolean(current_vsync);
                                 block_on(async { client.lock().await.renderer.set_vsync(vsync) });
                             }

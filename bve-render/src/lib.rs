@@ -66,6 +66,7 @@ use bve::load::mesh::Vertex as MeshVertex;
 use image::RgbaImage;
 use indexmap::map::IndexMap;
 use itertools::Itertools;
+use log::error;
 use nalgebra_glm::{make_vec2, make_vec3, Mat4, Vec3};
 use num_traits::{ToPrimitive, Zero};
 use std::{mem::size_of, sync::Arc, time::Instant};
@@ -357,7 +358,8 @@ impl Renderer {
         self.swapchain = self.device.create_swap_chain(
             &self.surface,
             &render::create_swapchain_descriptor(self.resolution, vsync),
-        )
+        );
+        self.vsync = vsync;
     }
 
     pub async fn render(&mut self, imgui_frame_opt: Option<imgui::Ui<'_>>) -> statistics::RendererStatistics {
@@ -406,6 +408,7 @@ impl Renderer {
             if let Ok(..) = &frame_res {
                 break;
             }
+            error!("Dropping frame");
             frame_res = self.swapchain.get_next_texture();
         }
 

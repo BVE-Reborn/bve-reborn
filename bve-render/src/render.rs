@@ -1,4 +1,5 @@
 use crate::*;
+use log::trace;
 use nalgebra_glm::UVec2;
 use std::{cmp::Ordering, mem::size_of};
 use winit::dpi::PhysicalSize;
@@ -222,6 +223,12 @@ pub fn create_framebuffer(device: &Device, size: PhysicalSize<u32>, samples: MSA
 }
 
 pub fn create_swapchain_descriptor(screen_size: PhysicalSize<u32>, vsync: Vsync) -> SwapChainDescriptor {
+    trace!(
+        "Creating swapchain descriptor: {}x{}; Vsync: {:?}",
+        screen_size.width,
+        screen_size.height,
+        vsync
+    );
     SwapChainDescriptor {
         usage: TextureUsage::OUTPUT_ATTACHMENT,
         format: TextureFormat::Bgra8Unorm,

@@ -19,25 +19,19 @@ opt-level = 0
 
 [profile.opt-dev]
 inherits = "dev"
-opt-level = 1
-
-[profile.dev.package."*"]
 opt-level = 3
-
-[profile.release]
 incremental = true
 overflow-checks = true
 debug-assertions = true
 debug = true
 
+[profile.release]
+debug = false
+debug-assertions = false
+lto = true
+
 [profile.profile]
 inherits = "release"
 debug = true
-debug-assertions = false
-lto = "thin"
-
-[profile.lto]
-inherits = "release"
-debug = false
 debug-assertions = false
 lto = true

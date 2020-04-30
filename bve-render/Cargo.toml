@@ -20,6 +20,7 @@ default = []
 async-std = "1.5.0"
 bve = { version = "0.0.1", path = "../bve" }
 dashmap = "3.11.1"
+log = "0.4.8"
 nalgebra-glm = "0.7.0"
 num-traits = "0.2.11"
 imgui = "0.4.0-pre"
