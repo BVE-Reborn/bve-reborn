@@ -75,6 +75,7 @@ use std::{
 use winit::{
     event::{DeviceEvent, ElementState, Event, KeyboardInput, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
+    platform::desktop::EventLoopExtDesktop,
     window::{Window, WindowBuilder},
 };
 
@@ -167,7 +168,7 @@ struct Loading {
 }
 
 fn client_main() {
-    let event_loop = EventLoop::new();
+    let mut event_loop = EventLoop::new();
 
     env_logger::init();
 
@@ -250,7 +251,7 @@ fn client_main() {
     let mut last_frame_instant = Instant::now();
     let mut last_printed_instant = Instant::now();
 
-    event_loop.run(move |event, _, control_flow| {
+    event_loop.run_return(move |event, _, control_flow| {
         match event {
             Event::MainEventsCleared => {
                 let last_frame_time = frame_times
@@ -479,7 +480,7 @@ fn client_main() {
             _ => {}
         };
         platform.handle_event(imgui.io_mut(), &window, &event)
-    })
+    });
 }
 
 fn main() {
