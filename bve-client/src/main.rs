@@ -356,35 +356,6 @@ fn client_main() {
                                     grabber.grab(&window, !grabber.get_grabbed());
                                 }
                             }
-                            Scancodes::COMMA => {
-                                if state == ElementState::Pressed {
-                                    sample_count = sample_count.decrement();
-                                    println!("MSAA: x{}", sample_count as u32);
-                                    block_on(async { client.lock().await.renderer.set_samples(sample_count) });
-                                }
-                            }
-                            Scancodes::PERIOD => {
-                                if state == ElementState::Pressed {
-                                    sample_count = sample_count.increment();
-                                    println!("MSAA: x{}", sample_count as u32);
-                                    block_on(async { client.lock().await.renderer.set_samples(sample_count) });
-                                }
-                            }
-                            Scancodes::SEMICOLON => {
-                                if state == ElementState::Pressed {
-                                    oit_node_count = oit_node_count.decrement();
-                                    println!("Node Count: {}", oit_node_count as u32);
-                                    block_on(async { client.lock().await.renderer.set_oit_node_count(oit_node_count) });
-                                }
-                            }
-                            // period
-                            Scancodes::QUOTE => {
-                                if state == ElementState::Pressed {
-                                    oit_node_count = oit_node_count.increment();
-                                    println!("Node Count: {}", oit_node_count as u32);
-                                    block_on(async { client.lock().await.renderer.set_oit_node_count(oit_node_count) });
-                                }
-                            }
                             _ => {}
                         }
                         return;

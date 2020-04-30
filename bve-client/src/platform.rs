@@ -1,4 +1,4 @@
-#[allow(non_snake_case)]
+#[allow(non_snake_case, unused)]
 #[cfg(not(target_os = "macos"))]
 pub mod Scancodes {
     pub const W: u32 = 0x11;
@@ -17,7 +17,7 @@ pub mod Scancodes {
 }
 
 // https://stackoverflow.com/a/16125341 reference
-#[allow(non_snake_case)]
+#[allow(non_snake_case, unused)]
 #[cfg(target_os = "macos")]
 pub mod Scancodes {
     pub const W: u32 = 0x0D;
