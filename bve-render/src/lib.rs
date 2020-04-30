@@ -54,7 +54,8 @@
 #![allow(clippy::wildcard_imports)]
 
 pub use crate::{
-    mesh::MeshHandle, object::ObjectHandle, oit::OITNodeCount, render::MSAASetting, texture::TextureHandle,
+    mesh::MeshHandle, object::ObjectHandle, oit::OITNodeCount, render::MSAASetting, statistics::RendererStatistics,
+    texture::TextureHandle,
 };
 use crate::{object::perspective_matrix, render::Uniforms};
 use bve::load::mesh::Vertex as MeshVertex;
@@ -63,7 +64,11 @@ use indexmap::map::IndexMap;
 use itertools::Itertools;
 use nalgebra_glm::{make_vec2, make_vec3, Mat4, Vec3};
 use num_traits::{ToPrimitive, Zero};
-use std::{mem::size_of, sync::Arc};
+use std::{
+    mem::size_of,
+    sync::Arc,
+    time::{Duration, Instant},
+};
 use wgpu::*;
 use winit::{dpi::PhysicalSize, window::Window};
 use zerocopy::{AsBytes, FromBytes};
@@ -90,7 +95,14 @@ mod render;
 mod screenspace;
 mod shader;
 mod skybox;
+mod statistics;
 mod texture;
+
+fn create_timestamp(duration: &mut Duration, prev: Instant) -> Instant {
+    let now = Instant::now();
+    *duration = now - prev;
+    now
+}
 
 pub struct Renderer {
     objects: IndexMap<u64, object::Object>,
@@ -343,7 +355,7 @@ impl Renderer {
         self.oit_node_count = oit_node_count;
     }
 
-    pub async fn render(&mut self, imgui_frame_opt: Option<imgui::Ui<'_>>) {
+    pub async fn render(&mut self, imgui_frame_opt: Option<imgui::Ui<'_>>) -> statistics::RendererStatistics {
         renderdoc! {
             let mut rd = renderdoc::RenderDoc::<renderdoc::V140>::new().expect("Could not initialize renderdoc");
             if self._renderdoc_capture {
@@ -351,21 +363,37 @@ impl Renderer {
             }
         }
 
+        let mut stats = statistics::RendererStatistics::default();
+        stats.objects = self.objects.len();
+        stats.meshes = self.mesh.len();
+        stats.textures = self.textures.len();
+
         let mut encoder = self
             .device
             .create_command_encoder(&CommandEncoderDescriptor { label: Some("primary") });
 
+        let ts_start = Instant::now();
         // Update skybox
         self.skybox_renderer
             .update(&self.device, &mut encoder, &self.camera, &self.projection_matrix);
+        let ts_skybox = create_timestamp(&mut stats.compute_skybox_update_time, ts_start.clone());
 
         // Update objects and uniforms
         self.compute_object_distances();
+        let ts_obj_distance = create_timestamp(&mut stats.compute_object_distance_time, ts_skybox);
+
         let object_references = self.objects.values().collect_vec();
+        let ts_collect = create_timestamp(&mut stats.collect_object_refs_time, ts_obj_distance);
+
         let object_references =
             self.frustum_culling(self.projection_matrix * self.camera.compute_matrix(), object_references);
+        let ts_frustum = create_timestamp(&mut stats.compute_frustum_culling_time, ts_collect);
+
         let object_references = Self::sort_objects(object_references);
+        let ts_sorting = create_timestamp(&mut stats.compute_object_sorting_time, ts_frustum);
+
         let matrix_buffer_opt = self.recompute_uniforms(&mut encoder, &object_references).await;
+        let ts_uniforms = create_timestamp(&mut stats.compute_uniforms_time, ts_sorting);
 
         // Retry getting a swapchain texture a couple times to smooth over spurious timeouts when tons of state changes
         let mut frame_res = self.swapchain.get_next_texture();
@@ -434,7 +462,19 @@ impl Renderer {
                     if current_matrix_offset & 255 != 0 {
                         current_matrix_offset += 256 - (current_matrix_offset & 255)
                     }
+
+                    // statistics
+                    if transparent {
+                        stats.visible_transparent_objects += count;
+                        stats.transparent_draws += 1;
+                    } else {
+                        stats.visible_opaque_objects += count;
+                        stats.opaque_draws += 1;
+                    }
                 }
+
+                stats.total_visible_objects = stats.visible_transparent_objects + stats.visible_opaque_objects;
+                stats.total_draws = stats.transparent_draws + stats.opaque_draws;
             }
 
             self.skybox_renderer.render_skybox(
@@ -458,21 +498,32 @@ impl Renderer {
                 .render_transparent(&mut rpass, &self.screenspace_triangle_verts);
         }
 
+        let ts_main_render = create_timestamp(&mut stats.render_main_cpu_time, ts_uniforms);
+
         if let Some(imgui_frame) = imgui_frame_opt {
             self.imgui_renderer
                 .render(imgui_frame.render(), &self.device, &mut encoder, &frame.view)
                 .expect("Imgui rendering failed");
         }
 
+        let ts_imgui_render = create_timestamp(&mut stats.render_imgui_cpu_time, ts_main_render);
+
         self.command_buffers.push(encoder.finish());
 
         self.queue.submit(&self.command_buffers);
         self.command_buffers.clear();
+
+        let _ts_wgpu_time = create_timestamp(&mut stats.render_wgpu_cpu_time, ts_imgui_render);
+
+        create_timestamp(&mut stats.total_renderer_tick_time, ts_start);
+
         renderdoc! {
             if self._renderdoc_capture {
                 rd.end_frame_capture(std::ptr::null(), std::ptr::null());
                 self._renderdoc_capture = false;
             }
         }
+
+        stats
     }
 }
