@@ -58,7 +58,9 @@ use async_std::{
     task::block_on,
 };
 use bve::{load::mesh::Vertex, runtime, runtime::Location};
-use bve_render::{MSAASetting, MeshHandle, OITNodeCount, ObjectHandle, Renderer, RendererStatistics, TextureHandle};
+use bve_render::{
+    MSAASetting, MeshHandle, OITNodeCount, ObjectHandle, Renderer, RendererStatistics, TextureHandle, Vsync,
+};
 use cgmath::{ElementWise, InnerSpace, Vector3};
 use image::RgbaImage;
 use imgui::{im_str, FontSource};
@@ -91,9 +93,10 @@ impl Client {
         imgui_context: &mut imgui::Context,
         oit_node_count: OITNodeCount,
         samples: MSAASetting,
+        vsync: Vsync,
     ) -> Arc<Mutex<Self>> {
         Arc::new(Mutex::new(Self {
-            renderer: Renderer::new(window, imgui_context, oit_node_count, samples).await,
+            renderer: Renderer::new(window, imgui_context, oit_node_count, samples, vsync).await,
         }))
     }
 }
@@ -200,7 +203,8 @@ fn client_main() {
 
     let mut sample_count = MSAASetting::X1;
     let mut oit_node_count = OITNodeCount::Four;
-    let client = block_on(async { Client::new(&window, &mut imgui, oit_node_count, sample_count).await });
+    let mut vsync = Vsync::Enabled;
+    let client = block_on(async { Client::new(&window, &mut imgui, oit_node_count, sample_count, vsync).await });
     let runtime = runtime::Runtime::new(Arc::clone(&client));
 
     let mut camera_location = Vector3::new(-7.0, 3.0, 0.0);
@@ -461,7 +465,7 @@ fn client_main() {
                 let frame = imgui.frame();
 
                 {
-                    let window = imgui::Window::new(im_str!("Renderer Statistics"));
+                    let window = imgui::Window::new(im_str!("Renderer"));
                     window
                         .always_auto_resize(true)
                         .position([25.0, 25.0], imgui::Condition::FirstUseEver)
@@ -511,6 +515,40 @@ fn client_main() {
                             frame.text(format!("wgpu Render: {:.3}ms", renderer_stats.render_wgpu_cpu_time));
                             frame.separator();
                             frame.text(format!("Total: {:.3}ms", renderer_stats.total_renderer_tick_time));
+                            frame.separator();
+                            frame.text("Settings");
+                            let mut current_vsync = vsync.into_selection_boolean();
+                            if frame.checkbox(im_str!("Vsync"), &mut current_vsync) {
+                                vsync = Vsync::from_selection_boolean(current_vsync);
+                                block_on(async { client.lock().await.renderer.set_vsync(vsync) });
+                            }
+                            let mut current_msaa = sample_count.into_selection_integer();
+                            if imgui::ComboBox::new(im_str!("Antialiasing"))
+                                .flags(imgui::ComboBoxFlags::NO_PREVIEW)
+                                .build_simple_string(&frame, &mut current_msaa, &[
+                                    im_str!("MSAAx1"),
+                                    im_str!("MSAAx2"),
+                                    im_str!("MSAAx4"),
+                                    im_str!("MSAAx8"),
+                                ])
+                            {
+                                sample_count = MSAASetting::from_selection_integer(current_msaa);
+                                block_on(async { client.lock().await.renderer.set_samples(sample_count) });
+                            };
+
+                            let mut current_transparency = sample_count.into_selection_integer();
+                            if imgui::ComboBox::new(im_str!("Transparency Depth"))
+                                .flags(imgui::ComboBoxFlags::NO_PREVIEW)
+                                .build_simple_string(&frame, &mut current_transparency, &[
+                                    im_str!("4"),
+                                    im_str!("8"),
+                                    im_str!("16"),
+                                    im_str!("32"),
+                                ])
+                            {
+                                oit_node_count = OITNodeCount::from_selection_integer(current_transparency);
+                                block_on(async { client.lock().await.renderer.set_oit_node_count(oit_node_count) });
+                            };
                         });
                 }
 

@@ -68,11 +68,7 @@ use indexmap::map::IndexMap;
 use itertools::Itertools;
 use nalgebra_glm::{make_vec2, make_vec3, Mat4, Vec3};
 use num_traits::{ToPrimitive, Zero};
-use std::{
-    mem::size_of,
-    sync::Arc,
-    time::{Duration, Instant},
-};
+use std::{mem::size_of, sync::Arc, time::Instant};
 use wgpu::*;
 use winit::{dpi::PhysicalSize, window::Window};
 use zerocopy::{AsBytes, FromBytes};
@@ -385,7 +381,7 @@ impl Renderer {
         // Update skybox
         self.skybox_renderer
             .update(&self.device, &mut encoder, &self.camera, &self.projection_matrix);
-        let ts_skybox = create_timestamp(&mut stats.compute_skybox_update_time, ts_start.clone());
+        let ts_skybox = create_timestamp(&mut stats.compute_skybox_update_time, ts_start);
 
         // Update objects and uniforms
         self.compute_object_distances();

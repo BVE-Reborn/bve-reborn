@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 #[derive(Debug, Default)]
 pub struct RendererStatistics {
     pub objects: usize,
