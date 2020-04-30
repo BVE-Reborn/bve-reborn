@@ -6,6 +6,7 @@ on:
     tags:
       - 'v*.*.*'
       - 'build*'
+  pull_request:
 
 env:
   RUST_BACKTRACE: full
