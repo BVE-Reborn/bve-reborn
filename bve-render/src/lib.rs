@@ -98,9 +98,9 @@ mod skybox;
 mod statistics;
 mod texture;
 
-fn create_timestamp(duration: &mut Duration, prev: Instant) -> Instant {
+fn create_timestamp(duration: &mut f32, prev: Instant) -> Instant {
     let now = Instant::now();
-    *duration = now - prev;
+    *duration = (now - prev).as_secs_f32() * 1000.0;
     now
 }
 

@@ -58,7 +58,7 @@ use async_std::{
     task::block_on,
 };
 use bve::{load::mesh::Vertex, runtime, runtime::Location};
-use bve_render::{MSAASetting, MeshHandle, OITNodeCount, ObjectHandle, Renderer, TextureHandle};
+use bve_render::{MSAASetting, MeshHandle, OITNodeCount, ObjectHandle, Renderer, RendererStatistics, TextureHandle};
 use cgmath::{ElementWise, InnerSpace, Vector3};
 use image::RgbaImage;
 use imgui::{im_str, FontSource};
@@ -250,6 +250,10 @@ fn client_main() {
     let mut frame_times = Vec::with_capacity(3000);
     let mut last_frame_instant = Instant::now();
     let mut last_printed_instant = Instant::now();
+
+    let mut renderer_stats = RendererStatistics::default();
+    let mut last_renderer_stats_instant = Instant::now();
+    let mut last_cursor = None;
 
     event_loop.run_return(move |event, _, control_flow| {
         match event {
@@ -457,21 +461,70 @@ fn client_main() {
                 let frame = imgui.frame();
 
                 {
-                    let window = imgui::Window::new(im_str!("Hello world"));
+                    let window = imgui::Window::new(im_str!("Renderer Statistics"));
                     window
-                        .size([300.0, 100.0], imgui::Condition::FirstUseEver)
+                        .always_auto_resize(true)
+                        .position([25.0, 25.0], imgui::Condition::FirstUseEver)
                         .build(&frame, || {
-                            frame.text(im_str!("Hello world!"));
-                            frame.text(im_str!("This...is...imgui-rs on WGPU!"));
+                            frame.text(im_str!("Resources:"));
+                            frame.text(format!("Objects: {}", renderer_stats.objects));
+                            frame.text(format!("Meshes: {}", renderer_stats.meshes));
+                            frame.text(format!("Textures: {}", renderer_stats.textures));
                             frame.separator();
-                            let mouse_pos = frame.io().mouse_pos;
-                            frame.text(im_str!("Mouse Position: ({:.1},{:.1})", mouse_pos[0], mouse_pos[1]));
+                            frame.text(im_str!("Visible Objects:"));
+                            frame.text(format!("Opaque: {}", renderer_stats.visible_opaque_objects));
+                            frame.text(format!("Transparent: {}", renderer_stats.visible_transparent_objects));
+                            frame.text(format!("Total: {}", renderer_stats.total_visible_objects));
+                            frame.separator();
+                            frame.text(im_str!("Draws:"));
+                            frame.text(format!("Opaque: {}", renderer_stats.opaque_draws));
+                            frame.text(format!("Transparent: {}", renderer_stats.transparent_draws));
+                            frame.text(format!("Total: {}", renderer_stats.total_draws));
+                            frame.separator();
+                            frame.text(im_str!("Timings:"));
+                            frame.text(format!(
+                                "Skybox Update: {:.3}ms",
+                                renderer_stats.compute_skybox_update_time
+                            ));
+                            frame.text(format!(
+                                "Object Distances: {:.3}ms",
+                                renderer_stats.compute_object_distance_time
+                            ));
+                            frame.text(format!(
+                                "Collect Object Refs: {:.3}ms",
+                                renderer_stats.collect_object_refs_time
+                            ));
+                            frame.text(format!(
+                                "Frustum Culling: {:.3}ms",
+                                renderer_stats.compute_frustum_culling_time
+                            ));
+                            frame.text(format!(
+                                "Object Sorting: {:.3}ms",
+                                renderer_stats.compute_object_sorting_time
+                            ));
+                            frame.text(format!(
+                                "Update Matrices: {:.3}ms",
+                                renderer_stats.compute_uniforms_time
+                            ));
+                            frame.text(format!("Main Render: {:.3}ms", renderer_stats.render_main_cpu_time));
+                            frame.text(format!("imgui Render: {:.3}ms", renderer_stats.render_imgui_cpu_time));
+                            frame.text(format!("wgpu Render: {:.3}ms", renderer_stats.render_wgpu_cpu_time));
+                            frame.separator();
+                            frame.text(format!("Total: {:.3}ms", renderer_stats.total_renderer_tick_time));
                         });
                 }
 
-                platform.prepare_render(&frame, &window);
+                let current_cursor = frame.mouse_cursor();
+                if last_cursor != current_cursor && !grabber.get_grabbed() {
+                    last_cursor = current_cursor;
+                    platform.prepare_render(&frame, &window);
+                }
 
-                block_on(async { client.lock().await.renderer.render(Some(frame)).await });
+                let tmp_renderer_stats = block_on(async { client.lock().await.renderer.render(Some(frame)).await });
+                if now - last_renderer_stats_instant >= Duration::from_millis(200) {
+                    last_renderer_stats_instant = now;
+                    renderer_stats = tmp_renderer_stats;
+                }
             }
             Event::WindowEvent {
                 event: WindowEvent::CloseRequested,
@@ -479,7 +532,9 @@ fn client_main() {
             } => *control_flow = ControlFlow::Exit,
             _ => {}
         };
-        platform.handle_event(imgui.io_mut(), &window, &event)
+        if !grabber.get_grabbed() {
+            platform.handle_event(imgui.io_mut(), &window, &event)
+        }
     });
 }
 
