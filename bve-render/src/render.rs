@@ -1,7 +1,7 @@
 use crate::*;
 use log::trace;
 use nalgebra_glm::UVec2;
-use std::{cmp::Ordering, mem::size_of};
+use std::{cmp::Ordering, fmt, mem::size_of};
 use winit::dpi::PhysicalSize;
 
 #[repr(C)]
@@ -93,6 +93,15 @@ impl Vsync {
     }
 }
 
+impl fmt::Display for Vsync {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Enabled => write!(f, "Enabled"),
+            Self::Disabled => write!(f, "Disabled"),
+        }
+    }
+}
+
 pub fn mip_levels(size: UVec2) -> u32 {
     let float_size = size.map(|f| f as f32);
     let shortest = float_size.x.min(float_size.y);
@@ -130,7 +139,7 @@ pub fn create_pipeline(
     fs: &ShaderModule,
     samples: MSAASetting,
 ) -> RenderPipeline {
-    debug!("Creating opaque pipeline: samples: {:?}", samples);
+    debug!("Creating opaque pipeline: samples: {}", samples as u8);
     device.create_render_pipeline(&RenderPipelineDescriptor {
         layout,
         vertex_stage: ProgrammableStageDescriptor {
@@ -187,8 +196,8 @@ pub fn create_pipeline(
 
 pub fn create_depth_buffer(device: &Device, size: PhysicalSize<u32>, samples: MSAASetting) -> TextureView {
     debug!(
-        "Creating depth buffer: {}x{}; samples = {:?}",
-        size.width, size.height, samples
+        "Creating depth buffer: {}x{}; samples = {}",
+        size.width, size.height, samples as u8
     );
     let depth_texture = device.create_texture(&TextureDescriptor {
         size: Extent3d {
@@ -209,8 +218,8 @@ pub fn create_depth_buffer(device: &Device, size: PhysicalSize<u32>, samples: MS
 
 pub fn create_framebuffer(device: &Device, size: PhysicalSize<u32>, samples: MSAASetting) -> TextureView {
     debug!(
-        "Creating framebuffer: {}x{}; samples = {:?}",
-        size.width, size.height, samples
+        "Creating framebuffer: {}x{}; samples = {}",
+        size.width, size.height, samples as u8
     );
     let extent = Extent3d {
         width: size.width,
@@ -233,7 +242,7 @@ pub fn create_framebuffer(device: &Device, size: PhysicalSize<u32>, samples: MSA
 
 pub fn create_swapchain_descriptor(screen_size: PhysicalSize<u32>, vsync: Vsync) -> SwapChainDescriptor {
     trace!(
-        "Creating swapchain descriptor: {}x{}; vsync: {:?}",
+        "Creating swapchain descriptor: {}x{}; vsync: {}",
         screen_size.width,
         screen_size.height,
         vsync

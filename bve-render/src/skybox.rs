@@ -11,7 +11,7 @@ pub struct SkyboxUniforms {
 }
 
 fn create_pipeline(device: &Device, pipeline_layout: &PipelineLayout, samples: MSAASetting) -> RenderPipeline {
-    debug!("Creating skybox pipeline: samples = {:?}", samples);
+    debug!("Creating skybox pipeline: samples = {}", samples as u8);
     let vs = shader!(device; skybox - vert);
     let fs = shader!(device; skybox - frag);
     device.create_render_pipeline(&RenderPipelineDescriptor {

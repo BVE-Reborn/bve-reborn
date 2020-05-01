@@ -160,7 +160,7 @@ impl Renderer {
         let screen_size = window.inner_size();
 
         info!(
-            "Creating renderer with: screen size = {}x{}, oit nodes = {}; samples = {}, vsync = {:?}",
+            "Creating renderer with: screen size = {}x{}, oit nodes = {}; samples = {}, vsync = {}",
             screen_size.width, screen_size.height, oit_node_count as u8, samples as u8, vsync
         );
 
@@ -363,7 +363,7 @@ impl Renderer {
     }
 
     pub fn set_vsync(&mut self, vsync: Vsync) {
-        debug!("Setting vsync to {:?}", vsync);
+        debug!("Setting vsync to {}", vsync);
         self.swapchain = self.device.create_swap_chain(
             &self.surface,
             &render::create_swapchain_descriptor(self.resolution, vsync),
