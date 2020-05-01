@@ -66,7 +66,7 @@ use bve::load::mesh::Vertex as MeshVertex;
 use image::RgbaImage;
 use indexmap::map::IndexMap;
 use itertools::Itertools;
-use log::error;
+use log::{debug, error, info};
 use nalgebra_glm::{make_vec2, make_vec3, Mat4, Vec3};
 use num_traits::{ToPrimitive, Zero};
 use std::{mem::size_of, sync::Arc, time::Instant};
@@ -158,6 +158,11 @@ impl Renderer {
         vsync: render::Vsync,
     ) -> Self {
         let screen_size = window.inner_size();
+
+        info!(
+            "Creating renderer with: screen size = {}x{}, oit nodes = {}; samples = {}, vsync = {:?}",
+            screen_size.width, screen_size.height, oit_node_count as u8, samples as u8, vsync
+        );
 
         let surface = Surface::create(window);
 
@@ -303,6 +308,7 @@ impl Renderer {
     }
 
     pub fn resize(&mut self, screen_size: PhysicalSize<u32>) {
+        debug!("Resizing to {}x{}", screen_size.width, screen_size.height);
         self.framebuffer = render::create_framebuffer(&self.device, screen_size, self.samples);
         self.depth_buffer = render::create_depth_buffer(&self.device, screen_size, self.samples);
         self.resolution = screen_size;
@@ -326,6 +332,7 @@ impl Renderer {
     }
 
     pub fn set_samples(&mut self, samples: render::MSAASetting) {
+        debug!("Setting sample count to {}", samples as u8);
         self.framebuffer = render::create_framebuffer(&self.device, self.resolution, samples);
         self.depth_buffer = render::create_depth_buffer(&self.device, self.resolution, samples);
         self.opaque_pipeline = render::create_pipeline(
@@ -349,12 +356,14 @@ impl Renderer {
     }
 
     pub fn set_oit_node_count(&mut self, oit_node_count: oit::OITNodeCount) {
+        debug!("Setting oit node count to {}", oit_node_count as u8);
         self.oit_renderer
             .set_node_count(&self.device, oit_node_count, self.samples);
         self.oit_node_count = oit_node_count;
     }
 
     pub fn set_vsync(&mut self, vsync: Vsync) {
+        debug!("Setting vsync to {:?}", vsync);
         self.swapchain = self.device.create_swap_chain(
             &self.surface,
             &render::create_swapchain_descriptor(self.resolution, vsync),
@@ -366,6 +375,7 @@ impl Renderer {
         renderdoc! {
             let mut rd = renderdoc::RenderDoc::<renderdoc::V140>::new().expect("Could not initialize renderdoc");
             if self._renderdoc_capture {
+                info!("Starting renderdoc capture");
                 rd.start_frame_capture(std::ptr::null(), std::ptr::null());
             }
         }
@@ -527,6 +537,7 @@ impl Renderer {
 
         renderdoc! {
             if self._renderdoc_capture {
+                info!("Ending renderdoc capture");
                 rd.end_frame_capture(std::ptr::null(), std::ptr::null());
                 self._renderdoc_capture = false;
             }
