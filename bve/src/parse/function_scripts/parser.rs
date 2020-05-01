@@ -372,6 +372,56 @@ mod test {
     }
 
     #[test]
+    fn binary_function_call() {
+        function_script_assert!(
+            "func[1, 2]",
+            Instruction::Number { value: 1.0 },
+            Instruction::Number { value: 2.0 },
+            Instruction::FunctionCall {
+                name: String::from("func"),
+                arg_count: 2
+            },
+        );
+    }
+
+    #[test]
+    fn nary_function_call() {
+        function_script_assert!(
+            "func[1, 2, 3, 4, 5, 6]",
+            Instruction::Number { value: 1.0 },
+            Instruction::Number { value: 2.0 },
+            Instruction::Number { value: 3.0 },
+            Instruction::Number { value: 4.0 },
+            Instruction::Number { value: 5.0 },
+            Instruction::Number { value: 6.0 },
+            Instruction::FunctionCall {
+                name: String::from("func"),
+                arg_count: 6
+            },
+        );
+    }
+
+    #[test]
+    fn if_call() {
+        function_script_assert!(
+            "if[a, b, c]",
+            Instruction::Variable {
+                name: String::from("a")
+            },
+            Instruction::Variable {
+                name: String::from("b")
+            },
+            Instruction::Variable {
+                name: String::from("c")
+            },
+            Instruction::FunctionCall {
+                name: String::from("if"),
+                arg_count: 3
+            },
+        );
+    }
+
+    #[test]
     fn parens() {
         function_script_assert!(
             "1 + (2 + 3)",
@@ -456,5 +506,80 @@ mod test {
         function_script_assert!("0.232", Instruction::Number { value: 0.232 },);
         function_script_assert!("0.", Instruction::Number { value: 0.0 },);
         function_script_assert!("0.1E2", Instruction::Number { value: 0.1E2 },);
+    }
+
+    #[test]
+    fn integration_test() {
+        function_script_assert!(
+            "if[leftDoorsTarget == 0, if[leftDoors >= 0.496, 0.9368 * leftDoors - 0.3068, exp[4.684 * leftDoors - \
+             4.05] - 0.02], if[leftDoors <= 0.5068, 0.9368 * leftDoors, -exp[-4.684 * leftDoors + 0.615] + 0.647]]",
+            Instruction::Variable {
+                name: String::from("leftDoorsTarget")
+            },
+            Instruction::Number { value: 0.0 },
+            Instruction::Equal,
+            Instruction::Variable {
+                name: String::from("leftDoors")
+            },
+            Instruction::Number { value: 0.496 },
+            Instruction::GreaterEqual,
+            Instruction::Number { value: 0.9368 },
+            Instruction::Variable {
+                name: String::from("leftDoors")
+            },
+            Instruction::Multiplication,
+            Instruction::Number { value: 0.3068 },
+            Instruction::Subtraction,
+            Instruction::Number { value: 4.684 },
+            Instruction::Variable {
+                name: String::from("leftDoors")
+            },
+            Instruction::Multiplication,
+            Instruction::Number { value: 4.05 },
+            Instruction::Subtraction,
+            Instruction::FunctionCall {
+                name: String::from("exp"),
+                arg_count: 1
+            },
+            Instruction::Number { value: 0.02 },
+            Instruction::Subtraction,
+            Instruction::FunctionCall {
+                name: String::from("if"),
+                arg_count: 3
+            },
+            Instruction::Variable {
+                name: String::from("leftDoors")
+            },
+            Instruction::Number { value: 0.5068 },
+            Instruction::LessEqual,
+            Instruction::Number { value: 0.9368 },
+            Instruction::Variable {
+                name: String::from("leftDoors")
+            },
+            Instruction::Multiplication,
+            Instruction::Number { value: 4.684 },
+            Instruction::UnaryNegative,
+            Instruction::Variable {
+                name: String::from("leftDoors")
+            },
+            Instruction::Multiplication,
+            Instruction::Number { value: 0.615 },
+            Instruction::Addition,
+            Instruction::FunctionCall {
+                name: String::from("exp"),
+                arg_count: 1
+            },
+            Instruction::UnaryNegative,
+            Instruction::Number { value: 0.647 },
+            Instruction::Addition,
+            Instruction::FunctionCall {
+                name: String::from("if"),
+                arg_count: 3
+            },
+            Instruction::FunctionCall {
+                name: String::from("if"),
+                arg_count: 3
+            },
+        )
     }
 }
