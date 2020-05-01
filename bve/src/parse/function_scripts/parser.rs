@@ -240,7 +240,9 @@ fn parens_expr(input: &str) -> IResult<&str, OneOrManyInstructions> {
 
 fn number(input: &str) -> IResult<&str, OneOrManyInstructions> {
     map_res(
-        w(take_while(char::is_dec_digit)),
+        w(take_while(|c: char| {
+            c.is_dec_digit() || c == '.' || c == 'e' || c == 'E'
+        })),
         |digits: &str| -> Result<OneOrManyInstructions, ParseFloatError> {
             let value: f64 = digits.parse()?;
             Ok(OneOrManyInstructions::One(Instruction::Number { value }))
@@ -447,5 +449,12 @@ mod test {
             Instruction::Number { value: 14.0 },
             Instruction::LogicalOr,
         );
+    }
+
+    #[test]
+    fn decimal_numbers() {
+        function_script_assert!("0.232", Instruction::Number { value: 0.232 },);
+        function_script_assert!("0.", Instruction::Number { value: 0.0 },);
+        function_script_assert!("0.1E2", Instruction::Number { value: 0.1E2 },);
     }
 }
