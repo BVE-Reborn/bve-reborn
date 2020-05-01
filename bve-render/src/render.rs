@@ -130,6 +130,7 @@ pub fn create_pipeline(
     fs: &ShaderModule,
     samples: MSAASetting,
 ) -> RenderPipeline {
+    debug!("Creating opaque pipeline: samples: {:?}", samples);
     device.create_render_pipeline(&RenderPipelineDescriptor {
         layout,
         vertex_stage: ProgrammableStageDescriptor {
@@ -185,6 +186,10 @@ pub fn create_pipeline(
 }
 
 pub fn create_depth_buffer(device: &Device, size: PhysicalSize<u32>, samples: MSAASetting) -> TextureView {
+    debug!(
+        "Creating depth buffer: {}x{}; samples = {:?}",
+        size.width, size.height, samples
+    );
     let depth_texture = device.create_texture(&TextureDescriptor {
         size: Extent3d {
             width: size.width,
@@ -203,6 +208,10 @@ pub fn create_depth_buffer(device: &Device, size: PhysicalSize<u32>, samples: MS
 }
 
 pub fn create_framebuffer(device: &Device, size: PhysicalSize<u32>, samples: MSAASetting) -> TextureView {
+    debug!(
+        "Creating framebuffer: {}x{}; samples = {:?}",
+        size.width, size.height, samples
+    );
     let extent = Extent3d {
         width: size.width,
         height: size.height,
@@ -224,7 +233,7 @@ pub fn create_framebuffer(device: &Device, size: PhysicalSize<u32>, samples: MSA
 
 pub fn create_swapchain_descriptor(screen_size: PhysicalSize<u32>, vsync: Vsync) -> SwapChainDescriptor {
     trace!(
-        "Creating swapchain descriptor: {}x{}; Vsync: {:?}",
+        "Creating swapchain descriptor: {}x{}; vsync: {:?}",
         screen_size.width,
         screen_size.height,
         vsync

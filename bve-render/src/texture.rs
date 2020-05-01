@@ -1,5 +1,6 @@
 use crate::*;
 use image::{Rgba, RgbaImage};
+use log::trace;
 use nalgebra_glm::make_vec2;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -106,11 +107,15 @@ impl Renderer {
             bind_group,
             transparent,
         });
+
+        trace!("Adding new texture #{}", handle);
         TextureHandle(handle)
     }
 
     pub fn remove_texture(&mut self, TextureHandle(tex_idx): &TextureHandle) {
         let _texture = self.textures.remove(tex_idx).expect("Invalid texture handle");
+
+        debug!("Removed texture #{}", tex_idx);
         // Texture goes out of scope
     }
 }

@@ -1,4 +1,5 @@
 use crate::*;
+use log::trace;
 use nalgebra_glm::zero;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -109,6 +110,7 @@ impl Renderer {
             transparent,
         });
 
+        trace!("Adding new mesh #{}", handle);
         MeshHandle(handle)
     }
 

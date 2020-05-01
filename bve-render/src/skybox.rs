@@ -1,4 +1,5 @@
 use crate::{screenspace::ScreenSpaceVertex, *};
+use log::debug;
 use nalgebra_glm::inverse;
 use zerocopy::AsBytes;
 
@@ -10,6 +11,7 @@ pub struct SkyboxUniforms {
 }
 
 fn create_pipeline(device: &Device, pipeline_layout: &PipelineLayout, samples: MSAASetting) -> RenderPipeline {
+    debug!("Creating skybox pipeline: samples = {:?}", samples);
     let vs = shader!(device; skybox - vert);
     let fs = shader!(device; skybox - frag);
     device.create_render_pipeline(&RenderPipelineDescriptor {

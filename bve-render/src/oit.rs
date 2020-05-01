@@ -1,4 +1,5 @@
 use crate::{screenspace::ScreenSpaceVertex, *};
+use log::debug;
 use nalgebra_glm::UVec2;
 use zerocopy::AsBytes;
 
@@ -58,6 +59,7 @@ fn create_pipeline_pass1(
     vert: &ShaderModule,
     samples: MSAASetting,
 ) -> RenderPipeline {
+    debug!("Creating OIT pass1 pipeline: samples = {:?}", samples);
     let oit1_module = shader!(device; oit_pass1 - frag);
     device.create_render_pipeline(&RenderPipelineDescriptor {
         layout: pipeline_layout,
@@ -119,6 +121,10 @@ fn create_pipeline_pass2(
     node_count: OITNodeCount,
     samples: MSAASetting,
 ) -> RenderPipeline {
+    debug!(
+        "Creating OIT pass2 pipeline: node count = {}; samples = {:?}",
+        node_count as u8, samples
+    );
     let fx_module = shader!(device; fx - vert);
     let oit2_module = shader!(device; oit_pass2 - frag: MAX_SAMPLES = samples as u8; MAX_NODES = node_count as u8);
     device.create_render_pipeline(&RenderPipelineDescriptor {
@@ -178,6 +184,10 @@ fn create_uniform_buffer(
     resolution: UVec2,
     samples: MSAASetting,
 ) -> (Buffer, BindGroup, BindGroup) {
+    debug!(
+        "Creating OIT uniform buffer: {}x{}; samples = {:?}",
+        resolution.x, resolution.y, samples
+    );
     let max_nodes = node_count(resolution);
     let uniforms = OitUniforms {
         _max_nodes: max_nodes,
@@ -238,6 +248,10 @@ fn create_oit_buffers(
     resolution: UVec2,
     samples: MSAASetting,
 ) -> (TextureView, Buffer, Buffer, BindGroup, BindGroup) {
+    debug!(
+        "Creating OIT buffers: {}x{}; samples = {:?}",
+        resolution.x, resolution.y, samples
+    );
     let head_pointer_source_buffer = device.create_buffer_with_data(
         &vec![0xFF; (resolution.x * resolution.y * 4) as usize],
         BufferUsage::COPY_SRC,
@@ -312,6 +326,7 @@ fn create_pass2_pipeline_layout(
     oit_bind_group_layout: &BindGroupLayout,
     samples: MSAASetting,
 ) -> (BindGroupLayout, PipelineLayout) {
+    debug!("Creating OIT pass2 pipeline layout: samples = {:?}", samples);
     let framebuffer_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
         bindings: &[
             BindGroupLayoutEntry {
@@ -485,6 +500,7 @@ impl Oit {
         framebuffer: &TextureView,
         samples: MSAASetting,
     ) -> CommandBuffer {
+        debug!("OIT Resize: {}x{}; samples = {:?}", resolution.x, resolution.y, samples);
         let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
             label: Some("oit resize"),
         });
@@ -520,6 +536,10 @@ impl Oit {
         oit_node_count: OITNodeCount,
         samples: MSAASetting,
     ) {
+        debug!(
+            "OIT set samples: {}x{}; node count = {}; samples = {:?}",
+            resolution.x, resolution.y, oit_node_count as u8, samples
+        );
         let (framebuffer_bind_group_layout, pass2_pipeline_layout) =
             create_pass2_pipeline_layout(device, &self.oit_bind_group_layout, samples);
         self.framebuffer_bind_group_layout = framebuffer_bind_group_layout;
@@ -543,6 +563,10 @@ impl Oit {
     }
 
     pub fn set_node_count(&mut self, device: &Device, oit_node_count: OITNodeCount, samples: MSAASetting) {
+        debug!(
+            "OIT set node count: node count = {}; samples = {:?}",
+            oit_node_count as u8, samples
+        );
         self.pass2_pipeline = create_pipeline_pass2(device, &self.pass2_pipeline_layout, oit_node_count, samples);
     }
 
