@@ -1,4 +1,5 @@
 use include_dir::Dir;
+use log::debug;
 use once_cell::sync::Lazy;
 use std::{
     collections::HashMap,
@@ -12,8 +13,10 @@ const COMPILED_SHADERS: Dir<'static> = include_dir::include_dir!("shaders/spirv"
 static SHADER_MODULES: Lazy<Mutex<HashMap<String, Arc<ShaderModule>>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 
 pub fn find_shader_module(device: &Device, name: &str) -> Arc<ShaderModule> {
+    debug!("Finding shader {}", name);
     let mut map = SHADER_MODULES.lock().expect("Could not lock mutex");
     Arc::clone(map.entry(name.to_string()).or_insert_with(|| {
+        debug!("Shader {} not built, building", name);
         let source = COMPILED_SHADERS
             .get_file(&name)
             .unwrap_or_else(|| panic!("Shader {} not found", name))

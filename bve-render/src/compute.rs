@@ -1,4 +1,5 @@
 use crate::*;
+use log::debug;
 use nalgebra_glm::UVec2;
 use std::mem::size_of;
 use zerocopy::AsBytes;
@@ -13,6 +14,7 @@ fn create_texture_compute_pipeline(
     device: &Device,
     shader_module: &ShaderModule,
 ) -> (ComputePipeline, BindGroupLayout) {
+    debug!("Creating texture compute pipeline");
     let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
         bindings: &[
             BindGroupLayoutEntry {

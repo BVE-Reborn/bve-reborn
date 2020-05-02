@@ -93,7 +93,7 @@ impl<C: Client> MeshCache<C> {
             mesh_data.textures.push(path_set.insert(path).await);
         }
 
-        trace!("Loaded  mesh {}", path.display());
+        trace!("Loaded mesh {}", path.display());
 
         mesh_data
     }
