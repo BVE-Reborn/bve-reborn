@@ -1,6 +1,6 @@
 #version 450
 
-layout (local_size_x = 4, local_size_y = 4, local_size_z = 4) in;
+layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
 struct Plane {
     vec3 abc;
@@ -8,21 +8,21 @@ struct Plane {
 };
 
 struct Frustum {
-    // Left, Right, Top, Bottom, Near, Far
-    Plane planes[6];
+    // Left, Right, Top, Bottom
+    Plane planes[4];
 };
 
 layout(set = 0, binding = 0) uniform Uniforms {
+    mat4 inv_proj;
     Frustum frustum;
-    uvec4 cluster_size;
+    uvec2 frustum_count;
 };
 layout(set = 0, binding = 1) buffer Frustums {
     Frustum result_frustums[];
 };
 
-uint get_local_index(uvec3 global, uvec3 total) {
-    return global.z * total.x * total.y +
-           global.y * total.x +
+uint get_global_index(uvec2 global, uvec2 total) {
+    return global.y * total.x +
            global.x;
 }
 
@@ -35,29 +35,53 @@ Plane normalize_plane(Plane p) {
     return p;
 }
 
-Plane mix_planes(Plane left, Plane right, float factor) {
-    Plane p;
-    p.abc = mix(left.abc, right.abc, factor);
-    p.d = mix(left.d, right.d, factor);
-    return normalize_plane(p);
+Plane compute_plane(vec3 p0, vec3 p1, vec3 p2) {
+    vec3 v0 = p1 - p0;
+    vec3 v1 = p2 - p0;
+
+    vec3 normal = normalize(cross(v0, v1));
+
+    // Apply the plane equation to one of the points to get the offset
+    float d = dot(normal, p0);
+
+    return Plane(normal, d);
 }
 
 void main() {
-    vec3 lerp_start = vec3(gl_GlobalInvocationID) / vec3(cluster_size.xyz);
-    vec3 lerp_end = vec3(gl_GlobalInvocationID + 1) / vec3(cluster_size.xyz);
+    vec2 lerp_start = vec2(gl_GlobalInvocationID) / vec2(frustum_count);
+    vec2 lerp_end = vec2(gl_GlobalInvocationID + 1) / vec2(frustum_count);
 
-    Plane left = mix_planes(frustum.planes[0], frustum.planes[1], lerp_start.x);
-    Plane right = mix_planes(frustum.planes[0], frustum.planes[1], lerp_end.x);
+    vec4 clip_space[4];
+    // Top Left
+    clip_space[0] = vec4(mix(-1.0, 1.0, lerp_start.x), mix(-1.0, 1.0, lerp_start.y), 1.0, 1.0);
+    // Top Right
+    clip_space[1] = vec4(mix(-1.0, 1.0, lerp_end.x), mix(-1.0, 1.0, lerp_start.y), 1.0, 1.0);
+    // Bottom Left
+    clip_space[2] = vec4(mix(-1.0, 1.0, lerp_start.x), mix(-1.0, 1.0, lerp_end.y), 1.0, 1.0);
+    // Bottom Right
+    clip_space[3] = vec4(mix(-1.0, 1.0, lerp_end.x), mix(-1.0, 1.0, lerp_end.y), 1.0, 1.0);
 
-    Plane top = mix_planes(frustum.planes[2], frustum.planes[3], lerp_start.y);
-    Plane bottom = mix_planes(frustum.planes[2], frustum.planes[3], lerp_end.y);
+    vec3 view_space[4];
+    for (int i = 0; i < 4; ++i) {
+        vec4 view = inv_proj * clip_space[i];
+        view.xyz /= view.w;
+        view_space[i] = view.xyz;
+    }
 
-    Plane near = mix_planes(frustum.planes[4], frustum.planes[5], lerp_start.z);
-    Plane far = mix_planes(frustum.planes[4], frustum.planes[5], lerp_end.z);
+    vec3 eye_position = vec3(0.0);
 
-    uint index = get_local_index(gl_GlobalInvocationID, cluster_size.xyz);
+    Frustum frustum;
 
-    Frustum result = Frustum(Plane[6](left, right, top, bottom, near, far));
+    // Left
+    frustum.planes[0] = compute_plane(eye_position, view_space[0], view_space[2]);
+    // Right
+    frustum.planes[1] = compute_plane(eye_position, view_space[3], view_space[1]);
+    // Top
+    frustum.planes[2] = compute_plane(eye_position, view_space[1], view_space[0]);
+    // Bottom
+    frustum.planes[3] = compute_plane(eye_position, view_space[2], view_space[3]);
 
-    result_frustums[index] = result;
+    uint index = get_global_index(gl_GlobalInvocationID.xy, frustum_count);
+
+    result_frustums[index] = frustum;
 }
