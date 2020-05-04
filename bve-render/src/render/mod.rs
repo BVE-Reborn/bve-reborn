@@ -2,6 +2,7 @@ use crate::*;
 use std::fmt;
 pub use utils::*;
 
+pub mod cluster;
 pub mod oit;
 pub mod skybox;
 mod utils;
