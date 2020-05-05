@@ -117,6 +117,7 @@ pub struct Renderer {
     oit_node_count: OITNodeCount,
     samples: MSAASetting,
     vsync: Vsync,
+    debug_mode: DebugMode,
 
     projection_matrix: Mat4,
 
@@ -281,6 +282,7 @@ impl Renderer {
             samples,
             oit_node_count,
             projection_matrix,
+            debug_mode: DebugMode::None,
             vsync,
 
             surface,
@@ -349,6 +351,7 @@ impl Renderer {
                 self.frag_shader = shader!(&self.device; debug_frustums - fragment);
             }
         };
+        self.debug_mode = mode;
         self.opaque_pipeline = render::create_pipeline(
             &self.device,
             &self.pipeline_layout,

@@ -7,6 +7,7 @@ pub mod oit;
 pub mod skybox;
 mod utils;
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum DebugMode {
     None,
     Frustums,
@@ -238,11 +239,13 @@ impl Renderer {
                 stats.total_draws = stats.transparent_draws + stats.opaque_draws;
             }
 
-            self.skybox_renderer.render_skybox(
-                &mut rpass,
-                &self.textures[&self.skybox_renderer.texture_id].bind_group,
-                &self.screenspace_triangle_verts,
-            );
+            if let DebugMode::None = self.debug_mode {
+                self.skybox_renderer.render_skybox(
+                    &mut rpass,
+                    &self.textures[&self.skybox_renderer.texture_id].bind_group,
+                    &self.screenspace_triangle_verts,
+                );
+            }
         }
         {
             let mut rpass = encoder.begin_render_pass(&RenderPassDescriptor {
