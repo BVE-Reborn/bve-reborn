@@ -101,4 +101,8 @@ impl Clustering {
             render_bind_group,
         }
     }
+
+    pub fn bind_group(&self) -> &BindGroup {
+        &self.render_bind_group
+    }
 }
