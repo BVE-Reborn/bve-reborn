@@ -10,5 +10,5 @@ void main() {
     } else {
         color.a = 1.0;
     }
-    outColor = color;
+    out_color = color;
 }

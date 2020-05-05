@@ -535,6 +535,7 @@ fn client_main() {
                                 .build_simple_string(&frame, &mut current_debug, &[
                                     im_str!("None"),
                                     im_str!("Frustums"),
+                                    im_str!("Frustum Addressing Verification"),
                                 ])
                             {
                                 debug_mode = DebugMode::from_selection_integer(current_debug);

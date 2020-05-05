@@ -19,13 +19,15 @@ pub struct Vertex {
 #[repr(C)]
 #[derive(AsBytes)]
 pub struct Uniforms {
-    pub _matrix: [[f32; 4]; 4],
+    pub _model_view_proj: [[f32; 4]; 4],
+    pub _model_view: [[f32; 4]; 4],
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum DebugMode {
     None,
     Frustums,
+    FrustumAddressing,
 }
 
 impl DebugMode {
@@ -34,6 +36,7 @@ impl DebugMode {
         match value {
             0 => Self::None,
             1 => Self::Frustums,
+            2 => Self::FrustumAddressing,
             _ => unreachable!(),
         }
     }
@@ -43,6 +46,7 @@ impl DebugMode {
         match self {
             Self::None => 0,
             Self::Frustums => 1,
+            Self::FrustumAddressing => 2,
         }
     }
 }
@@ -224,6 +228,9 @@ impl Renderer {
                     .group_by(|o| (o.mesh, o.texture, o.transparent))
                 {
                     if transparent && rendering_opaque {
+                        if self.debug_mode != DebugMode::None {
+                            break;
+                        }
                         self.oit_renderer.prepare_rendering(&mut rpass);
                         rendering_opaque = false;
                     }

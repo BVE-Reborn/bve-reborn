@@ -16,7 +16,7 @@ Plane compute_plane(vec3 p0, vec3 p1, vec3 p2) {
     vec3 v0 = p1 - p0;
     vec3 v1 = p2 - p0;
 
-    vec3 normal = normalize(cross(v0, v1));
+    vec3 normal = -normalize(cross(v0, v1));
 
     // Apply the plane equation to one of the points to get the offset
     float d = dot(normal, p0);
@@ -41,4 +41,9 @@ bool contains_point(Frustum frustum, vec3 point) {
         }
     }
     return res;
+}
+
+uint get_frustum_list_index(uvec2 global, uvec2 total) {
+    return global.y * total.x +
+    global.x;
 }

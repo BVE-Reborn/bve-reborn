@@ -252,6 +252,7 @@ impl Renderer {
             &mut startup_encoder,
             &vs_module,
             &texture_bind_group_layout,
+            cluster_renderer.bind_group_layout(),
             &framebuffer,
             make_vec2(&[screen_size.width, screen_size.height]),
             oit_node_count,
@@ -349,6 +350,9 @@ impl Renderer {
             }
             DebugMode::Frustums => {
                 self.frag_shader = shader!(&self.device; debug_frustums - fragment);
+            }
+            DebugMode::FrustumAddressing => {
+                self.frag_shader = shader!(&self.device; debug_frustum_addressing - fragment);
             }
         };
         self.debug_mode = mode;

@@ -85,7 +85,7 @@ pub fn create_pipeline(
                 VertexBufferDescriptor {
                     stride: size_of::<Uniforms>() as BufferAddress,
                     step_mode: InputStepMode::Instance,
-                    attributes: &vertex_attr_array![4 => Float4, 5 => Float4, 6 => Float4, 7 => Float4],
+                    attributes: &vertex_attr_array![4 => Float4, 5 => Float4, 6 => Float4, 7 => Float4, 8 => Float4, 9 => Float4, 10 => Float4, 11 => Float4],
                 },
             ],
         },
@@ -235,9 +235,11 @@ impl Renderer {
 
         for (_, group) in &objects.iter().group_by(|o| (o.mesh, o.texture, o.transparent)) {
             for object in group {
-                let matrix = object::generate_matrix(&self.projection_matrix, &camera_mat, object.location);
+                let (mx_model_view_proj, mx_model_view) =
+                    object::generate_matrix(&self.projection_matrix, &camera_mat, object.location);
                 let uniforms = Uniforms {
-                    _matrix: *matrix.as_ref(),
+                    _model_view_proj: *mx_model_view_proj.as_ref(),
+                    _model_view: *mx_model_view.as_ref(),
                 };
                 matrix_buffer_data.extend_from_slice(uniforms.as_bytes());
             }

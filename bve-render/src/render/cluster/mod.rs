@@ -1,4 +1,4 @@
-use crate::{frustum::Frustum, *};
+use crate::{camera::FAR_PLANE_DISTANCE, frustum::Frustum, *};
 use froxels::*;
 
 mod froxels;
@@ -50,6 +50,8 @@ impl From<frustum::Frustum> for FrustumBytes {
 #[repr(C)]
 struct ClusterUniforms {
     _frustum_count: [u32; 4],
+    _max_depth: f32,
+    _padding0: [f32; 3],
 }
 
 pub struct Clustering {
@@ -68,6 +70,8 @@ impl Clustering {
 
         let cluster_uniforms = ClusterUniforms {
             _frustum_count: [FROXELS_X, FROXELS_Y, FROXELS_Z, 0],
+            _max_depth: FAR_PLANE_DISTANCE,
+            _padding0: Default::default(),
         };
 
         let cluster_uniforms_buffer = device.create_buffer_with_data(cluster_uniforms.as_bytes(), BufferUsage::UNIFORM);
@@ -128,11 +132,11 @@ impl Clustering {
         }
     }
 
-    pub fn bind_group_layout(&self) -> &BindGroupLayout {
+    pub const fn bind_group_layout(&self) -> &BindGroupLayout {
         &self.render_bind_group_layout
     }
 
-    pub fn bind_group(&self) -> &BindGroup {
+    pub const fn bind_group(&self) -> &BindGroup {
         &self.render_bind_group
     }
 

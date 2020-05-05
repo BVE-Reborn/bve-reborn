@@ -69,7 +69,7 @@ struct RuntimeLocation {
     old_location: Location,
 }
 
-const DEFAULT_RENDER_DISTANCE: f32 = 16.0 * CHUNK_SIZE;
+const DEFAULT_RENDER_DISTANCE: f32 = 32.0 * CHUNK_SIZE;
 
 // Mutexes are always grabbed in the following order
 // ecs -> client -> location

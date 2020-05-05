@@ -2,7 +2,7 @@
 
 #include "frustum.glsl"
 
-layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+layout (local_size_x = 4, local_size_y = 4, local_size_z = 1) in;
 
 layout(set = 0, binding = 0) uniform Uniforms {
     mat4 inv_proj;
@@ -12,11 +12,6 @@ layout(set = 0, binding = 0) uniform Uniforms {
 layout(set = 0, binding = 1) buffer Frustums {
     Frustum result_frustums[];
 };
-
-uint get_global_index(uvec2 global, uvec2 total) {
-    return global.y * total.x +
-           global.x;
-}
 
 void main() {
     vec2 lerp_start = vec2(gl_GlobalInvocationID) / vec2(frustum_count);
@@ -52,7 +47,7 @@ void main() {
     // Bottom
     frustum.planes[3] = compute_plane(eye_position, view_space[2], view_space[3]);
 
-    uint index = get_global_index(gl_GlobalInvocationID.xy, frustum_count);
+    uint index = get_frustum_list_index(gl_GlobalInvocationID.xy, frustum_count);
 
     result_frustums[index] = frustum;
 }
