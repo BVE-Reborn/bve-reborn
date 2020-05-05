@@ -132,6 +132,16 @@ impl Clustering {
         }
     }
 
+    pub fn resize(&mut self, device: &Device, encoder: &mut CommandEncoder, mx_inv_proj: Mat4, frustum: Frustum) {
+        self.frustum_creation.resize(
+            device,
+            encoder,
+            mx_inv_proj,
+            frustum,
+            make_vec2(&[FROXELS_X, FROXELS_Y]),
+        );
+    }
+
     pub const fn bind_group_layout(&self) -> &BindGroupLayout {
         &self.render_bind_group_layout
     }

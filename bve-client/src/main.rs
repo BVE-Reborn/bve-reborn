@@ -191,7 +191,8 @@ fn client_main() {
     imgui.set_ini_filename(None);
     imgui.fonts().add_font(&[FontSource::DefaultFontData {
         config: Some(imgui::FontConfig {
-            oversample_h: 1,
+            oversample_h: 3,
+            oversample_v: 1,
             pixel_snap_h: true,
             size_pixels: 13.0,
             ..imgui::FontConfig::default()

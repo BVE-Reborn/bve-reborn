@@ -15,6 +15,7 @@ struct FroxelUniforms {
 }
 
 pub struct FrustumCreation {
+    uniform_buffer: Buffer,
     bind_group: BindGroup,
     pipeline: ComputePipeline,
 }
@@ -103,7 +104,36 @@ impl FrustumCreation {
             label: Some("frustum creation bind group"),
         });
 
-        Self { bind_group, pipeline }
+        Self {
+            uniform_buffer,
+            bind_group,
+            pipeline,
+        }
+    }
+
+    pub fn resize(
+        &mut self,
+        device: &Device,
+        encoder: &mut CommandEncoder,
+        mx_inv_proj: Mat4,
+        frustum: Frustum,
+        frustum_count: UVec2,
+    ) {
+        let uniforms = FroxelUniforms {
+            _frustum: frustum.into(),
+            _frustum_count: *frustum_count.as_ref(),
+            _inv_proj: *mx_inv_proj.as_ref(),
+        };
+
+        let uniform_staging_buffer = device.create_buffer_with_data(uniforms.as_bytes(), BufferUsage::COPY_SRC);
+
+        encoder.copy_buffer_to_buffer(
+            &uniform_staging_buffer,
+            0,
+            &self.uniform_buffer,
+            0,
+            size_of::<FroxelUniforms>() as BufferAddress,
+        );
     }
 
     pub fn execute(&self, encoder: &mut CommandEncoder) {

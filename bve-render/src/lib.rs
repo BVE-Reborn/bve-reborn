@@ -320,6 +320,9 @@ impl Renderer {
     }
 
     pub fn resize(&mut self, screen_size: PhysicalSize<u32>) {
+        let mut encoder = self
+            .device
+            .create_command_encoder(&CommandEncoderDescriptor { label: Some("resizer") });
         debug!("Resizing to {}x{}", screen_size.width, screen_size.height);
         self.framebuffer = render::create_framebuffer(&self.device, screen_size, self.samples);
         self.depth_buffer = render::create_depth_buffer(&self.device, screen_size, self.samples);
@@ -329,18 +332,24 @@ impl Renderer {
             &self.surface,
             &render::create_swapchain_descriptor(screen_size, self.vsync),
         );
+        self.projection_matrix = perspective_matrix(
+            45_f32.to_radians(),
+            screen_size.width as f32 / screen_size.height as f32,
+        );
 
+        self.cluster_renderer.resize(
+            &self.device,
+            &mut encoder,
+            inverse(&self.projection_matrix),
+            frustum::Frustum::from_matrix(self.projection_matrix),
+        );
         self.oit_renderer.resize(
             &self.device,
             make_vec2(&[screen_size.width, screen_size.height]),
             &self.framebuffer,
             self.samples,
         );
-
-        self.projection_matrix = perspective_matrix(
-            45_f32.to_radians(),
-            screen_size.width as f32 / screen_size.height as f32,
-        );
+        self.command_buffers.push(encoder.finish());
     }
 
     pub fn set_debug(&mut self, mode: DebugMode) {
