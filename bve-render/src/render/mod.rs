@@ -7,12 +7,6 @@ pub mod oit;
 pub mod skybox;
 mod utils;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum DebugMode {
-    None,
-    Frustums,
-}
-
 #[repr(C)]
 #[derive(Clone, Copy, AsBytes, FromBytes)]
 pub struct Vertex {
@@ -26,6 +20,31 @@ pub struct Vertex {
 #[derive(AsBytes)]
 pub struct Uniforms {
     pub _matrix: [[f32; 4]; 4],
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum DebugMode {
+    None,
+    Frustums,
+}
+
+impl DebugMode {
+    #[must_use]
+    pub fn from_selection_integer(value: usize) -> Self {
+        match value {
+            0 => Self::None,
+            1 => Self::Frustums,
+            _ => unreachable!(),
+        }
+    }
+
+    #[must_use]
+    pub fn into_selection_integer(self) -> usize {
+        match self {
+            Self::None => 0,
+            Self::Frustums => 1,
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

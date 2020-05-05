@@ -59,7 +59,7 @@ use async_std::{
 };
 use bve::{load::mesh::Vertex, runtime, runtime::Location};
 use bve_render::{
-    MSAASetting, MeshHandle, OITNodeCount, ObjectHandle, Renderer, RendererStatistics, TextureHandle, Vsync,
+    DebugMode, MSAASetting, MeshHandle, OITNodeCount, ObjectHandle, Renderer, RendererStatistics, TextureHandle, Vsync,
 };
 use cgmath::{ElementWise, InnerSpace, Vector3};
 use image::RgbaImage;
@@ -204,6 +204,7 @@ fn client_main() {
     let mut sample_count = MSAASetting::X1;
     let mut oit_node_count = OITNodeCount::Four;
     let mut vsync = Vsync::Enabled;
+    let mut debug_mode = DebugMode::None;
     let client = block_on(async { Client::new(&window, &mut imgui, oit_node_count, sample_count, vsync).await });
     let runtime = runtime::Runtime::new(Arc::clone(&client));
 
@@ -526,6 +527,18 @@ fn client_main() {
                             {
                                 oit_node_count = OITNodeCount::from_selection_integer(current_transparency);
                                 block_on(async { client.lock().await.renderer.set_oit_node_count(oit_node_count) });
+                            };
+
+                            let mut current_debug = debug_mode.into_selection_integer();
+                            if imgui::ComboBox::new(im_str!("Debug View"))
+                                .flags(imgui::ComboBoxFlags::NO_PREVIEW)
+                                .build_simple_string(&frame, &mut current_debug, &[
+                                    im_str!("None"),
+                                    im_str!("Frustums"),
+                                ])
+                            {
+                                debug_mode = DebugMode::from_selection_integer(current_debug);
+                                block_on(async { client.lock().await.renderer.set_debug(debug_mode) });
                             };
                         });
                 }
