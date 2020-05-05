@@ -1,16 +1,8 @@
 #version 450
 
+#include "frustum.glsl"
+
 layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
-
-struct Plane {
-    vec3 abc;
-    float d;
-};
-
-struct Frustum {
-    // Left, Right, Top, Bottom
-    Plane planes[4];
-};
 
 layout(set = 0, binding = 0) uniform Uniforms {
     mat4 inv_proj;

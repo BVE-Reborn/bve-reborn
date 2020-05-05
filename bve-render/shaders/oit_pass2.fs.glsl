@@ -49,7 +49,7 @@ void main() {
         }
         frags[j] = to_insert;
     }
-    
+
     vec4 sample_color[MAX_SAMPLES];
     for (int s = 0; s < MAX_SAMPLES; ++s) {
         #if MAX_SAMPLES != 1
