@@ -46,7 +46,7 @@ impl From<frustum::Frustum> for FrustumBytes {
     }
 }
 
-struct Clustering {
+pub struct Clustering {
     frustum_creation: FrustumCreation,
     frustum_buffer: Buffer,
 
@@ -100,6 +100,10 @@ impl Clustering {
             render_bind_group_layout,
             render_bind_group,
         }
+    }
+
+    pub fn bind_group_layout(&self) -> &BindGroupLayout {
+        &self.render_bind_group_layout
     }
 
     pub fn bind_group(&self) -> &BindGroup {

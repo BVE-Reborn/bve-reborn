@@ -8,7 +8,7 @@ use zerocopy::AsBytes;
 
 #[derive(AsBytes)]
 #[repr(C)]
-struct Uniforms {
+struct FroxelUniforms {
     _inv_proj: [[f32; 4]; 4],
     _frustum: FrustumBytes,
     _frustum_count: [u32; 2],
@@ -51,7 +51,7 @@ impl FrustumCreation {
             bind_group_layouts: &[&bind_group_layout],
         });
 
-        let shader = shader!(device; froxel - compute);
+        let shader = shader!(device; froxels - compute);
 
         let pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
             layout: &pipeline_layout,
@@ -63,11 +63,11 @@ impl FrustumCreation {
 
         let uniform_buffer = device.create_buffer(&BufferDescriptor {
             usage: BufferUsage::COPY_DST | BufferUsage::UNIFORM,
-            size: size_of::<Uniforms>() as BufferAddress,
+            size: size_of::<FroxelUniforms>() as BufferAddress,
             label: Some("frustum creation uniforms"),
         });
 
-        let uniforms = Uniforms {
+        let uniforms = FroxelUniforms {
             _frustum: frustum.into(),
             _frustum_count: *frustum_count.as_ref(),
             _inv_proj: *mx_inv_proj.as_ref(),
@@ -80,7 +80,7 @@ impl FrustumCreation {
             0,
             &uniform_buffer,
             0,
-            size_of::<Uniforms>() as BufferAddress,
+            size_of::<FroxelUniforms>() as BufferAddress,
         );
 
         let bind_group = device.create_bind_group(&BindGroupDescriptor {
@@ -90,7 +90,7 @@ impl FrustumCreation {
                     binding: 0,
                     resource: BindingResource::Buffer {
                         buffer: &uniform_buffer,
-                        range: 0..(size_of::<Uniforms>() as BufferAddress),
+                        range: 0..(size_of::<FroxelUniforms>() as BufferAddress),
                     },
                 },
                 Binding {

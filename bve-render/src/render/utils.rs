@@ -1,5 +1,4 @@
-use crate::*;
-use bve::load::mesh::Vertex;
+use crate::{render::Vertex, *};
 use log::trace;
 use nalgebra_glm::UVec2;
 use std::cmp::Ordering;

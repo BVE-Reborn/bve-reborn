@@ -396,17 +396,14 @@ pub struct Oit {
 impl Oit {
     pub fn new(
         device: &Device,
+        encoder: &mut CommandEncoder,
         vert: &ShaderModule,
         opaque_bind_group_layout: &BindGroupLayout,
         framebuffer: &TextureView,
         resolution: UVec2,
         oit_node_count: OITNodeCount,
         samples: MSAASetting,
-    ) -> (Self, CommandBuffer) {
-        let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
-            label: Some("OIT texture creator"),
-        });
-
+    ) -> Self {
         let oit_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             bindings: &[
                 BindGroupLayoutEntry {
@@ -463,7 +460,7 @@ impl Oit {
         let (head_pointer_view, uniform_buffer, node_buffer, oit_bind_group, framebuffer_bind_group) =
             create_oit_buffers(
                 device,
-                &mut encoder,
+                encoder,
                 &oit_bind_group_layout,
                 &framebuffer_bind_group_layout,
                 framebuffer,
@@ -472,25 +469,22 @@ impl Oit {
                 samples,
             );
 
-        (
-            Self {
-                oit_bind_group_layout,
-                framebuffer_bind_group_layout,
-                pass1_pipeline_layout,
-                pass2_pipeline_layout,
-                oit_bind_group,
-                framebuffer_bind_group,
-                head_pointer_view,
-                uniform_buffer,
-                node_source_buffer,
-                node_buffer,
-                framebuffer_sampler,
-                resolution,
-                pass1_pipeline,
-                pass2_pipeline,
-            },
-            encoder.finish(),
-        )
+        Self {
+            oit_bind_group_layout,
+            framebuffer_bind_group_layout,
+            pass1_pipeline_layout,
+            pass2_pipeline_layout,
+            oit_bind_group,
+            framebuffer_bind_group,
+            head_pointer_view,
+            uniform_buffer,
+            node_source_buffer,
+            node_buffer,
+            framebuffer_sampler,
+            resolution,
+            pass1_pipeline,
+            pass2_pipeline,
+        }
     }
 
     pub fn resize(

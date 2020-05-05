@@ -66,7 +66,7 @@ use image::RgbaImage;
 use indexmap::map::IndexMap;
 use itertools::Itertools;
 use log::{debug, error, info};
-use nalgebra_glm::{make_vec2, make_vec3, Mat4, Vec3};
+use nalgebra_glm::{inverse, make_vec2, make_vec3, Mat4, Vec3};
 use num_traits::{ToPrimitive, Zero};
 use std::{mem::size_of, sync::Arc, time::Instant};
 use wgpu::*;
@@ -138,6 +138,7 @@ pub struct Renderer {
 
     transparency_processor: compute::CutoutTransparencyCompute,
     mip_creator: compute::MipmapCompute,
+    cluster_renderer: render::cluster::Clustering,
     oit_renderer: render::oit::Oit,
     skybox_renderer: render::skybox::Skybox,
     imgui_renderer: imgui_wgpu::Renderer,
@@ -182,6 +183,8 @@ impl Renderer {
             })
             .await;
 
+        let mut startup_encoder = device.create_command_encoder(&CommandEncoderDescriptor { label: Some("startup") });
+
         let swapchain_desc = render::create_swapchain_descriptor(screen_size, vsync);
         let swapchain = device.create_swap_chain(&surface, &swapchain_desc);
 
@@ -204,6 +207,18 @@ impl Renderer {
         let framebuffer = render::create_framebuffer(&device, screen_size, samples);
         let depth_buffer = render::create_depth_buffer(&device, screen_size, samples);
 
+        let projection_matrix = perspective_matrix(
+            45_f32.to_radians(),
+            screen_size.width as f32 / screen_size.height as f32,
+        );
+
+        let cluster_renderer = render::cluster::Clustering::new(
+            &device,
+            &mut startup_encoder,
+            inverse(&projection_matrix),
+            frustum::Frustum::from_matrix(projection_matrix),
+        );
+
         let texture_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             bindings: &[
                 BindGroupLayoutEntry {
@@ -224,15 +239,16 @@ impl Renderer {
             label: Some("texture and sampler"),
         });
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
-            bind_group_layouts: &[&texture_bind_group_layout],
+            bind_group_layouts: &[&texture_bind_group_layout, cluster_renderer.bind_group_layout()],
         });
 
         let opaque_pipeline = render::create_pipeline(&device, &pipeline_layout, &vs_module, &fs_module, samples);
 
         let transparency_processor = compute::CutoutTransparencyCompute::new(&device);
         let mip_creator = compute::MipmapCompute::new(&device);
-        let (oit_renderer, oit_command_buffer) = render::oit::Oit::new(
+        let oit_renderer = render::oit::Oit::new(
             &device,
+            &mut startup_encoder,
             &vs_module,
             &texture_bind_group_layout,
             &framebuffer,
@@ -244,11 +260,6 @@ impl Renderer {
         let imgui_renderer = imgui_wgpu::Renderer::new(imgui_context, &device, &mut queue, swapchain_desc.format, None);
 
         let screenspace_triangle_verts = screenspace::create_screen_space_verts(&device);
-
-        let projection_matrix = perspective_matrix(
-            45_f32.to_radians(),
-            screen_size.width as f32 / screen_size.height as f32,
-        );
 
         // Create the Renderer object early so we can can call methods on it.
         let mut renderer = Self {
@@ -290,11 +301,12 @@ impl Renderer {
 
             transparency_processor,
             mip_creator,
+            cluster_renderer,
             oit_renderer,
             skybox_renderer,
             imgui_renderer,
 
-            command_buffers: vec![oit_command_buffer],
+            command_buffers: vec![startup_encoder.finish()],
             _renderdoc_capture: false,
         };
 
