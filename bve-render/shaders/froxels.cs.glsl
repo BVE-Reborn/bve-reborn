@@ -18,27 +18,6 @@ uint get_global_index(uvec2 global, uvec2 total) {
            global.x;
 }
 
-Plane normalize_plane(Plane p) {
-    float mag = length(p.abc);
-
-    p.abc /= mag;
-    p.d /= mag;
-
-    return p;
-}
-
-Plane compute_plane(vec3 p0, vec3 p1, vec3 p2) {
-    vec3 v0 = p1 - p0;
-    vec3 v1 = p2 - p0;
-
-    vec3 normal = normalize(cross(v0, v1));
-
-    // Apply the plane equation to one of the points to get the offset
-    float d = dot(normal, p0);
-
-    return Plane(normal, d);
-}
-
 void main() {
     vec2 lerp_start = vec2(gl_GlobalInvocationID) / vec2(frustum_count);
     vec2 lerp_end = vec2(gl_GlobalInvocationID + 1) / vec2(frustum_count);
