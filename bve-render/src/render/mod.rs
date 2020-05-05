@@ -7,6 +7,11 @@ pub mod oit;
 pub mod skybox;
 mod utils;
 
+pub enum DebugMode {
+    None,
+    Frustums,
+}
+
 #[repr(C)]
 #[derive(Clone, Copy, AsBytes, FromBytes)]
 pub struct Vertex {
@@ -158,6 +163,8 @@ impl Renderer {
         }
 
         let frame = frame_res.expect("Could not get next swapchain texture");
+
+        self.cluster_renderer.execute(&mut encoder);
 
         {
             self.oit_renderer.clear_buffers(&mut encoder);

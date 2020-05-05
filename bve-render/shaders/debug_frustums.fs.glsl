@@ -10,5 +10,5 @@ void main() {
     } else {
         color.a = 1.0;
     }
-    outColor = color;
+    outColor = vec4(1.0, 0.0, 0.0, 1.0);
 }

@@ -46,9 +46,14 @@ impl From<frustum::Frustum> for FrustumBytes {
     }
 }
 
+#[derive(AsBytes)]
+#[repr(C)]
+struct ClusterUniforms {
+    _frustum_count: [u32; 4],
+}
+
 pub struct Clustering {
     frustum_creation: FrustumCreation,
-    frustum_buffer: Buffer,
 
     render_bind_group_layout: BindGroupLayout,
     render_bind_group: BindGroup,
@@ -61,6 +66,12 @@ impl Clustering {
             label: Some("frustum buffer"),
         });
 
+        let cluster_uniforms = ClusterUniforms {
+            _frustum_count: [FROXELS_X, FROXELS_Y, FROXELS_Z, 0],
+        };
+
+        let cluster_uniforms_buffer = device.create_buffer_with_data(cluster_uniforms.as_bytes(), BufferUsage::UNIFORM);
+
         let frustum_creation = FrustumCreation::new(
             device,
             encoder,
@@ -71,32 +82,47 @@ impl Clustering {
         );
 
         let render_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            bindings: &[BindGroupLayoutEntry {
-                binding: 0,
-                visibility: ShaderStage::FRAGMENT,
-                ty: BindingType::StorageBuffer {
-                    readonly: true,
-                    dynamic: false,
+            bindings: &[
+                BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: ShaderStage::FRAGMENT,
+                    ty: BindingType::StorageBuffer {
+                        readonly: true,
+                        dynamic: false,
+                    },
                 },
-            }],
+                BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: ShaderStage::FRAGMENT,
+                    ty: BindingType::UniformBuffer { dynamic: false },
+                },
+            ],
             label: Some("clustering bind group layout"),
         });
 
         let render_bind_group = device.create_bind_group(&BindGroupDescriptor {
             layout: &render_bind_group_layout,
-            bindings: &[Binding {
-                binding: 0,
-                resource: BindingResource::Buffer {
-                    buffer: &frustum_buffer,
-                    range: 0..FRUSTUM_BUFFER_SIZE,
+            bindings: &[
+                Binding {
+                    binding: 0,
+                    resource: BindingResource::Buffer {
+                        buffer: &frustum_buffer,
+                        range: 0..FRUSTUM_BUFFER_SIZE,
+                    },
                 },
-            }],
+                Binding {
+                    binding: 1,
+                    resource: BindingResource::Buffer {
+                        buffer: &cluster_uniforms_buffer,
+                        range: 0..size_of::<ClusterUniforms>() as BufferAddress,
+                    },
+                },
+            ],
             label: Some("clustering bind group"),
         });
 
         Self {
             frustum_creation,
-            frustum_buffer,
             render_bind_group_layout,
             render_bind_group,
         }
@@ -108,5 +134,9 @@ impl Clustering {
 
     pub fn bind_group(&self) -> &BindGroup {
         &self.render_bind_group
+    }
+
+    pub fn execute(&self, encoder: &mut CommandEncoder) {
+        self.frustum_creation.execute(encoder);
     }
 }

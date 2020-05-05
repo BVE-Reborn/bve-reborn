@@ -1,6 +1,6 @@
 use crate::{
     frustum::Frustum,
-    render::cluster::{FrustumBytes, FRUSTUM_BUFFER_SIZE},
+    render::cluster::{FrustumBytes, FROXELS_X, FROXELS_Y, FRUSTUM_BUFFER_SIZE},
     *,
 };
 use nalgebra_glm::UVec2;
@@ -15,7 +15,6 @@ struct FroxelUniforms {
 }
 
 pub struct FrustumCreation {
-    uniform_buffer: Buffer,
     bind_group: BindGroup,
     pipeline: ComputePipeline,
 }
@@ -104,10 +103,15 @@ impl FrustumCreation {
             label: Some("frustum creation bind group"),
         });
 
-        Self {
-            uniform_buffer,
-            bind_group,
-            pipeline,
+        Self { bind_group, pipeline }
+    }
+
+    pub fn execute(&self, encoder: &mut CommandEncoder) {
+        {
+            let mut pass = encoder.begin_compute_pass();
+            pass.set_pipeline(&self.pipeline);
+            pass.set_bind_group(0, &self.bind_group, &[]);
+            pass.dispatch(FROXELS_X / 4, FROXELS_Y / 4, 1);
         }
     }
 }

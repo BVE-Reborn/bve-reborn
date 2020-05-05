@@ -56,7 +56,7 @@
 pub use crate::{
     mesh::MeshHandle,
     object::ObjectHandle,
-    render::{oit::OITNodeCount, MSAASetting, Vsync},
+    render::{oit::OITNodeCount, DebugMode, MSAASetting, Vsync},
     statistics::RendererStatistics,
     texture::TextureHandle,
 };
@@ -337,6 +337,24 @@ impl Renderer {
         self.projection_matrix = perspective_matrix(
             45_f32.to_radians(),
             screen_size.width as f32 / screen_size.height as f32,
+        );
+    }
+
+    pub fn set_debug(&mut self, mode: DebugMode) {
+        match mode {
+            DebugMode::None => {
+                self.frag_shader = shader!(&self.device; opaque - fragment);
+            }
+            DebugMode::Frustums => {
+                self.frag_shader = shader!(&self.device; debug_frustums - fragment);
+            }
+        };
+        self.opaque_pipeline = render::create_pipeline(
+            &self.device,
+            &self.pipeline_layout,
+            &self.vert_shader,
+            &self.frag_shader,
+            self.samples,
         );
     }
 
