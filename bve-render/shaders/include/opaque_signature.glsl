@@ -26,7 +26,8 @@ uvec3 compute_frustum() {
     vec2 scale = get_clip_position().xy * 0.5 + 0.5;
     vec2 frustum_raw = scale * vec2(frustum_count.xy);
     uvec2 frustum_xy = uvec2(floor(frustum_raw));
-    float depth = view_position.z;
+    // length(view - camera)
+    float depth = length(view_position.xyz);
     uint depth_frustum = uint(floor((depth / max_depth) * frustum_count.z));
     return uvec3(frustum_xy, depth_frustum);
 }
