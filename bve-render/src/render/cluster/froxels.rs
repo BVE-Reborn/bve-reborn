@@ -141,7 +141,7 @@ impl FrustumCreation {
             let mut pass = encoder.begin_compute_pass();
             pass.set_pipeline(&self.pipeline);
             pass.set_bind_group(0, &self.bind_group, &[]);
-            pass.dispatch(FROXELS_X / 4, FROXELS_Y / 4, 1);
+            pass.dispatch(FROXELS_X / 8, FROXELS_Y / 8, 1);
         }
     }
 }

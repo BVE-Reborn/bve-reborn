@@ -28,6 +28,11 @@ float distance(Plane plane, vec3 point) {
     return dot(plane.abc, point) + plane.d;
 }
 
+struct Sphere {
+    vec3 location;
+    float radius;
+};
+
 struct Frustum {
     // Left, Right, Top, Bottom
     Plane planes[4];
@@ -43,7 +48,36 @@ bool contains_point(Frustum frustum, vec3 point) {
     return res;
 }
 
-uint get_frustum_list_index(uvec2 global, uvec2 total) {
-    return global.y * total.x +
-    global.x;
+bool contains_sphere(Frustum frustum, Sphere sphere) {
+    bool res = true;
+    for (int i = 0; i < 4; ++i) {
+        if (distance(frustum.planes[i], sphere.location) <= -sphere.radius) {
+            res = false;
+        }
+    }
+    return res;
+}
+
+uint get_frustum_list_index(uvec2 coords, uvec2 total) {
+    return coords.y * total.x +
+           coords.x;
+}
+
+uvec2 get_frustum_coords(uint index, uvec2 total) {
+    uint y = (index / total.x) % total.y;
+    uint x = index % total.x;
+    return uvec2(x, y);
+}
+
+uint get_cluser_list_index(uvec3 coords, uvec3 total) {
+    return coords.z * total.x * total.y +
+           coords.y * total.x +
+           coords.x;
+}
+
+uvec3 get_cluser_coords(uint index, uvec3 total) {
+    uint z = index / (total.x * total.y);
+    uint y = (index / total.x) % total.y;
+    uint x = index % total.x;
+    return uvec3(x, y, z);
 }

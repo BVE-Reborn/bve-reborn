@@ -2,6 +2,7 @@ debug_frustum_addressing - fragment:
 debug_frustums - fragment:
 froxels - compute:
 fx - vertex:
+light_culling - compute:
 mipmap - compute:
 oit_pass1 - fragment:
 oit_pass2 - fragment: MAX_SAMPLES=1 OR MAX_SAMPLES=2 OR MAX_SAMPLES=4 OR MAX_SAMPLES=8 AND MAX_NODES=4 OR MAX_NODES=8 OR MAX_NODES=16 OR MAX_NODES=32
