@@ -69,15 +69,38 @@ uvec2 get_frustum_coords(uint index, uvec2 total) {
     return uvec2(x, y);
 }
 
-uint get_cluser_list_index(uvec3 coords, uvec3 total) {
+uint get_cluster_list_index(uvec3 coords, uvec3 total) {
     return coords.z * total.x * total.y +
            coords.y * total.x +
            coords.x;
 }
 
-uvec3 get_cluser_coords(uint index, uvec3 total) {
+uvec3 get_cluster_coords(uint index, uvec3 total) {
     uint z = index / (total.x * total.y);
     uint y = (index / total.x) % total.y;
     uint x = index % total.x;
     return uvec3(x, y, z);
 }
+
+struct ZBounds {
+    float start;
+    float end;
+};
+
+ZBounds get_zbounds(uint z_number, uint z_divisions, float max_depth) {
+    float start = float(z_number) * (max_depth / float(z_divisions));
+    float end = float(z_number + 1) * (max_depth / float(z_divisions));
+    return ZBounds(start, end);
+}
+
+bool contains_sphere(ZBounds bounds, Sphere sphere) {
+    float depth = length(sphere.location);
+    if (depth - sphere.radius > bounds.end) {
+        return false;
+    } else if (depth + sphere.radius < bounds.start) {
+        return false;
+    } else {
+        return true;
+    }
+}
+
