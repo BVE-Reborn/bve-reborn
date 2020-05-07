@@ -54,6 +54,7 @@
 #![allow(clippy::wildcard_imports)]
 
 pub use crate::{
+    lights::{ConeLight, LightDescriptor, LightHandle, PointLight},
     mesh::MeshHandle,
     object::ObjectHandle,
     render::{oit::OITNodeCount, DebugMode, MSAASetting, Vsync},
@@ -88,6 +89,7 @@ macro_rules! renderdoc {
 mod camera;
 mod compute;
 mod frustum;
+mod lights;
 mod mesh;
 mod object;
 mod render;
@@ -111,6 +113,9 @@ pub struct Renderer {
 
     textures: IndexMap<u64, texture::Texture>,
     texture_handle_count: u64,
+
+    lights: IndexMap<u64, lights::LightDescriptor>,
+    light_handle_count: u64,
 
     camera: camera::Camera,
     resolution: PhysicalSize<u32>,
@@ -273,6 +278,9 @@ impl Renderer {
 
             textures: IndexMap::new(),
             texture_handle_count: 0,
+
+            lights: IndexMap::new(),
+            light_handle_count: 0,
 
             camera: camera::Camera {
                 location: make_vec3(&[-6.0, 0.0, 0.0]),

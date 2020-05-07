@@ -9,12 +9,18 @@ layout(location = 0) out vec4 out_color;
 
 layout(set = 0, binding = 0) uniform utexture2D colorTexture;
 layout(set = 0, binding = 1) uniform sampler main_sampler;
-layout(set = 1, binding = 0) readonly buffer Frustums {
-    Frustum frustums[];
-};
-layout(set = 1, binding = 1) uniform FroxelUniforms {
+layout(set = 1, binding = 0) uniform FroxelUniforms {
     uvec3 froxel_count;
     float max_depth;
+};
+layout(set = 1, binding = 1) readonly buffer Frustums {
+    Frustum frustums[];
+};
+layout(set = 1, binding = 2) readonly buffer Lights {
+    ConeLight lights[];
+};
+layout(set = 1, binding = 3) readonly buffer LightList {
+    uint light_index_list[];
 };
 
 vec3 get_clip_position() {

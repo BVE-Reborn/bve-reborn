@@ -6,12 +6,17 @@ mod froxels;
 const FROXELS_X: u32 = 16;
 const FROXELS_Y: u32 = 16;
 const FROXELS_Z: u32 = 32;
+const FROXEL_COUNT: u32 = FROXELS_X * FROXELS_Y * FROXELS_Z;
+
 const FRUSTUM_COUNT: u32 = FROXELS_X * FROXELS_Y;
 const FRUSTUM_BUFFER_SIZE: BufferAddress = (FRUSTUM_COUNT * size_of::<FrustumBytes>() as u32) as BufferAddress;
-const FROXEL_COUNT: u32 = FROXELS_X * FROXELS_Y * FROXELS_Z;
+
 const MAX_LIGHTS_PER_FROXEL: u32 = 128;
-const LIGHT_LIST_SIZE: BufferAddress =
+const LIGHT_LIST_BUFFER_SIZE: BufferAddress =
     (FROXEL_COUNT * MAX_LIGHTS_PER_FROXEL * size_of::<u32>() as u32) as BufferAddress;
+
+const MAX_TOTAL_LIGHTS: u32 = 16384;
+const LIGHT_BUFFER_SIZE: BufferAddress = (MAX_TOTAL_LIGHTS * size_of::<ConeLightBytes>() as u32) as BufferAddress;
 
 #[derive(AsBytes)]
 #[repr(C)]
@@ -53,6 +58,18 @@ impl From<frustum::Frustum> for FrustumBytes {
 
 #[derive(AsBytes)]
 #[repr(C)]
+struct ConeLightBytes {
+    _location: [f32; 4],
+    _direction: [f32; 4],
+    _radius: f32,
+    _angle: f32,
+    _strength: f32,
+    _point: bool,
+    _padding0: [u8; 3],
+}
+
+#[derive(AsBytes)]
+#[repr(C)]
 struct ClusterUniforms {
     _froxel_count: [u32; 4],
     _max_depth: f32,
@@ -90,10 +107,27 @@ impl Clustering {
             make_vec2(&[FROXELS_X, FROXELS_Y]),
         );
 
+        let light_list_buffer = device.create_buffer(&BufferDescriptor {
+            usage: BufferUsage::STORAGE | BufferUsage::STORAGE_READ,
+            size: LIGHT_LIST_BUFFER_SIZE,
+            label: Some("light list buffer"),
+        });
+
+        let light_buffer = device.create_buffer(&BufferDescriptor {
+            usage: BufferUsage::COPY_DST | BufferUsage::STORAGE | BufferUsage::STORAGE_READ,
+            size: LIGHT_BUFFER_SIZE,
+            label: Some("light buffer"),
+        });
+
         let render_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             bindings: &[
                 BindGroupLayoutEntry {
                     binding: 0,
+                    visibility: ShaderStage::FRAGMENT,
+                    ty: BindingType::UniformBuffer { dynamic: false },
+                },
+                BindGroupLayoutEntry {
+                    binding: 1,
                     visibility: ShaderStage::FRAGMENT,
                     ty: BindingType::StorageBuffer {
                         readonly: true,
@@ -101,9 +135,20 @@ impl Clustering {
                     },
                 },
                 BindGroupLayoutEntry {
-                    binding: 1,
+                    binding: 2,
                     visibility: ShaderStage::FRAGMENT,
-                    ty: BindingType::UniformBuffer { dynamic: false },
+                    ty: BindingType::StorageBuffer {
+                        readonly: true,
+                        dynamic: false,
+                    },
+                },
+                BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: ShaderStage::FRAGMENT,
+                    ty: BindingType::StorageBuffer {
+                        readonly: true,
+                        dynamic: false,
+                    },
                 },
             ],
             label: Some("clustering bind group layout"),
@@ -115,15 +160,29 @@ impl Clustering {
                 Binding {
                     binding: 0,
                     resource: BindingResource::Buffer {
-                        buffer: &frustum_buffer,
-                        range: 0..FRUSTUM_BUFFER_SIZE,
+                        buffer: &cluster_uniforms_buffer,
+                        range: 0..size_of::<ClusterUniforms>() as BufferAddress,
                     },
                 },
                 Binding {
                     binding: 1,
                     resource: BindingResource::Buffer {
-                        buffer: &cluster_uniforms_buffer,
-                        range: 0..size_of::<ClusterUniforms>() as BufferAddress,
+                        buffer: &frustum_buffer,
+                        range: 0..FRUSTUM_BUFFER_SIZE,
+                    },
+                },
+                Binding {
+                    binding: 2,
+                    resource: BindingResource::Buffer {
+                        buffer: &light_buffer,
+                        range: 0..LIGHT_BUFFER_SIZE,
+                    },
+                },
+                Binding {
+                    binding: 3,
+                    resource: BindingResource::Buffer {
+                        buffer: &light_list_buffer,
+                        range: 0..LIGHT_LIST_BUFFER_SIZE,
                     },
                 },
             ],
