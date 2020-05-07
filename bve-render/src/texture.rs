@@ -65,23 +65,20 @@ impl Renderer {
             },
             extent,
         );
-        self.command_buffers.push(encoder.finish());
 
         texture_descriptor.mip_level_count = mip_levels;
         let filtered_texture = self.device.create_texture(&texture_descriptor);
         let dimensions = make_vec2(&[image.width(), image.height()]);
-        let transparent_command = self.transparency_processor.compute_transparency(
+        self.transparency_processor.compute_transparency(
             &self.device,
+            &mut encoder,
             &base_texture,
             &filtered_texture,
             dimensions,
         );
-        self.command_buffers.push(transparent_command);
 
-        let mip_commands = self
-            .mip_creator
-            .compute_mipmaps(&self.device, &filtered_texture, dimensions);
-        self.command_buffers.extend(mip_commands);
+        self.mip_creator
+            .compute_mipmaps(&self.device, &mut encoder, &filtered_texture, dimensions);
 
         let texture_view = filtered_texture.create_default_view();
 
@@ -99,6 +96,8 @@ impl Renderer {
             ],
             label: None,
         });
+
+        self.command_buffers.push(encoder.finish());
 
         let handle = self.texture_handle_count;
         self.texture_handle_count += 1;

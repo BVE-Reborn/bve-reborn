@@ -7,15 +7,15 @@ layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 layout(set = 0, binding = 0) uniform Uniforms {
     mat4 inv_proj;
     Frustum frustum;
-    uvec2 frustum_count;
+    uvec2 froxel_count;
 };
 layout(set = 0, binding = 1) buffer Frustums {
     Frustum result_frustums[];
 };
 
 void main() {
-    vec2 lerp_start = vec2(gl_GlobalInvocationID) / vec2(frustum_count);
-    vec2 lerp_end = vec2(gl_GlobalInvocationID + 1) / vec2(frustum_count);
+    vec2 lerp_start = vec2(gl_GlobalInvocationID) / vec2(froxel_count);
+    vec2 lerp_end = vec2(gl_GlobalInvocationID + 1) / vec2(froxel_count);
 
     vec4 clip_space[4];
     // Top Left
@@ -47,7 +47,7 @@ void main() {
     // Bottom
     frustum.planes[3] = compute_plane(eye_position, view_space[2], view_space[3]);
 
-    uint index = get_frustum_list_index(gl_GlobalInvocationID.xy, frustum_count);
+    uint index = get_frustum_list_index(gl_GlobalInvocationID.xy, froxel_count);
 
     result_frustums[index] = frustum;
 }

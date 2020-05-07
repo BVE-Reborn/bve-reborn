@@ -6,7 +6,12 @@ mod froxels;
 const FROXELS_X: u32 = 16;
 const FROXELS_Y: u32 = 16;
 const FROXELS_Z: u32 = 32;
-const FRUSTUM_BUFFER_SIZE: BufferAddress = (FROXELS_X * FROXELS_Y * size_of::<FrustumBytes>() as u32) as BufferAddress;
+const FRUSTUM_COUNT: u32 = FROXELS_X * FROXELS_Y;
+const FRUSTUM_BUFFER_SIZE: BufferAddress = (FRUSTUM_COUNT * size_of::<FrustumBytes>() as u32) as BufferAddress;
+const FROXEL_COUNT: u32 = FROXELS_X * FROXELS_Y * FROXELS_Z;
+const MAX_LIGHTS_PER_FROXEL: u32 = 128;
+const LIGHT_LIST_SIZE: BufferAddress =
+    (FROXEL_COUNT * MAX_LIGHTS_PER_FROXEL * size_of::<u32>() as u32) as BufferAddress;
 
 #[derive(AsBytes)]
 #[repr(C)]
@@ -49,7 +54,7 @@ impl From<frustum::Frustum> for FrustumBytes {
 #[derive(AsBytes)]
 #[repr(C)]
 struct ClusterUniforms {
-    _frustum_count: [u32; 4],
+    _froxel_count: [u32; 4],
     _max_depth: f32,
     _padding0: [f32; 3],
 }
@@ -69,7 +74,7 @@ impl Clustering {
         });
 
         let cluster_uniforms = ClusterUniforms {
-            _frustum_count: [FROXELS_X, FROXELS_Y, FROXELS_Z, 0],
+            _froxel_count: [FROXELS_X, FROXELS_Y, FROXELS_Z, 0],
             _max_depth: FAR_PLANE_DISTANCE,
             _padding0: Default::default(),
         };
@@ -151,6 +156,7 @@ impl Clustering {
     }
 
     pub fn execute(&self, encoder: &mut CommandEncoder) {
-        self.frustum_creation.execute(encoder);
+        let mut pass = encoder.begin_compute_pass();
+        self.frustum_creation.execute(&mut pass);
     }
 }

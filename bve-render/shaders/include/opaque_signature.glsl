@@ -12,8 +12,8 @@ layout(set = 0, binding = 1) uniform sampler main_sampler;
 layout(set = 1, binding = 0) readonly buffer Frustums {
     Frustum frustums[];
 };
-layout(set = 1, binding = 1) uniform FrustumUniforms {
-    uvec4 frustum_count;
+layout(set = 1, binding = 1) uniform FroxelUniforms {
+    uvec3 froxel_count;
     float max_depth;
 };
 
@@ -21,13 +21,13 @@ vec3 get_clip_position() {
     return clip_position.xyz / clip_position.w;
 }
 
-uvec3 compute_frustum() {
+uvec3 compute_froxel() {
     // clip position but [0, 1] in xy
     vec2 scale = get_clip_position().xy * 0.5 + 0.5;
-    vec2 frustum_raw = scale * vec2(frustum_count.xy);
+    vec2 frustum_raw = scale * vec2(froxel_count.xy);
     uvec2 frustum_xy = uvec2(floor(frustum_raw));
     // length(view - camera)
     float depth = length(view_position.xyz);
-    uint depth_frustum = uint(floor((depth / max_depth) * frustum_count.z));
+    uint depth_frustum = uint(floor((depth / max_depth) * froxel_count.z));
     return uvec3(frustum_xy, depth_frustum);
 }

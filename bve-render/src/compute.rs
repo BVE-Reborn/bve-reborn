@@ -122,9 +122,7 @@ impl MipmapCompute {
         }
     }
 
-    pub fn compute_mipmaps(&self, device: &Device, texture: &Texture, dimensions: UVec2) -> Vec<CommandBuffer> {
-        let mut buffers = Vec::new();
-
+    pub fn compute_mipmaps(&self, device: &Device, encoder: &mut CommandEncoder, texture: &Texture, dimensions: UVec2) {
         for (level, dimensions) in render::enumerate_mip_levels(dimensions) {
             let parent = texture.create_view(&TextureViewDescriptor {
                 dimension: TextureViewDimension::D2,
@@ -146,8 +144,7 @@ impl MipmapCompute {
                 array_layer_count: 1,
             });
 
-            let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor { label: Some("Mipmap") });
-            let uniform_buffer = create_uniform_buffer(device, &mut encoder, dimensions);
+            let uniform_buffer = create_uniform_buffer(device, encoder, dimensions);
             let bind_group =
                 create_texture_compute_bind_group(device, &self.bind_group_layout, &parent, &child, &uniform_buffer);
 
@@ -158,11 +155,7 @@ impl MipmapCompute {
             cpass.dispatch((dimensions.x + 7) / 8, (dimensions.y + 7) / 8, 1);
 
             drop(cpass);
-
-            buffers.push(encoder.finish());
         }
-
-        buffers
     }
 }
 
@@ -185,10 +178,11 @@ impl CutoutTransparencyCompute {
     pub fn compute_transparency(
         &self,
         device: &Device,
+        encoder: &mut CommandEncoder,
         texture: &Texture,
         texture_dst: &Texture,
         dimensions: UVec2,
-    ) -> CommandBuffer {
+    ) {
         let view = TextureViewDescriptor {
             dimension: TextureViewDimension::D2,
             format: TextureFormat::Rgba8Uint,
@@ -201,10 +195,7 @@ impl CutoutTransparencyCompute {
         let source = texture.create_view(&view);
         let dest = texture_dst.create_view(&view);
 
-        let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
-            label: Some("CutoutTransparency"),
-        });
-        let uniform_buffer = create_uniform_buffer(device, &mut encoder, dimensions);
+        let uniform_buffer = create_uniform_buffer(device, encoder, dimensions);
         let bind_group =
             create_texture_compute_bind_group(device, &self.bind_group_layout, &source, &dest, &uniform_buffer);
 
@@ -215,7 +206,5 @@ impl CutoutTransparencyCompute {
         cpass.dispatch((dimensions.x + 7) / 8, (dimensions.y + 7) / 8, 1);
 
         drop(cpass);
-
-        encoder.finish()
     }
 }

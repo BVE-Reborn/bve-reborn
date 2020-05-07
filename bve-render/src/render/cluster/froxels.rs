@@ -136,12 +136,9 @@ impl FrustumCreation {
         );
     }
 
-    pub fn execute(&self, encoder: &mut CommandEncoder) {
-        {
-            let mut pass = encoder.begin_compute_pass();
-            pass.set_pipeline(&self.pipeline);
-            pass.set_bind_group(0, &self.bind_group, &[]);
-            pass.dispatch(FROXELS_X / 8, FROXELS_Y / 8, 1);
-        }
+    pub fn execute<'a>(&'a self, pass: &mut ComputePass<'a>) {
+        pass.set_pipeline(&self.pipeline);
+        pass.set_bind_group(0, &self.bind_group, &[]);
+        pass.dispatch(FROXELS_X / 8, FROXELS_Y / 8, 1);
     }
 }
