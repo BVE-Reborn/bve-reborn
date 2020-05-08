@@ -51,7 +51,7 @@ bool contains_point(Frustum frustum, vec3 point) {
 bool contains_sphere(Frustum frustum, Sphere sphere) {
     bool res = true;
     for (int i = 0; i < 4; ++i) {
-        if (distance(frustum.planes[i], sphere.location) <= -sphere.radius) {
+        if (distance(frustum.planes[i], sphere.location) >= -sphere.radius) {
             res = false;
         }
     }

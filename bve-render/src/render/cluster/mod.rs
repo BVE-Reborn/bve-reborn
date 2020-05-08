@@ -113,9 +113,8 @@ fn convert_lights_to_data(input: &IndexMap<u64, LightDescriptor>, mx_view: Mat4)
 #[derive(AsBytes)]
 #[repr(C)]
 struct ClusterUniforms {
-    _froxel_count: [u32; 4],
+    _froxel_count: [u32; 3],
     _max_depth: f32,
-    _padding0: [f32; 3],
 }
 
 pub struct Clustering {
@@ -136,9 +135,8 @@ impl Clustering {
         });
 
         let cluster_uniforms = ClusterUniforms {
-            _froxel_count: [FROXELS_X, FROXELS_Y, FROXELS_Z, 0],
+            _froxel_count: [FROXELS_X, FROXELS_Y, FROXELS_Z],
             _max_depth: FAR_PLANE_DISTANCE,
-            _padding0: Default::default(),
         };
 
         let cluster_uniforms_buffer = device.create_buffer_with_data(cluster_uniforms.as_bytes(), BufferUsage::UNIFORM);

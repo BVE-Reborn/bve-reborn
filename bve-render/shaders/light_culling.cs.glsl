@@ -65,6 +65,6 @@ void main() {
     }
 
     for (uint index = local_index; index < group_offset; index += THREADS) {
-        light_index_list[cluster_index].indices[local_index] = group_indices[index];
+        light_index_list[cluster_index].indices[index] = group_indices[index];
     }
 }
