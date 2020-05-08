@@ -30,13 +30,14 @@ shared uint group_indices[MAX_LIGHTS];
 shared uint group_offset;
 
 void main() {
-    if (gl_LocalInvocationID.x == 0) {
+    uint local_index = gl_LocalInvocationID.x;
+
+    if (local_index == 0) {
         group_offset = 0;
     }
 
     barrier();
 
-    uint local_index = gl_LocalInvocationID.x;
     uint cluster_index = gl_GlobalInvocationID.y;
     uvec3 cluster_coords = get_cluster_coords(cluster_index, cluster_count);
     uint frustum_index = get_frustum_list_index(cluster_coords.xy, cluster_count.xy);
@@ -50,7 +51,7 @@ void main() {
 
         if (contains_sphere(frustum, sphere) && contains_sphere(z_bounds, sphere)) {
             uint index = atomicAdd(group_offset, 1);
-            if (index < 128) {
+            if (index < MAX_LIGHTS) {
                 group_indices[index] = light_index;
                 break;
             }

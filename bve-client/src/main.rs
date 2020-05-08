@@ -251,7 +251,7 @@ fn client_main() {
 
         client.renderer.add_light(LightDescriptor::Point(PointLight {
             location: make_vec3(&[0.0, 0.0, 0.0]),
-            radius: 10.0,
+            radius: 200.0,
             strength: 100.0,
         }));
     });
@@ -544,6 +544,7 @@ fn client_main() {
                                     im_str!("None"),
                                     im_str!("Frustums"),
                                     im_str!("Frustum Addressing Verification"),
+                                    im_str!("Per-Pixel Light Count"),
                                 ])
                             {
                                 debug_mode = DebugMode::from_selection_integer(current_debug);

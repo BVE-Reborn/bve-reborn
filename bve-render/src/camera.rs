@@ -31,7 +31,6 @@ impl Camera {
     }
 
     pub fn compute_origin_matrix(&self) -> Mat4 {
-        // This is pre z-inversion, so z is flipped here
         let look_offset = self.compute_look_offset();
 
         look_at_lh(&make_vec3(&[0.0, 0.0, 0.0]), &look_offset, &make_vec3(&[0.0, 1.0, 0.0]))

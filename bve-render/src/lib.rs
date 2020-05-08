@@ -371,6 +371,9 @@ impl Renderer {
             DebugMode::FrustumAddressing => {
                 self.frag_shader = shader!(&self.device; debug_frustum_addressing - fragment);
             }
+            DebugMode::LightCount => {
+                self.frag_shader = shader!(&self.device; debug_light_count - fragment);
+            }
         };
         self.debug_mode = mode;
         self.opaque_pipeline = render::create_pipeline(

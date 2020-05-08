@@ -28,6 +28,7 @@ pub enum DebugMode {
     None,
     Frustums,
     FrustumAddressing,
+    LightCount,
 }
 
 impl DebugMode {
@@ -37,6 +38,7 @@ impl DebugMode {
             0 => Self::None,
             1 => Self::Frustums,
             2 => Self::FrustumAddressing,
+            3 => Self::LightCount,
             _ => unreachable!(),
         }
     }
@@ -47,6 +49,7 @@ impl DebugMode {
             Self::None => 0,
             Self::Frustums => 1,
             Self::FrustumAddressing => 2,
+            Self::LightCount => 2,
         }
     }
 }

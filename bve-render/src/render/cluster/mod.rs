@@ -80,6 +80,7 @@ fn convert_lights_to_data(input: &IndexMap<u64, LightDescriptor>, mx_view: Mat4)
                 homogeneous_location.w = 1.0;
 
                 let transformed = mx_view * homogeneous_location;
+
                 ConeLightBytes {
                     _location: *transformed.as_ref(),
                     _direction: [0.0; 4],
