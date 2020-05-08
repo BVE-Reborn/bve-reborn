@@ -68,6 +68,32 @@ struct ConeLightBytes {
     _padding0: [u8; 3],
 }
 
+fn convert_lights_to_data(input: &IndexMap<u64, LightDescriptor>) -> Vec<ConeLightBytes> {
+    input
+        .values()
+        .map(|light| match light {
+            LightDescriptor::Point(point) => ConeLightBytes {
+                _location: [point.location.x, point.location.y, point.location.z, 0.0],
+                _direction: [0.0; 4],
+                _radius: point.radius,
+                _angle: 0.0,
+                _strength: point.strength,
+                _point: true,
+                _padding0: [0; 3],
+            },
+            LightDescriptor::Cone(cone) => ConeLightBytes {
+                _location: [cone.location.x, cone.location.y, cone.location.z, 0.0],
+                _direction: [cone.direction.x, cone.direction.y, cone.direction.z, 0.0],
+                _radius: cone.radius,
+                _angle: cone.angle,
+                _strength: cone.strength,
+                _point: false,
+                _padding0: [0; 3],
+            },
+        })
+        .collect_vec()
+}
+
 #[derive(AsBytes)]
 #[repr(C)]
 struct ClusterUniforms {
@@ -78,6 +104,8 @@ struct ClusterUniforms {
 
 pub struct Clustering {
     frustum_creation: FrustumCreation,
+
+    light_buffer: Buffer,
 
     render_bind_group_layout: BindGroupLayout,
     render_bind_group: BindGroup,
@@ -191,6 +219,7 @@ impl Clustering {
 
         Self {
             frustum_creation,
+            light_buffer,
             render_bind_group_layout,
             render_bind_group,
         }
@@ -214,7 +243,13 @@ impl Clustering {
         &self.render_bind_group
     }
 
-    pub fn execute(&self, encoder: &mut CommandEncoder) {
+    pub fn execute(&self, device: &Device, encoder: &mut CommandEncoder, lights: &IndexMap<u64, LightDescriptor>) {
+        let lights = convert_lights_to_data(lights);
+        let light_tmp_buffer = device.create_buffer_with_data(lights.as_bytes(), BufferUsage::COPY_SRC);
+        let light_buffer_size =
+            (lights.len().min(MAX_TOTAL_LIGHTS as usize) * size_of::<ConeLightBytes>()) as BufferAddress;
+        encoder.copy_buffer_to_buffer(&light_tmp_buffer, 0, &self.light_buffer, 0, light_buffer_size);
+
         let mut pass = encoder.begin_compute_pass();
         self.frustum_creation.execute(&mut pass);
     }
