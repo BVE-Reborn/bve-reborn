@@ -1,6 +1,9 @@
 use crate::{camera::FAR_PLANE_DISTANCE, frustum::Frustum, *};
+use culling::*;
 use froxels::*;
+use nalgebra_glm::vec3_to_vec4;
 
+mod culling;
 mod froxels;
 
 const FROXELS_X: u32 = 16;
@@ -68,28 +71,40 @@ struct ConeLightBytes {
     _padding0: [u8; 3],
 }
 
-fn convert_lights_to_data(input: &IndexMap<u64, LightDescriptor>) -> Vec<ConeLightBytes> {
+fn convert_lights_to_data(input: &IndexMap<u64, LightDescriptor>, mx_view: Mat4) -> Vec<ConeLightBytes> {
     input
         .values()
         .map(|light| match light {
-            LightDescriptor::Point(point) => ConeLightBytes {
-                _location: [point.location.x, point.location.y, point.location.z, 0.0],
-                _direction: [0.0; 4],
-                _radius: point.radius,
-                _angle: 0.0,
-                _strength: point.strength,
-                _point: true,
-                _padding0: [0; 3],
-            },
-            LightDescriptor::Cone(cone) => ConeLightBytes {
-                _location: [cone.location.x, cone.location.y, cone.location.z, 0.0],
-                _direction: [cone.direction.x, cone.direction.y, cone.direction.z, 0.0],
-                _radius: cone.radius,
-                _angle: cone.angle,
-                _strength: cone.strength,
-                _point: false,
-                _padding0: [0; 3],
-            },
+            LightDescriptor::Point(point) => {
+                let mut homogeneous_location = vec3_to_vec4(&point.location);
+                homogeneous_location.w = 1.0;
+
+                let transformed = mx_view * homogeneous_location;
+                ConeLightBytes {
+                    _location: *transformed.as_ref(),
+                    _direction: [0.0; 4],
+                    _radius: point.radius,
+                    _angle: 0.0,
+                    _strength: point.strength,
+                    _point: true,
+                    _padding0: [0; 3],
+                }
+            }
+            LightDescriptor::Cone(cone) => {
+                let mut homogeneous_location = vec3_to_vec4(&cone.location);
+                homogeneous_location.w = 1.0;
+
+                let transformed = mx_view * homogeneous_location;
+                ConeLightBytes {
+                    _location: *transformed.as_ref(),
+                    _direction: [cone.direction.x, cone.direction.y, cone.direction.z, 0.0],
+                    _radius: cone.radius,
+                    _angle: cone.angle,
+                    _strength: cone.strength,
+                    _point: false,
+                    _padding0: [0; 3],
+                }
+            }
         })
         .collect_vec()
 }
@@ -104,6 +119,7 @@ struct ClusterUniforms {
 
 pub struct Clustering {
     frustum_creation: FrustumCreation,
+    light_culling: LightCulling,
 
     light_buffer: Buffer,
 
@@ -146,6 +162,8 @@ impl Clustering {
             size: LIGHT_BUFFER_SIZE,
             label: Some("light buffer"),
         });
+
+        let light_culling = LightCulling::new(device, encoder, &frustum_buffer, &light_buffer, &light_list_buffer);
 
         let render_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             bindings: &[
@@ -219,6 +237,7 @@ impl Clustering {
 
         Self {
             frustum_creation,
+            light_culling,
             light_buffer,
             render_bind_group_layout,
             render_bind_group,
@@ -243,14 +262,26 @@ impl Clustering {
         &self.render_bind_group
     }
 
-    pub fn execute(&self, device: &Device, encoder: &mut CommandEncoder, lights: &IndexMap<u64, LightDescriptor>) {
-        let lights = convert_lights_to_data(lights);
-        let light_tmp_buffer = device.create_buffer_with_data(lights.as_bytes(), BufferUsage::COPY_SRC);
-        let light_buffer_size =
-            (lights.len().min(MAX_TOTAL_LIGHTS as usize) * size_of::<ConeLightBytes>()) as BufferAddress;
-        encoder.copy_buffer_to_buffer(&light_tmp_buffer, 0, &self.light_buffer, 0, light_buffer_size);
+    pub fn execute(
+        &self,
+        device: &Device,
+        encoder: &mut CommandEncoder,
+        lights: &IndexMap<u64, LightDescriptor>,
+        mx_view: Mat4,
+    ) {
+        let light_count = lights.len().min(MAX_TOTAL_LIGHTS as usize);
+        if !lights.is_empty() {
+            let lights = convert_lights_to_data(lights, mx_view);
+            let light_tmp_buffer = device.create_buffer_with_data(lights.as_bytes(), BufferUsage::COPY_SRC);
+            let light_buffer_size = (light_count * size_of::<ConeLightBytes>()) as BufferAddress;
+            encoder.copy_buffer_to_buffer(&light_tmp_buffer, 0, &self.light_buffer, 0, light_buffer_size);
+        }
+
+        self.light_culling
+            .update_light_counts(device, encoder, light_count as u32);
 
         let mut pass = encoder.begin_compute_pass();
         self.frustum_creation.execute(&mut pass);
+        self.light_culling.execute(&mut pass);
     }
 }

@@ -59,13 +59,14 @@ use async_std::{
 };
 use bve::{load::mesh::Vertex, runtime, runtime::Location};
 use bve_render::{
-    DebugMode, MSAASetting, MeshHandle, OITNodeCount, ObjectHandle, Renderer, RendererStatistics, TextureHandle, Vsync,
+    DebugMode, LightDescriptor, MSAASetting, MeshHandle, OITNodeCount, ObjectHandle, PointLight, Renderer,
+    RendererStatistics, TextureHandle, Vsync,
 };
 use cgmath::{ElementWise, InnerSpace, Vector3};
 use image::RgbaImage;
 use imgui::{im_str, FontSource};
 use itertools::Itertools;
-use nalgebra_glm::Vec3;
+use nalgebra_glm::{make_vec3, Vec3};
 use num_traits::Zero;
 use serde::Deserialize;
 use std::{
@@ -247,6 +248,12 @@ fn client_main() {
         let mut client = client.lock().await;
         let handle = client.renderer.add_texture(&rgba);
         client.renderer.set_skybox_image(&handle, loading.background.repeats);
+
+        client.renderer.add_light(LightDescriptor::Point(PointLight {
+            location: make_vec3(&[0.0, 0.0, 0.0]),
+            radius: 10.0,
+            strength: 100.0,
+        }));
     });
 
     let mut mouse_pitch = 0.0_f32;

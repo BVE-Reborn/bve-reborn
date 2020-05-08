@@ -3,7 +3,6 @@
 #include "frustum.glsl"
 #include "lights.glsl"
 
-#define MAX_LIGHTS 128
 #define THREADS 64
 
 // Work on one cluster at a time, building the index array in group shared memory.
@@ -24,7 +23,7 @@ layout(set = 0, binding = 2) readonly buffer Lights {
     ConeLight lights[];
 };
 layout(set = 0, binding = 3) buffer GlobalIndices {
-    uint light_index_list[];
+    LightIndexSet light_index_list[];
 };
 
 shared uint group_indices[MAX_LIGHTS];
@@ -60,7 +59,11 @@ void main() {
 
     barrier();
 
+    if (local_index == 0) {
+        light_index_list[cluster_index].count = group_offset;
+    }
+
     for (uint index = local_index; index < group_offset; index += THREADS) {
-        light_index_list[cluster_index * MAX_LIGHTS + index] = group_indices[index];
+        light_index_list[cluster_index].indices[local_index] = group_indices[index];
     }
 }

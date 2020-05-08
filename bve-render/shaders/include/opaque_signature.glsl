@@ -21,7 +21,7 @@ layout(set = 1, binding = 2) readonly buffer Lights {
     ConeLight lights[];
 };
 layout(set = 1, binding = 3) readonly buffer LightList {
-    uint light_index_list[];
+    LightIndexSet light_index_list[];
 };
 
 vec3 get_clip_position() {

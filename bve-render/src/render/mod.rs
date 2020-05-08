@@ -188,7 +188,8 @@ impl Renderer {
 
         let frame = frame_res.expect("Could not get next swapchain texture");
 
-        self.cluster_renderer.execute(&mut encoder);
+        self.cluster_renderer
+            .execute(&self.device, &mut encoder, &self.lights, self.camera.compute_matrix());
 
         {
             self.oit_renderer.clear_buffers(&mut encoder);
