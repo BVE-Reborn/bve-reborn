@@ -59,7 +59,7 @@ use async_std::{
 };
 use bve::{load::mesh::Vertex, runtime, runtime::Location};
 use bve_render::{
-    DebugMode, LightDescriptor, MSAASetting, MeshHandle, OITNodeCount, ObjectHandle, PointLight, Renderer,
+    DebugMode, LightDescriptor, LightType, MSAASetting, MeshHandle, OITNodeCount, ObjectHandle, Renderer,
     RendererStatistics, TextureHandle, Vsync,
 };
 use cgmath::{ElementWise, InnerSpace, Vector3};
@@ -249,11 +249,12 @@ fn client_main() {
         let handle = client.renderer.add_texture(&rgba);
         client.renderer.set_skybox_image(&handle, loading.background.repeats);
 
-        client.renderer.add_light(LightDescriptor::Point(PointLight {
+        client.renderer.add_light(LightDescriptor {
             location: make_vec3(&[0.0, 0.0, 0.0]),
             radius: 200.0,
             strength: 100.0,
-        }));
+            ty: LightType::Point,
+        });
     });
 
     let mut mouse_pitch = 0.0_f32;

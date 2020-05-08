@@ -54,7 +54,7 @@
 #![allow(clippy::wildcard_imports)]
 
 pub use crate::{
-    lights::{ConeLight, LightDescriptor, LightHandle, PointLight},
+    lights::{ConeLight, LightDescriptor, LightHandle, LightType},
     mesh::MeshHandle,
     object::ObjectHandle,
     render::{oit::OITNodeCount, DebugMode, MSAASetting, Vsync},

@@ -2,23 +2,21 @@ use crate::*;
 
 pub struct LightHandle(pub(crate) u64);
 
-pub struct PointLight {
-    pub location: Vec3,
-    pub radius: f32,
-    pub strength: f32,
-}
-
 pub struct ConeLight {
-    pub location: Vec3,
-    pub radius: f32,
     pub direction: Vec3,
     pub angle: f32,
-    pub strength: f32,
 }
 
-pub enum LightDescriptor {
-    Point(PointLight),
+pub enum LightType {
+    Point,
     Cone(ConeLight),
+}
+
+pub struct LightDescriptor {
+    pub location: Vec3,
+    pub radius: f32,
+    pub strength: f32,
+    pub ty: LightType,
 }
 
 impl Renderer {

@@ -1,4 +1,4 @@
-use crate::{camera::FAR_PLANE_DISTANCE, frustum::Frustum, *};
+use crate::{camera::FAR_PLANE_DISTANCE, frustum::Frustum, lights::LightType, *};
 use culling::*;
 use froxels::*;
 use nalgebra_glm::vec3_to_vec4;
@@ -74,37 +74,31 @@ struct ConeLightBytes {
 fn convert_lights_to_data(input: &IndexMap<u64, LightDescriptor>, mx_view: Mat4) -> Vec<ConeLightBytes> {
     input
         .values()
-        .map(|light| match light {
-            LightDescriptor::Point(point) => {
-                let mut homogeneous_location = vec3_to_vec4(&point.location);
-                homogeneous_location.w = 1.0;
+        .map(|light| {
+            let mut homogeneous_location = vec3_to_vec4(&light.location);
+            homogeneous_location.w = 1.0;
 
-                let transformed = mx_view * homogeneous_location;
+            let transformed = mx_view * homogeneous_location;
 
-                ConeLightBytes {
+            match &light.ty {
+                LightType::Point => ConeLightBytes {
                     _location: *transformed.as_ref(),
                     _direction: [0.0; 4],
-                    _radius: point.radius,
+                    _radius: light.radius,
                     _angle: 0.0,
-                    _strength: point.strength,
+                    _strength: light.strength,
                     _point: true,
                     _padding0: [0; 3],
-                }
-            }
-            LightDescriptor::Cone(cone) => {
-                let mut homogeneous_location = vec3_to_vec4(&cone.location);
-                homogeneous_location.w = 1.0;
-
-                let transformed = mx_view * homogeneous_location;
-                ConeLightBytes {
+                },
+                LightType::Cone(cone) => ConeLightBytes {
                     _location: *transformed.as_ref(),
                     _direction: [cone.direction.x, cone.direction.y, cone.direction.z, 0.0],
-                    _radius: cone.radius,
+                    _radius: light.radius,
                     _angle: cone.angle,
-                    _strength: cone.strength,
+                    _strength: light.strength,
                     _point: false,
                     _padding0: [0; 3],
-                }
+                },
             }
         })
         .collect_vec()
