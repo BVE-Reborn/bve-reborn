@@ -30,6 +30,10 @@ impl Renderer {
         LightHandle(handle)
     }
 
+    pub fn set_light_descriptor(&mut self, LightHandle(light_idx): &LightHandle, light_descriptor: LightDescriptor) {
+        self.lights[light_idx] = light_descriptor;
+    }
+
     pub fn remove_light(&mut self, LightHandle(light_idx): LightHandle) {
         self.lights.remove(&light_idx);
     }
