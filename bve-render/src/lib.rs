@@ -54,7 +54,7 @@
 #![allow(clippy::wildcard_imports)]
 
 pub use crate::{
-    lights::{ConeLight, LightDescriptor, LightHandle, LightType},
+    lights::LightHandle,
     mesh::MeshHandle,
     object::ObjectHandle,
     render::{oit::OITNodeCount, DebugMode, MSAASetting, Vsync},
@@ -62,7 +62,7 @@ pub use crate::{
     texture::TextureHandle,
 };
 use crate::{object::perspective_matrix, render::Uniforms};
-use bve::load::mesh::Vertex as MeshVertex;
+use bve::{load::mesh::Vertex as MeshVertex, runtime::RenderLightDescriptor};
 use image::RgbaImage;
 use indexmap::map::IndexMap;
 use itertools::Itertools;
@@ -114,7 +114,7 @@ pub struct Renderer {
     textures: IndexMap<u64, texture::Texture>,
     texture_handle_count: u64,
 
-    lights: IndexMap<u64, lights::LightDescriptor>,
+    lights: IndexMap<u64, RenderLightDescriptor>,
     light_handle_count: u64,
 
     camera: camera::Camera,

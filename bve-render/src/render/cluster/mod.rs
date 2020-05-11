@@ -1,4 +1,5 @@
-use crate::{camera::FAR_PLANE_DISTANCE, frustum::Frustum, lights::LightType, *};
+use crate::{camera::FAR_PLANE_DISTANCE, frustum::Frustum, *};
+use bve::runtime::LightType;
 use culling::*;
 use froxels::*;
 use nalgebra_glm::vec3_to_vec4;
@@ -71,7 +72,7 @@ struct ConeLightBytes {
     _padding0: [u8; 3],
 }
 
-fn convert_lights_to_data(input: &IndexMap<u64, LightDescriptor>, mx_view: Mat4) -> Vec<ConeLightBytes> {
+fn convert_lights_to_data(input: &IndexMap<u64, RenderLightDescriptor>, mx_view: Mat4) -> Vec<ConeLightBytes> {
     input
         .values()
         .map(|light| {
@@ -259,7 +260,7 @@ impl Clustering {
         &self,
         device: &Device,
         encoder: &mut CommandEncoder,
-        lights: &IndexMap<u64, LightDescriptor>,
+        lights: &IndexMap<u64, RenderLightDescriptor>,
         mx_view: Mat4,
     ) {
         let light_count = lights.len().min(MAX_TOTAL_LIGHTS as usize);
