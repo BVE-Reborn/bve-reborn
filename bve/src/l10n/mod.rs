@@ -43,7 +43,7 @@ pub enum BVELanguage {
 impl BVELocale {
     #[must_use]
     pub fn from_ident(langid: LanguageIdentifier) -> Self {
-        let lang = match langid.language() {
+        let lang = match langid.language.as_str() {
             "de" => BVELanguage::DE,
             _ => BVELanguage::EN,
         };
