@@ -11,8 +11,8 @@ pub struct Sphere {
 
 #[derive(Clone, Copy)]
 pub struct Plane {
-    abc: Vec3,
-    d: f32,
+    pub abc: Vec3,
+    pub d: f32,
 }
 
 impl Plane {
@@ -39,7 +39,7 @@ impl Plane {
 
 #[derive(Clone, Copy)]
 pub struct Frustum {
-    planes: [Plane; 6],
+    pub planes: [Plane; 6],
 }
 
 impl Frustum {

@@ -1,8 +1,8 @@
-use crate::runtime::cache::PathHandle;
-use async_std::sync::Arc;
+use crate::runtime::{cache::PathHandle, LightDescriptor};
+use async_std::sync::{Arc, RwLock};
 use cgmath::{Vector2, Vector3};
 use dashmap::{DashMap, DashSet};
-use derive_more::{AsMut, AsRef, Deref, Display, From, Into};
+use derive_more::{AsMut, AsRef, Deref, Display, From as DmFrom, Into};
 use std::{
     hash::{Hash, Hasher},
     sync::atomic::AtomicU8,
@@ -10,7 +10,7 @@ use std::{
 
 pub const CHUNK_SIZE: f32 = 64.0;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Deref, From, Into, Display, AsRef, AsMut)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Deref, DmFrom, Into, Display, AsRef, AsMut)]
 #[display(fmt = "({}, {})", "self.0.x", "self.0.y")]
 pub struct ChunkAddress(Vector2<i32>);
 
@@ -21,7 +21,7 @@ impl ChunkAddress {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Deref, From, Into, Display, AsRef, AsMut)]
+#[derive(Debug, Copy, Clone, PartialEq, Deref, DmFrom, Into, Display, AsRef, AsMut)]
 #[display(fmt = "({}, {}, {})", "self.0.x", "self.0.y", "self.0.z")]
 pub struct ChunkOffset(Vector3<f32>);
 
@@ -35,6 +35,7 @@ impl ChunkOffset {
 pub struct Chunk {
     pub address: ChunkAddress,
     pub objects: DashSet<UnloadedObject>,
+    pub lights: RwLock<Vec<LightDescriptor>>,
     pub state: AtomicU8,
 }
 
@@ -93,6 +94,7 @@ impl ChunkSet {
                 let arc = Arc::new(Chunk {
                     address,
                     objects: DashSet::new(),
+                    lights: RwLock::new(Vec::new()),
                     state: AtomicU8::new(ChunkState::Unloaded as u8),
                 });
                 self.inner.insert(address, Arc::clone(&arc));

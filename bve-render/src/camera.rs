@@ -1,6 +1,10 @@
 use crate::*;
 use nalgebra_glm::{look_at_lh, make_vec3, rotate_vec3, Vec3};
 
+pub const NEAR_PLANE_DISTANCE: f32 = 0.1;
+// 33 blocks * 64m
+pub const FAR_PLANE_DISTANCE: f32 = 2112.0;
+
 pub struct Camera {
     pub location: Vec3,
     /// radians
@@ -27,7 +31,6 @@ impl Camera {
     }
 
     pub fn compute_origin_matrix(&self) -> Mat4 {
-        // This is pre z-inversion, so z is flipped here
         let look_offset = self.compute_look_offset();
 
         look_at_lh(&make_vec3(&[0.0, 0.0, 0.0]), &look_offset, &make_vec3(&[0.0, 1.0, 0.0]))

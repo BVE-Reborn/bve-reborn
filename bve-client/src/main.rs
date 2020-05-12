@@ -57,9 +57,14 @@ use async_std::{
     sync::{Arc, Mutex},
     task::block_on,
 };
-use bve::{load::mesh::Vertex, runtime, runtime::Location};
+use bve::{
+    load::mesh::Vertex,
+    runtime,
+    runtime::{LightDescriptor, LightType, Location, RenderLightDescriptor},
+};
 use bve_render::{
-    MSAASetting, MeshHandle, OITNodeCount, ObjectHandle, Renderer, RendererStatistics, TextureHandle, Vsync,
+    DebugMode, LightHandle, MSAASetting, MeshHandle, OITNodeCount, ObjectHandle, Renderer, RendererStatistics,
+    TextureHandle, Vsync,
 };
 use cgmath::{ElementWise, InnerSpace, Vector3};
 use image::RgbaImage;
@@ -105,6 +110,7 @@ impl runtime::Client for Client {
     type ObjectHandle = ObjectHandle;
     type MeshHandle = MeshHandle;
     type TextureHandle = TextureHandle;
+    type LightHandle = LightHandle;
 
     fn add_object(&mut self, location: Vec3, mesh: &Self::MeshHandle) -> Self::ObjectHandle {
         self.renderer.add_object(location, mesh)
@@ -127,6 +133,10 @@ impl runtime::Client for Client {
         self.renderer.add_texture(image)
     }
 
+    fn add_light(&mut self, light_descriptor: RenderLightDescriptor) -> Self::LightHandle {
+        self.renderer.add_light(light_descriptor)
+    }
+
     fn remove_object(&mut self, object: &Self::ObjectHandle) {
         self.renderer.remove_object(object)
     }
@@ -139,12 +149,20 @@ impl runtime::Client for Client {
         self.renderer.remove_texture(texture)
     }
 
+    fn remove_light(&mut self, light: &Self::LightHandle) {
+        self.renderer.remove_light(light);
+    }
+
     fn set_camera_location(&mut self, location: Vec3) {
         self.renderer.set_camera_location(location);
     }
 
     fn set_object_location(&mut self, object: &Self::ObjectHandle, location: Vec3) {
         self.renderer.set_location(object, location);
+    }
+
+    fn set_light_descriptor(&mut self, light: &Self::LightHandle, descriptor: RenderLightDescriptor) {
+        self.renderer.set_light_descriptor(light, descriptor)
     }
 }
 
@@ -191,7 +209,8 @@ fn client_main() {
     imgui.set_ini_filename(None);
     imgui.fonts().add_font(&[FontSource::DefaultFontData {
         config: Some(imgui::FontConfig {
-            oversample_h: 1,
+            oversample_h: 3,
+            oversample_v: 1,
             pixel_snap_h: true,
             size_pixels: 13.0,
             ..imgui::FontConfig::default()
@@ -204,6 +223,7 @@ fn client_main() {
     let mut sample_count = MSAASetting::X1;
     let mut oit_node_count = OITNodeCount::Four;
     let mut vsync = Vsync::Enabled;
+    let mut debug_mode = DebugMode::None;
     let client = block_on(async { Client::new(&window, &mut imgui, oit_node_count, sample_count, vsync).await });
     let runtime = runtime::Runtime::new(Arc::clone(&client));
 
@@ -245,6 +265,31 @@ fn client_main() {
         let mut client = client.lock().await;
         let handle = client.renderer.add_texture(&rgba);
         client.renderer.set_skybox_image(&handle, loading.background.repeats);
+
+        runtime
+            .add_light(LightDescriptor {
+                location: Location::from_absolute_position(Vector3::new(0.0, 0.0, 0.0)),
+                radius: 10.0,
+                strength: 100.0,
+                ty: LightType::Point,
+            })
+            .await;
+        runtime
+            .add_light(LightDescriptor {
+                location: Location::from_absolute_position(Vector3::new(0.0, 0.0, 50.0)),
+                radius: 100.0,
+                strength: 100.0,
+                ty: LightType::Point,
+            })
+            .await;
+        runtime
+            .add_light(LightDescriptor {
+                location: Location::from_absolute_position(Vector3::new(20.0, 0.0, 20.0)),
+                radius: 20.0,
+                strength: 100.0,
+                ty: LightType::Point,
+            })
+            .await;
     });
 
     let mut mouse_pitch = 0.0_f32;
@@ -526,6 +571,20 @@ fn client_main() {
                             {
                                 oit_node_count = OITNodeCount::from_selection_integer(current_transparency);
                                 block_on(async { client.lock().await.renderer.set_oit_node_count(oit_node_count) });
+                            };
+
+                            let mut current_debug = debug_mode.into_selection_integer();
+                            if imgui::ComboBox::new(im_str!("Debug View"))
+                                .flags(imgui::ComboBoxFlags::NO_PREVIEW)
+                                .build_simple_string(&frame, &mut current_debug, &[
+                                    im_str!("None"),
+                                    im_str!("Frustums"),
+                                    im_str!("Frustum Addressing Verification"),
+                                    im_str!("Per-Pixel Light Count"),
+                                ])
+                            {
+                                debug_mode = DebugMode::from_selection_integer(current_debug);
+                                block_on(async { client.lock().await.renderer.set_debug(debug_mode) });
                             };
                         });
                 }

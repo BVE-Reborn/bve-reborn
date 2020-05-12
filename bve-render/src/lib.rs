@@ -54,20 +54,20 @@
 #![allow(clippy::wildcard_imports)]
 
 pub use crate::{
+    lights::LightHandle,
     mesh::MeshHandle,
     object::ObjectHandle,
-    oit::OITNodeCount,
-    render::{MSAASetting, Vsync},
+    render::{oit::OITNodeCount, DebugMode, MSAASetting, Vsync},
     statistics::RendererStatistics,
     texture::TextureHandle,
 };
 use crate::{object::perspective_matrix, render::Uniforms};
-use bve::load::mesh::Vertex as MeshVertex;
+use bve::{load::mesh::Vertex as MeshVertex, runtime::RenderLightDescriptor};
 use image::RgbaImage;
 use indexmap::map::IndexMap;
 use itertools::Itertools;
 use log::{debug, error, info};
-use nalgebra_glm::{make_vec2, make_vec3, Mat4, Vec3};
+use nalgebra_glm::{inverse, make_vec2, make_vec3, Mat4, Vec3};
 use num_traits::{ToPrimitive, Zero};
 use std::{mem::size_of, sync::Arc, time::Instant};
 use wgpu::*;
@@ -89,13 +89,12 @@ macro_rules! renderdoc {
 mod camera;
 mod compute;
 mod frustum;
+mod lights;
 mod mesh;
 mod object;
-mod oit;
 mod render;
 mod screenspace;
 mod shader;
-mod skybox;
 mod statistics;
 mod texture;
 
@@ -115,11 +114,15 @@ pub struct Renderer {
     textures: IndexMap<u64, texture::Texture>,
     texture_handle_count: u64,
 
+    lights: IndexMap<u64, RenderLightDescriptor>,
+    light_handle_count: u64,
+
     camera: camera::Camera,
     resolution: PhysicalSize<u32>,
-    oit_node_count: oit::OITNodeCount,
-    samples: render::MSAASetting,
-    vsync: render::Vsync,
+    oit_node_count: OITNodeCount,
+    samples: MSAASetting,
+    vsync: Vsync,
+    debug_mode: DebugMode,
 
     projection_matrix: Mat4,
 
@@ -141,8 +144,9 @@ pub struct Renderer {
 
     transparency_processor: compute::CutoutTransparencyCompute,
     mip_creator: compute::MipmapCompute,
-    oit_renderer: oit::Oit,
-    skybox_renderer: skybox::Skybox,
+    cluster_renderer: render::cluster::Clustering,
+    oit_renderer: render::oit::Oit,
+    skybox_renderer: render::skybox::Skybox,
     imgui_renderer: imgui_wgpu::Renderer,
 
     command_buffers: Vec<CommandBuffer>,
@@ -185,6 +189,8 @@ impl Renderer {
             })
             .await;
 
+        let mut startup_encoder = device.create_command_encoder(&CommandEncoderDescriptor { label: Some("startup") });
+
         let swapchain_desc = render::create_swapchain_descriptor(screen_size, vsync);
         let swapchain = device.create_swap_chain(&surface, &swapchain_desc);
 
@@ -207,6 +213,18 @@ impl Renderer {
         let framebuffer = render::create_framebuffer(&device, screen_size, samples);
         let depth_buffer = render::create_depth_buffer(&device, screen_size, samples);
 
+        let projection_matrix = perspective_matrix(
+            45_f32.to_radians(),
+            screen_size.width as f32 / screen_size.height as f32,
+        );
+
+        let cluster_renderer = render::cluster::Clustering::new(
+            &device,
+            &mut startup_encoder,
+            inverse(&projection_matrix),
+            frustum::Frustum::from_matrix(projection_matrix),
+        );
+
         let texture_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             bindings: &[
                 BindGroupLayoutEntry {
@@ -227,31 +245,28 @@ impl Renderer {
             label: Some("texture and sampler"),
         });
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
-            bind_group_layouts: &[&texture_bind_group_layout],
+            bind_group_layouts: &[&texture_bind_group_layout, cluster_renderer.bind_group_layout()],
         });
 
         let opaque_pipeline = render::create_pipeline(&device, &pipeline_layout, &vs_module, &fs_module, samples);
 
         let transparency_processor = compute::CutoutTransparencyCompute::new(&device);
         let mip_creator = compute::MipmapCompute::new(&device);
-        let (oit_renderer, oit_command_buffer) = oit::Oit::new(
+        let oit_renderer = render::oit::Oit::new(
             &device,
+            &mut startup_encoder,
             &vs_module,
             &texture_bind_group_layout,
+            cluster_renderer.bind_group_layout(),
             &framebuffer,
             make_vec2(&[screen_size.width, screen_size.height]),
             oit_node_count,
             samples,
         );
-        let skybox_renderer = skybox::Skybox::new(&device, &texture_bind_group_layout, samples);
+        let skybox_renderer = render::skybox::Skybox::new(&device, &texture_bind_group_layout, samples);
         let imgui_renderer = imgui_wgpu::Renderer::new(imgui_context, &device, &mut queue, swapchain_desc.format, None);
 
         let screenspace_triangle_verts = screenspace::create_screen_space_verts(&device);
-
-        let projection_matrix = perspective_matrix(
-            45_f32.to_radians(),
-            screen_size.width as f32 / screen_size.height as f32,
-        );
 
         // Create the Renderer object early so we can can call methods on it.
         let mut renderer = Self {
@@ -264,6 +279,9 @@ impl Renderer {
             textures: IndexMap::new(),
             texture_handle_count: 0,
 
+            lights: IndexMap::new(),
+            light_handle_count: 0,
+
             camera: camera::Camera {
                 location: make_vec3(&[-6.0, 0.0, 0.0]),
                 pitch: 0.0,
@@ -273,6 +291,7 @@ impl Renderer {
             samples,
             oit_node_count,
             projection_matrix,
+            debug_mode: DebugMode::None,
             vsync,
 
             surface,
@@ -293,11 +312,12 @@ impl Renderer {
 
             transparency_processor,
             mip_creator,
+            cluster_renderer,
             oit_renderer,
             skybox_renderer,
             imgui_renderer,
 
-            command_buffers: vec![oit_command_buffer],
+            command_buffers: vec![startup_encoder.finish()],
             _renderdoc_capture: false,
         };
 
@@ -308,6 +328,9 @@ impl Renderer {
     }
 
     pub fn resize(&mut self, screen_size: PhysicalSize<u32>) {
+        let mut encoder = self
+            .device
+            .create_command_encoder(&CommandEncoderDescriptor { label: Some("resizer") });
         debug!("Resizing to {}x{}", screen_size.width, screen_size.height);
         self.framebuffer = render::create_framebuffer(&self.device, screen_size, self.samples);
         self.depth_buffer = render::create_depth_buffer(&self.device, screen_size, self.samples);
@@ -317,17 +340,48 @@ impl Renderer {
             &self.surface,
             &render::create_swapchain_descriptor(screen_size, self.vsync),
         );
+        self.projection_matrix = perspective_matrix(
+            45_f32.to_radians(),
+            screen_size.width as f32 / screen_size.height as f32,
+        );
 
+        self.cluster_renderer.resize(
+            &self.device,
+            &mut encoder,
+            inverse(&self.projection_matrix),
+            frustum::Frustum::from_matrix(self.projection_matrix),
+        );
         self.oit_renderer.resize(
             &self.device,
             make_vec2(&[screen_size.width, screen_size.height]),
             &self.framebuffer,
             self.samples,
         );
+        self.command_buffers.push(encoder.finish());
+    }
 
-        self.projection_matrix = perspective_matrix(
-            45_f32.to_radians(),
-            screen_size.width as f32 / screen_size.height as f32,
+    pub fn set_debug(&mut self, mode: DebugMode) {
+        match mode {
+            DebugMode::None => {
+                self.frag_shader = shader!(&self.device; opaque - fragment);
+            }
+            DebugMode::Frustums => {
+                self.frag_shader = shader!(&self.device; debug_frustums - fragment);
+            }
+            DebugMode::FrustumAddressing => {
+                self.frag_shader = shader!(&self.device; debug_frustum_addressing - fragment);
+            }
+            DebugMode::LightCount => {
+                self.frag_shader = shader!(&self.device; debug_light_count - fragment);
+            }
+        };
+        self.debug_mode = mode;
+        self.opaque_pipeline = render::create_pipeline(
+            &self.device,
+            &self.pipeline_layout,
+            &self.vert_shader,
+            &self.frag_shader,
+            self.samples,
         );
     }
 
@@ -355,7 +409,7 @@ impl Renderer {
         self.skybox_renderer.set_samples(&self.device, samples);
     }
 
-    pub fn set_oit_node_count(&mut self, oit_node_count: oit::OITNodeCount) {
+    pub fn set_oit_node_count(&mut self, oit_node_count: OITNodeCount) {
         debug!("Setting oit node count to {}", oit_node_count as u8);
         self.oit_renderer
             .set_node_count(&self.device, oit_node_count, self.samples);
@@ -369,180 +423,5 @@ impl Renderer {
             &render::create_swapchain_descriptor(self.resolution, vsync),
         );
         self.vsync = vsync;
-    }
-
-    pub async fn render(&mut self, imgui_frame_opt: Option<imgui::Ui<'_>>) -> statistics::RendererStatistics {
-        renderdoc! {
-            let mut rd = renderdoc::RenderDoc::<renderdoc::V140>::new().expect("Could not initialize renderdoc");
-            if self._renderdoc_capture {
-                info!("Starting renderdoc capture");
-                rd.start_frame_capture(std::ptr::null(), std::ptr::null());
-            }
-        }
-
-        let mut stats = statistics::RendererStatistics::default();
-        stats.objects = self.objects.len();
-        stats.meshes = self.mesh.len();
-        stats.textures = self.textures.len();
-
-        let mut encoder = self
-            .device
-            .create_command_encoder(&CommandEncoderDescriptor { label: Some("primary") });
-
-        let ts_start = Instant::now();
-        // Update skybox
-        self.skybox_renderer
-            .update(&self.device, &mut encoder, &self.camera, &self.projection_matrix);
-        let ts_skybox = create_timestamp(&mut stats.compute_skybox_update_time, ts_start);
-
-        // Update objects and uniforms
-        self.compute_object_distances();
-        let ts_obj_distance = create_timestamp(&mut stats.compute_object_distance_time, ts_skybox);
-
-        let object_references = self.objects.values().collect_vec();
-        let ts_collect = create_timestamp(&mut stats.collect_object_refs_time, ts_obj_distance);
-
-        let object_references =
-            self.frustum_culling(self.projection_matrix * self.camera.compute_matrix(), object_references);
-        let ts_frustum = create_timestamp(&mut stats.compute_frustum_culling_time, ts_collect);
-
-        let object_references = Self::sort_objects(object_references);
-        let ts_sorting = create_timestamp(&mut stats.compute_object_sorting_time, ts_frustum);
-
-        let matrix_buffer_opt = self.recompute_uniforms(&mut encoder, &object_references).await;
-        let ts_uniforms = create_timestamp(&mut stats.compute_uniforms_time, ts_sorting);
-
-        // Retry getting a swapchain texture a couple times to smooth over spurious timeouts when tons of state changes
-        let mut frame_res = self.swapchain.get_next_texture();
-        for _ in 1..=3 {
-            if let Ok(..) = &frame_res {
-                break;
-            }
-            error!("Dropping frame");
-            frame_res = self.swapchain.get_next_texture();
-        }
-
-        let frame = frame_res.expect("Could not get next swapchain texture");
-
-        {
-            self.oit_renderer.clear_buffers(&mut encoder);
-            let mut rpass = encoder.begin_render_pass(&RenderPassDescriptor {
-                color_attachments: &[RenderPassColorAttachmentDescriptor {
-                    attachment: &self.framebuffer,
-                    resolve_target: None,
-                    load_op: LoadOp::Clear,
-                    store_op: StoreOp::Store,
-                    clear_color: Color {
-                        r: 0.3,
-                        g: 0.3,
-                        b: 0.3,
-                        a: 1.0,
-                    },
-                }],
-                depth_stencil_attachment: Some(RenderPassDepthStencilAttachmentDescriptor {
-                    attachment: &self.depth_buffer,
-                    depth_load_op: LoadOp::Clear,
-                    depth_store_op: StoreOp::Store,
-                    stencil_load_op: LoadOp::Clear,
-                    stencil_store_op: StoreOp::Store,
-                    clear_depth: 1.0,
-                    clear_stencil: 0,
-                }),
-            });
-
-            // If se don't have a matrix buffer we have nothing to render
-            if let Some(matrix_buffer) = matrix_buffer_opt.as_ref() {
-                let mut current_matrix_offset = 0 as BufferAddress;
-
-                let mut rendering_opaque = true;
-                rpass.set_pipeline(&self.opaque_pipeline);
-                for ((mesh_idx, texture_idx, transparent), group) in &object_references
-                    .into_iter()
-                    .group_by(|o| (o.mesh, o.texture, o.transparent))
-                {
-                    if transparent && rendering_opaque {
-                        self.oit_renderer.prepare_rendering(&mut rpass);
-                        rendering_opaque = false;
-                    }
-
-                    let mesh = &self.mesh[&mesh_idx];
-                    let texture_bind = &self.textures[&texture_idx].bind_group;
-                    let count = group.count();
-                    let matrix_buffer_size = (count * size_of::<Uniforms>()) as BufferAddress;
-
-                    rpass.set_bind_group(0, texture_bind, &[]);
-                    rpass.set_vertex_buffer(0, &mesh.vertex_buffer, 0, 0);
-                    rpass.set_vertex_buffer(1, matrix_buffer, current_matrix_offset, matrix_buffer_size);
-                    rpass.set_index_buffer(&mesh.index_buffer, 0, 0);
-                    rpass.draw_indexed(0..(mesh.index_count as u32), 0, 0..(count as u32));
-
-                    current_matrix_offset += matrix_buffer_size;
-                    if current_matrix_offset & 255 != 0 {
-                        current_matrix_offset += 256 - (current_matrix_offset & 255)
-                    }
-
-                    // statistics
-                    if transparent {
-                        stats.visible_transparent_objects += count;
-                        stats.transparent_draws += 1;
-                    } else {
-                        stats.visible_opaque_objects += count;
-                        stats.opaque_draws += 1;
-                    }
-                }
-
-                stats.total_visible_objects = stats.visible_transparent_objects + stats.visible_opaque_objects;
-                stats.total_draws = stats.transparent_draws + stats.opaque_draws;
-            }
-
-            self.skybox_renderer.render_skybox(
-                &mut rpass,
-                &self.textures[&self.skybox_renderer.texture_id].bind_group,
-                &self.screenspace_triangle_verts,
-            );
-        }
-        {
-            let mut rpass = encoder.begin_render_pass(&RenderPassDescriptor {
-                color_attachments: &[RenderPassColorAttachmentDescriptor {
-                    attachment: &frame.view,
-                    resolve_target: None,
-                    load_op: LoadOp::Load,
-                    store_op: StoreOp::Store,
-                    clear_color: Color::BLACK,
-                }],
-                depth_stencil_attachment: None,
-            });
-            self.oit_renderer
-                .render_transparent(&mut rpass, &self.screenspace_triangle_verts);
-        }
-
-        let ts_main_render = create_timestamp(&mut stats.render_main_cpu_time, ts_uniforms);
-
-        if let Some(imgui_frame) = imgui_frame_opt {
-            self.imgui_renderer
-                .render(imgui_frame.render(), &self.device, &mut encoder, &frame.view)
-                .expect("Imgui rendering failed");
-        }
-
-        let ts_imgui_render = create_timestamp(&mut stats.render_imgui_cpu_time, ts_main_render);
-
-        self.command_buffers.push(encoder.finish());
-
-        self.queue.submit(&self.command_buffers);
-        self.command_buffers.clear();
-
-        let _ts_wgpu_time = create_timestamp(&mut stats.render_wgpu_cpu_time, ts_imgui_render);
-
-        create_timestamp(&mut stats.total_renderer_tick_time, ts_start);
-
-        renderdoc! {
-            if self._renderdoc_capture {
-                info!("Ending renderdoc capture");
-                rd.end_frame_capture(std::ptr::null(), std::ptr::null());
-                self._renderdoc_capture = false;
-            }
-        }
-
-        stats
     }
 }

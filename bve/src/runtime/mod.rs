@@ -5,6 +5,7 @@ use crate::runtime::{
 pub use crate::runtime::{
     chunk::{ChunkAddress, ChunkOffset},
     client::Client,
+    light::*,
     location::Location,
 };
 use async_std::{
@@ -35,6 +36,7 @@ macro_rules! async_clone_own {
 mod cache;
 mod chunk;
 mod client;
+mod light;
 mod location;
 
 struct RenderableObject<C: Client> {
@@ -48,6 +50,15 @@ struct RenderableComponent<C: Client> {
 
 struct ChunkComponent {
     address: ChunkAddress,
+}
+
+struct Light<C: Client> {
+    handle: C::LightHandle,
+    descriptor: LightDescriptor,
+}
+
+struct LightOwnerComponent<C: Client> {
+    lights: Vec<Light<C>>,
 }
 
 struct BoundingBox {
@@ -69,10 +80,10 @@ struct RuntimeLocation {
     old_location: Location,
 }
 
-const DEFAULT_RENDER_DISTANCE: f32 = 16.0 * CHUNK_SIZE;
+const DEFAULT_RENDER_DISTANCE: f32 = 32.0 * CHUNK_SIZE;
 
 // Mutexes are always grabbed in the following order
-// ecs -> client -> location
+// ecs -> chunks -> client -> location
 pub struct Runtime<C: Client> {
     client: Arc<Mutex<C>>,
     path_set: PathSet,
@@ -122,6 +133,13 @@ impl<C: Client> Runtime<C> {
         });
     }
 
+    pub async fn add_light(self: &Arc<Self>, light_descriptor: LightDescriptor) {
+        trace!("Adding light at position {}", light_descriptor.location);
+        let chunk = self.chunks.get_chunk(light_descriptor.location.chunk).await;
+
+        chunk.lights.write().await.push(light_descriptor);
+    }
+
     async fn load_mesh_textures(self: &Arc<Self>, path: PathBuf) -> Vec<(C::MeshHandle, C::TextureHandle)> {
         let mesh = self
             .meshes
@@ -152,7 +170,7 @@ impl<C: Client> Runtime<C> {
         combined_handles
     }
 
-    async fn load_chunk_objects(self: &Arc<Self>, chunk: Arc<Chunk>) -> Vec<RenderableObject<C>> {
+    async fn load_chunk_objects(self: Arc<Self>, chunk: Arc<Chunk>) -> Vec<RenderableObject<C>> {
         let mut mesh_futures = FuturesOrdered::new();
         let mut mesh_locations = Vec::new();
         for unloaded_object in chunk.objects.iter() {
@@ -190,14 +208,37 @@ impl<C: Client> Runtime<C> {
         object_textures
     }
 
-    async fn load_chunk(self: Arc<Self>, chunk: Arc<Chunk>) {
-        let subobjects = self.load_chunk_objects(Arc::clone(&chunk)).await;
+    async fn load_chunk_lights(self: Arc<Self>, chunk: Arc<Chunk>) -> Vec<Light<C>> {
+        let lights = chunk.lights.read().await;
+        let mut client = self.client.lock().await;
+        let base_chunk = self.location.lock().await.location.chunk;
 
+        let mut res = Vec::with_capacity(lights.len());
+        for light in &*lights {
+            let handle = client.add_light(light.into_render_light_descriptor(base_chunk));
+            res.push(Light {
+                handle,
+                descriptor: *light,
+            });
+        }
+        res
+    }
+
+    async fn load_chunk(self: Arc<Self>, chunk: Arc<Chunk>) {
+        let subobjects_handle =
+            spawn(async_clone_own!(runtime = self; chunk = chunk; { runtime.load_chunk_objects(chunk).await }));
+        let lights_handle =
+            spawn(async_clone_own!(runtime = self; chunk = chunk; { runtime.load_chunk_lights(chunk).await }));
+
+        let subobjects = subobjects_handle.await;
+        let lights = lights_handle.await;
         trace!("Adding chunk to ecs");
         let mut ecs = self.ecs.write().await;
-        ecs.spawn((RenderableComponent::<C> { subobjects }, ChunkComponent {
-            address: chunk.address,
-        }));
+        ecs.spawn((
+            RenderableComponent::<C> { subobjects },
+            ChunkComponent { address: chunk.address },
+            LightOwnerComponent { lights },
+        ));
         drop(ecs);
 
         chunk.state.store(ChunkState::Finished as u8, Ordering::Release);
@@ -217,13 +258,17 @@ impl<C: Client> Runtime<C> {
 
     async fn deload_chunk(self: Arc<Self>, chunk: Arc<Chunk>) {
         let mut ecs = self.ecs.write().await;
-        let mut query = ecs.query::<(&RenderableComponent<C>, &ChunkComponent)>();
-        let mut iter = query.iter().filter(|(_, (_, c))| c.address == chunk.address);
-        if let Some((id, (renderable, _))) = iter.next() {
+        let mut query = ecs.query::<(&RenderableComponent<C>, &LightOwnerComponent<C>, &ChunkComponent)>();
+        let mut iter = query.iter().filter(|(_, (_, _, c))| c.address == chunk.address);
+        if let Some((id, (renderable, light_owner, _))) = iter.next() {
             let mut client = self.client.lock().await;
             let renderable: &RenderableComponent<C> = renderable;
             for subobject in &renderable.subobjects {
                 client.remove_object(&subobject.object);
+            }
+            let light_owner: &LightOwnerComponent<C> = light_owner;
+            for light in &light_owner.lights {
+                client.remove_light(&light.handle);
             }
             drop(query);
             ecs.despawn(id).expect("Could not find entity");
@@ -268,6 +313,14 @@ impl<C: Client> Runtime<C> {
                     &object.object,
                     make_vec3(&[render_location.x, render_location.y, render_location.z]),
                 );
+            }
+        }
+        for (_id, (light_owner,)) in ecs.query::<(&LightOwnerComponent<C>,)>().iter() {
+            let light_owner: &LightOwnerComponent<C> = light_owner;
+            for light in &light_owner.lights {
+                let light: &Light<C> = light;
+                let render_descriptor = light.descriptor.into_render_light_descriptor(base_location.chunk);
+                client.set_light_descriptor(&light.handle, render_descriptor);
             }
         }
     }

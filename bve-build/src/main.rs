@@ -203,6 +203,7 @@ fn mangle_shader_name(combination: &ShaderCombination<'_>) -> String {
 fn build_shaders() {
     if Path::new("bve-render/shaders/spirv").exists()
         && out_of_date("bve-render/shaders/compile", "bve-render/shaders/spirv/")
+        && out_of_date("bve-render/shaders/include", "bve-render/shaders/spirv/")
     {
         remove_dir_all("bve-render/shaders/spirv").expect("Could not remove directory");
         println!("Removing out of date spirv directory")
@@ -238,6 +239,11 @@ fn build_shaders() {
                     None
                 }
             })
+            .chain(
+                [String::from("-I"), String::from("bve-render/shaders/include")]
+                    .iter()
+                    .cloned(),
+            )
             .collect_vec();
 
         {

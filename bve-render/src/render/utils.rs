@@ -1,106 +1,7 @@
-use crate::*;
+use crate::{render::Vertex, *};
 use log::trace;
 use nalgebra_glm::UVec2;
-use std::{cmp::Ordering, fmt, mem::size_of};
-use winit::dpi::PhysicalSize;
-
-#[repr(C)]
-#[derive(Clone, Copy, AsBytes, FromBytes)]
-pub struct Vertex {
-    pub pos: [f32; 3],
-    pub _normal: [f32; 3],
-    pub _color: [u8; 4],
-    pub _texcoord: [f32; 2],
-}
-
-#[repr(C)]
-#[derive(AsBytes)]
-pub struct Uniforms {
-    pub _matrix: [[f32; 4]; 4],
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-#[repr(u32)]
-pub enum MSAASetting {
-    X1 = 1,
-    X2 = 2,
-    X4 = 4,
-    X8 = 8,
-}
-
-impl MSAASetting {
-    #[must_use]
-    pub fn from_selection_integer(value: usize) -> Self {
-        match value {
-            0 => Self::X1,
-            1 => Self::X2,
-            2 => Self::X4,
-            3 => Self::X8,
-            _ => unreachable!(),
-        }
-    }
-
-    #[must_use]
-    pub fn into_selection_integer(self) -> usize {
-        match self {
-            Self::X1 => 0,
-            Self::X2 => 1,
-            Self::X4 => 2,
-            Self::X8 => 3,
-        }
-    }
-
-    #[must_use]
-    pub fn increment(self) -> Self {
-        match self {
-            Self::X1 => Self::X2,
-            Self::X2 => Self::X4,
-            _ => Self::X8,
-        }
-    }
-
-    #[must_use]
-    pub fn decrement(self) -> Self {
-        match self {
-            Self::X8 => Self::X4,
-            Self::X4 => Self::X2,
-            _ => Self::X1,
-        }
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum Vsync {
-    Enabled,
-    Disabled,
-}
-
-impl Vsync {
-    #[must_use]
-    pub fn from_selection_boolean(value: bool) -> Self {
-        match value {
-            false => Self::Disabled,
-            true => Self::Enabled,
-        }
-    }
-
-    #[must_use]
-    pub fn into_selection_boolean(self) -> bool {
-        match self {
-            Self::Enabled => true,
-            Self::Disabled => false,
-        }
-    }
-}
-
-impl fmt::Display for Vsync {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Enabled => write!(f, "Enabled"),
-            Self::Disabled => write!(f, "Disabled"),
-        }
-    }
-}
+use std::cmp::Ordering;
 
 pub fn mip_levels(size: UVec2) -> u32 {
     let float_size = size.map(|f| f as f32);
@@ -184,7 +85,7 @@ pub fn create_pipeline(
                 VertexBufferDescriptor {
                     stride: size_of::<Uniforms>() as BufferAddress,
                     step_mode: InputStepMode::Instance,
-                    attributes: &vertex_attr_array![4 => Float4, 5 => Float4, 6 => Float4, 7 => Float4],
+                    attributes: &vertex_attr_array![4 => Float4, 5 => Float4, 6 => Float4, 7 => Float4, 8 => Float4, 9 => Float4, 10 => Float4, 11 => Float4],
                 },
             ],
         },
@@ -334,9 +235,11 @@ impl Renderer {
 
         for (_, group) in &objects.iter().group_by(|o| (o.mesh, o.texture, o.transparent)) {
             for object in group {
-                let matrix = object::generate_matrix(&self.projection_matrix, &camera_mat, object.location);
+                let (mx_model_view_proj, mx_model_view) =
+                    object::generate_matrix(&self.projection_matrix, &camera_mat, object.location);
                 let uniforms = Uniforms {
-                    _matrix: *matrix.as_ref(),
+                    _model_view_proj: *mx_model_view_proj.as_ref(),
+                    _model_view: *mx_model_view.as_ref(),
                 };
                 matrix_buffer_data.extend_from_slice(uniforms.as_bytes());
             }

@@ -105,7 +105,7 @@ fn create_pipeline_pass1(
                 VertexBufferDescriptor {
                     stride: size_of::<Uniforms>() as BufferAddress,
                     step_mode: InputStepMode::Instance,
-                    attributes: &vertex_attr_array![4 => Float4, 5 => Float4, 6 => Float4, 7 => Float4],
+                    attributes: &vertex_attr_array![4 => Float4, 5 => Float4, 6 => Float4, 7 => Float4, 8 => Float4, 9 => Float4, 10 => Float4, 11 => Float4],
                 },
             ],
         },
@@ -396,17 +396,15 @@ pub struct Oit {
 impl Oit {
     pub fn new(
         device: &Device,
+        encoder: &mut CommandEncoder,
         vert: &ShaderModule,
         opaque_bind_group_layout: &BindGroupLayout,
+        cluster_bind_group_layout: &BindGroupLayout,
         framebuffer: &TextureView,
         resolution: UVec2,
         oit_node_count: OITNodeCount,
         samples: MSAASetting,
-    ) -> (Self, CommandBuffer) {
-        let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
-            label: Some("OIT texture creator"),
-        });
-
+    ) -> Self {
         let oit_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             bindings: &[
                 BindGroupLayoutEntry {
@@ -437,7 +435,11 @@ impl Oit {
         });
 
         let pass1_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
-            bind_group_layouts: &[opaque_bind_group_layout, &oit_bind_group_layout],
+            bind_group_layouts: &[
+                opaque_bind_group_layout,
+                cluster_bind_group_layout,
+                &oit_bind_group_layout,
+            ],
         });
         let (framebuffer_bind_group_layout, pass2_pipeline_layout) =
             create_pass2_pipeline_layout(device, &oit_bind_group_layout, samples);
@@ -463,7 +465,7 @@ impl Oit {
         let (head_pointer_view, uniform_buffer, node_buffer, oit_bind_group, framebuffer_bind_group) =
             create_oit_buffers(
                 device,
-                &mut encoder,
+                encoder,
                 &oit_bind_group_layout,
                 &framebuffer_bind_group_layout,
                 framebuffer,
@@ -472,25 +474,22 @@ impl Oit {
                 samples,
             );
 
-        (
-            Self {
-                oit_bind_group_layout,
-                framebuffer_bind_group_layout,
-                pass1_pipeline_layout,
-                pass2_pipeline_layout,
-                oit_bind_group,
-                framebuffer_bind_group,
-                head_pointer_view,
-                uniform_buffer,
-                node_source_buffer,
-                node_buffer,
-                framebuffer_sampler,
-                resolution,
-                pass1_pipeline,
-                pass2_pipeline,
-            },
-            encoder.finish(),
-        )
+        Self {
+            oit_bind_group_layout,
+            framebuffer_bind_group_layout,
+            pass1_pipeline_layout,
+            pass2_pipeline_layout,
+            oit_bind_group,
+            framebuffer_bind_group,
+            head_pointer_view,
+            uniform_buffer,
+            node_source_buffer,
+            node_buffer,
+            framebuffer_sampler,
+            resolution,
+            pass1_pipeline,
+            pass2_pipeline,
+        }
     }
 
     pub fn resize(
@@ -579,7 +578,7 @@ impl Oit {
 
     pub fn prepare_rendering<'a>(&'a self, rpass: &mut RenderPass<'a>) {
         rpass.set_pipeline(&self.pass1_pipeline);
-        rpass.set_bind_group(1, &self.oit_bind_group, &[]);
+        rpass.set_bind_group(2, &self.oit_bind_group, &[]);
     }
 
     pub fn render_transparent<'a>(&'a self, rpass: &mut RenderPass<'a>, screenspace_verts: &'a Buffer) {

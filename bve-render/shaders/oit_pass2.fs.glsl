@@ -43,14 +43,12 @@ void main() {
     for(uint i = 1; i < count; i++) {
         Node to_insert = frags[i];
         uint j = i;
-        // This is inverted as I used an inverted depth buffer
-        while(j > 0 && to_insert.depth < frags[j-1].depth) {
+        while(j > 0 && to_insert.depth > frags[j-1].depth) {
             frags[j] = frags[j-1];
             j--;
         }
         frags[j] = to_insert;
     }
-
 
     vec4 sample_color[MAX_SAMPLES];
     for (int s = 0; s < MAX_SAMPLES; ++s) {

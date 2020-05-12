@@ -1,4 +1,7 @@
-use crate::*;
+use crate::{
+    camera::{FAR_PLANE_DISTANCE, NEAR_PLANE_DISTANCE},
+    *,
+};
 use nalgebra_glm::{perspective_lh_zo, translation, Mat4, Vec3};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -15,12 +18,14 @@ pub struct Object {
 }
 
 pub fn perspective_matrix(fovy: f32, aspect: f32) -> Mat4 {
-    perspective_lh_zo(aspect, fovy, 0.1, 10000.0)
+    perspective_lh_zo(aspect, fovy, NEAR_PLANE_DISTANCE, FAR_PLANE_DISTANCE)
 }
 
-pub fn generate_matrix(mx_proj: &Mat4, mx_view: &Mat4, location: Vec3) -> Mat4 {
+pub fn generate_matrix(mx_proj: &Mat4, mx_view: &Mat4, location: Vec3) -> (Mat4, Mat4) {
     let mx_model = translation(&location);
-    mx_proj * mx_view * mx_model
+    let mx_model_view = mx_view * mx_model;
+    let mx_model_view_proj = mx_proj * mx_model_view;
+    (mx_model_view_proj, mx_model_view)
 }
 
 impl Renderer {
