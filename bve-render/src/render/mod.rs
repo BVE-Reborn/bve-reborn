@@ -49,7 +49,7 @@ impl DebugMode {
             Self::None => 0,
             Self::Frustums => 1,
             Self::FrustumAddressing => 2,
-            Self::LightCount => 2,
+            Self::LightCount => 3,
         }
     }
 }

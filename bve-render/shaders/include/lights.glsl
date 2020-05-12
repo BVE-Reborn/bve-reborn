@@ -3,16 +3,16 @@
 
 // Actually a PointLight and ConeLight in one, eliminates a nasty branch
 struct ConeLight {
-    vec3 location;
-    vec3 direction;
+    vec4 location;
+    vec4 direction;
     float radius;
     float angle;
     float strength;
-    bool point;
+    int point;
 };
 
 struct DirecitonalLight {
-    vec3 direction;
+    vec4 direction;
     float strength;
 };
 

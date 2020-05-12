@@ -47,7 +47,7 @@ void main() {
 
     for (uint light_index = local_index; light_index < light_count; light_index += THREADS) {
         ConeLight light = lights[light_index];
-        Sphere sphere = Sphere(light.location, light.radius);
+        Sphere sphere = Sphere(light.location.xyz, light.radius);
 
         if (contains_sphere(frustum, sphere) && contains_sphere(z_bounds, sphere)) {
             uint index = atomicAdd(group_offset, 1);

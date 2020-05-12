@@ -22,6 +22,7 @@ pub struct LightDescriptor {
 }
 
 impl LightDescriptor {
+    #[must_use]
     pub fn into_render_light_descriptor(self, base_chunk: ChunkAddress) -> RenderLightDescriptor {
         RenderLightDescriptor {
             location: make_vec3(AsRef::<[f32; 3]>::as_ref(

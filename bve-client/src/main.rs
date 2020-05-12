@@ -269,7 +269,23 @@ fn client_main() {
         runtime
             .add_light(LightDescriptor {
                 location: Location::from_absolute_position(Vector3::new(0.0, 0.0, 0.0)),
-                radius: 200.0,
+                radius: 10.0,
+                strength: 100.0,
+                ty: LightType::Point,
+            })
+            .await;
+        runtime
+            .add_light(LightDescriptor {
+                location: Location::from_absolute_position(Vector3::new(0.0, 0.0, 50.0)),
+                radius: 100.0,
+                strength: 100.0,
+                ty: LightType::Point,
+            })
+            .await;
+        runtime
+            .add_light(LightDescriptor {
+                location: Location::from_absolute_position(Vector3::new(20.0, 0.0, 20.0)),
+                radius: 20.0,
                 strength: 100.0,
                 ty: LightType::Point,
             })
