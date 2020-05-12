@@ -269,13 +269,13 @@ impl Clustering {
             let light_tmp_buffer = device.create_buffer_with_data(lights.as_bytes(), BufferUsage::COPY_SRC);
             let light_buffer_size = (light_count * size_of::<ConeLightBytes>()) as BufferAddress;
             encoder.copy_buffer_to_buffer(&light_tmp_buffer, 0, &self.light_buffer, 0, light_buffer_size);
+
+            self.light_culling
+                .update_light_counts(device, encoder, light_count as u32);
+
+            let mut pass = encoder.begin_compute_pass();
+            self.frustum_creation.execute(&mut pass);
+            self.light_culling.execute(&mut pass);
         }
-
-        self.light_culling
-            .update_light_counts(device, encoder, light_count as u32);
-
-        let mut pass = encoder.begin_compute_pass();
-        self.frustum_creation.execute(&mut pass);
-        self.light_culling.execute(&mut pass);
     }
 }
