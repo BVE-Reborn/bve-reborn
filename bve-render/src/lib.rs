@@ -29,6 +29,7 @@
 #![allow(clippy::float_arithmetic)]
 #![allow(clippy::float_cmp)]
 #![allow(clippy::float_cmp_const)]
+#![allow(clippy::future_not_send)]
 #![allow(clippy::implicit_return)]
 #![allow(clippy::indexing_slicing)]
 #![allow(clippy::integer_arithmetic)]

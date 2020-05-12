@@ -246,11 +246,11 @@ pub struct SetBlendMode {
 }
 
 impl SetBlendMode {
-    fn default_blend_mode() -> Option<BlendMode> {
+    const fn default_blend_mode() -> Option<BlendMode> {
         Some(BlendMode::Normal)
     }
 
-    fn default_glow_attenuation_mode() -> Option<GlowAttenuationMode> {
+    const fn default_glow_attenuation_mode() -> Option<GlowAttenuationMode> {
         Some(GlowAttenuationMode::DivideExponent4)
     }
 }

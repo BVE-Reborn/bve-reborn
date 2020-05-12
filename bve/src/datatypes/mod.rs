@@ -1,4 +1,4 @@
-pub(crate) use as_u32::*;
+pub use as_u32::*;
 use cgmath::{Vector1, Vector2, Vector3, Vector4};
 pub use hex::*;
 

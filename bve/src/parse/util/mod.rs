@@ -43,7 +43,7 @@ pub(in crate::parse) const fn some_one_f32() -> Option<LooseNumber<f32>> {
     Some(LooseNumber(1.0))
 }
 
-pub(in crate::parse) fn some_string() -> Option<String> {
+pub(in crate::parse) const fn some_string() -> Option<String> {
     Some(String::new())
 }
 

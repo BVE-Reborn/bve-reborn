@@ -54,7 +54,7 @@ impl<C: Client> TextureCache<C> {
         path_set: &PathSet,
         handle: PathHandle,
     ) -> Option<C::TextureHandle> {
-        let path = path_set.get(handle.clone()).await;
+        let path = path_set.get(handle).await;
         self.load_texture_handle_path(client, handle, path).await
     }
 
