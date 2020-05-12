@@ -282,7 +282,7 @@ impl Renderer {
                 color_attachments: &[RenderPassColorAttachmentDescriptor {
                     attachment: &frame.view,
                     resolve_target: None,
-                    load_op: LoadOp::Load,
+                    load_op: LoadOp::Clear,
                     store_op: StoreOp::Store,
                     clear_color: Color::BLACK,
                 }],
