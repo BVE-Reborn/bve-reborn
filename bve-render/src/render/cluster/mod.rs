@@ -1,8 +1,7 @@
 use crate::{camera::FAR_PLANE_DISTANCE, frustum::Frustum, *};
-use bve::runtime::LightType;
+use bve::{runtime::LightType, UVec2};
 use culling::*;
 use froxels::*;
-use nalgebra_glm::vec3_to_vec4;
 
 mod culling;
 mod froxels;
@@ -75,9 +74,8 @@ struct ConeLightBytes {
 fn convert_lights_to_data(input: &IndexMap<u64, RenderLightDescriptor>, mx_view: Mat4) -> Vec<ConeLightBytes> {
     input
         .values()
-        .map(|light| {
-            let mut homogeneous_location = vec3_to_vec4(&light.location);
-            homogeneous_location.w = 1.0;
+        .map(|light: &RenderLightDescriptor| {
+            let homogeneous_location = light.location.extend(1.0);
 
             let transformed = mx_view * homogeneous_location;
 
@@ -93,7 +91,7 @@ fn convert_lights_to_data(input: &IndexMap<u64, RenderLightDescriptor>, mx_view:
                 },
                 LightType::Cone(cone) => ConeLightBytes {
                     _location: *transformed.as_ref(),
-                    _direction: [cone.direction.x, cone.direction.y, cone.direction.z, 0.0],
+                    _direction: [cone.direction.x(), cone.direction.y(), cone.direction.z(), 0.0],
                     _radius: light.radius,
                     _angle: cone.angle,
                     _strength: light.strength,
@@ -142,7 +140,7 @@ impl Clustering {
             &frustum_buffer,
             mx_inv_proj,
             frustum,
-            make_vec2(&[FROXELS_X, FROXELS_Y]),
+            UVec2::new(FROXELS_X, FROXELS_Y),
         );
 
         let light_list_buffer = device.create_buffer(&BufferDescriptor {
@@ -239,13 +237,8 @@ impl Clustering {
     }
 
     pub fn resize(&mut self, device: &Device, encoder: &mut CommandEncoder, mx_inv_proj: Mat4, frustum: Frustum) {
-        self.frustum_creation.resize(
-            device,
-            encoder,
-            mx_inv_proj,
-            frustum,
-            make_vec2(&[FROXELS_X, FROXELS_Y]),
-        );
+        self.frustum_creation
+            .resize(device, encoder, mx_inv_proj, frustum, UVec2::new(FROXELS_X, FROXELS_Y));
     }
 
     pub const fn bind_group_layout(&self) -> &BindGroupLayout {

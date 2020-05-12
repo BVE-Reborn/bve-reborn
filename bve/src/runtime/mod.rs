@@ -17,9 +17,9 @@ use futures::{
     stream::{FuturesOrdered, FuturesUnordered},
     StreamExt,
 };
+use glam::Vec3;
 use hecs::World;
 use log::{debug, trace};
-use nalgebra_glm::make_vec3;
 use std::sync::atomic::{AtomicI32, Ordering};
 
 macro_rules! async_clone_own {
@@ -194,7 +194,7 @@ impl<C: Client> Runtime<C> {
                 let render_location = location.to_relative_position(base_chunk);
 
                 let object_handle = client.add_object_texture(
-                    make_vec3(&[render_location.x, render_location.y, render_location.z]),
+                    Vec3::new(render_location.x, render_location.y, render_location.z),
                     &mesh_handle,
                     &texture_handle,
                 );
@@ -298,7 +298,7 @@ impl<C: Client> Runtime<C> {
         runtime_location.location = location;
         drop(runtime_location);
         let mut client = self.client.lock().await;
-        client.set_camera_location(make_vec3(&[location.offset.x, location.offset.y, location.offset.z]));
+        client.set_camera_location(Vec3::new(location.offset.x, location.offset.y, location.offset.z));
     }
 
     async fn update_camera_position(self: Arc<Self>, base_location: Location) {
@@ -311,7 +311,7 @@ impl<C: Client> Runtime<C> {
                 let render_location = object.location.to_relative_position(base_location.chunk);
                 client.set_object_location(
                     &object.object,
-                    make_vec3(&[render_location.x, render_location.y, render_location.z]),
+                    Vec3::new(render_location.x, render_location.y, render_location.z),
                 );
             }
         }

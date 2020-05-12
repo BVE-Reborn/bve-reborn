@@ -1,5 +1,5 @@
 use crate::*;
-use nalgebra_glm::{look_at_lh, make_vec3, rotate_vec3, Vec3};
+use glam::{Mat3, Vec3};
 
 pub const NEAR_PLANE_DISTANCE: f32 = 0.1;
 // 33 blocks * 64m
@@ -15,25 +15,21 @@ pub struct Camera {
 
 impl Camera {
     pub fn compute_look_offset(&self) -> Vec3 {
-        let starting = make_vec3(&[0.0, 0.0, 1.0]);
-        let post_pitch = rotate_vec3(&starting, self.pitch, &make_vec3(&[1.0, 0.0, 0.0]));
-        rotate_vec3(&post_pitch, self.yaw, &make_vec3(&[0.0, 1.0, 0.0]))
+        let starting = Vec3::unit_z();
+        let post_pitch = Mat3::from_rotation_x(self.pitch) * starting;
+        Mat3::from_rotation_y(self.yaw) * post_pitch
     }
 
     pub fn compute_matrix(&self) -> Mat4 {
         let look_offset = self.compute_look_offset();
 
-        look_at_lh(
-            &self.location,
-            &(self.location + look_offset),
-            &make_vec3(&[0.0, 1.0, 0.0]),
-        )
+        Mat4::look_at_lh(self.location, self.location + look_offset, Vec3::unit_y())
     }
 
     pub fn compute_origin_matrix(&self) -> Mat4 {
         let look_offset = self.compute_look_offset();
 
-        look_at_lh(&make_vec3(&[0.0, 0.0, 0.0]), &look_offset, &make_vec3(&[0.0, 1.0, 0.0]))
+        Mat4::look_at_lh(Vec3::zero(), look_offset, Vec3::unit_y())
     }
 }
 

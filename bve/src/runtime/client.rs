@@ -1,6 +1,6 @@
 use crate::{load::mesh::Vertex, runtime::RenderLightDescriptor};
+use glam::Vec3;
 use image::RgbaImage;
-use nalgebra_glm::Vec3;
 use std::hash::Hash;
 
 pub trait Client: Send + Sync + 'static {

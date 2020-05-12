@@ -63,12 +63,12 @@ pub use crate::{
     texture::TextureHandle,
 };
 use crate::{object::perspective_matrix, render::Uniforms};
-use bve::{load::mesh::Vertex as MeshVertex, runtime::RenderLightDescriptor};
+use bve::{load::mesh::Vertex as MeshVertex, runtime::RenderLightDescriptor, UVec2};
+use glam::{Mat4, Vec3};
 use image::RgbaImage;
 use indexmap::map::IndexMap;
 use itertools::Itertools;
 use log::{debug, error, info};
-use nalgebra_glm::{inverse, make_vec2, make_vec3, Mat4, Vec3};
 use num_traits::{ToPrimitive, Zero};
 use std::{mem::size_of, sync::Arc, time::Instant};
 use wgpu::*;
@@ -222,7 +222,7 @@ impl Renderer {
         let cluster_renderer = render::cluster::Clustering::new(
             &device,
             &mut startup_encoder,
-            inverse(&projection_matrix),
+            projection_matrix.inverse(),
             frustum::Frustum::from_matrix(projection_matrix),
         );
 
@@ -260,7 +260,7 @@ impl Renderer {
             &texture_bind_group_layout,
             cluster_renderer.bind_group_layout(),
             &framebuffer,
-            make_vec2(&[screen_size.width, screen_size.height]),
+            UVec2::new(screen_size.width, screen_size.height),
             oit_node_count,
             samples,
         );
@@ -284,7 +284,7 @@ impl Renderer {
             light_handle_count: 0,
 
             camera: camera::Camera {
-                location: make_vec3(&[-6.0, 0.0, 0.0]),
+                location: Vec3::new(-6.0, 0.0, 0.0),
                 pitch: 0.0,
                 yaw: 0.0,
             },
@@ -349,12 +349,12 @@ impl Renderer {
         self.cluster_renderer.resize(
             &self.device,
             &mut encoder,
-            inverse(&self.projection_matrix),
+            self.projection_matrix.inverse(),
             frustum::Frustum::from_matrix(self.projection_matrix),
         );
         self.oit_renderer.resize(
             &self.device,
-            make_vec2(&[screen_size.width, screen_size.height]),
+            UVec2::new(screen_size.width, screen_size.height),
             &self.framebuffer,
             self.samples,
         );
@@ -403,7 +403,7 @@ impl Renderer {
             &self.device,
             &self.vert_shader,
             &self.framebuffer,
-            make_vec2(&[self.resolution.width, self.resolution.height]),
+            UVec2::new(self.resolution.width, self.resolution.height),
             self.oit_node_count,
             samples,
         );

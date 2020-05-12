@@ -1,7 +1,7 @@
 //! This entire module only exists because of <https://www.gamedevs.org/uploads/fast-extraction-viewing-frustum-planes-from-world-view-projection-matrix.pdf/>
 //! and contains basically zero original work
 
-use nalgebra_glm::{make_vec3, Mat4, Vec3};
+use glam::{Mat4, Vec3};
 
 #[derive(Clone, Copy)]
 pub struct Sphere {
@@ -18,13 +18,13 @@ pub struct Plane {
 impl Plane {
     pub fn new(a: f32, b: f32, c: f32, d: f32) -> Self {
         Self {
-            abc: make_vec3(&[a, b, c]),
+            abc: Vec3::new(a, b, c),
             d,
         }
     }
 
     pub fn normalize(mut self) -> Self {
-        let mag = self.abc.magnitude();
+        let mag = self.abc.length();
 
         self.abc /= mag;
         self.d /= mag;
@@ -33,7 +33,7 @@ impl Plane {
     }
 
     pub fn distance(&self, point: Vec3) -> f32 {
-        self.abc.dot(&point) + self.d
+        self.abc.dot(point) + self.d
     }
 }
 
@@ -44,41 +44,43 @@ pub struct Frustum {
 
 impl Frustum {
     pub fn from_matrix(matrix: Mat4) -> Self {
+        let mat_arr = matrix.to_cols_array_2d();
+
         let left = Plane::new(
-            matrix.m41 + matrix.m11,
-            matrix.m42 + matrix.m12,
-            matrix.m43 + matrix.m13,
-            matrix.m44 + matrix.m14,
+            mat_arr[3][0] + mat_arr[0][0],
+            mat_arr[3][1] + mat_arr[0][1],
+            mat_arr[3][2] + mat_arr[0][2],
+            mat_arr[3][3] + mat_arr[0][3],
         );
 
         let right = Plane::new(
-            matrix.m41 - matrix.m11,
-            matrix.m42 - matrix.m12,
-            matrix.m43 - matrix.m13,
-            matrix.m44 - matrix.m14,
+            mat_arr[3][0] - mat_arr[0][0],
+            mat_arr[3][1] - mat_arr[0][1],
+            mat_arr[3][2] - mat_arr[0][2],
+            mat_arr[3][3] - mat_arr[0][3],
         );
 
         let top = Plane::new(
-            matrix.m41 - matrix.m21,
-            matrix.m42 - matrix.m22,
-            matrix.m43 - matrix.m23,
-            matrix.m44 - matrix.m24,
+            mat_arr[3][0] - mat_arr[1][0],
+            mat_arr[3][1] - mat_arr[1][1],
+            mat_arr[3][2] - mat_arr[1][2],
+            mat_arr[3][3] - mat_arr[1][3],
         );
 
         let bottom = Plane::new(
-            matrix.m41 + matrix.m21,
-            matrix.m42 + matrix.m22,
-            matrix.m43 + matrix.m23,
-            matrix.m44 + matrix.m24,
+            mat_arr[3][0] + mat_arr[1][0],
+            mat_arr[3][1] + mat_arr[1][1],
+            mat_arr[3][2] + mat_arr[1][2],
+            mat_arr[3][3] + mat_arr[1][3],
         );
 
-        let near = Plane::new(matrix.m31, matrix.m32, matrix.m33, matrix.m34);
+        let near = Plane::new(mat_arr[2][0], mat_arr[2][1], mat_arr[2][2], mat_arr[2][3]);
 
         let far = Plane::new(
-            matrix.m41 - matrix.m31,
-            matrix.m42 - matrix.m32,
-            matrix.m43 - matrix.m33,
-            matrix.m44 - matrix.m34,
+            mat_arr[3][0] - mat_arr[2][0],
+            mat_arr[3][1] - mat_arr[2][1],
+            mat_arr[3][2] - mat_arr[2][2],
+            mat_arr[3][3] - mat_arr[2][3],
         );
 
         Self {

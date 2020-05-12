@@ -19,8 +19,8 @@ pub struct Vertex {
 #[repr(C)]
 #[derive(AsBytes)]
 pub struct Uniforms {
-    pub _model_view_proj: [[f32; 4]; 4],
-    pub _model_view: [[f32; 4]; 4],
+    pub _model_view_proj: [f32; 16],
+    pub _model_view: [f32; 16],
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

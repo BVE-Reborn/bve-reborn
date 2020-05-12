@@ -3,13 +3,13 @@ use crate::{
     render::cluster::{FrustumBytes, FROXELS_X, FROXELS_Y, FRUSTUM_BUFFER_SIZE},
     *,
 };
-use nalgebra_glm::UVec2;
+use bve::UVec2;
 use zerocopy::AsBytes;
 
 #[derive(AsBytes)]
 #[repr(C)]
 struct FroxelUniforms {
-    _inv_proj: [[f32; 4]; 4],
+    _inv_proj: [f32; 16],
     _frustum: FrustumBytes,
     _frustum_count: [u32; 2],
 }
@@ -69,7 +69,7 @@ impl FrustumCreation {
 
         let uniforms = FroxelUniforms {
             _frustum: frustum.into(),
-            _frustum_count: *frustum_count.as_ref(),
+            _frustum_count: frustum_count.into_array(),
             _inv_proj: *mx_inv_proj.as_ref(),
         };
 
@@ -121,7 +121,7 @@ impl FrustumCreation {
     ) {
         let uniforms = FroxelUniforms {
             _frustum: frustum.into(),
-            _frustum_count: *frustum_count.as_ref(),
+            _frustum_count: frustum_count.into_array(),
             _inv_proj: *mx_inv_proj.as_ref(),
         };
 

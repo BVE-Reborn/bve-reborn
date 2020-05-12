@@ -1,6 +1,5 @@
 use crate::{screenspace::ScreenSpaceVertex, *};
 use log::debug;
-use nalgebra_glm::UVec2;
 use zerocopy::AsBytes;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

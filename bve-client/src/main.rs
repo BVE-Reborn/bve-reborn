@@ -68,10 +68,10 @@ use bve_render::{
     TextureHandle, Vsync,
 };
 use cgmath::{ElementWise, InnerSpace, Vector3};
+use glam::Vec3;
 use image::RgbaImage;
 use imgui::{im_str, FontSource};
 use itertools::Itertools;
-use nalgebra_glm::Vec3;
 use num_traits::Zero;
 use serde::Deserialize;
 use std::{
