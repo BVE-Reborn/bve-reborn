@@ -19,6 +19,7 @@ default = []
 [dependencies]
 async-std = "1.5.0"
 bve = { version = "0.0.1", path = "../bve" }
+cc = "=1.0.50" # Fix bug in cc
 dashmap = "3.11.1"
 log = "0.4.8"
 nalgebra-glm = "0.7.0"
