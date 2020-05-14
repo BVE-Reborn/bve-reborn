@@ -11,6 +11,9 @@ readme = "README.md"
 categories = ["parsing", "rendering::data-formats"]
 keywords = ["bve", "parsing", "conversion"]
 
+[package.metadata.workspaces]
+independent = true
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
