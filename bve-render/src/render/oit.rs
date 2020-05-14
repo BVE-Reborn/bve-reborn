@@ -353,11 +353,11 @@ fn create_pass2_pipeline_layout(
 
 const SIZE_OF_NODE: usize = 28;
 
-fn node_count(resolution: UVec2) -> u32 {
+const fn node_count(resolution: UVec2) -> u32 {
     resolution.x * resolution.y * 5
 }
 
-fn size_of_node_buffer(resolution: UVec2) -> BufferAddress {
+const fn size_of_node_buffer(resolution: UVec2) -> BufferAddress {
     (node_count(resolution) as usize * SIZE_OF_NODE + 4) as BufferAddress
 }
 

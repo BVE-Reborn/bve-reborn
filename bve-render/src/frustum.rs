@@ -3,13 +3,13 @@
 
 use glam::{Mat4, Vec3};
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct Sphere {
     pub location: Vec3,
     pub radius: f32,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct Plane {
     pub abc: Vec3,
     pub d: f32,
@@ -37,7 +37,7 @@ impl Plane {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct Frustum {
     pub planes: [Plane; 6],
 }
@@ -47,40 +47,40 @@ impl Frustum {
         let mat_arr = matrix.to_cols_array_2d();
 
         let left = Plane::new(
-            mat_arr[3][0] + mat_arr[0][0],
-            mat_arr[3][1] + mat_arr[0][1],
-            mat_arr[3][2] + mat_arr[0][2],
-            mat_arr[3][3] + mat_arr[0][3],
+            mat_arr[0][3] + mat_arr[0][0],
+            mat_arr[1][3] + mat_arr[1][0],
+            mat_arr[2][3] + mat_arr[2][0],
+            mat_arr[3][3] + mat_arr[3][0],
         );
 
         let right = Plane::new(
-            mat_arr[3][0] - mat_arr[0][0],
-            mat_arr[3][1] - mat_arr[0][1],
-            mat_arr[3][2] - mat_arr[0][2],
-            mat_arr[3][3] - mat_arr[0][3],
+            mat_arr[0][3] - mat_arr[0][0],
+            mat_arr[1][3] - mat_arr[1][0],
+            mat_arr[2][3] - mat_arr[2][0],
+            mat_arr[3][3] - mat_arr[3][0],
         );
 
         let top = Plane::new(
-            mat_arr[3][0] - mat_arr[1][0],
-            mat_arr[3][1] - mat_arr[1][1],
-            mat_arr[3][2] - mat_arr[1][2],
-            mat_arr[3][3] - mat_arr[1][3],
+            mat_arr[0][3] - mat_arr[0][1],
+            mat_arr[1][3] - mat_arr[1][1],
+            mat_arr[2][3] - mat_arr[2][1],
+            mat_arr[3][3] - mat_arr[3][1],
         );
 
         let bottom = Plane::new(
-            mat_arr[3][0] + mat_arr[1][0],
-            mat_arr[3][1] + mat_arr[1][1],
-            mat_arr[3][2] + mat_arr[1][2],
-            mat_arr[3][3] + mat_arr[1][3],
+            mat_arr[0][3] + mat_arr[0][1],
+            mat_arr[1][3] + mat_arr[1][1],
+            mat_arr[2][3] + mat_arr[2][1],
+            mat_arr[3][3] + mat_arr[3][1],
         );
 
-        let near = Plane::new(mat_arr[2][0], mat_arr[2][1], mat_arr[2][2], mat_arr[2][3]);
+        let near = Plane::new(mat_arr[0][2], mat_arr[1][2], mat_arr[2][2], mat_arr[3][2]);
 
         let far = Plane::new(
-            mat_arr[3][0] - mat_arr[2][0],
-            mat_arr[3][1] - mat_arr[2][1],
-            mat_arr[3][2] - mat_arr[2][2],
-            mat_arr[3][3] - mat_arr[2][3],
+            mat_arr[0][3] - mat_arr[0][2],
+            mat_arr[1][3] - mat_arr[1][2],
+            mat_arr[2][3] - mat_arr[2][2],
+            mat_arr[3][3] - mat_arr[3][2],
         );
 
         Self {

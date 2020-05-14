@@ -40,19 +40,22 @@ pub struct UVec2 {
 }
 
 impl UVec2 {
-    pub fn new(x: u32, y: u32) -> Self {
+    #[must_use]
+    pub const fn new(x: u32, y: u32) -> Self {
         Self { x, y }
     }
 
-    pub fn into_array(self) -> [u32; 2] {
+    #[must_use]
+    pub const fn into_array(self) -> [u32; 2] {
         [self.x, self.y]
     }
 
-    pub fn from_array([x, y]: [u32; 2]) -> Self {
+    #[must_use]
+    pub const fn from_array([x, y]: [u32; 2]) -> Self {
         Self { x, y }
     }
 
-    pub fn map(&self, mut f: impl FnMut(u32) -> u32) -> Self {
+    pub fn map(self, mut f: impl FnMut(u32) -> u32) -> Self {
         Self {
             x: f(self.x),
             y: f(self.y),
