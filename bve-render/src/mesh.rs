@@ -3,7 +3,7 @@ use glam::Vec3;
 use log::trace;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct MeshHandle(pub(crate) u64);
+pub struct MeshHandle(pub(crate) DefaultKey);
 
 pub struct Mesh {
     pub vertex_buffer: Buffer,
@@ -99,9 +99,7 @@ impl Renderer {
         let mesh_center_offset = find_mesh_center(&vertices);
         let mesh_bounding_sphere_radius = find_mesh_bounding_sphere_radius(mesh_center_offset, &vertices);
 
-        let handle = self.mesh_handle_count;
-        self.mesh_handle_count += 1;
-        self.mesh.insert(handle, Mesh {
+        let handle = self.mesh.insert(Mesh {
             vertex_buffer,
             index_buffer,
             index_count: indices.len() as u32,
@@ -110,12 +108,12 @@ impl Renderer {
             transparent,
         });
 
-        trace!("Adding new mesh #{}", handle);
+        trace!("Adding new mesh {:?}", handle);
         MeshHandle(handle)
     }
 
     pub fn remove_mesh(&mut self, MeshHandle(mesh_idx): &MeshHandle) {
-        let _mesh = self.mesh.remove(mesh_idx).expect("Invalid mesh handle");
+        let _mesh = self.mesh.remove(*mesh_idx).expect("Invalid mesh handle");
         // Mesh goes out of scope
     }
 }

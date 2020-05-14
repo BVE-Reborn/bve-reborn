@@ -170,7 +170,7 @@ impl Renderer {
     ) -> Vec<&'a object::Object> {
         let frustum = frustum::Frustum::from_matrix(mx_view_proj);
         objects.retain(|object| {
-            let mesh: &mesh::Mesh = &self.mesh[&object.mesh];
+            let mesh: &mesh::Mesh = &self.mesh[object.mesh];
             let object_center = object.location + mesh.mesh_center_offset;
             let sphere = frustum::Sphere {
                 location: object_center,
@@ -272,7 +272,7 @@ impl Renderer {
 
     pub fn compute_object_distances(&mut self) {
         for obj in self.objects.values_mut() {
-            let mesh = &self.mesh[&obj.mesh];
+            let mesh = &self.mesh[obj.mesh];
             let mesh_center: Vec3 = obj.location + mesh.mesh_center_offset;
             let camera_mesh_vector: Vec3 = self.camera.location - mesh_center;
             let distance = camera_mesh_vector.length_squared();

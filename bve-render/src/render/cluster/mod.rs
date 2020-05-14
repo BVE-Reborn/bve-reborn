@@ -71,7 +71,7 @@ struct ConeLightBytes {
     _padding0: [u8; 3],
 }
 
-fn convert_lights_to_data(input: &IndexMap<u64, RenderLightDescriptor>, mx_view: Mat4) -> Vec<ConeLightBytes> {
+fn convert_lights_to_data(input: &SlotMap<DefaultKey, RenderLightDescriptor>, mx_view: Mat4) -> Vec<ConeLightBytes> {
     input
         .values()
         .map(|light: &RenderLightDescriptor| {
@@ -253,7 +253,7 @@ impl Clustering {
         &self,
         device: &Device,
         encoder: &mut CommandEncoder,
-        lights: &IndexMap<u64, RenderLightDescriptor>,
+        lights: &SlotMap<DefaultKey, RenderLightDescriptor>,
         mx_view: Mat4,
     ) {
         let light_count = lights.len().min(MAX_TOTAL_LIGHTS as usize);

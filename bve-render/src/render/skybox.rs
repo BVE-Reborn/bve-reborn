@@ -67,7 +67,7 @@ pub struct Skybox {
 
     uniform_buffer: Buffer,
 
-    pub texture_id: u64,
+    pub texture_id: DefaultKey,
     pub repeats: f32,
 }
 impl Skybox {
@@ -109,7 +109,7 @@ impl Skybox {
             pipeline_layout,
             bind_group,
             uniform_buffer,
-            texture_id: 0,
+            texture_id: DefaultKey::default(),
             repeats: 1.0,
         }
     }
