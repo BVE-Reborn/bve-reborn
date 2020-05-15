@@ -47,30 +47,6 @@ jobs:
         with:
           submodules: true
 
-      - name: Cache cargo registry
-        uses: actions/cache@v1
-        with:
-          path: ~/.cargo/registry
-          key: ${{ matrix.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ matrix.os }}-cargo-registry-
-
-      - name: Cache cargo index
-        uses: actions/cache@v1
-        with:
-          path: ~/.cargo/git
-          key: ${{ matrix.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ matrix.os }}-cargo-index-
-
-      - name: Cache build
-        uses: actions/cache@v1
-        with:
-          path: target
-          key: ${{ matrix.os }}-build-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ matrix.os }}-build-
-
       - name: Install Rustup
         run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain none --profile minimal -y
         if: matrix.os == 'macos-latest' || matrix.os == 'windows-2019'
