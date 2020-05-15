@@ -3,19 +3,19 @@ use crate::{
     HexColorRGB,
 };
 use bve_derive::FromKVPSection;
-use cgmath::{Array, Vector2};
+use glam::Vec2;
 
 #[derive(Debug, Clone, PartialEq, FromKVPSection)]
 pub struct NeedleSection {
     pub subject: Subject,
-    pub location: Vector2<f32>,
+    pub location: Vec2,
     pub radius: Option<f32>,
     pub daytime_image: String,
     pub nighttime_image: String,
     pub color: HexColorRGB,
     #[kvp(alias = "Transparent")]
     pub transparent_color: HexColorRGB,
-    pub origin: Option<Vector2<f32>>,
+    pub origin: Option<Vec2>,
     pub initial_angle: f32,
     pub last_angle: f32,
     pub minimum: f32,
@@ -29,7 +29,7 @@ impl Default for NeedleSection {
     fn default() -> Self {
         Self {
             subject: Subject::from_target(SubjectTarget::True),
-            location: Vector2::from_value(0.0),
+            location: Vec2::zero(),
             radius: None,
             daytime_image: String::default(),
             nighttime_image: String::default(),

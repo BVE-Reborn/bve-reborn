@@ -19,10 +19,10 @@ use crate::{
         mesh::{BlendMode, GlowAttenuationMode, MeshError, MeshWarning},
         util, PrettyPrintResult, Span,
     },
-    ColorU8RGB, ColorU8RGBA,
+    BVec3, ColorU8RGB, ColorU8RGBA,
 };
-use cgmath::{Vector2, Vector3};
 pub use creation::*;
+use glam::{Vec2, Vec3};
 pub use post_processing::*;
 use serde::Deserialize;
 use std::io;
@@ -142,12 +142,12 @@ pub struct CreateMeshBuilder;
 #[bve_derive::serde_proxy]
 pub struct AddVertex {
     #[default("util::some_zero_f32")]
-    pub position: Vector3<f32>,
+    pub position: Vec3,
     #[default("util::some_zero_f32")]
-    pub normal: Vector3<f32>,
+    pub normal: Vec3,
     /// Only relevant after postprocessing away the [`SetTextureCoordinates`] command.
     #[serde(skip)]
-    pub texture_coord: Vector2<f32>,
+    pub texture_coord: Vec2,
 }
 
 #[bve_derive::serde_vector_proxy]
@@ -161,7 +161,7 @@ pub struct AddFace {
 #[bve_derive::serde_proxy]
 pub struct Cube {
     #[default("util::some_one_f32")]
-    pub half_dim: Vector3<f32>,
+    pub half_dim: Vec3,
 }
 
 /// Cannot be executed, must be preprocessed away to [`AddVertex`] and [`AddFace`] commands
@@ -180,7 +180,7 @@ pub struct Cylinder {
 #[bve_derive::serde_proxy]
 pub struct Translate {
     #[default("util::some_zero_f32")]
-    pub value: Vector3<f32>,
+    pub value: Vec3,
     #[serde(skip)]
     pub application: ApplyTo,
 }
@@ -188,7 +188,7 @@ pub struct Translate {
 #[bve_derive::serde_proxy]
 pub struct Scale {
     #[default("util::some_one_f32")]
-    pub value: Vector3<f32>,
+    pub value: Vec3,
     #[serde(skip)]
     pub application: ApplyTo,
 }
@@ -196,7 +196,7 @@ pub struct Scale {
 #[bve_derive::serde_proxy]
 pub struct Rotate {
     #[default("util::some_zero_f32")]
-    pub axis: Vector3<f32>,
+    pub axis: Vec3,
     #[default("util::some_zero_f32")]
     pub angle: f32,
     #[serde(skip)]
@@ -206,9 +206,9 @@ pub struct Rotate {
 #[bve_derive::serde_proxy]
 pub struct Shear {
     #[default("util::some_zero_f32")]
-    pub direction: Vector3<f32>,
+    pub direction: Vec3,
     #[default("util::some_zero_f32")]
-    pub shear: Vector3<f32>,
+    pub shear: Vec3,
     #[default("util::some_zero_f32")]
     pub ratio: f32,
     #[serde(skip)]
@@ -218,7 +218,7 @@ pub struct Shear {
 #[bve_derive::serde_proxy]
 pub struct Mirror {
     #[default("util::some_false")]
-    pub directions: Vector3<bool>,
+    pub directions: BVec3,
     #[serde(skip)]
     pub application: ApplyTo,
 }
@@ -275,7 +275,7 @@ pub struct SetTextureCoordinates {
     #[default("util::some_zero_usize")]
     pub index: usize,
     #[default("util::some_zero_f32")]
-    pub coords: Vector2<f32>,
+    pub coords: Vec2,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]

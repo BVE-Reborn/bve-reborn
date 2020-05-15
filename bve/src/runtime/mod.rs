@@ -17,7 +17,6 @@ use futures::{
     stream::{FuturesOrdered, FuturesUnordered},
     StreamExt,
 };
-use glam::Vec3;
 use hecs::World;
 use log::{debug, trace};
 use std::sync::atomic::{AtomicI32, Ordering};
@@ -193,11 +192,7 @@ impl<C: Client> Runtime<C> {
                 let location = Location::from_address_position(chunk.address, chunk_offset);
                 let render_location = location.to_relative_position(base_chunk);
 
-                let object_handle = client.add_object_texture(
-                    Vec3::new(render_location.x, render_location.y, render_location.z),
-                    &mesh_handle,
-                    &texture_handle,
-                );
+                let object_handle = client.add_object_texture(render_location, &mesh_handle, &texture_handle);
                 object_textures.push(RenderableObject {
                     object: object_handle,
                     location,
@@ -298,7 +293,7 @@ impl<C: Client> Runtime<C> {
         runtime_location.location = location;
         drop(runtime_location);
         let mut client = self.client.lock().await;
-        client.set_camera_location(Vec3::new(location.offset.x, location.offset.y, location.offset.z));
+        client.set_camera_location(*location.offset);
     }
 
     async fn update_camera_position(self: Arc<Self>, base_location: Location) {
@@ -309,10 +304,7 @@ impl<C: Client> Runtime<C> {
             let renderable: &RenderableComponent<C> = renderable;
             for object in &renderable.subobjects {
                 let render_location = object.location.to_relative_position(base_location.chunk);
-                client.set_object_location(
-                    &object.object,
-                    Vec3::new(render_location.x, render_location.y, render_location.z),
-                );
+                client.set_object_location(&object.object, render_location);
             }
         }
         for (_id, (light_owner,)) in ecs.query::<(&LightOwnerComponent<C>,)>().iter() {

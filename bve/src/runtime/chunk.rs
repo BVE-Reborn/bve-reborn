@@ -1,8 +1,11 @@
-use crate::runtime::{cache::PathHandle, LightDescriptor};
+use crate::{
+    runtime::{cache::PathHandle, LightDescriptor},
+    IVec2,
+};
 use async_std::sync::{Arc, RwLock};
-use cgmath::{Vector2, Vector3};
 use dashmap::{DashMap, DashSet};
 use derive_more::{AsMut, AsRef, Deref, Display, From as DmFrom, Into};
+use glam::f32::Vec3;
 use std::{
     hash::{Hash, Hasher},
     sync::atomic::AtomicU8,
@@ -12,23 +15,23 @@ pub const CHUNK_SIZE: f32 = 64.0;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Deref, DmFrom, Into, Display, AsRef, AsMut)]
 #[display(fmt = "({}, {})", "self.0.x", "self.0.y")]
-pub struct ChunkAddress(Vector2<i32>);
+pub struct ChunkAddress(IVec2);
 
 impl ChunkAddress {
     #[must_use]
     pub const fn new(x: i32, y: i32) -> Self {
-        Self(Vector2::new(x, y))
+        Self(IVec2::new(x, y))
     }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Deref, DmFrom, Into, Display, AsRef, AsMut)]
-#[display(fmt = "({}, {}, {})", "self.0.x", "self.0.y", "self.0.z")]
-pub struct ChunkOffset(Vector3<f32>);
+#[display(fmt = "({}, {}, {})", "self.0.x()", "self.0.y()", "self.0.z()")]
+pub struct ChunkOffset(Vec3);
 
 impl ChunkOffset {
     #[must_use]
-    pub const fn new(x: f32, y: f32, z: f32) -> Self {
-        Self(Vector3::new(x, y, z))
+    pub fn new(x: f32, y: f32, z: f32) -> Self {
+        Self(Vec3::new(x, y, z))
     }
 }
 
@@ -72,9 +75,9 @@ impl Eq for UnloadedObject {}
 impl Hash for UnloadedObject {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.path.hash(state);
-        self.offset.x.to_bits().hash(state);
-        self.offset.y.to_bits().hash(state);
-        self.offset.z.to_bits().hash(state);
+        self.offset.x().to_bits().hash(state);
+        self.offset.y().to_bits().hash(state);
+        self.offset.z().to_bits().hash(state);
     }
 }
 

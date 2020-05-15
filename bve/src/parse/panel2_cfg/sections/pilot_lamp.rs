@@ -3,12 +3,12 @@ use crate::{
     HexColorRGB,
 };
 use bve_derive::FromKVPSection;
-use cgmath::{Array, Vector2};
+use glam::Vec2;
 
 #[derive(Debug, Clone, PartialEq, FromKVPSection)]
 pub struct PilotLampSection {
     pub subject: Subject,
-    pub location: Vector2<f32>,
+    pub location: Vec2,
     pub daytime_image: String,
     pub nighttime_image: String,
     #[kvp(alias = "Transparent")]
@@ -20,7 +20,7 @@ impl Default for PilotLampSection {
     fn default() -> Self {
         Self {
             subject: Subject::from_target(SubjectTarget::True),
-            location: Vector2::from_value(0.0),
+            location: Vec2::zero(),
             daytime_image: String::default(),
             nighttime_image: String::default(),
             transparent_color: HexColorRGB::new(0, 0, 255),

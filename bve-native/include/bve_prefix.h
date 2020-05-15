@@ -9,3 +9,22 @@
 #else
 	#define BVE_NO_DISCARD
 #endif
+
+typedef struct {
+    float x;
+    float y;
+} BVE_Vec2;
+
+typedef struct {
+    float x;
+    float y;
+    float z;
+    float _padding;
+} BVE_Vec3;
+
+typedef struct {
+    float x;
+    float y;
+    float z;
+    float w;
+} BVE_Vec4;

@@ -261,9 +261,9 @@ mod test {
             mesh::{instructions::*, FileType},
             Span,
         },
-        ColorU8RGB, ColorU8RGBA,
+        BVec3, ColorU8RGB, ColorU8RGBA,
     };
-    use cgmath::{Vector2, Vector3};
+    use glam::{Vec2, Vec3};
 
     use crate::parse::mesh::instructions::b3d_to_csv_syntax;
 
@@ -421,9 +421,9 @@ mod test {
             "AddVertex",
             "",
             InstructionData::AddVertex(AddVertex {
-                position: Vector3::new(0.0, 0.0, 0.0),
-                normal: Vector3::new(0.0, 0.0, 0.0),
-                texture_coord: Vector2::new(0.0, 0.0),
+                position: Vec3::zero(),
+                normal: Vec3::zero(),
+                texture_coord: Vec2::zero(),
             })
         );
     }
@@ -436,9 +436,9 @@ mod test {
             "AddVertex",
             ",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,",
             InstructionData::AddVertex(AddVertex {
-                position: Vector3::new(0.0, 0.0, 0.0),
-                normal: Vector3::new(0.0, 0.0, 0.0),
-                texture_coord: Vector2::new(0.0, 0.0),
+                position: Vec3::zero(),
+                normal: Vec3::zero(),
+                texture_coord: Vec2::zero(),
             })
         );
     }
@@ -486,9 +486,9 @@ mod test {
             "AddVertex;",
             "1, 2, 3, 4, 5, 6", // these are commented out
             InstructionData::AddVertex(AddVertex {
-                position: Vector3::new(0.0, 0.0, 0.0),
-                normal: Vector3::new(0.0, 0.0, 0.0),
-                texture_coord: Vector2::new(0.0, 0.0),
+                position: Vec3::zero(),
+                normal: Vec3::zero(),
+                texture_coord: Vec2::zero(),
             })
         );
     }
@@ -502,9 +502,9 @@ mod test {
             "AddVertex",
             "1, 2, 3, 4, 5, 6;",
             InstructionData::AddVertex(AddVertex {
-                position: Vector3::new(1.0, 2.0, 3.0),
-                normal: Vector3::new(4.0, 5.0, 6.0),
-                texture_coord: Vector2::new(0.0, 0.0),
+                position: Vec3::new(1.0, 2.0, 3.0),
+                normal: Vec3::new(4.0, 5.0, 6.0),
+                texture_coord: Vec2::zero(),
             })
         );
     }
@@ -528,15 +528,15 @@ mod test {
             "AddVertex",
             "1, 2, 3, 4, 5, 6",
             InstructionData::AddVertex(AddVertex {
-                position: Vector3::new(1.0, 2.0, 3.0),
-                normal: Vector3::new(4.0, 5.0, 6.0),
-                texture_coord: Vector2::new(0.0, 0.0),
+                position: Vec3::new(1.0, 2.0, 3.0),
+                normal: Vec3::new(4.0, 5.0, 6.0),
+                texture_coord: Vec2::zero(),
             }),
             ",,,,,",
             InstructionData::AddVertex(AddVertex {
-                position: Vector3::new(0.0, 0.0, 0.0),
-                normal: Vector3::new(0.0, 0.0, 0.0),
-                texture_coord: Vector2::new(0.0, 0.0),
+                position: Vec3::zero(),
+                normal: Vec3::zero(),
+                texture_coord: Vec2::zero(),
             })
         );
     }
@@ -577,11 +577,11 @@ mod test {
             "Cube",
             "1, 2, 3",
             InstructionData::Cube(Cube {
-                half_dim: Vector3::new(1.0, 2.0, 3.0)
+                half_dim: Vec3::new(1.0, 2.0, 3.0)
             }),
             ",,",
             InstructionData::Cube(Cube {
-                half_dim: Vector3::new(1.0, 1.0, 1.0)
+                half_dim: Vec3::new(1.0, 1.0, 1.0)
             })
         );
     }
@@ -629,12 +629,12 @@ mod test {
             "Translate",
             "1, 2, 3",
             InstructionData::Translate(Translate {
-                value: Vector3::new(1.0, 2.0, 3.0),
+                value: Vec3::new(1.0, 2.0, 3.0),
                 application: ApplyTo::SingleMesh,
             }),
             ",,",
             InstructionData::Translate(Translate {
-                value: Vector3::new(0.0, 0.0, 0.0),
+                value: Vec3::zero(),
                 application: ApplyTo::SingleMesh,
             })
         );
@@ -648,12 +648,12 @@ mod test {
             "TranslateAll",
             "1, 2, 3",
             InstructionData::Translate(Translate {
-                value: Vector3::new(1.0, 2.0, 3.0),
+                value: Vec3::new(1.0, 2.0, 3.0),
                 application: ApplyTo::AllMeshes,
             }),
             ",,",
             InstructionData::Translate(Translate {
-                value: Vector3::new(0.0, 0.0, 0.0),
+                value: Vec3::zero(),
                 application: ApplyTo::AllMeshes,
             })
         );
@@ -667,12 +667,12 @@ mod test {
             "Scale",
             "1, 2, 3",
             InstructionData::Scale(Scale {
-                value: Vector3::new(1.0, 2.0, 3.0),
+                value: Vec3::new(1.0, 2.0, 3.0),
                 application: ApplyTo::SingleMesh,
             }),
             ",,",
             InstructionData::Scale(Scale {
-                value: Vector3::new(1.0, 1.0, 1.0),
+                value: Vec3::one(),
                 application: ApplyTo::SingleMesh,
             })
         );
@@ -686,12 +686,12 @@ mod test {
             "ScaleAll",
             "1, 2, 3",
             InstructionData::Scale(Scale {
-                value: Vector3::new(1.0, 2.0, 3.0),
+                value: Vec3::new(1.0, 2.0, 3.0),
                 application: ApplyTo::AllMeshes,
             }),
             ",,",
             InstructionData::Scale(Scale {
-                value: Vector3::new(1.0, 1.0, 1.0),
+                value: Vec3::one(),
                 application: ApplyTo::AllMeshes,
             })
         );
@@ -705,13 +705,13 @@ mod test {
             "Rotate",
             "1, 2, 3, 4",
             InstructionData::Rotate(Rotate {
-                axis: Vector3::new(1.0, 2.0, 3.0),
+                axis: Vec3::new(1.0, 2.0, 3.0),
                 angle: 4.0,
                 application: ApplyTo::SingleMesh,
             }),
             ",,,",
             InstructionData::Rotate(Rotate {
-                axis: Vector3::new(0.0, 0.0, 0.0),
+                axis: Vec3::zero(),
                 angle: 0.0,
                 application: ApplyTo::SingleMesh,
             })
@@ -726,13 +726,13 @@ mod test {
             "RotateAll",
             "1, 2, 3, 4",
             InstructionData::Rotate(Rotate {
-                axis: Vector3::new(1.0, 2.0, 3.0),
+                axis: Vec3::new(1.0, 2.0, 3.0),
                 angle: 4.0,
                 application: ApplyTo::AllMeshes,
             }),
             ",,,",
             InstructionData::Rotate(Rotate {
-                axis: Vector3::new(0.0, 0.0, 0.0),
+                axis: Vec3::zero(),
                 angle: 0.0,
                 application: ApplyTo::AllMeshes,
             })
@@ -747,15 +747,15 @@ mod test {
             "Shear",
             "1, 2, 3, 4, 5, 6, 7",
             InstructionData::Shear(Shear {
-                direction: Vector3::new(1.0, 2.0, 3.0),
-                shear: Vector3::new(4.0, 5.0, 6.0),
+                direction: Vec3::new(1.0, 2.0, 3.0),
+                shear: Vec3::new(4.0, 5.0, 6.0),
                 ratio: 7.0,
                 application: ApplyTo::SingleMesh,
             }),
             ",,,,,,",
             InstructionData::Shear(Shear {
-                direction: Vector3::new(0.0, 0.0, 0.0),
-                shear: Vector3::new(0.0, 0.0, 0.0),
+                direction: Vec3::zero(),
+                shear: Vec3::zero(),
                 ratio: 0.0,
                 application: ApplyTo::SingleMesh,
             })
@@ -770,15 +770,15 @@ mod test {
             "ShearAll",
             "1, 2, 3, 4, 5, 6, 7",
             InstructionData::Shear(Shear {
-                direction: Vector3::new(1.0, 2.0, 3.0),
-                shear: Vector3::new(4.0, 5.0, 6.0),
+                direction: Vec3::new(1.0, 2.0, 3.0),
+                shear: Vec3::new(4.0, 5.0, 6.0),
                 ratio: 7.0,
                 application: ApplyTo::AllMeshes,
             }),
             ",,,,,,",
             InstructionData::Shear(Shear {
-                direction: Vector3::new(0.0, 0.0, 0.0),
-                shear: Vector3::new(0.0, 0.0, 0.0),
+                direction: Vec3::zero(),
+                shear: Vec3::zero(),
                 ratio: 0.0,
                 application: ApplyTo::AllMeshes,
             })
@@ -793,12 +793,12 @@ mod test {
             "Mirror",
             "0, 1, 0",
             InstructionData::Mirror(Mirror {
-                directions: Vector3::new(false, true, false),
+                directions: BVec3::new(false, true, false),
                 application: ApplyTo::SingleMesh,
             }),
             ",,",
             InstructionData::Mirror(Mirror {
-                directions: Vector3::new(false, false, false),
+                directions: BVec3::new(false, false, false),
                 application: ApplyTo::SingleMesh,
             })
         );
@@ -812,12 +812,12 @@ mod test {
             "MirrorAll",
             "0, 1, 0",
             InstructionData::Mirror(Mirror {
-                directions: Vector3::new(false, true, false),
+                directions: BVec3::new(false, true, false),
                 application: ApplyTo::AllMeshes,
             }),
             ",,",
             InstructionData::Mirror(Mirror {
-                directions: Vector3::new(false, false, false),
+                directions: BVec3::new(false, false, false),
                 application: ApplyTo::AllMeshes,
             })
         );
@@ -835,7 +835,7 @@ mod test {
             }),
             ",,,",
             InstructionData::SetColor(SetColor {
-                color: ColorU8RGBA::new(255, 255, 255, 255),
+                color: ColorU8RGBA::splat(255),
             })
         );
     }
@@ -852,7 +852,7 @@ mod test {
             }),
             ",,",
             InstructionData::SetEmissiveColor(SetEmissiveColor {
-                color: ColorU8RGB::new(0, 0, 0),
+                color: ColorU8RGB::zero(),
             })
         );
     }
@@ -939,7 +939,7 @@ mod test {
             }),
             ",,",
             InstructionData::SetDecalTransparentColor(SetDecalTransparentColor {
-                color: ColorU8RGB::new(0, 0, 0),
+                color: ColorU8RGB::zero(),
             })
         );
     }
@@ -953,12 +953,12 @@ mod test {
             "1, 2, 3",
             InstructionData::SetTextureCoordinates(SetTextureCoordinates {
                 index: 1,
-                coords: Vector2::new(2.0, 3.0),
+                coords: Vec2::new(2.0, 3.0),
             }),
             ",,",
             InstructionData::SetTextureCoordinates(SetTextureCoordinates {
                 index: 0,
-                coords: Vector2::new(0.0, 0.0),
+                coords: Vec2::zero(),
             })
         );
     }

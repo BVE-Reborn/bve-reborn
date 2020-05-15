@@ -1,27 +1,26 @@
 use crate::parse::{function_scripts::ParsedFunctionScript, kvp::FromKVPValue, PrettyPrintResult};
 use bve_derive::{FromKVPSection, FromKVPValue};
-use cgmath::{Vector2, Vector3};
-use num_traits::Zero;
+use glam::{Vec2, Vec3};
 use std::io;
 
 #[derive(Debug, Clone, PartialEq, FromKVPSection)]
 pub struct AnimatedObject {
-    pub position: Vector3<f32>,
+    pub position: Vec3,
     #[kvp(variadic)]
     pub states: Vec<String>,
     pub state_function: Option<ParsedFunctionScript>,
 
-    pub translate_x_direction: Vector3<f32>,
-    pub translate_y_direction: Vector3<f32>,
-    pub translate_z_direction: Vector3<f32>,
+    pub translate_x_direction: Vec3,
+    pub translate_y_direction: Vec3,
+    pub translate_z_direction: Vec3,
 
     pub translate_x_function: Option<ParsedFunctionScript>,
     pub translate_y_function: Option<ParsedFunctionScript>,
     pub translate_z_function: Option<ParsedFunctionScript>,
 
-    pub rotate_x_direction: Vector3<f32>,
-    pub rotate_y_direction: Vector3<f32>,
-    pub rotate_z_direction: Vector3<f32>,
+    pub rotate_x_direction: Vec3,
+    pub rotate_y_direction: Vec3,
+    pub rotate_z_direction: Vec3,
 
     pub rotate_x_function: Option<ParsedFunctionScript>,
     pub rotate_y_function: Option<ParsedFunctionScript>,
@@ -31,8 +30,8 @@ pub struct AnimatedObject {
     pub rotate_y_damping: Option<Damping>,
     pub rotate_z_damping: Option<Damping>,
 
-    pub texture_shift_x_direction: Vector2<f32>,
-    pub texture_shift_y_direction: Vector2<f32>,
+    pub texture_shift_x_direction: Vec2,
+    pub texture_shift_y_direction: Vec2,
 
     pub texture_shift_x_function: Option<ParsedFunctionScript>,
     pub texture_shift_y_function: Option<ParsedFunctionScript>,
@@ -47,26 +46,26 @@ pub struct AnimatedObject {
 impl Default for AnimatedObject {
     fn default() -> Self {
         Self {
-            position: Vector3::zero(),
+            position: Vec3::zero(),
             states: Vec::default(),
             state_function: None,
-            translate_x_direction: Vector3::unit_x(),
-            translate_y_direction: Vector3::unit_y(),
-            translate_z_direction: Vector3::unit_z(),
+            translate_x_direction: Vec3::unit_x(),
+            translate_y_direction: Vec3::unit_y(),
+            translate_z_direction: Vec3::unit_z(),
             translate_x_function: None,
             translate_y_function: None,
             translate_z_function: None,
-            rotate_x_direction: Vector3::unit_x(),
-            rotate_y_direction: Vector3::unit_y(),
-            rotate_z_direction: Vector3::unit_z(),
+            rotate_x_direction: Vec3::unit_x(),
+            rotate_y_direction: Vec3::unit_y(),
+            rotate_z_direction: Vec3::unit_z(),
             rotate_x_function: None,
             rotate_y_function: None,
             rotate_z_function: None,
             rotate_x_damping: None,
             rotate_y_damping: None,
             rotate_z_damping: None,
-            texture_shift_x_direction: Vector2::unit_x(),
-            texture_shift_y_direction: Vector2::unit_y(),
+            texture_shift_x_direction: Vec2::unit_x(),
+            texture_shift_y_direction: Vec2::unit_y(),
             texture_shift_x_function: None,
             texture_shift_y_function: None,
             track_follower_function: None,

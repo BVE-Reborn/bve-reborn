@@ -1,5 +1,5 @@
 use bve_derive::FromKVPSection;
-use cgmath::{Array, Vector2};
+use glam::Vec2;
 
 #[derive(Debug, Clone, PartialEq, FromKVPSection)]
 pub struct PilotLampSection {
@@ -8,7 +8,7 @@ pub struct PilotLampSection {
     #[kvp(rename = "TurnOff", alias = "消灯")]
     pub off: String,
     #[kvp(alias = "左上")]
-    pub corner: Vector2<f32>,
+    pub corner: Vec2,
 }
 
 impl Default for PilotLampSection {
@@ -16,7 +16,7 @@ impl Default for PilotLampSection {
         Self {
             on: String::default(),
             off: String::default(),
-            corner: Vector2::from_value(0.0),
+            corner: Vec2::zero(),
         }
     }
 }

@@ -6,10 +6,7 @@ use async_std::task::block_on;
 use bve::{load::mesh, ColorU8RGB, ColorU8RGBA};
 use bve_derive::c_interface;
 use libc::c_char;
-use std::{
-    ffi::CStr,
-    ptr::{null, null_mut},
-};
+use std::{ffi::CStr, ptr::null_mut};
 
 pub use mesh::Vertex;
 
@@ -127,11 +124,11 @@ pub unsafe extern "C" fn BVE_Texture_Set_add(ptr: *mut Texture_Set, value: *cons
 /// - Pointer returned points to an owned **copy** of the texture name.
 /// - Returned pointer must be deleted by [`crate::bve_delete_string`].
 /// - If the lookup fails, output is null.
-pub unsafe extern "C" fn BVE_Texture_Set_lookup(ptr: *const Texture_Set, idx: libc::size_t) -> *const c_char {
+pub unsafe extern "C" fn BVE_Texture_Set_lookup(ptr: *const Texture_Set, idx: libc::size_t) -> *mut c_char {
     let result = (*ptr).inner.lookup(idx);
     match result {
         Some(s) => str_to_owned_ptr(s),
-        None => null(),
+        None => null_mut(),
     }
 }
 

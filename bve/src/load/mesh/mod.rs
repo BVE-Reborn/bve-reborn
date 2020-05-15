@@ -8,8 +8,8 @@ use crate::{
     ColorU8RGB, ColorU8RGBA,
 };
 use async_std::path::Path;
-use cgmath::{Array, Vector2, Vector3, Vector4};
 pub use execution::*;
+use glam::{Vec2, Vec3};
 use indexmap::IndexSet;
 use std::{ffi::OsStr, ops::Deref};
 
@@ -133,16 +133,16 @@ pub struct Mesh {
 }
 
 #[must_use]
-pub fn default_mesh() -> Mesh {
+pub const fn default_mesh() -> Mesh {
     Mesh {
         vertices: vec![],
         indices: vec![],
         texture: Texture {
             texture_id: None,
-            emission_color: ColorU8RGB::from_value(0),
+            emission_color: ColorU8RGB::splat(0),
             decal_transparent_color: None,
         },
-        color: ColorU8RGBA::from_value(255),
+        color: ColorU8RGBA::splat(255),
         blend_mode: BlendMode::Normal,
         glow: Glow {
             attenuation_mode: GlowAttenuationMode::DivideExponent4,
@@ -155,10 +155,10 @@ pub fn default_mesh() -> Mesh {
 #[repr(C)]
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Vertex {
-    pub position: Vector3<f32>,
-    pub normal: Vector3<f32>,
-    pub color: Vector4<u8>,
-    pub coord: Vector2<f32>,
+    pub position: Vec3,
+    pub normal: Vec3,
+    pub color: ColorU8RGBA,
+    pub coord: Vec2,
     pub double_sided: bool,
 }
 
@@ -169,41 +169,41 @@ impl Vertex {
     fn print_positions(vertices: &[Self], indices: &[usize]) {
         println!("Vertices: [");
         for (i, v) in vertices.iter().enumerate() {
-            println!("\t{}: [{}, {}, {}],", i, v.position.x, v.position.y, v.position.z);
+            println!("\t{}: [{}, {}, {}],", i, v.position.x(), v.position.y(), v.position.z());
         }
         println!("]");
         println!("{:?}", indices);
     }
 
     #[must_use]
-    pub fn from_position_normal_coord(position: Vector3<f32>, normal: Vector3<f32>, coord: Vector2<f32>) -> Self {
+    pub const fn from_position_normal_coord(position: Vec3, normal: Vec3, coord: Vec2) -> Self {
         Self {
             position,
             normal,
             coord,
-            color: Vector4::from_value(255),
+            color: ColorU8RGBA::splat(255),
             double_sided: false,
         }
     }
 
     #[must_use]
-    pub fn from_position_normal(position: Vector3<f32>, normal: Vector3<f32>) -> Self {
+    pub fn from_position_normal(position: Vec3, normal: Vec3) -> Self {
         Self {
             position,
             normal,
-            coord: Vector2::from_value(0.0),
-            color: Vector4::from_value(255),
+            coord: Vec2::zero(),
+            color: ColorU8RGBA::splat(255),
             double_sided: false,
         }
     }
 
     #[must_use]
-    pub fn from_position(position: Vector3<f32>) -> Self {
+    pub fn from_position(position: Vec3) -> Self {
         Self {
             position,
-            normal: Vector3::from_value(0.0),
-            coord: Vector2::from_value(0.0),
-            color: Vector4::from_value(255),
+            normal: Vec3::zero(),
+            coord: Vec2::zero(),
+            color: ColorU8RGBA::splat(255),
             double_sided: false,
         }
     }
