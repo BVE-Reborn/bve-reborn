@@ -6,6 +6,9 @@ namespace = "bve"
 includes = ["bve_prefix.h"]
 documentation_style = "doxy"
 
+[defines]
+"vec3sse2" = "BVE_DEFINE_VEC3SSE2"
+
 [fn]
 must_use = "BVE_NO_DISCARD"
 
@@ -15,18 +18,8 @@ bitflags = true
 [export]
 prefix = "BVE_"
 include = [
-    "ColorU8R",
-    "ColorU8RG",
     "ColorU8RGB",
     "ColorU8RGBA",
-    "ColorU16R",
-    "ColorU16RG",
-    "ColorU16RGB",
-    "ColorU16RGBA",
-    "ColorF32R",
-    "ColorF32RG",
-    "ColorF32RGB",
-    "ColorF32RGBA",
 ]
 
 [export.rename]
@@ -37,8 +30,8 @@ include = [
 
 [parse]
 parse_deps = true
-include = ["bve", "cgmath"]
+include = ["bve"]
 extra_bindings = ["bve"]
 
 [parse.expand]
-crates = ["bve-native"]
+crates = ["bve", "bve-native"]
