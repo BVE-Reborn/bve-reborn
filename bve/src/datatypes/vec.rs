@@ -9,6 +9,7 @@ macro_rules! gen_uivec2 {
             pub y: $ty,
         }
 
+        #[allow(clippy::use_self)]
         impl $name {
             #[must_use]
             #[inline]
@@ -43,6 +44,7 @@ macro_rules! gen_uivec2 {
             }
 
             #[inline]
+
             pub fn map_f32(self, mut f: impl FnMut($ty) -> f32) -> Vec2 {
                 Vec2::new(
                     f(self.x),
@@ -95,13 +97,15 @@ macro_rules! numeric_uivec2 {
     gen_uivec2!($($name => $ty),*);
     $(
         impl $name {
+            #[must_use]
             #[inline]
-            pub fn zero() -> Self {
+            pub const fn zero() -> Self {
                 Self { x: 0, y: 0 }
             }
 
+            #[must_use]
             #[inline]
-            pub fn one() -> Self {
+            pub const fn one() -> Self {
                 Self { x: 1, y: 1 }
             }
         }
@@ -166,6 +170,7 @@ macro_rules! numeric_uivec2 {
             }
         }
 
+        #[allow(clippy::modulo_arithmetic)]
         impl std::ops::Rem<$name> for $name {
             type Output = Self;
             #[inline]
@@ -192,6 +197,7 @@ macro_rules! gen_uivec3 {
             pub z: $ty,
         }
 
+        #[allow(clippy::use_self)]
         impl $name {
             #[must_use]
             #[inline]
@@ -292,13 +298,15 @@ macro_rules! numeric_uivec3 {
     gen_uivec3!($($name => $ty),*);
     $(
         impl $name {
+            #[must_use]
             #[inline]
-            pub fn zero() -> Self {
+            pub const fn zero() -> Self {
                 Self { x: 0, y: 0, z: 0 }
             }
 
+            #[must_use]
             #[inline]
-            pub fn one() -> Self {
+            pub const fn one() -> Self {
                 Self { x: 1, y: 1, z: 1 }
             }
         }
@@ -363,6 +371,7 @@ macro_rules! numeric_uivec3 {
             }
         }
 
+        #[allow(clippy::modulo_arithmetic)]
         impl std::ops::Rem<$name> for $name {
             type Output = Self;
             #[inline]
@@ -390,6 +399,7 @@ macro_rules! gen_uivec4 {
             pub w: $ty,
         }
 
+        #[allow(clippy::use_self)]
         impl $name {
             #[must_use]
             #[inline]
@@ -426,6 +436,7 @@ macro_rules! gen_uivec4 {
             }
 
             #[inline]
+
             pub fn map_f32(self, mut f: impl FnMut($ty) -> f32) -> Vec4 {
                 Vec4::new(
                     f(self.x),
@@ -496,13 +507,15 @@ macro_rules! numeric_uivec4 {
     gen_uivec4!($($name => $ty),*);
     $(
         impl $name {
+            #[must_use]
             #[inline]
-            pub fn zero() -> Self {
+            pub const fn zero() -> Self {
                 Self { x: 0, y: 0, z: 0, w: 0 }
             }
 
+            #[must_use]
             #[inline]
-            pub fn one() -> Self {
+            pub const fn one() -> Self {
                 Self { x: 1, y: 1, z: 1, w: 0 }
             }
         }
@@ -567,6 +580,7 @@ macro_rules! numeric_uivec4 {
             }
         }
 
+        #[allow(clippy::modulo_arithmetic)]
         impl std::ops::Rem<$name> for $name {
             type Output = Self;
             #[inline]

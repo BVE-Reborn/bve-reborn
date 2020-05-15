@@ -133,7 +133,7 @@ pub struct Mesh {
 }
 
 #[must_use]
-pub fn default_mesh() -> Mesh {
+pub const fn default_mesh() -> Mesh {
     Mesh {
         vertices: vec![],
         indices: vec![],
@@ -176,7 +176,7 @@ impl Vertex {
     }
 
     #[must_use]
-    pub fn from_position_normal_coord(position: Vec3, normal: Vec3, coord: Vec2) -> Self {
+    pub const fn from_position_normal_coord(position: Vec3, normal: Vec3, coord: Vec2) -> Self {
         Self {
             position,
             normal,
