@@ -32,33 +32,44 @@ pub type ColorF32RGB = Vector3<f32>;
 /// RGBA color: 32-bit float per channel
 pub type ColorF32RGBA = Vector4<f32>;
 
-#[repr(C)]
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub struct UVec2 {
-    pub x: u32,
-    pub y: u32,
-}
-
-impl UVec2 {
-    #[must_use]
-    pub const fn new(x: u32, y: u32) -> Self {
-        Self { x, y }
-    }
-
-    #[must_use]
-    pub const fn into_array(self) -> [u32; 2] {
-        [self.x, self.y]
-    }
-
-    #[must_use]
-    pub const fn from_array([x, y]: [u32; 2]) -> Self {
-        Self { x, y }
-    }
-
-    pub fn map(self, mut f: impl FnMut(u32) -> u32) -> Self {
-        Self {
-            x: f(self.x),
-            y: f(self.y),
+macro_rules! gen_uivec2 {
+    ($($name:ident => $ty:ty),*) => {$(
+        #[repr(C)]
+        #[derive(Debug, Copy, Clone, Eq, PartialEq)]
+        pub struct $name {
+            pub x: $ty,
+            pub y: $ty,
         }
-    }
+
+        impl $name {
+            #[must_use]
+            pub const fn new(x: $ty, y: $ty) -> Self {
+                Self { x, y }
+            }
+
+            #[must_use]
+            pub const fn splat(v: $ty) -> Self {
+                Self { x: v, y: v }
+            }
+
+            #[must_use]
+            pub const fn into_array(self) -> [$ty; 2] {
+                [self.x, self.y]
+            }
+
+            #[must_use]
+            pub const fn from_array([x, y]: [$ty; 2]) -> Self {
+                Self { x, y }
+            }
+
+            pub fn map(self, mut f: impl FnMut($ty) -> $ty) -> Self {
+                Self {
+                    x: f(self.x),
+                    y: f(self.y),
+                }
+            }
+        }
+    )*};
 }
+
+gen_uivec2!(UVec2 => u32, IVec2 => i32);
