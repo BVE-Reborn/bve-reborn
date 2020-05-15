@@ -19,7 +19,7 @@ typedef struct {
     float x;
     float y;
     float z;
-    float _z;
+    float _padding;
 } BVE_Vec3;
 
 typedef struct {
