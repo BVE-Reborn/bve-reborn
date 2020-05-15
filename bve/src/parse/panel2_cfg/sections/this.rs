@@ -1,6 +1,6 @@
 use crate::HexColorRGB;
 use bve_derive::FromKVPSection;
-use cgmath::{Array, Vector2};
+use glam::Vec2;
 
 #[derive(Debug, Clone, PartialEq, FromKVPSection)]
 pub struct ThisSection {
@@ -13,8 +13,8 @@ pub struct ThisSection {
     pub nighttime_image: String,
     #[kvp(alias = "Transparent")]
     pub transparent_color: HexColorRGB,
-    pub center: Vector2<f32>,
-    pub origin: Vector2<f32>,
+    pub center: Vec2,
+    pub origin: Vec2,
 }
 
 impl Default for ThisSection {
@@ -28,8 +28,8 @@ impl Default for ThisSection {
             daytime_image: String::default(),
             nighttime_image: String::default(),
             transparent_color: HexColorRGB::new(0, 0, 255),
-            center: Vector2::from_value(0.0),
-            origin: Vector2::from_value(0.0),
+            center: Vec2::zero(),
+            origin: Vec2::zero(),
         }
     }
 }

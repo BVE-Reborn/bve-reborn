@@ -1,7 +1,10 @@
-use crate::{parse::util, HexColorRGB, HexColorRGBA};
-use cgmath::{Vector2, Vector3, Vector4};
+use crate::{parse::util, HexColorRGB, HexColorRGBA, IVec2, UVec2};
+use glam::{
+    f32::{Vec3, Vec4},
+    Vec2,
+};
 use itertools::Itertools;
-use std::{collections::HashMap, fmt::Display, hash::BuildHasher, io};
+use std::{collections::HashMap, hash::BuildHasher, io};
 
 /// A display trait for printing BVE Files in a Human Readable format.
 ///
@@ -172,32 +175,37 @@ where
     }
 }
 
-impl<T> PrettyPrintResult for Vector2<T>
-where
-    T: Display,
-{
+impl PrettyPrintResult for Vec2 {
+    fn fmt(&self, _indent: usize, out: &mut dyn io::Write) -> io::Result<()> {
+        writeln!(out, "{}, {}", self.x(), self.y())?;
+        Ok(())
+    }
+}
+
+impl PrettyPrintResult for Vec3 {
+    fn fmt(&self, _indent: usize, out: &mut dyn io::Write) -> io::Result<()> {
+        writeln!(out, "{}, {}, {}", self.x(), self.y(), self.z())?;
+        Ok(())
+    }
+}
+
+impl PrettyPrintResult for Vec4 {
+    fn fmt(&self, _indent: usize, out: &mut dyn io::Write) -> io::Result<()> {
+        writeln!(out, "{}, {}, {}, {}", self.x(), self.y(), self.z(), self.w())?;
+        Ok(())
+    }
+}
+
+impl PrettyPrintResult for UVec2 {
     fn fmt(&self, _indent: usize, out: &mut dyn io::Write) -> io::Result<()> {
         writeln!(out, "{}, {}", self.x, self.y)?;
         Ok(())
     }
 }
 
-impl<T> PrettyPrintResult for Vector3<T>
-where
-    T: Display,
-{
+impl PrettyPrintResult for IVec2 {
     fn fmt(&self, _indent: usize, out: &mut dyn io::Write) -> io::Result<()> {
-        writeln!(out, "{}, {}, {}", self.x, self.y, self.z)?;
-        Ok(())
-    }
-}
-
-impl<T> PrettyPrintResult for Vector4<T>
-where
-    T: Display,
-{
-    fn fmt(&self, _indent: usize, out: &mut dyn io::Write) -> io::Result<()> {
-        writeln!(out, "{}, {}, {}, {}", self.x, self.y, self.z, self.w)?;
+        writeln!(out, "{}, {}", self.x, self.y)?;
         Ok(())
     }
 }

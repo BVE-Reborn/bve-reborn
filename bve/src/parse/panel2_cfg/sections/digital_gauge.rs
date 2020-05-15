@@ -3,12 +3,12 @@ use crate::{
     HexColorRGB,
 };
 use bve_derive::FromKVPSection;
-use cgmath::{Array, Vector2};
+use glam::Vec2;
 
 #[derive(Debug, Clone, PartialEq, FromKVPSection)]
 pub struct DigitalGaugeSection {
     pub subject: Subject,
-    pub location: Vector2<f32>,
+    pub location: Vec2,
     pub radius: f32,
     pub color: HexColorRGB,
     pub initial_angle: f32,
@@ -23,7 +23,7 @@ impl Default for DigitalGaugeSection {
     fn default() -> Self {
         Self {
             subject: Subject::from_target(SubjectTarget::True),
-            location: Vector2::from_value(0.0),
+            location: Vec2::zero(),
             radius: 0.0,
             color: HexColorRGB::new(0xFF, 0xFF, 0xFF),
             initial_angle: -120.0,

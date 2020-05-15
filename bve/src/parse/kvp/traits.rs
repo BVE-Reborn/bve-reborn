@@ -6,9 +6,12 @@ use crate::{
         util::{parse_loose_number, parse_loose_numeric_bool},
         Span, UserError, UserErrorCategory,
     },
-    HexColorRGB, HexColorRGBA,
+    HexColorRGB, HexColorRGBA, IVec2, UVec2,
 };
-use cgmath::{Vector1, Vector2, Vector3, Vector4};
+use glam::{
+    f32::{Vec3, Vec4},
+    Vec2,
+};
 use std::str::FromStr;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -127,53 +130,55 @@ where
     }
 }
 
-impl<T> FromKVPValue for Vector1<T>
-where
-    T: FromKVPValue + Default,
-{
-    fn from_kvp_value(value: &str) -> Option<Self> {
-        Some(Self::new(T::from_kvp_value(value).unwrap_or_default()))
-    }
-}
-
-impl<T> FromKVPValue for Vector2<T>
-where
-    T: FromKVPValue + Default,
-{
+impl FromKVPValue for Vec2 {
     fn from_kvp_value(value: &str) -> Option<Self> {
         let split: Vec<&str> = value.split(',').map(str::trim).collect();
         Some(Self::new(
-            split.get(0).and_then(|v| T::from_kvp_value(v)).unwrap_or_default(),
-            split.get(1).and_then(|v| T::from_kvp_value(v)).unwrap_or_default(),
+            split.get(0).and_then(|v| f32::from_kvp_value(v)).unwrap_or_default(),
+            split.get(1).and_then(|v| f32::from_kvp_value(v)).unwrap_or_default(),
         ))
     }
 }
 
-impl<T> FromKVPValue for Vector3<T>
-where
-    T: FromKVPValue + Default,
-{
+impl FromKVPValue for Vec3 {
     fn from_kvp_value(value: &str) -> Option<Self> {
         let split: Vec<&str> = value.split(',').map(str::trim).collect();
         Some(Self::new(
-            split.get(0).and_then(|v| T::from_kvp_value(v)).unwrap_or_default(),
-            split.get(1).and_then(|v| T::from_kvp_value(v)).unwrap_or_default(),
-            split.get(2).and_then(|v| T::from_kvp_value(v)).unwrap_or_default(),
+            split.get(0).and_then(|v| f32::from_kvp_value(v)).unwrap_or_default(),
+            split.get(1).and_then(|v| f32::from_kvp_value(v)).unwrap_or_default(),
+            split.get(2).and_then(|v| f32::from_kvp_value(v)).unwrap_or_default(),
         ))
     }
 }
 
-impl<T> FromKVPValue for Vector4<T>
-where
-    T: FromKVPValue + Default,
-{
+impl FromKVPValue for Vec4 {
     fn from_kvp_value(value: &str) -> Option<Self> {
         let split: Vec<&str> = value.split(',').map(str::trim).collect();
         Some(Self::new(
-            split.get(0).and_then(|v| T::from_kvp_value(v)).unwrap_or_default(),
-            split.get(1).and_then(|v| T::from_kvp_value(v)).unwrap_or_default(),
-            split.get(2).and_then(|v| T::from_kvp_value(v)).unwrap_or_default(),
-            split.get(3).and_then(|v| T::from_kvp_value(v)).unwrap_or_default(),
+            split.get(0).and_then(|v| f32::from_kvp_value(v)).unwrap_or_default(),
+            split.get(1).and_then(|v| f32::from_kvp_value(v)).unwrap_or_default(),
+            split.get(2).and_then(|v| f32::from_kvp_value(v)).unwrap_or_default(),
+            split.get(3).and_then(|v| f32::from_kvp_value(v)).unwrap_or_default(),
+        ))
+    }
+}
+
+impl FromKVPValue for UVec2 {
+    fn from_kvp_value(value: &str) -> Option<Self> {
+        let split: Vec<&str> = value.split(',').map(str::trim).collect();
+        Some(Self::new(
+            split.get(0).and_then(|v| u32::from_kvp_value(v)).unwrap_or_default(),
+            split.get(1).and_then(|v| u32::from_kvp_value(v)).unwrap_or_default(),
+        ))
+    }
+}
+
+impl FromKVPValue for IVec2 {
+    fn from_kvp_value(value: &str) -> Option<Self> {
+        let split: Vec<&str> = value.split(',').map(str::trim).collect();
+        Some(Self::new(
+            split.get(0).and_then(|v| i32::from_kvp_value(v)).unwrap_or_default(),
+            split.get(1).and_then(|v| i32::from_kvp_value(v)).unwrap_or_default(),
         ))
     }
 }

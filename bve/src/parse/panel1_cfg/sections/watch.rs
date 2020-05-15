@@ -1,12 +1,12 @@
 use bve_derive::{FromKVPSection, FromKVPValue};
-use cgmath::{Array, Vector2};
+use glam::Vec2;
 
 #[derive(Debug, Clone, PartialEq, FromKVPSection)]
 pub struct WatchSection {
     #[kvp(alias = "背景")]
     pub background: String,
     #[kvp(alias = "中心")]
-    pub center: Vector2<f32>,
+    pub center: Vec2,
     #[kvp(alias = "半径")]
     pub radius: f32,
     #[kvp(alias = "Hand; 針")]
@@ -17,7 +17,7 @@ impl Default for WatchSection {
     fn default() -> Self {
         Self {
             background: String::default(),
-            center: Vector2::from_value(0.0),
+            center: Vec2::zero(),
             radius: 16.0,
             needle: Needle::default(),
         }

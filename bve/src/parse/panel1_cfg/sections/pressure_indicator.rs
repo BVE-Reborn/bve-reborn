@@ -1,6 +1,6 @@
 use crate::parse::{kvp::FromKVPValue, panel1_cfg::sections::IndicatorType, util, PrettyPrintResult};
 use bve_derive::{FromKVPSection, FromKVPValueEnumNumbers};
-use cgmath::{Array, Vector2};
+use glam::Vec2;
 use std::io;
 
 #[derive(Debug, Clone, PartialEq, FromKVPSection)]
@@ -12,7 +12,7 @@ pub struct PressureIndicatorSection {
     #[kvp(alias = "UpperHand; 上針")]
     pub upper_needle: Needle,
     #[kvp(alias = "中心")]
-    pub center: Vector2<f32>,
+    pub center: Vec2,
     #[kvp(alias = "半径")]
     pub radius: f32,
     #[kvp(alias = "背景")]
@@ -35,7 +35,7 @@ impl Default for PressureIndicatorSection {
             indicator_type: IndicatorType::default(),
             lower_needle: Needle::default(),
             upper_needle: Needle::default(),
-            center: Vector2::from_value(0.0),
+            center: Vec2::zero(),
             radius: 16.0,
             background: String::default(),
             cover: String::default(),
