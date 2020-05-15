@@ -127,7 +127,7 @@ pub unsafe extern "C" fn BVE_Texture_Set_add(ptr: *mut Texture_Set, value: *cons
 /// - Pointer returned points to an owned **copy** of the texture name.
 /// - Returned pointer must be deleted by [`crate::bve_delete_string`].
 /// - If the lookup fails, output is null.
-pub unsafe extern "C" fn BVE_Texture_Set_lookup(ptr: *const Texture_Set, idx: libc::size_t) -> *const c_char {
+pub unsafe extern "C" fn BVE_Texture_Set_lookup(ptr: *const Texture_Set, idx: libc::size_t) -> *c_char {
     let result = (*ptr).inner.lookup(idx);
     match result {
         Some(s) => str_to_owned_ptr(s),
