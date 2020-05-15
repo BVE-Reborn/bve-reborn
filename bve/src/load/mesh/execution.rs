@@ -6,7 +6,7 @@ use crate::{
         Span,
     },
 };
-use cgmath::{Array, Basis3, ElementWise, InnerSpace, Rad, Rotation, Rotation3, Vector3, Zero};
+use glam::{Mat3, Vec3};
 use itertools::Itertools;
 use log::trace;
 
@@ -82,9 +82,7 @@ fn triangulate_faces(input_face: &[usize]) -> Vec<usize> {
 }
 
 fn calculate_normals(mesh: &mut Mesh) {
-    mesh.vertices
-        .iter_mut()
-        .for_each(|v| v.normal = Vector3::from_value(0.0));
+    mesh.vertices.iter_mut().for_each(|v| v.normal = Vec3::zero());
 
     for (&i1, &i2, &i3) in mesh.indices.iter().tuples() {
         let a_vert: &Vertex = &mesh.vertices[i1];
@@ -230,24 +228,22 @@ impl Executable for Translate {
 
 impl Executable for Scale {
     fn execute(&self, _span: Span, ctx: &mut MeshBuildContext) {
-        apply_transform(self.application, ctx, |v| {
-            v.position.mul_assign_element_wise(self.value)
-        });
+        apply_transform(self.application, ctx, |v| v.position = self.value * v.position);
     }
 }
 
 impl Executable for Rotate {
     fn execute(&self, _span: Span, ctx: &mut MeshBuildContext) {
-        let axis = if self.axis.is_zero() {
-            Vector3::new(1.0, 0.0, 0.0)
+        let axis = if self.axis == Vec3::zero() {
+            Vec3::unit_x()
         } else {
             self.axis.normalize()
         };
 
-        let rotation = Basis3::from_axis_angle(axis, Rad(self.angle.to_radians()));
+        let rotation = Mat3::from_axis_angle(axis, self.angle.to_radians());
 
         apply_transform(self.application, ctx, |v| {
-            v.position = rotation.rotate_vector(v.position);
+            v.position = rotation * v.position;
         });
     }
 }
@@ -255,7 +251,7 @@ impl Executable for Rotate {
 impl Executable for Shear {
     fn execute(&self, _span: Span, ctx: &mut MeshBuildContext) {
         apply_transform(self.application, ctx, |v| {
-            let scale = self.ratio * (self.direction.mul_element_wise(v.position)).sum();
+            let scale = self.ratio * self.direction.dot(v.position);
             v.position += self.shear * scale;
         });
     }
@@ -263,10 +259,10 @@ impl Executable for Shear {
 
 impl Executable for Mirror {
     fn execute(&self, _span: Span, ctx: &mut MeshBuildContext) {
-        let factor = self.directions.map(|b| if b { -1.0_f32 } else { 1.0_f32 });
+        let factor = self.directions.map_f32(|b| if b { -1.0_f32 } else { 1.0_f32 });
 
         apply_transform(self.application, ctx, |v| {
-            v.position.mul_assign_element_wise(factor);
+            v.position *= factor;
         });
     }
 }

@@ -97,24 +97,20 @@ fn process_explicit_type_proxy(t: Type) -> TokenStream2 {
 
 /// Returns the first generic argument of the provided type, `name_vec` provides already stringified type names
 fn get_first_generic_argument(name_vec: &[String], path: &TypePath) -> TokenStream2 {
-    let valid = name_vec.len() >= 2;
-    let second_name = if valid { name_vec.get(name_vec.len() - 2) } else { None };
-    match second_name.map(String::as_str) {
-        Some("ColorU8R") | Some("ColorU8RG") | Some("ColorU8RGB") | Some("ColorU8RGBA") => {
-            quote!(crate::parse::util::LooseNumber<u8>)
-        }
-        Some("ColorU16R") | Some("ColorU16RG") | Some("ColorU16RGB") | Some("ColorU16RGBA") => {
-            quote!(crate::parse::util::LooseNumber<u16>)
-        }
-        Some("ColorF32R") | Some("ColorF32RG") | Some("ColorF32RGB") | Some("ColorF32RGBA") => {
-            quote!(crate::parse::util::LooseNumber<f32>)
-        }
-        _ => match &path.path.segments.last().expect("Type path must exist.").arguments {
+    let last_name = name_vec.last().map(String::as_str);
+    match last_name {
+        Some("BVec2") | Some("BVec3") | Some("BVec4") => quote!(crate::parse::util::LooseNumericBool),
+        Some("ColorU8RGB") | Some("ColorU8RGBA") => quote!(crate::parse::util::LooseNumber<u8>),
+        Some("UVec2") | Some("UVec3") | Some("UVec4") => quote!(crate::parse::util::LooseNumber<u32>),
+        Some("IVec2") | Some("IVec3") | Some("IVec4") => quote!(crate::parse::util::LooseNumber<i32>),
+        Some("ColorF32R") | Some("ColorF32RG") | Some("ColorF32RGB") | Some("ColorF32RGBA") | Some("Vec2")
+        | Some("Vec3") | Some("Vec4") => quote!(crate::parse::util::LooseNumber<f32>),
+        name => match &path.path.segments.last().expect("Type path must exist.").arguments {
             PathArguments::AngleBracketed(arg) => match &arg.args[0] {
                 GenericArgument::Type(t) => process_explicit_type_proxy((*t).clone()),
-                _ => panic!("Vector1 generic argument must be a type"),
+                _ => panic!("{:?} generic argument must be a type", name),
             },
-            _ => panic!("Vector1 must have generic arguments"),
+            _ => panic!("{:?} must have generic arguments", name),
         },
     }
 }
@@ -191,23 +187,11 @@ fn generate_proxy_object(name: &Ident, fields: &[Field]) -> TokenStream2 {
     let new_data = fields
         .iter()
         .map(|field| match &field.ty.0 {
-            vec if vec.last().map(String::as_str) == Some("Vector1") => {
-                let original_name = &field.name;
-                let inner_type = get_first_generic_argument(vec, &field.ty.1);
-                let x_new = format_ident!("{}_x", original_name);
-                let attributes = combine_attributes(&field.attributes);
-                let (x_inner, x_conversion, x_attribute) = process_default(&x_new, &inner_type, &field.default);
-                let proxy_fields = quote! {
-                    #attributes
-                    #x_attribute
-                    #x_new: #x_inner,
-                };
-                let from_fields = quote! {
-                    #original_name: ::cgmath::Vector1::new(#x_conversion),
-                };
-                (proxy_fields, from_fields)
-            }
-            vec if vec.last().map(String::as_str) == Some("Vector2") => {
+            vec if match vec.last().map(String::as_str) {
+                Some("Vec2") | Some("BVec2") | Some("UVec2") | Some("IVec2") => true,
+                _ => false,
+            } =>
+            {
                 let inner_type = get_first_generic_argument(vec, &field.ty.1);
                 let original_name = &field.name;
                 let x_new = format_ident!("{}_x", original_name);
@@ -224,12 +208,17 @@ fn generate_proxy_object(name: &Ident, fields: &[Field]) -> TokenStream2 {
                     #y_attribute
                     #y_new: #y_inner,
                 };
+                let containing_type = &field.ty.1;
                 let from_fields = quote! {
-                    #original_name: ::cgmath::Vector2::new(#x_conversion, #y_conversion),
+                    #original_name: #containing_type::new(#x_conversion, #y_conversion),
                 };
                 (proxy_fields, from_fields)
             }
-            vec if vec.last().map(String::as_str) == Some("Vector3") => {
+            vec if match vec.last().map(String::as_str) {
+                Some("ColorU8RGB") | Some("Vec3") | Some("BVec3") | Some("UVec3") | Some("IVec3") => true,
+                _ => false,
+            } =>
+            {
                 let original_name = &field.name;
                 let inner_type = get_first_generic_argument(vec, &field.ty.1);
                 let x_new = format_ident!("{}_x", original_name);
@@ -252,12 +241,17 @@ fn generate_proxy_object(name: &Ident, fields: &[Field]) -> TokenStream2 {
                     #z_attribute
                     #z_new: #z_inner,
                 };
+                let containing_type = &field.ty.1;
                 let from_fields = quote! {
-                    #original_name: ::cgmath::Vector3::new(#x_conversion, #y_conversion, #z_conversion),
+                    #original_name: #containing_type::new(#x_conversion, #y_conversion, #z_conversion),
                 };
                 (proxy_fields, from_fields)
             }
-            vec if vec.last().map(String::as_str) == Some("Vector4") => {
+            vec if match vec.last().map(String::as_str) {
+                Some("ColorU8RGBA") | Some("Vec4") | Some("BVec4") | Some("UVec4") | Some("IVec4") => true,
+                _ => false,
+            } =>
+            {
                 let original_name = &field.name;
                 let inner_type = get_first_generic_argument(vec, &field.ty.1);
                 let x_new = format_ident!("{}_x", original_name);
@@ -286,8 +280,9 @@ fn generate_proxy_object(name: &Ident, fields: &[Field]) -> TokenStream2 {
                     #w_attribute
                     #w_new: #w_inner,
                 };
+                let containing_type = &field.ty.1;
                 let from_fields = quote! {
-                    #original_name: ::cgmath::Vector4::new(#x_conversion, #y_conversion, #z_conversion, #w_conversion),
+                    #original_name: #containing_type::new(#x_conversion, #y_conversion, #z_conversion, #w_conversion),
                 };
                 (proxy_fields, from_fields)
             }
@@ -409,17 +404,6 @@ pub fn serde_proxy(item: TokenStream) -> TokenStream {
             let mut type_segment_name = Vec::new();
             for segment in &p.path.segments {
                 type_segment_name.push(segment.ident.to_string());
-            }
-            match type_segment_name.last().map(String::as_str) {
-                Some("ColorU8R") | Some("ColorU16R") | Some("ColorF32R") => type_segment_name.push("Vector1".into()),
-                Some("ColorU8RG") | Some("ColorU16RG") | Some("ColorF32RG") => type_segment_name.push("Vector2".into()),
-                Some("ColorU8RGB") | Some("ColorU16RGB") | Some("ColorF32RGB") => {
-                    type_segment_name.push("Vector3".into())
-                }
-                Some("ColorU8RGBA") | Some("ColorU16RGBA") | Some("ColorF32RGBA") => {
-                    type_segment_name.push("Vector4".into())
-                }
-                _ => {}
             }
             (type_segment_name, (*p).clone())
         } else {

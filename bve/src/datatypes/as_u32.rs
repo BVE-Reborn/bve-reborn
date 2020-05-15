@@ -8,20 +8,6 @@ pub trait Asu32 {
     fn as_u32(self) -> u32;
 }
 
-impl Asu32 for ColorU8R {
-    #[must_use]
-    fn as_u32(self) -> u32 {
-        u32::from(self.x)
-    }
-}
-
-impl Asu32 for ColorU8RG {
-    #[must_use]
-    fn as_u32(self) -> u32 {
-        u32::from(self.y) << 8 | u32::from(self.x)
-    }
-}
-
 impl Asu32 for ColorU8RGB {
     #[must_use]
     fn as_u32(self) -> u32 {

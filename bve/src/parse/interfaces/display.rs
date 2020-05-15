@@ -1,4 +1,7 @@
-use crate::{parse::util, HexColorRGB, HexColorRGBA, IVec2, UVec2};
+use crate::{
+    parse::util, BVec2, BVec3, BVec4, ColorU8RGB, ColorU8RGBA, HexColorRGB, HexColorRGBA, IVec2, IVec3, IVec4, UVec2,
+    UVec3, UVec4,
+};
 use glam::{
     f32::{Vec3, Vec4},
     Vec2,
@@ -196,16 +199,39 @@ impl PrettyPrintResult for Vec4 {
     }
 }
 
-impl PrettyPrintResult for UVec2 {
-    fn fmt(&self, _indent: usize, out: &mut dyn io::Write) -> io::Result<()> {
-        writeln!(out, "{}, {}", self.x, self.y)?;
-        Ok(())
-    }
+macro_rules! vec2_pretty_print {
+    ($($name:ty),*) => { $(
+        impl PrettyPrintResult for $name {
+            fn fmt(&self, _indent: usize, out: &mut dyn io::Write) -> io::Result<()> {
+                writeln!(out, "{}, {}", self.x, self.y)?;
+                Ok(())
+            }
+        }
+    )*};
 }
 
-impl PrettyPrintResult for IVec2 {
-    fn fmt(&self, _indent: usize, out: &mut dyn io::Write) -> io::Result<()> {
-        writeln!(out, "{}, {}", self.x, self.y)?;
-        Ok(())
-    }
+macro_rules! vec3_pretty_print {
+    ($($name:ty),*) => { $(
+        impl PrettyPrintResult for $name {
+            fn fmt(&self, _indent: usize, out: &mut dyn io::Write) -> io::Result<()> {
+                writeln!(out, "{}, {}, {}", self.x, self.y, self.z)?;
+                Ok(())
+            }
+        }
+    )*};
 }
+
+macro_rules! vec4_pretty_print {
+    ($($name:ty),*) => { $(
+        impl PrettyPrintResult for $name {
+            fn fmt(&self, _indent: usize, out: &mut dyn io::Write) -> io::Result<()> {
+                writeln!(out, "{}, {}, {}, {}", self.x, self.y, self.z, self.w)?;
+                Ok(())
+            }
+        }
+    )*};
+}
+
+vec2_pretty_print!(BVec2, IVec2, UVec2);
+vec3_pretty_print!(BVec3, ColorU8RGB, IVec3, UVec3);
+vec4_pretty_print!(BVec4, ColorU8RGBA, IVec4, UVec4);
