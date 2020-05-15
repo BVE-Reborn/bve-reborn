@@ -26,6 +26,7 @@
 #![allow(clippy::float_arithmetic)]
 #![allow(clippy::float_cmp)]
 #![allow(clippy::float_cmp_const)]
+#![allow(clippy::future_not_send)]
 #![allow(clippy::implicit_return)]
 #![allow(clippy::indexing_slicing)]
 #![allow(clippy::integer_arithmetic)]
@@ -67,10 +68,10 @@ use bve_render::{
     TextureHandle, Vsync,
 };
 use cgmath::{ElementWise, InnerSpace, Vector3};
+use glam::Vec3;
 use image::RgbaImage;
 use imgui::{im_str, FontSource};
 use itertools::Itertools;
-use nalgebra_glm::Vec3;
 use num_traits::Zero;
 use serde::Deserialize;
 use std::{

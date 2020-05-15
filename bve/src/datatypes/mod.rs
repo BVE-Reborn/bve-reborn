@@ -1,4 +1,4 @@
-pub(crate) use as_u32::*;
+pub use as_u32::*;
 use cgmath::{Vector1, Vector2, Vector3, Vector4};
 pub use hex::*;
 
@@ -31,3 +31,34 @@ pub type ColorF32RG = Vector2<f32>;
 pub type ColorF32RGB = Vector3<f32>;
 /// RGBA color: 32-bit float per channel
 pub type ColorF32RGBA = Vector4<f32>;
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub struct UVec2 {
+    pub x: u32,
+    pub y: u32,
+}
+
+impl UVec2 {
+    #[must_use]
+    pub const fn new(x: u32, y: u32) -> Self {
+        Self { x, y }
+    }
+
+    #[must_use]
+    pub const fn into_array(self) -> [u32; 2] {
+        [self.x, self.y]
+    }
+
+    #[must_use]
+    pub const fn from_array([x, y]: [u32; 2]) -> Self {
+        Self { x, y }
+    }
+
+    pub fn map(self, mut f: impl FnMut(u32) -> u32) -> Self {
+        Self {
+            x: f(self.x),
+            y: f(self.y),
+        }
+    }
+}

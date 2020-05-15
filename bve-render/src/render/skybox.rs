@@ -1,12 +1,11 @@
 use crate::{screenspace::ScreenSpaceVertex, *};
 use log::debug;
-use nalgebra_glm::inverse;
 use zerocopy::AsBytes;
 
 #[derive(AsBytes)]
 #[repr(C)]
 pub struct SkyboxUniforms {
-    _inv_view_proj: [[f32; 4]; 4],
+    _inv_view_proj: [f32; 16],
     _repeats: f32,
 }
 
@@ -68,7 +67,7 @@ pub struct Skybox {
 
     uniform_buffer: Buffer,
 
-    pub texture_id: u64,
+    pub texture_id: DefaultKey,
     pub repeats: f32,
 }
 impl Skybox {
@@ -110,16 +109,16 @@ impl Skybox {
             pipeline_layout,
             bind_group,
             uniform_buffer,
-            texture_id: 0,
+            texture_id: DefaultKey::default(),
             repeats: 1.0,
         }
     }
 
     pub fn update(&mut self, device: &Device, encoder: &mut CommandEncoder, camera: &camera::Camera, mx_proj: &Mat4) {
         let mx_view = camera.compute_origin_matrix();
-        let mx_view_proj: Mat4 = mx_proj * mx_view;
-        let mx_inv_view_proj = inverse(&mx_view_proj);
-        let mx_inv_view_proj_bytes: &[[f32; 4]; 4] = mx_inv_view_proj.as_ref();
+        let mx_view_proj = *mx_proj * mx_view;
+        let mx_inv_view_proj = mx_view_proj.inverse();
+        let mx_inv_view_proj_bytes: &[f32; 16] = mx_inv_view_proj.as_ref();
 
         let uniform = SkyboxUniforms {
             _inv_view_proj: *mx_inv_view_proj_bytes,

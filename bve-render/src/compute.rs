@@ -1,6 +1,5 @@
 use crate::*;
 use log::debug;
-use nalgebra_glm::UVec2;
 use std::mem::size_of;
 use zerocopy::AsBytes;
 
@@ -63,7 +62,7 @@ fn create_texture_compute_pipeline(
 
 fn create_uniform_buffer(device: &Device, encoder: &mut CommandEncoder, max_size: UVec2) -> Buffer {
     let uniforms = Uniforms {
-        _max_size: *max_size.as_ref(),
+        _max_size: max_size.into_array(),
     };
     let bytes = uniforms.as_bytes();
     let tmp_buffer = device.create_buffer_with_data(bytes, BufferUsage::COPY_SRC);

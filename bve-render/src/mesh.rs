@@ -1,9 +1,9 @@
 use crate::*;
+use glam::Vec3;
 use log::trace;
-use nalgebra_glm::zero;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct MeshHandle(pub(crate) u64);
+pub struct MeshHandle(pub(crate) DefaultKey);
 
 pub struct Mesh {
     pub vertex_buffer: Buffer,
@@ -59,16 +59,16 @@ pub fn find_mesh_center(mesh: &[render::Vertex]) -> Vec3 {
     let first = if let Some(first) = mesh.first() {
         *first
     } else {
-        return zero();
+        return Vec3::zero();
     };
     // Bounding box time baby!
-    let mut max: Vec3 = make_vec3(&first.pos);
-    let mut min: Vec3 = make_vec3(&first.pos);
+    let mut max = Vec3::from(first.pos);
+    let mut min = Vec3::from(first.pos);
 
     for vert in mesh.iter().skip(1) {
-        let pos: Vec3 = vert.pos.into();
-        max = max.zip_map(&pos, |left, right| left.max(right));
-        min = min.zip_map(&pos, |left, right| left.min(right));
+        let pos = Vec3::from(vert.pos);
+        max = max.max(pos);
+        min = min.min(pos);
     }
 
     (max + min) / 2.0
@@ -76,7 +76,7 @@ pub fn find_mesh_center(mesh: &[render::Vertex]) -> Vec3 {
 
 pub fn find_mesh_bounding_sphere_radius(mesh_center: Vec3, mesh: &[render::Vertex]) -> f32 {
     mesh.iter().fold(0.0, |distance, vert| {
-        distance.max((make_vec3(&vert.pos) - mesh_center).magnitude())
+        distance.max((Vec3::from(vert.pos) - mesh_center).length())
     })
 }
 
@@ -99,9 +99,7 @@ impl Renderer {
         let mesh_center_offset = find_mesh_center(&vertices);
         let mesh_bounding_sphere_radius = find_mesh_bounding_sphere_radius(mesh_center_offset, &vertices);
 
-        let handle = self.mesh_handle_count;
-        self.mesh_handle_count += 1;
-        self.mesh.insert(handle, Mesh {
+        let handle = self.mesh.insert(Mesh {
             vertex_buffer,
             index_buffer,
             index_count: indices.len() as u32,
@@ -110,12 +108,12 @@ impl Renderer {
             transparent,
         });
 
-        trace!("Adding new mesh #{}", handle);
+        trace!("Adding new mesh {:?}", handle);
         MeshHandle(handle)
     }
 
     pub fn remove_mesh(&mut self, MeshHandle(mesh_idx): &MeshHandle) {
-        let _mesh = self.mesh.remove(mesh_idx).expect("Invalid mesh handle");
+        let _mesh = self.mesh.remove(*mesh_idx).expect("Invalid mesh handle");
         // Mesh goes out of scope
     }
 }

@@ -1,5 +1,5 @@
 use crate::runtime::{ChunkAddress, Location};
-use nalgebra_glm::{make_vec3, Vec3};
+use glam::Vec3;
 
 #[derive(Debug, Copy, Clone)]
 pub struct ConeLight {
@@ -25,7 +25,7 @@ impl LightDescriptor {
     #[must_use]
     pub fn into_render_light_descriptor(self, base_chunk: ChunkAddress) -> RenderLightDescriptor {
         RenderLightDescriptor {
-            location: make_vec3(AsRef::<[f32; 3]>::as_ref(
+            location: Vec3::from(*AsRef::<[f32; 3]>::as_ref(
                 &self.location.to_relative_position(base_chunk),
             )),
             radius: self.radius,

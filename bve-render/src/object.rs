@@ -2,14 +2,15 @@ use crate::{
     camera::{FAR_PLANE_DISTANCE, NEAR_PLANE_DISTANCE},
     *,
 };
-use nalgebra_glm::{perspective_lh_zo, translation, Mat4, Vec3};
+use glam::{Mat4, Vec3};
+use slotmap::Key;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ObjectHandle(pub(crate) u64);
+pub struct ObjectHandle(pub(crate) DefaultKey);
 
 pub struct Object {
-    pub mesh: u64,
-    pub texture: u64,
+    pub mesh: DefaultKey,
+    pub texture: DefaultKey,
 
     pub location: Vec3,
     pub camera_distance: f32,
@@ -18,13 +19,13 @@ pub struct Object {
 }
 
 pub fn perspective_matrix(fovy: f32, aspect: f32) -> Mat4 {
-    perspective_lh_zo(aspect, fovy, NEAR_PLANE_DISTANCE, FAR_PLANE_DISTANCE)
+    Mat4::perspective_lh(fovy, aspect, NEAR_PLANE_DISTANCE, FAR_PLANE_DISTANCE)
 }
 
 pub fn generate_matrix(mx_proj: &Mat4, mx_view: &Mat4, location: Vec3) -> (Mat4, Mat4) {
-    let mx_model = translation(&location);
-    let mx_model_view = mx_view * mx_model;
-    let mx_model_view_proj = mx_proj * mx_model_view;
+    let mx_model = Mat4::from_translation(location);
+    let mx_model_view = *mx_view * mx_model;
+    let mx_model_view_proj = *mx_proj * mx_model_view;
     (mx_model_view_proj, mx_model_view)
 }
 
@@ -39,13 +40,15 @@ impl Renderer {
         mesh::MeshHandle(mesh_idx): &mesh::MeshHandle,
         texture::TextureHandle(tex_idx): &texture::TextureHandle,
     ) -> ObjectHandle {
-        let mesh: &mesh::Mesh = &self.mesh[mesh_idx];
-        let tex: &texture::Texture = &self.textures[tex_idx];
+        let mesh: &mesh::Mesh = &self.mesh[*mesh_idx];
+        let tex: &texture::Texture = if tex_idx.is_null() {
+            &self.textures[self.null_texture]
+        } else {
+            &self.textures[*tex_idx]
+        };
         let transparent = mesh.transparent || tex.transparent;
 
-        let handle = self.object_handle_count;
-        self.object_handle_count += 1;
-        self.objects.insert(handle, Object {
+        let handle = self.objects.insert(Object {
             mesh: *mesh_idx,
             texture: *tex_idx,
             location,
@@ -56,13 +59,13 @@ impl Renderer {
     }
 
     pub fn set_location(&mut self, object::ObjectHandle(handle): &object::ObjectHandle, location: Vec3) {
-        let object: &mut object::Object = &mut self.objects[handle];
+        let object: &mut object::Object = &mut self.objects[*handle];
 
         object.location = location;
     }
 
     pub fn remove_object(&mut self, ObjectHandle(obj_idx): &ObjectHandle) {
-        let _object = self.objects.remove(obj_idx).expect("Invalid object handle");
+        let _object = self.objects.remove(*obj_idx).expect("Invalid object handle");
         // Object goes out of scope
     }
 }

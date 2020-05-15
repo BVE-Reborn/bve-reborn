@@ -1,11 +1,11 @@
 use crate::{render::Vertex, *};
+use glam::{Vec2, Vec3};
 use log::trace;
-use nalgebra_glm::UVec2;
 use std::cmp::Ordering;
 
 pub fn mip_levels(size: UVec2) -> u32 {
-    let float_size = size.map(|f| f as f32);
-    let shortest = float_size.x.min(float_size.y);
+    let float_size = Vec2::new(size.x as f32, size.y as f32);
+    let shortest = float_size.x().min(float_size.y());
     let mips = shortest.log2().floor();
     (mips as u32) + 1
 }
@@ -23,7 +23,7 @@ impl Iterator for MipIterator {
     type Item = (u32, UVec2);
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.size /= 2;
+        self.size = self.size.map(|v| v / 2);
         self.count += 1;
         if self.size.x.is_zero() | self.size.y.is_zero() {
             None
@@ -170,7 +170,7 @@ impl Renderer {
     ) -> Vec<&'a object::Object> {
         let frustum = frustum::Frustum::from_matrix(mx_view_proj);
         objects.retain(|object| {
-            let mesh: &mesh::Mesh = &self.mesh[&object.mesh];
+            let mesh: &mesh::Mesh = &self.mesh[object.mesh];
             let object_center = object.location + mesh.mesh_center_offset;
             let sphere = frustum::Sphere {
                 location: object_center,
@@ -272,10 +272,10 @@ impl Renderer {
 
     pub fn compute_object_distances(&mut self) {
         for obj in self.objects.values_mut() {
-            let mesh = &self.mesh[&obj.mesh];
+            let mesh = &self.mesh[obj.mesh];
             let mesh_center: Vec3 = obj.location + mesh.mesh_center_offset;
             let camera_mesh_vector: Vec3 = self.camera.location - mesh_center;
-            let distance = camera_mesh_vector.magnitude_squared();
+            let distance = camera_mesh_vector.length_squared();
             obj.camera_distance = distance;
             // println!(
             //     "{} - {} {} {}",

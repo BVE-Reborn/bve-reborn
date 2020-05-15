@@ -1,14 +1,14 @@
 use crate::*;
+use bve::UVec2;
 use image::{Rgba, RgbaImage};
 use log::trace;
-use nalgebra_glm::make_vec2;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TextureHandle(pub(crate) u64);
+pub struct TextureHandle(pub(crate) DefaultKey);
 
 impl Default for TextureHandle {
     fn default() -> Self {
-        Self(0)
+        Self(DefaultKey::default())
     }
 }
 
@@ -32,7 +32,7 @@ impl Renderer {
             height: image.height(),
             depth: 1,
         };
-        let mip_levels = render::mip_levels(make_vec2(&[image.width(), image.height()]));
+        let mip_levels = render::mip_levels(UVec2::new(image.width(), image.height()));
         let mut texture_descriptor = TextureDescriptor {
             size: extent,
             array_layer_count: 1,
@@ -68,7 +68,7 @@ impl Renderer {
 
         texture_descriptor.mip_level_count = mip_levels;
         let filtered_texture = self.device.create_texture(&texture_descriptor);
-        let dimensions = make_vec2(&[image.width(), image.height()]);
+        let dimensions = UVec2::new(image.width(), image.height());
         self.transparency_processor.compute_transparency(
             &self.device,
             &mut encoder,
@@ -99,22 +99,19 @@ impl Renderer {
 
         self.command_buffers.push(encoder.finish());
 
-        let handle = self.texture_handle_count;
-        self.texture_handle_count += 1;
-
-        self.textures.insert(handle, Texture {
+        let handle = self.textures.insert(Texture {
             bind_group,
             transparent,
         });
 
-        trace!("Adding new texture #{}", handle);
+        trace!("Adding new texture {:?}", handle);
         TextureHandle(handle)
     }
 
     pub fn remove_texture(&mut self, TextureHandle(tex_idx): &TextureHandle) {
-        let _texture = self.textures.remove(tex_idx).expect("Invalid texture handle");
+        let _texture = self.textures.remove(*tex_idx).expect("Invalid texture handle");
 
-        debug!("Removed texture #{}", tex_idx);
+        debug!("Removed texture {:?}", tex_idx);
         // Texture goes out of scope
     }
 }

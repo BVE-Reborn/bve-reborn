@@ -1,4 +1,5 @@
 use crate::*;
+use slotmap::Key;
 use std::fmt;
 pub use utils::*;
 
@@ -19,8 +20,8 @@ pub struct Vertex {
 #[repr(C)]
 #[derive(AsBytes)]
 pub struct Uniforms {
-    pub _model_view_proj: [[f32; 4]; 4],
-    pub _model_view: [[f32; 4]; 4],
+    pub _model_view_proj: [f32; 16],
+    pub _model_view: [f32; 16],
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -239,8 +240,12 @@ impl Renderer {
                         rendering_opaque = false;
                     }
 
-                    let mesh = &self.mesh[&mesh_idx];
-                    let texture_bind = &self.textures[&texture_idx].bind_group;
+                    let mesh = &self.mesh[mesh_idx];
+                    let texture_bind = if texture_idx.is_null() {
+                        &self.textures[self.null_texture].bind_group
+                    } else {
+                        &self.textures[texture_idx].bind_group
+                    };
                     let count = group.count();
                     let matrix_buffer_size = (count * size_of::<Uniforms>()) as BufferAddress;
 
@@ -272,7 +277,11 @@ impl Renderer {
             if let DebugMode::None = self.debug_mode {
                 self.skybox_renderer.render_skybox(
                     &mut rpass,
-                    &self.textures[&self.skybox_renderer.texture_id].bind_group,
+                    if self.skybox_renderer.texture_id.is_null() {
+                        &self.textures[self.null_texture].bind_group
+                    } else {
+                        &self.textures[self.skybox_renderer.texture_id].bind_group
+                    },
                     &self.screenspace_triangle_verts,
                 );
             }
@@ -282,7 +291,7 @@ impl Renderer {
                 color_attachments: &[RenderPassColorAttachmentDescriptor {
                     attachment: &frame.view,
                     resolve_target: None,
-                    load_op: LoadOp::Load,
+                    load_op: LoadOp::Clear,
                     store_op: StoreOp::Store,
                     clear_color: Color::BLACK,
                 }],

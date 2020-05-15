@@ -27,5 +27,5 @@ fn parse_language_range(range: &LanguageRange<'_>) -> BVELocale {
 
     let locale = unic_locale::Locale::from_bytes(range_str.as_bytes()).expect("Unable to parse locale");
 
-    BVELocale::from_ident(locale.langid)
+    BVELocale::from_ident(locale.id)
 }

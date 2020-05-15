@@ -55,7 +55,7 @@ fn create_vertex(original: &Instruction, position: Vector3<f32>) -> Instruction 
 }
 
 /// Creates `AddFace` instruction from an index list.
-fn create_face(original: &Instruction, indexes: Vec<usize>) -> Instruction {
+const fn create_face(original: &Instruction, indexes: Vec<usize>) -> Instruction {
     Instruction {
         span: original.span,
         data: InstructionData::AddFace(AddFace {
