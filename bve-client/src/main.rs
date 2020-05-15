@@ -67,12 +67,10 @@ use bve_render::{
     DebugMode, LightHandle, MSAASetting, MeshHandle, OITNodeCount, ObjectHandle, Renderer, RendererStatistics,
     TextureHandle, Vsync,
 };
-use cgmath::{ElementWise, InnerSpace, Vector3};
 use glam::Vec3;
 use image::RgbaImage;
 use imgui::{im_str, FontSource};
 use itertools::Itertools;
-use num_traits::Zero;
 use serde::Deserialize;
 use std::{
     fs::File,
@@ -228,7 +226,7 @@ fn client_main() {
     let client = block_on(async { Client::new(&window, &mut imgui, oit_node_count, sample_count, vsync).await });
     let runtime = runtime::Runtime::new(Arc::clone(&client));
 
-    let mut camera_location = Vector3::new(-7.0, 3.0, 0.0);
+    let mut camera_location = Vec3::new(-7.0, 3.0, 0.0);
     block_on(async {
         client
             .lock()
@@ -246,7 +244,7 @@ fn client_main() {
             for idx in 0..object.count {
                 runtime
                     .add_static_object(
-                        runtime::Location::from_absolute_position(Vector3::new(
+                        runtime::Location::from_absolute_position(Vec3::new(
                             f32::mul_add(object.offset_x, idx as f32, object.x),
                             0.0,
                             f32::mul_add(object.offset_z, idx as f32, object.z),
@@ -269,7 +267,7 @@ fn client_main() {
 
         runtime
             .add_light(LightDescriptor {
-                location: Location::from_absolute_position(Vector3::new(0.0, 0.0, 0.0)),
+                location: Location::from_absolute_position(Vec3::zero()),
                 radius: 10.0,
                 strength: 100.0,
                 ty: LightType::Point,
@@ -277,7 +275,7 @@ fn client_main() {
             .await;
         runtime
             .add_light(LightDescriptor {
-                location: Location::from_absolute_position(Vector3::new(0.0, 0.0, 50.0)),
+                location: Location::from_absolute_position(Vec3::new(0.0, 0.0, 50.0)),
                 radius: 100.0,
                 strength: 100.0,
                 ty: LightType::Point,
@@ -285,7 +283,7 @@ fn client_main() {
             .await;
         runtime
             .add_light(LightDescriptor {
-                location: Location::from_absolute_position(Vector3::new(20.0, 0.0, 20.0)),
+                location: Location::from_absolute_position(Vec3::new(20.0, 0.0, 20.0)),
                 radius: 20.0,
                 strength: 100.0,
                 ty: LightType::Point,
@@ -328,7 +326,7 @@ fn client_main() {
 
                 let speed = if shift { 20.0 } else { 2.0 };
 
-                let raw_dir_vec: Vector3<f32> = Vector3::new(
+                let raw_dir_vec = Vec3::new(
                     if left {
                         -1.0
                     } else if right {
@@ -351,13 +349,13 @@ fn client_main() {
                         0.0
                     },
                 );
-                let dir_vec = if raw_dir_vec.is_zero() {
-                    Vector3::zero()
+                let dir_vec = if raw_dir_vec == Vec3::zero() {
+                    Vec3::zero()
                 } else {
-                    raw_dir_vec.normalize_to(speed)
+                    raw_dir_vec.normalize() * speed
                 } * last_frame_time.as_secs_f32();
 
-                camera_location = camera_location.add_element_wise(dir_vec);
+                camera_location += dir_vec;
 
                 block_on(async {
                     runtime

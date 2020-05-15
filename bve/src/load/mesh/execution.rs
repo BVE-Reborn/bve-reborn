@@ -329,7 +329,7 @@ mod test {
         parse::{mesh::instructions::*, Span},
         ColorU8RGB, ColorU8RGBA,
     };
-    use cgmath::{Array, Vector2, Vector3};
+    use glam::{Vec2, Vec3};
     use obj::{Obj, SimplePolygon};
     use std::{
         io::{BufReader, Cursor},
@@ -353,19 +353,19 @@ mod test {
         for face in &obj.objects[0].groups[0].polys {
             for (offset, vert) in face.iter().enumerate() {
                 let position = obj.position[vert.0];
-                let position: Vector3<f32> = Vector3::new(position[0], position[1], position[2]);
+                let position = Vec3::from(position);
                 let normal = obj.normal[vert.2.expect("OBJ must have normals")];
-                let normal: Vector3<f32> = Vector3::new(normal[0], normal[1], normal[2]);
+                let normal = Vec3::from(normal);
                 result.push(Instruction {
                     span: Span::none(),
                     data: InstructionData::AddVertex(AddVertex {
                         position,
                         normal,
-                        texture_coord: Vector2::from_value(0.0),
+                        texture_coord: Vec2::zero(),
                     }),
                 });
                 let texture_coord = obj.texture[vert.1.expect("OBJ must have texture coords")];
-                let texture_coord: Vector2<f32> = Vector2::new(texture_coord[0], texture_coord[1]);
+                let texture_coord = Vec2::from(texture_coord);
                 result.push(Instruction {
                     span: Span::none(),
                     data: InstructionData::SetTextureCoordinates(SetTextureCoordinates {
@@ -415,19 +415,19 @@ mod test {
         let v = generate_instruction_list!(
             0: CreateMeshBuilder {},
             1: AddVertex {
-                position: Vector3::new(0.0, 0.0, 0.0),
-                normal: Vector3::from_value(0.0),
-                texture_coord: Vector2::new(0.0, 0.0),
+                position: Vec3::zero(),
+                normal: Vec3::zero(),
+                texture_coord: Vec2::zero(),
             },
             2: AddVertex {
-                position: Vector3::new(-0.866_025, 0.0, 0.5),
-                normal: Vector3::from_value(0.0),
-                texture_coord: Vector2::new(0.0, 0.0),
+                position: Vec3::new(-0.866_025, 0.0, 0.5),
+                normal: Vec3::zero(),
+                texture_coord: Vec2::zero(),
             },
             3: AddVertex {
-                position: Vector3::new(0.866_025, 0.0, 0.5),
-                normal: Vector3::from_value(0.0),
-                texture_coord: Vector2::new(0.0, 0.0),
+                position: Vec3::new(0.866_025, 0.0, 0.5),
+                normal: Vec3::zero(),
+                texture_coord: Vec2::zero(),
             },
             4: AddFace {
                 indexes: vec![0, 1, 2],
@@ -442,18 +442,18 @@ mod test {
         let result = generate_meshes(post_process(v));
         assert_eq!(result.meshes.len(), 1);
         let mesh = &result.meshes[0];
-        assert_eq!(mesh.vertices[0].position, Vector3::new(0.0, 0.0, 0.0));
-        assert_eq!(mesh.vertices[1].position, Vector3::new(-0.866_025, 0.0, 0.5));
-        assert_eq!(mesh.vertices[2].position, Vector3::new(0.866_025, 0.0, 0.5));
+        assert_eq!(mesh.vertices[0].position, Vec3::zero());
+        assert_eq!(mesh.vertices[1].position, Vec3::new(-0.866_025, 0.0, 0.5));
+        assert_eq!(mesh.vertices[2].position, Vec3::new(0.866_025, 0.0, 0.5));
         for v in &mesh.vertices {
-            assert_eq!(v.normal, Vector3::new(0.0, 1.0, 0.0));
+            assert_eq!(v.normal, Vec3::new(0.0, 1.0, 0.0));
         }
         for &v in &mesh.vertices {
-            assert_eq!(v.coord, Vector2::from_value(0.0));
+            assert_eq!(v.coord, Vec2::zero());
         }
         assert_eq!(mesh.indices, vec![0, 1, 2]);
         assert_eq!(mesh.blend_mode, BlendMode::Normal);
-        assert_eq!(mesh.color, ColorU8RGBA::from_value(255));
+        assert_eq!(mesh.color, ColorU8RGBA::splat(255));
         assert_eq!(mesh.glow, Glow {
             attenuation_mode: GlowAttenuationMode::DivideExponent4,
             half_distance: 0,
@@ -471,19 +471,19 @@ mod test {
         let v = generate_instruction_list!(
             0: CreateMeshBuilder {},
             1: AddVertex {
-                position: Vector3::new(0.0, 0.0, 0.0),
-                normal: Vector3::from_value(0.0),
-                texture_coord: Vector2::new(0.0, 0.0),
+                position: Vec3::zero(),
+                normal: Vec3::zero(),
+                texture_coord: Vec2::zero(),
             },
             2: AddVertex {
-                position: Vector3::new(-0.866_025, 0.0, 0.5),
-                normal: Vector3::from_value(0.0),
-                texture_coord: Vector2::new(0.0, 0.0),
+                position: Vec3::new(-0.866_025, 0.0, 0.5),
+                normal: Vec3::zero(),
+                texture_coord: Vec2::zero(),
             },
             3: AddVertex {
-                position: Vector3::new(0.866_025, 0.0, 0.5),
-                normal: Vector3::from_value(0.0),
-                texture_coord: Vector2::new(0.0, 0.0),
+                position: Vec3::new(0.866_025, 0.0, 0.5),
+                normal: Vec3::zero(),
+                texture_coord: Vec2::zero(),
             },
             4: AddFace {
                 indexes: vec![0, 1, 2],
@@ -509,19 +509,19 @@ mod test {
             },
             10: CreateMeshBuilder {},
             11: AddVertex {
-                position: Vector3::new(0.0, 0.0, 0.0),
-                normal: Vector3::from_value(0.0),
-                texture_coord: Vector2::new(0.0, 0.0),
+                position: Vec3::zero(),
+                normal: Vec3::zero(),
+                texture_coord: Vec2::zero(),
             },
             12: AddVertex {
-                position: Vector3::new(-0.866_025, 0.0, 0.5),
-                normal: Vector3::from_value(0.0),
-                texture_coord: Vector2::new(0.0, 0.0),
+                position: Vec3::new(-0.866_025, 0.0, 0.5),
+                normal: Vec3::zero(),
+                texture_coord: Vec2::zero(),
             },
             13: AddVertex {
-                position: Vector3::new(0.866_025, 0.0, 0.5),
-                normal: Vector3::from_value(0.0),
-                texture_coord: Vector2::new(0.0, 0.0),
+                position: Vec3::new(0.866_025, 0.0, 0.5),
+                normal: Vec3::zero(),
+                texture_coord: Vec2::zero(),
             },
             14: AddFace {
                 indexes: vec![0, 1, 2],
@@ -539,14 +539,14 @@ mod test {
         // First Mesh
         let mesh = &result.meshes[0];
         assert_eq!(mesh.vertices.len(), 3);
-        assert_eq!(mesh.vertices[0].position, Vector3::new(0.0, 0.0, 0.0));
-        assert_eq!(mesh.vertices[1].position, Vector3::new(-0.866_025, 0.0, 0.5));
-        assert_eq!(mesh.vertices[2].position, Vector3::new(0.866_025, 0.0, 0.5));
+        assert_eq!(mesh.vertices[0].position, Vec3::zero());
+        assert_eq!(mesh.vertices[1].position, Vec3::new(-0.866_025, 0.0, 0.5));
+        assert_eq!(mesh.vertices[2].position, Vec3::new(0.866_025, 0.0, 0.5));
         for v in &mesh.vertices {
-            assert_eq!(v.normal, Vector3::new(0.0, 1.0, 0.0));
+            assert_eq!(v.normal, Vec3::unit_y());
         }
         for &v in &mesh.vertices {
-            assert_eq!(v.coord, Vector2::from_value(0.0));
+            assert_eq!(v.coord, Vec2::zero());
         }
         assert_eq!(mesh.indices, vec![0, 1, 2]);
         assert_eq!(mesh.blend_mode, BlendMode::Additive);
@@ -561,18 +561,18 @@ mod test {
         // Second Mesh
         let mesh = &result.meshes[1];
         assert_eq!(mesh.vertices.len(), 3);
-        assert_eq!(mesh.vertices[0].position, Vector3::new(0.0, 0.0, 0.0));
-        assert_eq!(mesh.vertices[1].position, Vector3::new(-0.866_025, 0.0, 0.5));
-        assert_eq!(mesh.vertices[2].position, Vector3::new(0.866_025, 0.0, 0.5));
+        assert_eq!(mesh.vertices[0].position, Vec3::zero());
+        assert_eq!(mesh.vertices[1].position, Vec3::new(-0.866_025, 0.0, 0.5));
+        assert_eq!(mesh.vertices[2].position, Vec3::new(0.866_025, 0.0, 0.5));
         for v in &mesh.vertices {
-            assert_eq!(v.normal, Vector3::new(0.0, 1.0, 0.0));
+            assert_eq!(v.normal, Vec3::unit_y());
         }
         for &v in &mesh.vertices {
-            assert_eq!(v.coord, Vector2::from_value(0.0));
+            assert_eq!(v.coord, Vec2::zero());
         }
         assert_eq!(mesh.indices, vec![0, 1, 2]);
         assert_eq!(mesh.blend_mode, BlendMode::Normal);
-        assert_eq!(mesh.color, ColorU8RGBA::from_value(255));
+        assert_eq!(mesh.color, ColorU8RGBA::splat(255));
         assert_eq!(mesh.glow, Glow {
             attenuation_mode: GlowAttenuationMode::DivideExponent4,
             half_distance: 0,
@@ -589,19 +589,19 @@ mod test {
         let v = generate_instruction_list!(
             0: CreateMeshBuilder {},
             1: AddVertex {
-                position: Vector3::new(0.0, 0.0, 0.0),
-                normal: Vector3::from_value(0.0),
-                texture_coord: Vector2::new(0.0, 0.0),
+                position: Vec3::zero(),
+                normal: Vec3::zero(),
+                texture_coord: Vec2::zero(),
             },
             2: AddVertex {
-                position: Vector3::new(-0.866_025, 0.0, 0.5),
-                normal: Vector3::from_value(0.0),
-                texture_coord: Vector2::new(0.0, 0.0),
+                position: Vec3::new(-0.866_025, 0.0, 0.5),
+                normal: Vec3::zero(),
+                texture_coord: Vec2::zero(),
             },
             3: AddVertex {
-                position: Vector3::new(0.866_025, 0.0, 0.5),
-                normal: Vector3::from_value(0.0),
-                texture_coord: Vector2::new(0.0, 0.0),
+                position: Vec3::new(0.866_025, 0.0, 0.5),
+                normal: Vec3::zero(),
+                texture_coord: Vec2::zero(),
             },
             4: AddFace {
                 indexes: vec![0, 1, 2],
@@ -613,15 +613,15 @@ mod test {
             },
             6: SetTextureCoordinates {
                 index: 0,
-                coords: Vector2::new(1.0, 1.0),
+                coords: Vec2::splat(1.0),
             },
             7: SetTextureCoordinates {
                 index: 1,
-                coords: Vector2::new(2.0, 2.0),
+                coords: Vec2::splat(2.0),
             },
             8: SetTextureCoordinates {
                 index: 2,
-                coords: Vector2::new(3.0, 3.0),
+                coords: Vec2::splat(3.0),
             }
         );
 
@@ -629,18 +629,18 @@ mod test {
         assert_eq!(result.meshes.len(), 1);
         let mesh = &result.meshes[0];
         assert_eq!(mesh.vertices.len(), 3);
-        assert_eq!(mesh.vertices[0].position, Vector3::new(0.0, 0.0, 0.0));
-        assert_eq!(mesh.vertices[1].position, Vector3::new(-0.866_025, 0.0, 0.5));
-        assert_eq!(mesh.vertices[2].position, Vector3::new(0.866_025, 0.0, 0.5));
+        assert_eq!(mesh.vertices[0].position, Vec3::zero());
+        assert_eq!(mesh.vertices[1].position, Vec3::new(-0.866_025, 0.0, 0.5));
+        assert_eq!(mesh.vertices[2].position, Vec3::new(0.866_025, 0.0, 0.5));
         for v in &mesh.vertices {
-            assert_eq!(v.normal, Vector3::new(0.0, 1.0, 0.0));
+            assert_eq!(v.normal, Vec3::unit_y());
         }
         for (i, &v) in mesh.vertices.iter().enumerate() {
-            assert_eq!(v.coord, Vector2::from_value((i + 1) as f32));
+            assert_eq!(v.coord, Vec2::splat((i + 1) as f32));
         }
         assert_eq!(mesh.indices, vec![0, 1, 2]);
         assert_eq!(mesh.blend_mode, BlendMode::Normal);
-        assert_eq!(mesh.color, ColorU8RGBA::from_value(255));
+        assert_eq!(mesh.color, ColorU8RGBA::splat(255));
         assert_eq!(mesh.glow, Glow {
             attenuation_mode: GlowAttenuationMode::DivideExponent4,
             half_distance: 0,

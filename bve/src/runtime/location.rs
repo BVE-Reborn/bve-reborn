@@ -1,5 +1,5 @@
 use crate::runtime::chunk::{ChunkAddress, ChunkOffset, CHUNK_SIZE};
-use cgmath::{ElementWise, Vector3};
+use glam::Vec3;
 use std::{
     fmt,
     fmt::{Display, Formatter},
@@ -14,18 +14,13 @@ pub struct Location {
 
 impl Location {
     #[must_use]
-    pub fn from_absolute_position(position: Vector3<f32>) -> Self {
-        let x_chunk = (position.x / CHUNK_SIZE).floor();
-        let y_chunk = (position.z / CHUNK_SIZE).floor();
-        let chunk_start_position_x = x_chunk * CHUNK_SIZE;
-        let chunk_start_position_z = y_chunk * CHUNK_SIZE;
+    pub fn from_absolute_position(position: Vec3) -> Self {
+        let x_chunk = (position.x() / CHUNK_SIZE).floor();
+        let y_chunk = (position.z() / CHUNK_SIZE).floor();
+        let chunk_start_position = Vec3::new(x_chunk * CHUNK_SIZE, 0.0, y_chunk * CHUNK_SIZE);
         Self {
             chunk: ChunkAddress::new(x_chunk as i32, y_chunk as i32),
-            offset: ChunkOffset::new(
-                position.x - chunk_start_position_x,
-                position.y,
-                position.z - chunk_start_position_z,
-            ),
+            offset: (position - chunk_start_position).into(),
         }
     }
 
@@ -35,9 +30,9 @@ impl Location {
     }
 
     #[must_use]
-    pub fn to_relative_position(&self, base_chunk: ChunkAddress) -> Vector3<f32> {
-        let chunk_offset = self.chunk.as_ref().sub_element_wise(*base_chunk);
-        Vector3::new(
+    pub fn to_relative_position(&self, base_chunk: ChunkAddress) -> Vec3 {
+        let chunk_offset = *self.chunk - *base_chunk;
+        Vec3::new(
             chunk_offset.x as f32 * CHUNK_SIZE,
             0.0,
             chunk_offset.y as f32 * CHUNK_SIZE,
@@ -50,7 +45,11 @@ impl Display for Location {
         write!(
             f,
             "({}, {}):({}, {}, {})",
-            self.chunk.x, self.chunk.y, self.offset.x, self.offset.y, self.offset.z
+            self.chunk.x,
+            self.chunk.y,
+            self.offset.x(),
+            self.offset.y(),
+            self.offset.z()
         )
     }
 }
