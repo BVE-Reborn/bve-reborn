@@ -577,6 +577,7 @@ fn client_main() {
                                 .flags(imgui::ComboBoxFlags::NO_PREVIEW)
                                 .build_simple_string(&frame, &mut current_debug, &[
                                     im_str!("None"),
+                                    im_str!("Normals"),
                                     im_str!("Frustums"),
                                     im_str!("Frustum Addressing Verification"),
                                     im_str!("Per-Pixel Light Count"),

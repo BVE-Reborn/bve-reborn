@@ -1,6 +1,7 @@
 debug_frustum_addressing - fragment:
 debug_frustums - fragment:
 debug_light_count - fragment:
+debug_normals - fragment:
 froxels - compute:
 fx - vertex:
 light_culling - compute:

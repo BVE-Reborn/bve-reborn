@@ -62,7 +62,7 @@ pub use crate::{
     statistics::RendererStatistics,
     texture::TextureHandle,
 };
-use crate::{object::perspective_matrix, render::Uniforms};
+use crate::{object::perspective_matrix, render::UniformVerts};
 use bve::{load::mesh::Vertex as MeshVertex, runtime::RenderLightDescriptor, UVec2};
 use glam::{Mat4, Vec3};
 use image::RgbaImage;
@@ -355,6 +355,9 @@ impl Renderer {
         match mode {
             DebugMode::None => {
                 self.frag_shader = shader!(&self.device; opaque - fragment);
+            }
+            DebugMode::Normals => {
+                self.frag_shader = shader!(&self.device; debug_normals - fragment);
             }
             DebugMode::Frustums => {
                 self.frag_shader = shader!(&self.device; debug_frustums - fragment);

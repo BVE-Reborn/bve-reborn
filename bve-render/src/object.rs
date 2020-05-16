@@ -22,11 +22,12 @@ pub fn perspective_matrix(fovy: f32, aspect: f32) -> Mat4 {
     Mat4::perspective_lh(fovy, aspect, NEAR_PLANE_DISTANCE, FAR_PLANE_DISTANCE)
 }
 
-pub fn generate_matrix(mx_proj: &Mat4, mx_view: &Mat4, location: Vec3) -> (Mat4, Mat4) {
+pub fn generate_matrix(mx_proj: &Mat4, mx_view: &Mat4, location: Vec3) -> (Mat4, Mat4, Mat4) {
     let mx_model = Mat4::from_translation(location);
     let mx_model_view = *mx_view * mx_model;
     let mx_model_view_proj = *mx_proj * mx_model_view;
-    (mx_model_view_proj, mx_model_view)
+    let mx_inv_trans_model_view = mx_model_view.transpose().inverse();
+    (mx_model_view_proj, mx_model_view, mx_inv_trans_model_view)
 }
 
 impl Renderer {

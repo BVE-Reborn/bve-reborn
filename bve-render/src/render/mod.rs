@@ -19,14 +19,16 @@ pub struct Vertex {
 
 #[repr(C)]
 #[derive(AsBytes)]
-pub struct Uniforms {
+pub struct UniformVerts {
     pub _model_view_proj: [f32; 16],
     pub _model_view: [f32; 16],
+    pub _inv_trans_model_view: [f32; 16],
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum DebugMode {
     None,
+    Normals,
     Frustums,
     FrustumAddressing,
     LightCount,
@@ -37,9 +39,10 @@ impl DebugMode {
     pub fn from_selection_integer(value: usize) -> Self {
         match value {
             0 => Self::None,
-            1 => Self::Frustums,
-            2 => Self::FrustumAddressing,
-            3 => Self::LightCount,
+            1 => Self::Normals,
+            2 => Self::Frustums,
+            3 => Self::FrustumAddressing,
+            4 => Self::LightCount,
             _ => unreachable!(),
         }
     }
@@ -48,9 +51,10 @@ impl DebugMode {
     pub fn into_selection_integer(self) -> usize {
         match self {
             Self::None => 0,
-            Self::Frustums => 1,
-            Self::FrustumAddressing => 2,
-            Self::LightCount => 3,
+            Self::Normals => 1,
+            Self::Frustums => 2,
+            Self::FrustumAddressing => 3,
+            Self::LightCount => 4,
         }
     }
 }
@@ -247,7 +251,7 @@ impl Renderer {
                         &self.textures[texture_idx].bind_group
                     };
                     let count = group.count();
-                    let matrix_buffer_size = (count * size_of::<Uniforms>()) as BufferAddress;
+                    let matrix_buffer_size = (count * size_of::<UniformVerts>()) as BufferAddress;
 
                     rpass.set_bind_group(0, texture_bind, &[]);
                     rpass.set_vertex_buffer(0, &mesh.vertex_buffer, 0, 0);
