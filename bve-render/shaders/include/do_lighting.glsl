@@ -12,20 +12,20 @@ vec3 light_with_light(ConeLight light, vec3 object_color) {
         vec3 light_dir = normalize(light_dir_unnorm);
         vec3 normal_ized = normalize(normal);
         float diff = max(dot(light_dir, normal_ized), 0.0);
-        vec3 diffuse = light.strength * diff * object_color;
+        vec3 diffuse = diff * object_color;
 
         // specular
         vec3 view_dir = normalize(-view_position.xyz);
         vec3 reflect_dir = reflect(-light_dir, normal_ized);
         vec3 halfway_dir = normalize(light_dir + view_dir);
-        vec3 specular = light.strength * pow(max(dot(normal_ized, halfway_dir), 0.0), 32.0) * vec3(0.3); // fix constant
+        vec3 specular = pow(max(dot(normal_ized, halfway_dir), 0.0), 32.0) * vec3(0.3); // fix constant
 
         // attenuation
         float distance = length(light_dir_unnorm);
         float attenuation = clamp(1.0 - (distance * distance) / (light.radius * light.radius), 0.0, 1.0);
         attenuation *= attenuation;
 
-        return attenuation * (specular + diffuse);
+        return light.color.rgb * attenuation * (specular + diffuse);
     } else {
         return vec3(0.0);
     }

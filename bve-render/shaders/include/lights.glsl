@@ -8,9 +8,9 @@
 struct ConeLight {
     vec4 location;
     vec4 direction;
+    vec4 color;
     float radius;
     float angle;
-    float strength;
     int point;
 };
 

@@ -16,8 +16,8 @@ pub enum LightType {
 #[derive(Debug, Copy, Clone)]
 pub struct LightDescriptor {
     pub location: Location,
+    pub color: Vec3,
     pub radius: f32,
-    pub strength: f32,
     pub ty: LightType,
 }
 
@@ -28,8 +28,8 @@ impl LightDescriptor {
             location: Vec3::from(*AsRef::<[f32; 3]>::as_ref(
                 &self.location.to_relative_position(base_chunk),
             )),
+            color: self.color,
             radius: self.radius,
-            strength: self.strength,
             ty: self.ty,
         }
     }
@@ -38,7 +38,7 @@ impl LightDescriptor {
 #[derive(Debug, Copy, Clone)]
 pub struct RenderLightDescriptor {
     pub location: Vec3,
+    pub color: Vec3,
     pub radius: f32,
-    pub strength: f32,
     pub ty: LightType,
 }
