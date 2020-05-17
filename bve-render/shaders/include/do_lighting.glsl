@@ -21,7 +21,7 @@ vec3 light_with_light(ConeLight light, vec3 object_color) {
         vec3 specular = light.strength * pow(max(dot(normal_ized, halfway_dir), 0.0), 32.0) * vec3(0.3); // fix constant
 
         // attenuation
-        float distance = length(light_dir);
+        float distance = length(light_dir_unnorm);
         float attenuation = clamp(1.0 - (distance * distance) / (light.radius * light.radius), 0.0, 1.0);
         attenuation *= attenuation;
 
