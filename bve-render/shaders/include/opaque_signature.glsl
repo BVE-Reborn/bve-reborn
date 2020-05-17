@@ -1,3 +1,6 @@
+#ifndef GLSL_OPAQUE_SIGNATURE
+#define GLSL_OPAQUE_SIGNATURE
+
 #include "frustum.glsl"
 #include "lights.glsl"
 
@@ -38,3 +41,5 @@ uvec3 compute_froxel() {
     uint depth_frustum = uint(floor((depth / max_depth) * froxel_count.z));
     return uvec3(frustum_xy, depth_frustum);
 }
+
+#endif

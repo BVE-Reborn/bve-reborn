@@ -1,3 +1,6 @@
+#ifndef GLSL_LIGHTS
+#define GLSL_LIGHTS
+
 #define MAX_LIGHT_INTEGERS 128
 #define MAX_LIGHTS (MAX_LIGHT_INTEGERS - 1)
 
@@ -20,3 +23,5 @@ struct LightIndexSet {
     uint count;
     uint indices[MAX_LIGHTS];
 };
+
+#endif

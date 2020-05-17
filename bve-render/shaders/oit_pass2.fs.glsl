@@ -1,5 +1,7 @@
 #version 450
 
+#include "gamma.glsl"
+
 layout(early_fragment_tests) in;
 
 layout(location = 0) out vec4 outColor;
@@ -70,5 +72,5 @@ void main() {
         color_sum += sample_color[s];
     }
     vec4 color = color_sum / vec4(MAX_SAMPLES);
-    outColor = vec4(pow(color.rgb, vec3(1.0 / 2.2)), color.a);
+    outColor = linear_to_srgb(color);
 }

@@ -1,3 +1,6 @@
+#ifndef GLSL_FRUSTUM
+#define GLSL_FRUSTUM
+
 struct Plane {
     vec3 abc;
     float d;
@@ -103,4 +106,6 @@ bool contains_sphere(ZBounds bounds, Sphere sphere) {
         return true;
     }
 }
+
+#endif
 

@@ -269,26 +269,26 @@ fn client_main() {
             .add_light(LightDescriptor {
                 location: Location::from_absolute_position(Vec3::zero()),
                 radius: 10.0,
-                strength: 100.0,
+                strength: 1.0,
                 ty: LightType::Point,
             })
             .await;
-        runtime
-            .add_light(LightDescriptor {
-                location: Location::from_absolute_position(Vec3::new(0.0, 0.0, 50.0)),
-                radius: 100.0,
-                strength: 100.0,
-                ty: LightType::Point,
-            })
-            .await;
-        runtime
-            .add_light(LightDescriptor {
-                location: Location::from_absolute_position(Vec3::new(20.0, 0.0, 20.0)),
-                radius: 20.0,
-                strength: 100.0,
-                ty: LightType::Point,
-            })
-            .await;
+        // runtime
+        //     .add_light(LightDescriptor {
+        //         location: Location::from_absolute_position(Vec3::new(0.0, 0.0, 50.0)),
+        //         radius: 100.0,
+        //         strength: 1.0,
+        //         ty: LightType::Point,
+        //     })
+        //     .await;
+        // runtime
+        //     .add_light(LightDescriptor {
+        //         location: Location::from_absolute_position(Vec3::new(20.0, 0.0, 20.0)),
+        //         radius: 20.0,
+        //         strength: 1.0,
+        //         ty: LightType::Point,
+        //     })
+        //     .await;
     });
 
     let mut mouse_pitch = 0.0_f32;

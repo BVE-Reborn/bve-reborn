@@ -1,5 +1,7 @@
 #version 450
 
+#include "gamma.glsl"
+
 layout (local_size_x = 8, local_size_y = 8) in;
 
 layout (set = 0, binding = 0, rgba8ui) uniform uimage2D inTexture;
@@ -9,14 +11,11 @@ layout (set = 0, binding = 2) uniform Locals {
 };
 
 vec4 load_gamma(ivec2 position) {
-    vec4 srgb = vec4(imageLoad(inTexture, position)) / 255;
-    return vec4(pow(srgb.rgb, vec3(2.2)), srgb.a);
+    return srgb_to_linear(rgbaU8_to_rgbaF32(imageLoad(inTexture, position)));
 }
 
 void store_gamma(ivec2 location, vec4 value) {
-    vec4 linear = value;
-    vec4 srgb = vec4(pow(linear.rgb, vec3(1 / 2.2)), linear.a);
-    imageStore(outTexture, location, uvec4(srgb * 255));
+    imageStore(outTexture, location, rgbaF32_to_rgbaU8(linear_to_srgb(value)));
 }
 
 bool ivec2_lt(ivec2 lhs, ivec2 rhs) {
@@ -36,7 +35,7 @@ vec4 load_strip_blue(ivec2 location) {
 }
 
 vec4 conditional_load(ivec2 location) {
-    if (ivec2_le(ivec2(0), location) && ivec2_lt(location, ivec2(gl_NumWorkGroups.xy))) {
+    if (ivec2_le(ivec2(0), location) && ivec2_lt(location, ivec2(texture_dimensions))) {
         vec4 value = load_strip_blue(location);
         if (value.w == 0.0) {
             value = vec4(0.0);
