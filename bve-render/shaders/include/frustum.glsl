@@ -97,7 +97,7 @@ ZBounds get_zbounds(uint z_number, uint z_divisions, float max_depth) {
 }
 
 bool contains_sphere(ZBounds bounds, Sphere sphere) {
-    float depth = length(sphere.location);
+    float depth = sphere.location.z;
     if (depth - sphere.radius > bounds.end) {
         return false;
     } else if (depth + sphere.radius < bounds.start) {
