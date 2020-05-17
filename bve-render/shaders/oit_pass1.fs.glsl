@@ -3,6 +3,7 @@
 layout(early_fragment_tests) in;
 
 #include "opaque_signature.glsl"
+#include "do_lighting.glsl"
 
 struct Node {
     vec4 color;
@@ -22,8 +23,7 @@ layout(set = 2, binding = 2, std430) buffer NodeBuffer {
 };
 
 void main() {
-    vec4 tex_color = pow(vec4(texture(usampler2D(colorTexture, main_sampler), texcoord)) / 255, vec4(2.2));
-    vec4 color = tex_color * mesh_color;
+    vec4 color = do_lighting();
 
     if (color.a <= 0.0) {
         discard;

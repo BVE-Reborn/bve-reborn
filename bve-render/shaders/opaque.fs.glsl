@@ -1,10 +1,10 @@
 #version 450
 
 #include "opaque_signature.glsl"
+#include "do_lighting.glsl"
 
 void main() {
-    vec4 tex_color = pow(vec4(texture(usampler2D(colorTexture, main_sampler), texcoord)) / 255, vec4(2.2));
-    vec4 color = tex_color * mesh_color;
+    vec4 color = do_lighting();
     if (color.a <= 0.5) {
         discard;
     } else {

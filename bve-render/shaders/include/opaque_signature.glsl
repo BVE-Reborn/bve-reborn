@@ -8,7 +8,7 @@ layout(location = 3) in vec3 normal;
 layout(location = 4) flat in vec4 mesh_color;
 layout(location = 0) out vec4 out_color;
 
-layout(set = 0, binding = 0) uniform utexture2D colorTexture;
+layout(set = 0, binding = 0) uniform utexture2D color_texture;
 layout(set = 0, binding = 1) uniform sampler main_sampler;
 layout(set = 1, binding = 0) uniform FroxelUniforms {
     uvec3 froxel_count;
