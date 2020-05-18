@@ -24,8 +24,7 @@ layout(set = 2, binding = 2, std430) buffer NodeBuffer {
 };
 
 void main() {
-    vec4 tex_color = srgb_to_linear(rgbaU8_to_rgbaF32(texture(usampler2D(color_texture, main_sampler), texcoord)));
-    vec4 color = tex_color * mesh_color;
+    vec4 color = do_lighting(AMBIENT | SPECULAR | SPECULAR_COLOR | DIFFUSE);
 
     if (color.a <= 0.0) {
         discard;
