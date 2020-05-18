@@ -359,17 +359,18 @@ fn main() {
         exit(1);
     }
 
-    let all = !(options.cbindgen || options.build || options.shaderc);
+    let all =
+        !(options.cbindgen || options.build || options.shaderc || options.native || options.client || options.core);
+
+    if options.shaderc || options.client || all {
+        build_shaders();
+    }
 
     if options.build || all {
         build(&options);
     }
 
-    if options.cbindgen || all {
+    if options.cbindgen || options.native || all {
         generate_c_bindings();
-    }
-
-    if options.shaderc || all {
-        build_shaders();
     }
 }
