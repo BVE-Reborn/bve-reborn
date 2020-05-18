@@ -31,6 +31,7 @@
 #![allow(clippy::indexing_slicing)]
 #![allow(clippy::integer_arithmetic)]
 #![allow(clippy::integer_division)]
+#![allow(clippy::items_after_statements)]
 #![allow(clippy::let_underscore_must_use)]
 #![allow(clippy::match_bool)] // prettier
 #![allow(clippy::missing_docs_in_private_items)]
@@ -265,8 +266,8 @@ fn client_main() {
         let handle = client.renderer.add_texture(&rgba);
         client.renderer.set_skybox_image(&handle, loading.background.repeats);
 
-        const LIGHTS_X: i32 = 8;
-        const LIGHTS_Y: i32 = 30;
+        const LIGHTS_X: u32 = 8;
+        const LIGHTS_Y: u32 = 30;
         for x in 0..LIGHTS_X {
             for y in 0..LIGHTS_Y {
                 let i = x * LIGHTS_X + y;
