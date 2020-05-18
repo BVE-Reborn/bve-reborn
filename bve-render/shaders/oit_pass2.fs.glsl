@@ -13,10 +13,13 @@ struct Node {
     uint next;
 };
 
-layout(set = 0, binding = 0, r32ui) uniform uimage2D head_pointers;
+layout(set = 0, binding = 0) buffer HeadPointers {
+    uint head_pointers[];
+};
 layout(set = 0, binding = 1) uniform OIT {
     uint max_nodes;
     uint samples;
+    uvec2 screen_size;
 };
 layout(set = 0, binding = 2, std430) buffer NodeBuffer {
     uint next_index;
@@ -32,8 +35,9 @@ layout(set = 1, binding = 1) uniform sampler framebuffer_sampler;
 void main() {
     Node frags[MAX_NODES];
 
-    uint n = imageLoad(head_pointers, ivec2(gl_FragCoord.xy)).r;
-    imageStore(head_pointers, ivec2(gl_FragCoord.xy), uvec4(0xFFFFFFFF));
+    uint index = uint(gl_FragCoord.x) * screen_size.y + uint(gl_FragCoord.y);
+    uint n = head_pointers[index];
+    head_pointers[index] = 0xFFFFFFFF;
 
     int count = 0;
     for(; n != 0xFFFFFFFF && count < MAX_NODES; ++count) {

@@ -104,7 +104,7 @@ fn create_pipeline_pass1(
                 VertexBufferDescriptor {
                     stride: size_of::<UniformVerts>() as BufferAddress,
                     step_mode: InputStepMode::Instance,
-                    attributes: &vertex_attr_array![4 => Float4, 5 => Float4, 6 => Float4, 7 => Float4, 8 => Float4, 9 => Float4, 10 => Float4, 11 => Float4],
+                    attributes: &vertex_attr_array![4 => Float4, 5 => Float4, 6 => Float4, 7 => Float4, 8 => Float4, 9 => Float4, 10 => Float4, 11 => Float4, 12 => Float4, 13 => Float4, 14 => Float4, 15 => Float4],
                 },
             ],
         },
@@ -170,13 +170,14 @@ fn create_pipeline_pass2(
 struct OitUniforms {
     _max_nodes: u32,
     _sample_count: u32,
+    _screen_size: [u32; 2],
 }
 
 fn create_uniform_buffer(
     device: &Device,
     oit_bind_group_layout: &BindGroupLayout,
     framebuffer_bind_group_layout: &BindGroupLayout,
-    head_pointer_view: &TextureView,
+    head_pointer_buffer: &Buffer,
     node_buffer: &Buffer,
     framebuffer: &TextureView,
     framebuffer_sampler: &Sampler,
@@ -191,6 +192,7 @@ fn create_uniform_buffer(
     let uniforms = OitUniforms {
         _max_nodes: max_nodes,
         _sample_count: samples as u32,
+        _screen_size: resolution.into_array(),
     };
     let uniform_buffer = device.create_buffer_with_data(uniforms.as_bytes(), BufferUsage::UNIFORM);
 
@@ -199,7 +201,10 @@ fn create_uniform_buffer(
         bindings: &[
             Binding {
                 binding: 0,
-                resource: BindingResource::TextureView(head_pointer_view),
+                resource: BindingResource::Buffer {
+                    buffer: head_pointer_buffer,
+                    range: 0..(4 * resolution.x * resolution.y) as BufferAddress,
+                },
             },
             Binding {
                 binding: 1,
@@ -246,7 +251,7 @@ fn create_oit_buffers(
     framebuffer_sampler: &Sampler,
     resolution: UVec2,
     samples: MSAASetting,
-) -> (TextureView, Buffer, Buffer, BindGroup, BindGroup) {
+) -> (Buffer, Buffer, Buffer, BindGroup, BindGroup) {
     debug!(
         "Creating OIT buffers: {}x{}; samples = {}",
         resolution.x, resolution.y, samples as u8
@@ -256,42 +261,19 @@ fn create_oit_buffers(
         BufferUsage::COPY_SRC,
     );
 
-    let head_pointer_texture = device.create_texture(&TextureDescriptor {
-        size: Extent3d {
-            width: resolution.x,
-            height: resolution.y,
-            depth: 1,
-        },
-        dimension: TextureDimension::D2,
-        format: TextureFormat::R32Uint,
-        array_layer_count: 1,
-        mip_level_count: 1,
-        sample_count: 1,
-        usage: TextureUsage::COPY_DST | TextureUsage::STORAGE,
-        label: Some("head pointers"),
+    let head_pointer_buffer = device.create_buffer(&BufferDescriptor {
+        usage: BufferUsage::STORAGE | BufferUsage::STORAGE_READ | BufferUsage::COPY_DST,
+        size: (resolution.x * resolution.y * 4) as BufferAddress,
+        label: Some("oit head pointer buffer"),
     });
 
-    encoder.copy_buffer_to_texture(
-        BufferCopyView {
-            buffer: &head_pointer_source_buffer,
-            bytes_per_row: resolution.x * 4,
-            rows_per_image: 0,
-            offset: 0,
-        },
-        TextureCopyView {
-            texture: &head_pointer_texture,
-            origin: Origin3d { x: 0, y: 0, z: 0 },
-            mip_level: 0,
-            array_layer: 0,
-        },
-        Extent3d {
-            width: resolution.x,
-            height: resolution.y,
-            depth: 1,
-        },
+    encoder.copy_buffer_to_buffer(
+        &head_pointer_source_buffer,
+        0,
+        &head_pointer_buffer,
+        0,
+        (resolution.x * resolution.y * 4) as BufferAddress,
     );
-
-    let head_pointer_view = head_pointer_texture.create_default_view();
 
     let node_buffer = device.create_buffer(&BufferDescriptor {
         size: size_of_node_buffer(resolution),
@@ -303,7 +285,7 @@ fn create_oit_buffers(
         device,
         oit_bind_group_layout,
         framebuffer_bind_group_layout,
-        &head_pointer_view,
+        &head_pointer_buffer,
         &node_buffer,
         framebuffer,
         framebuffer_sampler,
@@ -312,7 +294,7 @@ fn create_oit_buffers(
     );
 
     (
-        head_pointer_view,
+        head_pointer_buffer,
         uniform_buffer,
         node_buffer,
         oit_bind_group,
@@ -377,7 +359,7 @@ pub struct Oit {
     oit_bind_group: BindGroup,
     framebuffer_bind_group: BindGroup,
 
-    head_pointer_view: TextureView,
+    head_pointer_buffer: Buffer,
 
     uniform_buffer: Buffer,
 
@@ -409,10 +391,8 @@ impl Oit {
                 BindGroupLayoutEntry {
                     binding: 0,
                     visibility: ShaderStage::FRAGMENT,
-                    ty: BindingType::StorageTexture {
-                        dimension: TextureViewDimension::D2,
-                        format: TextureFormat::R32Uint,
-                        component_type: TextureComponentType::Uint,
+                    ty: BindingType::StorageBuffer {
+                        dynamic: false,
                         readonly: false,
                     },
                 },
@@ -461,7 +441,7 @@ impl Oit {
             compare: CompareFunction::Never,
         });
 
-        let (head_pointer_view, uniform_buffer, node_buffer, oit_bind_group, framebuffer_bind_group) =
+        let (head_pointer_buffer, uniform_buffer, node_buffer, oit_bind_group, framebuffer_bind_group) =
             create_oit_buffers(
                 device,
                 encoder,
@@ -480,7 +460,7 @@ impl Oit {
             pass2_pipeline_layout,
             oit_bind_group,
             framebuffer_bind_group,
-            head_pointer_view,
+            head_pointer_buffer,
             uniform_buffer,
             node_source_buffer,
             node_buffer,
@@ -506,7 +486,7 @@ impl Oit {
             label: Some("oit resize"),
         });
 
-        let (head_pointer_view, max_node_buffer, node_buffer, oit_bind_group, framebuffer_bind_group) =
+        let (head_pointer_buffer, max_node_buffer, node_buffer, oit_bind_group, framebuffer_bind_group) =
             create_oit_buffers(
                 device,
                 &mut encoder,
@@ -518,7 +498,7 @@ impl Oit {
                 samples,
             );
 
-        self.head_pointer_view = head_pointer_view;
+        self.head_pointer_buffer = head_pointer_buffer;
         self.uniform_buffer = max_node_buffer;
         self.node_buffer = node_buffer;
         self.oit_bind_group = oit_bind_group;
@@ -551,7 +531,7 @@ impl Oit {
             device,
             &self.oit_bind_group_layout,
             &self.framebuffer_bind_group_layout,
-            &self.head_pointer_view,
+            &self.head_pointer_buffer,
             &self.node_buffer,
             framebuffer,
             &self.framebuffer_sampler,

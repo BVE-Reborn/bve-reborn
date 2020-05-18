@@ -112,7 +112,7 @@ fn headers_out_of_date(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> bool {
             return true;
         }
     }
-    return false;
+    false
 }
 
 fn build(options: &Options) {

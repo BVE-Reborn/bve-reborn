@@ -68,7 +68,7 @@ vec4 do_lighting(int features) {
         if (bool(features & SPECULAR_COLOR)) {
             factor = 1.0;
         } else {
-            factor = 0.5;
+            factor = 0.05;
         }
         vec3 ambient = object_color.rgb * factor;
         light_accumulation += ambient;
