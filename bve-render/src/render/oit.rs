@@ -102,7 +102,7 @@ fn create_pipeline_pass1(
                     attributes: &vertex_attr_array![0 => Float3, 1 => Float3, 2 => Uchar4, 3 => Float2],
                 },
                 VertexBufferDescriptor {
-                    stride: size_of::<Uniforms>() as BufferAddress,
+                    stride: size_of::<UniformVerts>() as BufferAddress,
                     step_mode: InputStepMode::Instance,
                     attributes: &vertex_attr_array![4 => Float4, 5 => Float4, 6 => Float4, 7 => Float4, 8 => Float4, 9 => Float4, 10 => Float4, 11 => Float4],
                 },

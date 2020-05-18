@@ -31,6 +31,7 @@
 #![allow(clippy::indexing_slicing)]
 #![allow(clippy::integer_arithmetic)]
 #![allow(clippy::integer_division)]
+#![allow(clippy::items_after_statements)]
 #![allow(clippy::let_underscore_must_use)]
 #![allow(clippy::match_bool)] // prettier
 #![allow(clippy::missing_docs_in_private_items)]
@@ -265,27 +266,34 @@ fn client_main() {
         let handle = client.renderer.add_texture(&rgba);
         client.renderer.set_skybox_image(&handle, loading.background.repeats);
 
+        const LIGHTS_X: u32 = 8;
+        const LIGHTS_Y: u32 = 30;
+        for x in 0..LIGHTS_X {
+            for y in 0..LIGHTS_Y {
+                let i = x * LIGHTS_X + y;
+                runtime
+                    .add_light(LightDescriptor {
+                        location: Location::from_absolute_position(Vec3::new(
+                            x as f32 * (42.0 / LIGHTS_X as f32),
+                            10.0,
+                            y as f32 * (480.0 / LIGHTS_Y as f32),
+                        )),
+                        radius: 10.0,
+                        color: Vec3::new(
+                            (i % 3 == 0) as u8 as f32,
+                            (i % 3 == 1) as u8 as f32,
+                            (i % 3 == 2) as u8 as f32,
+                        ),
+                        ty: LightType::Point,
+                    })
+                    .await;
+            }
+        }
         runtime
             .add_light(LightDescriptor {
-                location: Location::from_absolute_position(Vec3::zero()),
+                location: Location::from_absolute_position(Vec3::new(8.0, 10.0, 0.0)),
                 radius: 10.0,
-                strength: 100.0,
-                ty: LightType::Point,
-            })
-            .await;
-        runtime
-            .add_light(LightDescriptor {
-                location: Location::from_absolute_position(Vec3::new(0.0, 0.0, 50.0)),
-                radius: 100.0,
-                strength: 100.0,
-                ty: LightType::Point,
-            })
-            .await;
-        runtime
-            .add_light(LightDescriptor {
-                location: Location::from_absolute_position(Vec3::new(20.0, 0.0, 20.0)),
-                radius: 20.0,
-                strength: 100.0,
+                color: Vec3::one(),
                 ty: LightType::Point,
             })
             .await;
@@ -577,6 +585,7 @@ fn client_main() {
                                 .flags(imgui::ComboBoxFlags::NO_PREVIEW)
                                 .build_simple_string(&frame, &mut current_debug, &[
                                     im_str!("None"),
+                                    im_str!("Normals"),
                                     im_str!("Frustums"),
                                     im_str!("Frustum Addressing Verification"),
                                     im_str!("Per-Pixel Light Count"),

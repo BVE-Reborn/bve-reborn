@@ -64,11 +64,11 @@ impl From<frustum::Frustum> for FrustumBytes {
 struct ConeLightBytes {
     _location: [f32; 4],
     _direction: [f32; 4],
+    _color: [f32; 4],
     _radius: f32,
     _angle: f32,
-    _strength: f32,
     _point: bool,
-    _padding0: [u8; 3],
+    _padding0: [u8; 7],
 }
 
 fn convert_lights_to_data(input: &SlotMap<DefaultKey, RenderLightDescriptor>, mx_view: Mat4) -> Vec<ConeLightBytes> {
@@ -83,20 +83,20 @@ fn convert_lights_to_data(input: &SlotMap<DefaultKey, RenderLightDescriptor>, mx
                 LightType::Point => ConeLightBytes {
                     _location: *transformed.as_ref(),
                     _direction: [0.0; 4],
+                    _color: [light.color.x(), light.color.y(), light.color.z(), 0.0],
                     _radius: light.radius,
                     _angle: 0.0,
-                    _strength: light.strength,
                     _point: true,
-                    _padding0: [0; 3],
+                    _padding0: [0; 7],
                 },
                 LightType::Cone(cone) => ConeLightBytes {
                     _location: *transformed.as_ref(),
                     _direction: [cone.direction.x(), cone.direction.y(), cone.direction.z(), 0.0],
+                    _color: [light.color.x(), light.color.y(), light.color.z(), 0.0],
                     _radius: light.radius,
                     _angle: cone.angle,
-                    _strength: light.strength,
                     _point: false,
-                    _padding0: [0; 3],
+                    _padding0: [0; 7],
                 },
             }
         })

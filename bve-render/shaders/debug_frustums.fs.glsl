@@ -9,7 +9,7 @@ void main() {
             uint frustum_index = get_frustum_list_index(uvec2(x, y), froxel_count.xy);
             Frustum frustum = frustums[frustum_index];
             if (contains_point(frustum, vec3(view_position))) {
-                out_color = vec4(vec3(x, y, z) / vec3(froxel_count.xyz - 1), 1.0);
+                out_color = vec4(vec3(x, y, z) / vec3(froxel_count.xy - 1, 3), 1.0);
                 return;
             }
         }

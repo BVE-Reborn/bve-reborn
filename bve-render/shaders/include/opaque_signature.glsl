@@ -1,3 +1,6 @@
+#ifndef GLSL_OPAQUE_SIGNATURE
+#define GLSL_OPAQUE_SIGNATURE
+
 #include "frustum.glsl"
 #include "lights.glsl"
 
@@ -8,7 +11,7 @@ layout(location = 3) in vec3 normal;
 layout(location = 4) flat in vec4 mesh_color;
 layout(location = 0) out vec4 out_color;
 
-layout(set = 0, binding = 0) uniform utexture2D colorTexture;
+layout(set = 0, binding = 0) uniform utexture2D color_texture;
 layout(set = 0, binding = 1) uniform sampler main_sampler;
 layout(set = 1, binding = 0) uniform FroxelUniforms {
     uvec3 froxel_count;
@@ -34,7 +37,9 @@ uvec3 compute_froxel() {
     vec2 frustum_raw = scale * vec2(froxel_count.xy);
     uvec2 frustum_xy = uvec2(floor(frustum_raw));
     // length(view - camera)
-    float depth = length(view_position.xyz);
+    float depth = view_position.z;
     uint depth_frustum = uint(floor((depth / max_depth) * froxel_count.z));
     return uvec3(frustum_xy, depth_frustum);
 }
+
+#endif

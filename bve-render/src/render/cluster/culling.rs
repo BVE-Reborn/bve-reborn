@@ -161,6 +161,6 @@ impl LightCulling {
     pub fn execute<'a>(&'a self, pass: &mut ComputePass<'a>) {
         pass.set_pipeline(&self.pipeline);
         pass.set_bind_group(0, &self.bind_group, &[]);
-        pass.dispatch(1, FROXEL_COUNT, 1);
+        pass.dispatch(1, FROXEL_COUNT / 64, 1);
     }
 }

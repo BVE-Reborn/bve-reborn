@@ -21,21 +21,32 @@ pub fn is_mesh_transparent(mesh: &[MeshVertex]) -> bool {
 }
 
 pub fn convert_mesh_verts_to_render_verts(
-    verts: Vec<MeshVertex>,
+    mut verts: Vec<MeshVertex>,
     mut indices: Vec<u32>,
 ) -> (Vec<render::Vertex>, Vec<u32>) {
     // First add the extra faces due to doubling
     let mut extra_indices = Vec::new();
 
     for (&i1, &i2, &i3) in indices.iter().tuples() {
-        let v1_double = verts[i1 as usize].double_sided;
-        let v2_double = verts[i2 as usize].double_sided;
-        let v3_double = verts[i3 as usize].double_sided;
+        let mut vert1 = verts[i3 as usize];
+        let mut vert2 = verts[i2 as usize];
+        let mut vert3 = verts[i1 as usize];
+
+        let v1_double = vert1.double_sided;
+        let v2_double = vert2.double_sided;
+        let v3_double = vert3.double_sided;
 
         if v1_double || v2_double || v3_double {
-            extra_indices.push(i3);
-            extra_indices.push(i2);
-            extra_indices.push(i1);
+            vert1.normal *= -1.0;
+            vert2.normal *= -1.0;
+            vert3.normal *= -1.0;
+            let vert_len = verts.len() as u32;
+            verts.push(vert1);
+            verts.push(vert2);
+            verts.push(vert3);
+            extra_indices.push(vert_len);
+            extra_indices.push(vert_len + 1);
+            extra_indices.push(vert_len + 2);
         }
     }
 
