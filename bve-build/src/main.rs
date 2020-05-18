@@ -361,12 +361,13 @@ fn main() {
 
     let all =
         !(options.cbindgen || options.build || options.shaderc || options.native || options.client || options.core);
+    let should_build = options.build || options.native || options.client || options.core || all;
 
     if options.shaderc || options.client || all {
         build_shaders();
     }
 
-    if options.build || all {
+    if should_build {
         build(&options);
     }
 
