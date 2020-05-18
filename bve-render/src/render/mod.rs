@@ -186,7 +186,7 @@ impl Renderer {
 
         // Retry getting a swapchain texture a couple times to smooth over spurious timeouts when tons of state changes
         let mut frame_res = self.swapchain.get_next_texture();
-        for _ in 1..=3 {
+        for _ in 1..=4 {
             if let Ok(..) = &frame_res {
                 break;
             }
