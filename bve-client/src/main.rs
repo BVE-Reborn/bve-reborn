@@ -265,12 +265,18 @@ fn client_main() {
         let handle = client.renderer.add_texture(&rgba);
         client.renderer.set_skybox_image(&handle, loading.background.repeats);
 
-        for x in 0..20 {
-            for y in 0..20 {
-                let i = x * 20 + y;
+        const LIGHTS_X: i32 = 8;
+        const LIGHTS_Y: i32 = 30;
+        for x in 0..LIGHTS_X {
+            for y in 0..LIGHTS_Y {
+                let i = x * LIGHTS_X + y;
                 runtime
                     .add_light(LightDescriptor {
-                        location: Location::from_absolute_position(Vec3::new(x as f32 * 5.0, 10.0, y as f32 * 10.0)),
+                        location: Location::from_absolute_position(Vec3::new(
+                            x as f32 * (42.0 / LIGHTS_X as f32),
+                            10.0,
+                            y as f32 * (480.0 / LIGHTS_Y as f32),
+                        )),
                         radius: 10.0,
                         color: Vec3::new(
                             (i % 3 == 0) as u8 as f32,
@@ -282,6 +288,14 @@ fn client_main() {
                     .await;
             }
         }
+        runtime
+            .add_light(LightDescriptor {
+                location: Location::from_absolute_position(Vec3::new(8.0, 10.0, 0.0)),
+                radius: 10.0,
+                color: Vec3::one(),
+                ty: LightType::Point,
+            })
+            .await;
     });
 
     let mut mouse_pitch = 0.0_f32;
