@@ -5,8 +5,9 @@
 #include "lights.glsl"
 #include "gamma.glsl"
 
+// Flags to enable various lighting features when calling do_lighting()
 #define SPECULAR       0x0001
-#define SPECULAR_COLOR 0x0010
+#define SPECULAR_COLOR 0x0010 // Object's color is used in specular
 #define DIFFUSE        0x0100
 #define AMBIENT        0x1000
 
