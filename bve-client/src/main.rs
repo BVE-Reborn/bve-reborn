@@ -275,7 +275,7 @@ fn client_main() {
                     .add_light(LightDescriptor {
                         location: Location::from_absolute_position(Vec3::new(
                             x as f32 * (42.0 / LIGHTS_X as f32),
-                            10.0,
+                            0.0,
                             y as f32 * (480.0 / LIGHTS_Y as f32),
                         )),
                         radius: 10.0,
@@ -291,7 +291,7 @@ fn client_main() {
         }
         runtime
             .add_light(LightDescriptor {
-                location: Location::from_absolute_position(Vec3::new(8.0, 10.0, 0.0)),
+                location: Location::from_absolute_position(Vec3::new(8.0, 0.0, 0.0)),
                 radius: 10.0,
                 color: Vec3::one(),
                 ty: LightType::Point,

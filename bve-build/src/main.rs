@@ -51,7 +51,7 @@
 use crate::shaders::{ShaderCombination, ShaderType, SingleDefine};
 use itertools::Itertools;
 use std::{
-    fs::{create_dir_all, metadata, read_to_string, remove_dir_all},
+    fs::{create_dir_all, metadata, read_dir, read_to_string, remove_dir_all},
     path::Path,
     process::{exit, Command},
 };
@@ -103,6 +103,16 @@ fn out_of_date(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> bool {
         .expect("Destination must have modified time");
 
     src_time > dst_time
+}
+
+fn headers_out_of_date(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> bool {
+    for element in read_dir("bve-render/shaders/include").expect("could not find include dir") {
+        let element = element.expect("has no element");
+        if out_of_date(element.path(), src.as_ref()) && out_of_date(element.path(), dst.as_ref()) {
+            return true;
+        }
+    }
+    false
 }
 
 fn build(options: &Options) {
@@ -247,7 +257,7 @@ fn build_shaders() {
             .collect_vec();
 
         {
-            if out_of_date(&source_name, &spirv_name) {
+            if out_of_date(&source_name, &spirv_name) || headers_out_of_date(&source_name, &spirv_name) {
                 println!("Compiling {} to {}", source_name, spirv_name);
 
                 let mut flags = define_flags.clone();
@@ -275,7 +285,7 @@ fn build_shaders() {
         {
             let spirv_name_opt = spirv_name + ".opt";
 
-            if out_of_date(&source_name, &spirv_name_opt) {
+            if out_of_date(&source_name, &spirv_name_opt) || headers_out_of_date(&source_name, &spirv_name_opt) {
                 println!("Compiling {} to {}", source_name, spirv_name_opt);
 
                 let mut flags = define_flags.clone();
@@ -349,17 +359,19 @@ fn main() {
         exit(1);
     }
 
-    let all = !(options.cbindgen || options.build || options.shaderc);
+    let all =
+        !(options.cbindgen || options.build || options.shaderc || options.native || options.client || options.core);
+    let should_build = options.build || options.native || options.client || options.core || all;
 
-    if options.build || all {
+    if options.shaderc || options.client || all {
+        build_shaders();
+    }
+
+    if should_build {
         build(&options);
     }
 
-    if options.cbindgen || all {
+    if options.cbindgen || options.native || all {
         generate_c_bindings();
-    }
-
-    if options.shaderc || all {
-        build_shaders();
     }
 }

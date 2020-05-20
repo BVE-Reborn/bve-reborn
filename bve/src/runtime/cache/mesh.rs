@@ -87,9 +87,9 @@ impl<C: Client> MeshCache<C> {
         }
 
         for texture in raw_mesh_data.textures {
-            let path = resolve_path(parent_dir, PathBuf::from(texture))
+            let path = resolve_path(parent_dir, PathBuf::from(&texture))
                 .await
-                .expect("Could not find texture");
+                .unwrap_or_else(|| panic!("Could not find texture {}", texture));
             mesh_data.textures.push(path_set.insert(path).await);
         }
 

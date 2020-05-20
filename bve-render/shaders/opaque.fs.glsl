@@ -4,7 +4,7 @@
 #include "do_lighting.glsl"
 
 void main() {
-    vec4 color = do_lighting();
+    vec4 color = do_lighting(SPECULAR | DIFFUSE | AMBIENT);
     if (color.a <= 0.5) {
         discard;
     } else {
