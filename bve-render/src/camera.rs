@@ -2,8 +2,10 @@ use crate::*;
 use glam::{Mat3, Vec3};
 
 pub const NEAR_PLANE_DISTANCE: f32 = 0.1;
-// 33 blocks * 64m
-pub const FAR_PLANE_DISTANCE: f32 = 2112.0;
+
+// Not used by the camera, as we have infinite depth, but by other
+// frustum culling routines that need non-infinite depth
+pub const FAR_PLANE_DISTANCE: f32 = 33.0 /* blocks */ * 64.0 /* m */;
 
 pub struct Camera {
     pub location: Vec3,

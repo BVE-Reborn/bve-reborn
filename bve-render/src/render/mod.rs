@@ -220,7 +220,7 @@ impl Renderer {
                     depth_store_op: StoreOp::Store,
                     stencil_load_op: LoadOp::Clear,
                     stencil_store_op: StoreOp::Store,
-                    clear_depth: 1.0,
+                    clear_depth: 0.0,
                     clear_stencil: 0,
                 }),
             });

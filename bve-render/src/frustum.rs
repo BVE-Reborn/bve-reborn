@@ -39,7 +39,7 @@ impl Plane {
 
 #[derive(Debug, Clone, Copy)]
 pub struct Frustum {
-    pub planes: [Plane; 6],
+    pub planes: [Plane; 5],
 }
 
 impl Frustum {
@@ -74,9 +74,11 @@ impl Frustum {
             mat_arr[3][3] + mat_arr[3][1],
         );
 
-        let near = Plane::new(mat_arr[0][2], mat_arr[1][2], mat_arr[2][2], mat_arr[3][2]);
+        // no far plane as we have infinite depth
 
-        let far = Plane::new(
+        // this is the far plane in the algorithm, but we're using inverse Z, so near and far
+        // get flipped.
+        let near = Plane::new(
             mat_arr[0][3] - mat_arr[0][2],
             mat_arr[1][3] - mat_arr[1][2],
             mat_arr[2][3] - mat_arr[2][2],
@@ -90,7 +92,6 @@ impl Frustum {
                 top.normalize(),
                 bottom.normalize(),
                 near.normalize(),
-                far.normalize(),
             ],
         }
     }

@@ -68,7 +68,7 @@ pub fn create_pipeline(
         depth_stencil_state: Some(DepthStencilStateDescriptor {
             format: TextureFormat::Depth32Float,
             depth_write_enabled: true,
-            depth_compare: CompareFunction::LessEqual,
+            depth_compare: CompareFunction::GreaterEqual,
             stencil_front: StencilStateFaceDescriptor::IGNORE,
             stencil_back: StencilStateFaceDescriptor::IGNORE,
             stencil_read_mask: 0,

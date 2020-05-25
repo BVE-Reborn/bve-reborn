@@ -39,7 +39,7 @@ uvec3 compute_froxel() {
     // length(view - camera)
     float depth = view_position.z;
     uint depth_frustum = uint(floor((depth / max_depth) * froxel_count.z));
-    return uvec3(frustum_xy, depth_frustum);
+    return uvec3(frustum_xy, min(depth_frustum, froxel_count.z - 1));
 }
 
 #endif
