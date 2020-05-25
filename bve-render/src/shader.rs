@@ -8,6 +8,9 @@ use std::{
 };
 use wgpu::{read_spirv, Device, ShaderModule};
 
+#[cfg(debug_assertions)]
+const COMPILED_SHADERS: Dir<'static> = include_dir::include_dir!("shaders/spirv-debug");
+#[cfg(not(debug_assertions))]
 const COMPILED_SHADERS: Dir<'static> = include_dir::include_dir!("shaders/spirv");
 
 static SHADER_MODULES: Lazy<Mutex<HashMap<String, Arc<ShaderModule>>>> = Lazy::new(|| Mutex::new(HashMap::new()));
@@ -29,24 +32,6 @@ pub fn find_shader_module(device: &Device, name: &str) -> Arc<ShaderModule> {
 
 #[macro_export]
 #[doc(hidden)]
-#[cfg(debug_assertions)]
-macro_rules! spirv_suffix {
-    () => {
-        ".spv"
-    };
-}
-
-#[macro_export]
-#[doc(hidden)]
-#[cfg(not(debug_assertions))]
-macro_rules! spirv_suffix {
-    () => {
-        ".spv.opt"
-    };
-}
-
-#[macro_export]
-#[doc(hidden)]
 macro_rules! shader {
     ($device:expr; $shader_name:ident - $ty:ident$(: $($name:ident $($eq:tt $value:expr)?);*)?) => {{
         use itertools::Itertools;
@@ -60,21 +45,21 @@ macro_rules! shader {
         format!(concat!("_U", stringify!($name)))
     };
     (@@vert) => {
-        concat!(".vs", spirv_suffix!())
+        ".vs.spv"
     };
     (@@vertex) => {
-        concat!(".vs", spirv_suffix!())
+        ".vs.spv"
     };
     (@@frag) => {
-        concat!(".fs", spirv_suffix!())
+        ".fs.spv"
     };
     (@@fragment) => {
-        concat!(".fs", spirv_suffix!())
+       ".fs.spv"
     };
     (@@comp) => {
-        concat!(".cs", spirv_suffix!())
+        ".cs.spv"
     };
     (@@compute) => {
-        concat!(".cs", spirv_suffix!())
+        ".cs.spv"
     };
 }
