@@ -1,7 +1,4 @@
-use crate::{
-    camera::{FAR_PLANE_DISTANCE, NEAR_PLANE_DISTANCE},
-    *,
-};
+use crate::{camera::NEAR_PLANE_DISTANCE, *};
 use glam::{Mat4, Vec3};
 use slotmap::Key;
 
@@ -19,7 +16,7 @@ pub struct Object {
 }
 
 pub fn perspective_matrix(fovy: f32, aspect: f32) -> Mat4 {
-    Mat4::perspective_lh(fovy, aspect, NEAR_PLANE_DISTANCE, FAR_PLANE_DISTANCE)
+    Mat4::perspective_infinite_reverse_lh(fovy, aspect, NEAR_PLANE_DISTANCE)
 }
 
 pub fn generate_matrix(mx_proj: &Mat4, mx_view: &Mat4, location: Vec3) -> (Mat4, Mat4, Mat4) {

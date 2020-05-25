@@ -20,6 +20,8 @@ float wrap(float value, float min, float max) {
 }
 
 void main() {
+    // We use the near plane as depth here, as if we used the far plane, it would all NaN out. Doesn't _really_ matter,
+    // but 1.0 is a nice round number and results in a depth of 0.1 with my near plane. Good nuf.
     vec4 clip = vec4(clip_position, 1.0, 1.0);
     vec4 world = inv_view_proj * clip;
     world.xyz /= world.w;

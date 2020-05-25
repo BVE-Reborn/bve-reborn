@@ -6,5 +6,6 @@ layout(location = 0) out vec2 o_clip_position;
 
 void main() {
     o_clip_position = position;
-    gl_Position = vec4(o_clip_position, 1.0, 1.0);
+    // We use 0.0 (the infinite far plane) as depth
+    gl_Position = vec4(o_clip_position, 0.0, 1.0);
 }
