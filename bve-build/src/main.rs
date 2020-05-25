@@ -181,7 +181,12 @@ fn generate_c_bindings() {
     };
 }
 
-fn mangle_shader_name(combination: &ShaderCombination<'_>) -> String {
+struct ShaderName {
+    debug: String,
+    release: String,
+}
+
+fn mangle_shader_name(combination: &ShaderCombination<'_>) -> ShaderName {
     let mut input = combination.name.to_string();
     if !combination.defines.is_empty() {
         input.push('_');
@@ -207,10 +212,22 @@ fn mangle_shader_name(combination: &ShaderCombination<'_>) -> String {
             input.push_str(".cs.spv");
         }
     };
-    format!("bve-render/shaders/spirv/{}", input)
+    ShaderName {
+        debug: format!("bve-render/shaders/spirv-debug/{}", input),
+        release: format!("bve-render/shaders/spirv/{}", input),
+    }
 }
 
 fn build_shaders() {
+    if Path::new("bve-render/shaders/spirv-debug").exists()
+        && out_of_date("bve-render/shaders/compile", "bve-render/shaders/spirv-debug/")
+        && out_of_date("bve-render/shaders/include", "bve-render/shaders/spirv-debug/")
+    {
+        remove_dir_all("bve-render/shaders/spirv-debug").expect("Could not remove directory");
+        println!("Removing out of date spirv-debug directory")
+    }
+    create_dir_all("bve-render/shaders/spirv-debug").expect("Could not create spirv-debug directory");
+
     if Path::new("bve-render/shaders/spirv").exists()
         && out_of_date("bve-render/shaders/compile", "bve-render/shaders/spirv/")
         && out_of_date("bve-render/shaders/include", "bve-render/shaders/spirv/")
@@ -219,6 +236,7 @@ fn build_shaders() {
         println!("Removing out of date spirv directory")
     }
     create_dir_all("bve-render/shaders/spirv").expect("Could not create spirv directory");
+
     for combination in
         shaders::parse_shader_compile_file(&read_to_string("bve-render/shaders/compile").unwrap()).unwrap()
     {
@@ -257,12 +275,12 @@ fn build_shaders() {
             .collect_vec();
 
         {
-            if out_of_date(&source_name, &spirv_name) || headers_out_of_date(&source_name, &spirv_name) {
-                println!("Compiling {} to {}", source_name, spirv_name);
+            if out_of_date(&source_name, &spirv_name.debug) || headers_out_of_date(&source_name, &spirv_name.debug) {
+                println!("Compiling {} to {}", source_name, spirv_name.debug);
 
                 let mut flags = define_flags.clone();
                 flags.extend(
-                    ["-x", "glsl", "-g", "-O", stage, &source_name, "-o", &spirv_name]
+                    ["-x", "glsl", "-g", "-O", stage, &source_name, "-o", &spirv_name.debug]
                         .iter()
                         .map(|&s| s.to_string()),
                 );
@@ -283,14 +301,13 @@ fn build_shaders() {
         }
 
         {
-            let spirv_name_opt = spirv_name + ".opt";
-
-            if out_of_date(&source_name, &spirv_name_opt) || headers_out_of_date(&source_name, &spirv_name_opt) {
-                println!("Compiling {} to {}", source_name, spirv_name_opt);
+            if out_of_date(&source_name, &spirv_name.release) || headers_out_of_date(&source_name, &spirv_name.release)
+            {
+                println!("Compiling {} to {}", source_name, spirv_name.release);
 
                 let mut flags = define_flags.clone();
                 flags.extend(
-                    ["-x", "glsl", "-O", stage, &source_name, "-o", &spirv_name_opt]
+                    ["-x", "glsl", "-O", stage, &source_name, "-o", &spirv_name.release]
                         .iter()
                         .map(|&s| s.to_string()),
                 );
