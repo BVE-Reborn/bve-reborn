@@ -138,7 +138,12 @@ jobs:
       - name: Prepare for artifact upload
         run: |
           mkdir ${{ matrix.name }}
-          cp -r target/debug/bve-client* target/debug/bve-corpus* target/debug/bve-parser-run* target/debug/bve-obj-conv* bve-render/shaders/spirv-debug bve-render/shaders/spirv ${{ matrix.name }}
+          cp -r target/debug/bve{-,_}client*\
+                target/debug/bve{-,_}corpus*\
+                target/debug/bve{-,_}parser{-,_}run*\
+                target/debug/bve{-,_}obj{-,_}conv*\
+                bve-render/shaders/spirv-debug bve-render/shaders/spirv\
+                ${{ matrix.name }} || true
         shell: bash
 
       - uses: actions/upload-artifact@v1
