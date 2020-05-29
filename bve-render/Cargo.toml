@@ -23,8 +23,8 @@ cc = "=1.0.50" # Fix bug in cc
 dashmap = "3.11.1"
 log = "0.4.8"
 num-traits = "0.2.11"
-imgui = "0.4.0-pre"
-imgui-wgpu = "0.6.0"
+imgui = "0.4.0"
+imgui-wgpu = { git = "https://github.com/BVE-Reborn/imgui-wgpu-rs.git", rev = "f3bd10474483672f3830fca5274fd6012bd9946f" }
 include_dir = "0.6.0"
 image = { version = "0.23.2", default-features = false }
 itertools = "0.9"
@@ -33,5 +33,5 @@ once_cell = "1.3.1"
 renderdoc = { version = "0.8.1", default-features = false, optional = true }
 slotmap = { version = "0.4.0", features = ["unstable"] }
 winit = "0.22.1"
-wgpu = "0.5.0"
+wgpu = { git = "https://github.com/gfx-rs/wgpu-rs.git", rev = "0f55a67af2a012cea7681318b3786cf6aebde598" }
 zerocopy = "0.3.0"

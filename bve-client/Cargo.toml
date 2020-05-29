@@ -24,8 +24,8 @@ bve = { version = "0.0.1", path = "../bve" }
 bve-render = { version = "0.0.1", path = "../bve-render" }
 env_logger = "0.7.1"
 image = { version = "0.23.2", default-features = false, features = ["bmp", "gif", "png", "jpeg"] }
-imgui = "0.4.0-pre"
-imgui-winit-support = "0.4.0-pre"
+imgui = "0.4.0"
+imgui-winit-support = "0.4.0"
 glam = "0.8.7"
 num-traits = "0.2.11"
 itertools = "0.9"

@@ -163,26 +163,53 @@ impl Renderer {
             screen_size.width, screen_size.height, oit_node_count as u8, samples as u8, vsync
         );
 
-        let surface = Surface::create(window);
+        let instance = Instance::new();
+        let surface = unsafe { instance.create_surface(window) };
+        let adapter = instance
+            .request_adapter(
+                &RequestAdapterOptions {
+                    power_preference: PowerPreference::HighPerformance,
+                    compatible_surface: Some(&surface),
+                },
+                UnsafeExtensions::disallow(),
+                BackendBit::VULKAN | BackendBit::METAL,
+            )
+            .await
+            .expect("Could not create Adapter");
 
-        let adapter = Adapter::request(
-            &RequestAdapterOptions {
-                power_preference: PowerPreference::HighPerformance,
-                compatible_surface: Some(&surface),
-            },
-            BackendBit::VULKAN | BackendBit::METAL,
-        )
-        .await
-        .expect("Could not create Adapter");
+        let adapter_extensions = adapter.extensions();
+        let needed_extensions =
+            Extensions::ANISOTROPIC_FILTERING | Extensions::BINDING_INDEXING | Extensions::BINDING_INDEXING;
+        let needed_capabilities =
+            Capabilities::SAMPLED_TEXTURE_BINDING_ARRAY | Capabilities::SAMPLED_TEXTURE_ARRAY_NON_UNIFORM_INDEXING;
+
+        if !adapter_extensions.contains(needed_extensions) {
+            panic!(
+                "Adapter must support all extensions needed. Missing extensions: {:?}",
+                adapter_extensions - needed_extensions
+            );
+        }
 
         let (device, mut queue) = adapter
-            .request_device(&DeviceDescriptor {
-                extensions: Extensions {
-                    anisotropic_filtering: true,
+            .request_device(
+                &DeviceDescriptor {
+                    extensions: needed_extensions,
+                    limits: Limits::default(),
+                    shader_validation: false,
                 },
-                limits: Limits::default(),
-            })
-            .await;
+                None,
+            )
+            .await
+            .expect("Could not create device");
+
+        let device_capabilities = device.capabilities();
+
+        if !device_capabilities.contains(needed_capabilities) {
+            panic!(
+                "Device must support all capabilities needed. Missing capabilities: {:?}",
+                device_capabilities - needed_capabilities
+            );
+        }
 
         let mut startup_encoder = device.create_command_encoder(&CommandEncoderDescriptor { label: Some("startup") });
 
@@ -202,7 +229,10 @@ impl Renderer {
             mipmap_filter: FilterMode::Linear,
             lod_min_clamp: -100.0,
             lod_max_clamp: 100.0,
-            compare: CompareFunction::Never,
+            compare: None,
+            anisotropy_clamp: Some(16),
+            label: Some("primary texture sampler"),
+            ..Default::default()
         });
 
         let framebuffer = render::create_framebuffer(&device, screen_size, samples);
@@ -222,20 +252,12 @@ impl Renderer {
 
         let texture_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             bindings: &[
-                BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: ShaderStage::FRAGMENT,
-                    ty: BindingType::SampledTexture {
-                        multisampled: false,
-                        component_type: TextureComponentType::Uint,
-                        dimension: TextureViewDimension::D2,
-                    },
-                },
-                BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: ShaderStage::FRAGMENT,
-                    ty: BindingType::Sampler { comparison: false },
-                },
+                BindGroupLayoutEntry::new(0, ShaderStage::FRAGMENT, BindingType::SampledTexture {
+                    multisampled: false,
+                    component_type: TextureComponentType::Uint,
+                    dimension: TextureViewDimension::D2,
+                }),
+                BindGroupLayoutEntry::new(1, ShaderStage::FRAGMENT, BindingType::Sampler { comparison: false }),
             ],
             label: Some("texture and sampler"),
         });
