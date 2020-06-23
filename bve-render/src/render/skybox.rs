@@ -73,11 +73,14 @@ pub struct Skybox {
 impl Skybox {
     pub fn new(device: &Device, texture_bind_group_layout: &BindGroupLayout, samples: MSAASetting) -> Self {
         let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            bindings: &[BindGroupLayoutEntry {
-                binding: 0,
-                visibility: ShaderStage::FRAGMENT,
-                ty: BindingType::UniformBuffer { dynamic: false },
-            }],
+            bindings: &[BindGroupLayoutEntry::new(
+                0,
+                ShaderStage::FRAGMENT,
+                BindingType::UniformBuffer {
+                    dynamic: false,
+                    min_binding_size: None,
+                },
+            )],
             label: Some("skybox"),
         });
 
@@ -89,6 +92,7 @@ impl Skybox {
         let uniform_buffer = device.create_buffer(&BufferDescriptor {
             size: size_of::<SkyboxUniforms>() as BufferAddress,
             usage: BufferUsage::UNIFORM | BufferUsage::COPY_DST,
+            mapped_at_creation: false,
             label: Some("skybox uniform"),
         });
 
@@ -96,10 +100,7 @@ impl Skybox {
             layout: &bind_group_layout,
             bindings: &[Binding {
                 binding: 0,
-                resource: BindingResource::Buffer {
-                    buffer: &uniform_buffer,
-                    range: 0..(size_of::<SkyboxUniforms>() as BufferAddress),
-                },
+                resource: BindingResource::Buffer(uniform_buffer.slice(..)),
             }],
             label: Some("skybox"),
         });
@@ -149,7 +150,7 @@ impl Skybox {
         rpass.set_pipeline(&self.pipeline);
         rpass.set_bind_group(0, &self.bind_group, &[]);
         rpass.set_bind_group(1, texture_bind_group, &[]);
-        rpass.set_vertex_buffer(0, screenspace_verts, 0, 0);
+        rpass.set_vertex_buffer(0, screenspace_verts.slice(..));
         rpass.draw(0..3, 0..1);
     }
 }

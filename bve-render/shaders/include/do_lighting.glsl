@@ -52,8 +52,8 @@ vec4 do_lighting(int features) {
     uvec3 froxel = compute_froxel();
     uint froxel_index = get_cluster_list_index(froxel, froxel_count);
 
-    uvec4 texture_color_srgb = texture(usampler2D(color_texture, main_sampler), texcoord);
-    vec4 texture_color = srgb_to_linear(rgbaU8_to_rgbaF32(texture_color_srgb));
+    vec4 texture_color_srgb = texture(sampler2D(color_texture, main_sampler), texcoord);
+    vec4 texture_color = srgb_to_linear(texture_color_srgb);
     vec4 object_color = texture_color * mesh_color;
 
     vec3 light_accumulation = vec3(0.0);

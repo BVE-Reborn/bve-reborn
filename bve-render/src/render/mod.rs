@@ -185,13 +185,13 @@ impl Renderer {
         let ts_uniforms = create_timestamp(&mut stats.compute_uniforms_time, ts_sorting);
 
         // Retry getting a swapchain texture a couple times to smooth over spurious timeouts when tons of state changes
-        let mut frame_res = self.swapchain.get_next_texture();
+        let mut frame_res = self.swapchain.get_next_frame();
         for _ in 1..=4 {
             if let Ok(..) = &frame_res {
                 break;
             }
             error!("Dropping frame");
-            frame_res = self.swapchain.get_next_texture();
+            frame_res = self.swapchain.get_next_frame();
         }
 
         let frame = frame_res.expect("Could not get next swapchain texture");
@@ -205,23 +205,23 @@ impl Renderer {
                 color_attachments: &[RenderPassColorAttachmentDescriptor {
                     attachment: &self.framebuffer,
                     resolve_target: None,
-                    load_op: LoadOp::Clear,
-                    store_op: StoreOp::Store,
-                    clear_color: Color {
-                        r: 0.3,
-                        g: 0.3,
-                        b: 0.3,
-                        a: 1.0,
+                    ops: Operations {
+                        load: LoadOp::Clear(Color {
+                            r: 0.3,
+                            g: 0.3,
+                            b: 0.3,
+                            a: 1.0,
+                        }),
+                        store: true,
                     },
                 }],
                 depth_stencil_attachment: Some(RenderPassDepthStencilAttachmentDescriptor {
                     attachment: &self.depth_buffer,
-                    depth_load_op: LoadOp::Clear,
-                    depth_store_op: StoreOp::Store,
-                    stencil_load_op: LoadOp::Clear,
-                    stencil_store_op: StoreOp::Store,
-                    clear_depth: 0.0,
-                    clear_stencil: 0,
+                    depth_ops: Some(Operations {
+                        load: LoadOp::Clear(0.0),
+                        store: true,
+                    }),
+                    stencil_ops: None,
                 }),
             });
 
@@ -254,9 +254,12 @@ impl Renderer {
                     let matrix_buffer_size = (count * size_of::<UniformVerts>()) as BufferAddress;
 
                     rpass.set_bind_group(0, texture_bind, &[]);
-                    rpass.set_vertex_buffer(0, &mesh.vertex_buffer, 0, 0);
-                    rpass.set_vertex_buffer(1, matrix_buffer, current_matrix_offset, matrix_buffer_size);
-                    rpass.set_index_buffer(&mesh.index_buffer, 0, 0);
+                    rpass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+                    rpass.set_vertex_buffer(
+                        1,
+                        matrix_buffer.slice(current_matrix_offset..(current_matrix_offset + matrix_buffer_size)),
+                    );
+                    rpass.set_index_buffer(mesh.index_buffer.slice(..));
                     rpass.draw_indexed(0..(mesh.index_count as u32), 0, 0..(count as u32));
 
                     current_matrix_offset += matrix_buffer_size;
@@ -293,11 +296,12 @@ impl Renderer {
         {
             let mut rpass = encoder.begin_render_pass(&RenderPassDescriptor {
                 color_attachments: &[RenderPassColorAttachmentDescriptor {
-                    attachment: &frame.view,
+                    attachment: &frame.output.view,
                     resolve_target: None,
-                    load_op: LoadOp::Clear,
-                    store_op: StoreOp::Store,
-                    clear_color: Color::BLACK,
+                    ops: Operations {
+                        load: LoadOp::Clear(Color::BLACK),
+                        store: true,
+                    },
                 }],
                 depth_stencil_attachment: None,
             });
@@ -309,7 +313,7 @@ impl Renderer {
 
         if let Some(imgui_frame) = imgui_frame_opt {
             self.imgui_renderer
-                .render(imgui_frame.render(), &self.device, &mut encoder, &frame.view)
+                .render(imgui_frame.render(), &self.device, &mut encoder, &frame.output.view)
                 .expect("Imgui rendering failed");
         }
 
@@ -317,8 +321,7 @@ impl Renderer {
 
         self.command_buffers.push(encoder.finish());
 
-        self.queue.submit(&self.command_buffers);
-        self.command_buffers.clear();
+        self.queue.submit(self.command_buffers.drain(..));
 
         let _ts_wgpu_time = create_timestamp(&mut stats.render_wgpu_cpu_time, ts_imgui_render);
 

@@ -1,5 +1,9 @@
 name: build
-on: [push, pull_request]
+on:
+  push:
+    branches-ignore:
+     - staging.tmp
+     - trying.tmp
 
 env:
   RUST_BACKTRACE: full
@@ -21,7 +25,7 @@ jobs:
           - rust: nightly-2020-05-07
             triple: x86_64-apple-darwin
             os: macos-latest
-            name: mac-build
+            name: macos-build
 
           - rust: nightly-2020-05-07
             triple: x86_64-unknown-linux-gnu

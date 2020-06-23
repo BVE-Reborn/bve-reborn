@@ -1,5 +1,7 @@
 #version 450
 
+#include "gamma.glsl"
+
 #define PI_3 1.0471975511965977
 #define PI_2 1.5707963267948966
 #define PI   3.1415926535626433
@@ -12,7 +14,7 @@ layout(set = 0, binding = 0) uniform Matrices {
     mat4 inv_view_proj;
     float repeats;
 };
-layout(set = 1, binding = 0) uniform utexture2D skybox;
+layout(set = 1, binding = 0) uniform texture2D skybox;
 layout(set = 1, binding = 1) uniform sampler skybox_sampler;
 
 float wrap(float value, float min, float max) {
@@ -46,8 +48,8 @@ void main() {
         y_coord = (pitch / TAU) * 1.5 - 0.5;
     }
 
-    vec4 background_srgb = vec4(texture(usampler2D(skybox, skybox_sampler), vec2(x_coord, 1 - y_coord))) / 255;
-    vec3 background = pow(background_srgb.rgb, vec3(2.2));
+    vec4 background_srgb = vec4(texture(sampler2D(skybox, skybox_sampler), vec2(x_coord, 1 - y_coord)));
+    vec3 background = srgb_to_linear(background_srgb).rgb;
 
     outColor = vec4(background, 1.0);
 }
