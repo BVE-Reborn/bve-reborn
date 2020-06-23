@@ -769,9 +769,9 @@ dependencies = [
 
 [[package]]
 name = "float-cmp"
-version = "0.7.0"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "499a1bfa03d254b047e7e5c1fc8dd23a8cf6b344a8eb7e622ae4bc76bfac8e68"
+checksum = "e1267f4ac4f343772758f7b1bdcbe767c218bbab93bb432acbf5162bbf85a6c4"
 dependencies = [
  "num-traits",
 ]
@@ -2059,9 +2059,9 @@ checksum = "26412eb97c6b088a6997e05f69403a802a92d520de2f8e63c2b65f9e0f47c4e8"
 
 [[package]]
 name = "renderdoc"
-version = "0.8.1"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9c9e8488c98756911664c8cc7b86284c320b6a6357d95908458136d7ebe9280c"
+checksum = "1cfc83a56d86ef085c360a49ae88f8fcf1dd2507a8f38d14d580c4fbbb4b714a"
 dependencies = [
  "bitflags",
  "float-cmp",
@@ -2074,9 +2074,9 @@ dependencies = [
 
 [[package]]
 name = "renderdoc-sys"
-version = "0.6.0"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "60d4a9058849c3e765fe2fa68b72c1416b1766f27eac3c52d7bac8712ea0d390"
+checksum = "a7992001a4d5df215f282b6e3a5fc61ea3393dd1cece0ed791ced2be1d808331"
 
 [[package]]
 name = "rental"

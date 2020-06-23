@@ -31,7 +31,7 @@ image = { version = "0.23.2", default-features = false }
 itertools = "0.9"
 glam = { version = "0.8.7", features = ["debug-glam-assert"] }
 once_cell = "1.3.1"
-renderdoc = { version = "0.8.1", default-features = false, optional = true }
+renderdoc = { version = "0.9.0", default-features = false, optional = true }
 slotmap = { version = "0.4.0", features = ["unstable"] }
 winit = "0.22.1"
 wgpu = { git = "https://github.com/gfx-rs/wgpu-rs.git", rev = "90307b6715f5c591db3dc7a067b704a501756557" }
