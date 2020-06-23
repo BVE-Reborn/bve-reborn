@@ -20,7 +20,7 @@ default = []
 async-std = "1.5.0"
 bve = { version = "0.0.1", path = "../bve" }
 bytemuck = "1"
-cc = "=1.0.50" # Fix bug in cc
+cc = "=1.0.54" # Fix bug in cc
 dashmap = "3.11.1"
 log = "0.4.8"
 num-traits = "0.2.11"
