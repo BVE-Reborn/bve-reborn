@@ -24,6 +24,7 @@
 // Annoying/irrelevant clippy Restrictions
 #![allow(clippy::as_conversions)]
 #![allow(clippy::decimal_literal_representation)]
+#![allow(clippy::default_trait_access)]
 #![allow(clippy::else_if_without_else)]
 #![allow(clippy::fallible_impl_from)] // This fails horribly when you try to panic in a macro inside a From impl
 #![allow(clippy::float_arithmetic)]

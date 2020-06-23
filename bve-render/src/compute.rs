@@ -28,7 +28,7 @@ fn create_texture_compute_pipeline(
             }),
             BindGroupLayoutEntry::new(2, ShaderStage::COMPUTE, BindingType::UniformBuffer {
                 dynamic: false,
-                min_binding_size: Some(NonZeroU64::new(size_of::<Uniforms>() as _).unwrap()),
+                min_binding_size: Some(NonZeroU64::new(size_of::<Uniforms>() as _).expect("Uniforms are a ZST")),
             }),
         ],
         label: Some("compute"),
