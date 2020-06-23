@@ -1,7 +1,9 @@
 name: build
   on:
     push:
-      branches-ignore: [staging.tmp, trying.tmp]
+      branches-ignore:
+       - staging.tmp
+       - trying.tmp
 
 env:
   RUST_BACKTRACE: full
