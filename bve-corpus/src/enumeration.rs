@@ -2,7 +2,7 @@ use crate::*;
 use crossbeam_channel::Sender;
 use log::info;
 
-fn enumerate(path: impl AsRef<Path>, mut func: impl FnMut(PathBuf, DirEntry) -> ()) -> usize {
+fn enumerate(path: impl AsRef<Path>, mut func: impl FnMut(PathBuf, DirEntry)) -> usize {
     let mut count = 0_usize;
     for entry in WalkDir::new(path.as_ref()).follow_links(true).same_file_system(false) {
         if let Ok(entry) = entry {
@@ -96,7 +96,7 @@ pub fn enumerate_all_files(options: &Options, file_sink: &Sender<File>, shared: 
                 Some(_ext) => {
                     // unrecognized
                 }
-                _ => {}
+                None => {}
             },
         }
     };
@@ -137,7 +137,7 @@ pub fn enumerate_all_files(options: &Options, file_sink: &Sender<File>, shared: 
             Some(_ext) => {
                 // unrecognized
             }
-            _ => {}
+            None => {}
         }
     });
     info!("Scanned {} files", count);

@@ -20,8 +20,10 @@
 #![allow(clippy::too_many_lines)] // This is also dumb
 // Annoying/irrelevant clippy Restrictions
 #![allow(clippy::as_conversions)]
+#![allow(clippy::cast_possible_wrap)]
 #![allow(clippy::decimal_literal_representation)]
 #![allow(clippy::else_if_without_else)]
+#![allow(clippy::expect_used)]
 #![allow(clippy::fallible_impl_from)] // This fails horribly when you try to panic in a macro inside a From impl
 #![allow(clippy::float_arithmetic)]
 #![allow(clippy::float_cmp)]
@@ -40,14 +42,11 @@
 #![allow(clippy::multiple_crate_versions)] // Cargo deny's job
 #![allow(clippy::multiple_inherent_impl)]
 #![allow(clippy::non_ascii_literal)]
-#![allow(clippy::option_expect_used)]
 #![allow(clippy::panic)]
-#![allow(clippy::cast_possible_wrap)]
 #![allow(clippy::print_stdout)]
-#![allow(clippy::result_expect_used)]
-#![allow(clippy::similar_names)]
 #![allow(clippy::shadow_reuse)]
 #![allow(clippy::shadow_same)]
+#![allow(clippy::similar_names)]
 #![allow(clippy::string_add)]
 #![allow(clippy::unreachable)]
 #![allow(clippy::wildcard_enum_match_arm)]
@@ -305,7 +304,6 @@ fn client_main() {
     let mut mouse_pitch = 0.0_f32;
     let mut mouse_yaw = 0.0_f32;
 
-    let mut frame_count = 0_u64;
     let mut frame_times = Vec::with_capacity(3000);
     let mut last_frame_instant = Instant::now();
     let mut last_printed_instant = Instant::now();
@@ -476,7 +474,6 @@ fn client_main() {
 
                     last_printed_instant = now;
                 }
-                frame_count += 1;
                 last_frame_instant = now;
 
                 platform

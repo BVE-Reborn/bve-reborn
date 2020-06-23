@@ -20,6 +20,7 @@
 #![allow(clippy::as_conversions)]
 #![allow(clippy::decimal_literal_representation)]
 #![allow(clippy::else_if_without_else)]
+#![allow(clippy::expect_used)]
 #![allow(clippy::float_arithmetic)]
 #![allow(clippy::float_cmp_const)]
 #![allow(clippy::implicit_return)]
@@ -33,14 +34,12 @@
 #![allow(clippy::module_name_repetitions)]
 #![allow(clippy::multiple_crate_versions)] // Cargo deny's job
 #![allow(clippy::non_ascii_literal)]
-#![allow(clippy::option_expect_used)]
 #![allow(clippy::panic)]
 #![allow(clippy::print_stdout)] // This is a build script, not a fancy app
-#![allow(clippy::result_expect_used)]
-#![allow(clippy::result_unwrap_used)] // Doesn't play nice with structopt
 #![allow(clippy::shadow_reuse)]
 #![allow(clippy::shadow_same)]
 #![allow(clippy::unreachable)]
+#![allow(clippy::unwrap_used)] // Doesn't play nice with structopt
 #![allow(clippy::use_debug)]
 #![allow(clippy::wildcard_enum_match_arm)]
 #![allow(clippy::wildcard_imports)]

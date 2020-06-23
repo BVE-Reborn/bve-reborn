@@ -26,6 +26,7 @@
 #![allow(clippy::decimal_literal_representation)]
 #![allow(clippy::default_trait_access)]
 #![allow(clippy::else_if_without_else)]
+#![allow(clippy::expect_used)]
 #![allow(clippy::fallible_impl_from)] // This fails horribly when you try to panic in a macro inside a From impl
 #![allow(clippy::float_arithmetic)]
 #![allow(clippy::float_cmp)]
@@ -43,14 +44,13 @@
 #![allow(clippy::multiple_crate_versions)] // Cargo deny's job
 #![allow(clippy::multiple_inherent_impl)]
 #![allow(clippy::non_ascii_literal)]
-#![allow(clippy::option_expect_used)]
 #![allow(clippy::panic)]
-#![allow(clippy::result_expect_used)]
 #![allow(clippy::similar_names)]
 #![allow(clippy::shadow_reuse)]
 #![allow(clippy::shadow_same)]
 #![allow(clippy::string_add)]
 #![allow(clippy::too_many_arguments)]
+#![allow(clippy::unnested_or_patterns)] // CLion no loves me
 #![allow(clippy::unreachable)]
 #![allow(clippy::wildcard_enum_match_arm)]
 #![allow(clippy::wildcard_imports)]

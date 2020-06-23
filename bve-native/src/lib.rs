@@ -63,6 +63,7 @@
 #![allow(clippy::crosspointer_transmute)] // Useful for nasty ffi crap
 #![allow(clippy::decimal_literal_representation)]
 #![allow(clippy::else_if_without_else)]
+#![allow(clippy::expect_used)]
 #![allow(clippy::float_arithmetic)]
 #![allow(clippy::float_cmp_const)]
 #![allow(clippy::implicit_return)]
@@ -77,9 +78,7 @@
 #![allow(clippy::module_name_repetitions)]
 #![allow(clippy::multiple_crate_versions)] // Cargo deny's job
 #![allow(clippy::non_ascii_literal)]
-#![allow(clippy::option_expect_used)]
 #![allow(clippy::panic)]
-#![allow(clippy::result_expect_used)]
 #![allow(clippy::shadow_reuse)]
 #![allow(clippy::shadow_same)]
 #![allow(clippy::unreachable)]

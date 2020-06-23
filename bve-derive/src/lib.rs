@@ -23,6 +23,7 @@
 #![allow(clippy::as_conversions)]
 #![allow(clippy::decimal_literal_representation)]
 #![allow(clippy::else_if_without_else)]
+#![allow(clippy::expect_used)]
 #![allow(clippy::float_arithmetic)]
 #![allow(clippy::float_cmp_const)]
 #![allow(clippy::implicit_return)]
@@ -37,14 +38,13 @@
 #![allow(clippy::module_name_repetitions)]
 #![allow(clippy::multiple_crate_versions)] // Cargo deny's job
 #![allow(clippy::non_ascii_literal)]
-#![allow(clippy::option_expect_used)]
 #![allow(clippy::panic)]
-#![allow(clippy::result_expect_used)]
 #![allow(clippy::shadow_reuse)]
 #![allow(clippy::shadow_same)]
 #![allow(clippy::string_add)]
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unimplemented)] // Specific use case proc macro, lots of holes
+#![allow(clippy::unnested_or_patterns)] // CLion no loves me
 #![allow(clippy::unreachable)]
 #![allow(clippy::wildcard_enum_match_arm)]
 

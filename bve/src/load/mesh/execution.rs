@@ -200,7 +200,7 @@ impl Executable for AddFace {
 /// Preform a per-vertex transform on all meshes in the [`MeshBuildContext`] depending on [`ApplyTo`]
 fn apply_transform<F>(application: ApplyTo, ctx: &mut MeshBuildContext, mut func: F)
 where
-    F: FnMut(&mut Vertex) -> (),
+    F: FnMut(&mut Vertex),
 {
     for v in &mut ctx.current_mesh.vertices {
         func(v);
@@ -216,7 +216,7 @@ where
                 }
             }
         }
-        _ => unreachable!(),
+        ApplyTo::Unset => unreachable!(),
     }
 }
 
