@@ -1,11 +1,10 @@
 name: repo-state
-on: 
-  pull_request:
+on:
   push:
     branches:
       - master
-      - 'update-**'
-      - 'ci-**'
+      - staging
+      - trying
 
 env:
   RUST_BACKTRACE: full

@@ -122,8 +122,9 @@ pub struct Clustering {
 impl Clustering {
     pub fn new(device: &Device, encoder: &mut CommandEncoder, mx_inv_proj: Mat4, frustum: Frustum) -> Self {
         let frustum_buffer = device.create_buffer(&BufferDescriptor {
-            usage: BufferUsage::COPY_DST | BufferUsage::STORAGE | BufferUsage::STORAGE_READ,
+            usage: BufferUsage::COPY_DST | BufferUsage::STORAGE,
             size: FRUSTUM_BUFFER_SIZE,
+            mapped_at_creation: false,
             label: Some("frustum buffer"),
         });
 
@@ -144,14 +145,16 @@ impl Clustering {
         );
 
         let light_list_buffer = device.create_buffer(&BufferDescriptor {
-            usage: BufferUsage::STORAGE | BufferUsage::STORAGE_READ,
+            usage: BufferUsage::STORAGE,
             size: LIGHT_LIST_BUFFER_SIZE,
+            mapped_at_creation: false,
             label: Some("light list buffer"),
         });
 
         let light_buffer = device.create_buffer(&BufferDescriptor {
-            usage: BufferUsage::COPY_DST | BufferUsage::STORAGE | BufferUsage::STORAGE_READ,
+            usage: BufferUsage::COPY_DST | BufferUsage::STORAGE,
             size: LIGHT_BUFFER_SIZE,
+            mapped_at_creation: false,
             label: Some("light buffer"),
         });
 
@@ -159,35 +162,25 @@ impl Clustering {
 
         let render_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             bindings: &[
-                BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: ShaderStage::FRAGMENT,
-                    ty: BindingType::UniformBuffer { dynamic: false },
-                },
-                BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: ShaderStage::FRAGMENT,
-                    ty: BindingType::StorageBuffer {
-                        readonly: true,
-                        dynamic: false,
-                    },
-                },
-                BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: ShaderStage::FRAGMENT,
-                    ty: BindingType::StorageBuffer {
-                        readonly: true,
-                        dynamic: false,
-                    },
-                },
-                BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: ShaderStage::FRAGMENT,
-                    ty: BindingType::StorageBuffer {
-                        readonly: true,
-                        dynamic: false,
-                    },
-                },
+                BindGroupLayoutEntry::new(0, ShaderStage::FRAGMENT, BindingType::UniformBuffer {
+                    dynamic: false,
+                    min_binding_size: None,
+                }),
+                BindGroupLayoutEntry::new(1, ShaderStage::FRAGMENT, BindingType::StorageBuffer {
+                    readonly: true,
+                    dynamic: false,
+                    min_binding_size: None,
+                }),
+                BindGroupLayoutEntry::new(2, ShaderStage::FRAGMENT, BindingType::StorageBuffer {
+                    readonly: true,
+                    dynamic: false,
+                    min_binding_size: None,
+                }),
+                BindGroupLayoutEntry::new(3, ShaderStage::FRAGMENT, BindingType::StorageBuffer {
+                    readonly: true,
+                    dynamic: false,
+                    min_binding_size: None,
+                }),
             ],
             label: Some("clustering bind group layout"),
         });
@@ -197,31 +190,19 @@ impl Clustering {
             bindings: &[
                 Binding {
                     binding: 0,
-                    resource: BindingResource::Buffer {
-                        buffer: &cluster_uniforms_buffer,
-                        range: 0..size_of::<ClusterUniforms>() as BufferAddress,
-                    },
+                    resource: BindingResource::Buffer(cluster_uniforms_buffer.slice(..)),
                 },
                 Binding {
                     binding: 1,
-                    resource: BindingResource::Buffer {
-                        buffer: &frustum_buffer,
-                        range: 0..FRUSTUM_BUFFER_SIZE,
-                    },
+                    resource: BindingResource::Buffer(frustum_buffer.slice(..)),
                 },
                 Binding {
                     binding: 2,
-                    resource: BindingResource::Buffer {
-                        buffer: &light_buffer,
-                        range: 0..LIGHT_BUFFER_SIZE,
-                    },
+                    resource: BindingResource::Buffer(light_buffer.slice(..)),
                 },
                 Binding {
                     binding: 3,
-                    resource: BindingResource::Buffer {
-                        buffer: &light_list_buffer,
-                        range: 0..LIGHT_LIST_BUFFER_SIZE,
-                    },
+                    resource: BindingResource::Buffer(light_list_buffer.slice(..)),
                 },
             ],
             label: Some("clustering bind group"),

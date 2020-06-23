@@ -3,10 +3,11 @@ on:
   push:
     branches:
       - master
+      - staging
+      - trying
     tags:
       - 'v*.*.*'
       - 'build*'
-  pull_request:
 
 env:
   RUST_BACKTRACE: full

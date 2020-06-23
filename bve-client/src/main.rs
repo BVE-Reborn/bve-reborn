@@ -88,6 +88,9 @@ use winit::{
 
 mod platform;
 
+#[global_allocator]
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 struct Client {
     renderer: Renderer,
 }

@@ -1,6 +1,6 @@
 use crate::{
     frustum::Frustum,
-    render::cluster::{FrustumBytes, FROXELS_X, FROXELS_Y, FRUSTUM_BUFFER_SIZE},
+    render::cluster::{FrustumBytes, FROXELS_X, FROXELS_Y},
     *,
 };
 use bve::UVec2;
@@ -22,7 +22,7 @@ pub struct FrustumCreation {
 impl FrustumCreation {
     pub fn new(
         device: &Device,
-        encoder: &mut CommandEncoder,
+        _encoder: &mut CommandEncoder,
         frustum_buffer: &Buffer,
         mx_inv_proj: Mat4,
         frustum: Frustum,
@@ -30,19 +30,15 @@ impl FrustumCreation {
     ) -> Self {
         let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             bindings: &[
-                BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: ShaderStage::COMPUTE,
-                    ty: BindingType::UniformBuffer { dynamic: false },
-                },
-                BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: ShaderStage::COMPUTE,
-                    ty: BindingType::StorageBuffer {
-                        readonly: false,
-                        dynamic: false,
-                    },
-                },
+                BindGroupLayoutEntry::new(0, ShaderStage::COMPUTE, BindingType::UniformBuffer {
+                    dynamic: false,
+                    min_binding_size: None,
+                }),
+                BindGroupLayoutEntry::new(1, ShaderStage::COMPUTE, BindingType::StorageBuffer {
+                    readonly: false,
+                    dynamic: false,
+                    min_binding_size: None,
+                }),
             ],
             label: Some("frustum creation bind group layout"),
         });
@@ -61,44 +57,25 @@ impl FrustumCreation {
             },
         });
 
-        let uniform_buffer = device.create_buffer(&BufferDescriptor {
-            usage: BufferUsage::COPY_DST | BufferUsage::UNIFORM,
-            size: size_of::<FroxelUniforms>() as BufferAddress,
-            label: Some("frustum creation uniforms"),
-        });
-
         let uniforms = FroxelUniforms {
             _frustum: frustum.into(),
             _frustum_count: frustum_count.into_array(),
             _inv_proj: *mx_inv_proj.as_ref(),
         };
 
-        let uniform_staging_buffer = device.create_buffer_with_data(uniforms.as_bytes(), BufferUsage::COPY_SRC);
-
-        encoder.copy_buffer_to_buffer(
-            &uniform_staging_buffer,
-            0,
-            &uniform_buffer,
-            0,
-            size_of::<FroxelUniforms>() as BufferAddress,
-        );
+        let uniform_buffer =
+            device.create_buffer_with_data(uniforms.as_bytes(), BufferUsage::UNIFORM | BufferUsage::COPY_DST);
 
         let bind_group = device.create_bind_group(&BindGroupDescriptor {
             layout: &bind_group_layout,
             bindings: &[
                 Binding {
                     binding: 0,
-                    resource: BindingResource::Buffer {
-                        buffer: &uniform_buffer,
-                        range: 0..(size_of::<FroxelUniforms>() as BufferAddress),
-                    },
+                    resource: BindingResource::Buffer(uniform_buffer.slice(..)),
                 },
                 Binding {
                     binding: 1,
-                    resource: BindingResource::Buffer {
-                        buffer: frustum_buffer,
-                        range: 0..FRUSTUM_BUFFER_SIZE,
-                    },
+                    resource: BindingResource::Buffer(frustum_buffer.slice(..)),
                 },
             ],
             label: Some("frustum creation bind group"),

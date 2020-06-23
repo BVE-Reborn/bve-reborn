@@ -1,8 +1,6 @@
 use crate::{
     camera::FAR_PLANE_DISTANCE,
-    render::cluster::{
-        FROXELS_X, FROXELS_Y, FROXELS_Z, FROXEL_COUNT, FRUSTUM_BUFFER_SIZE, LIGHT_BUFFER_SIZE, LIGHT_LIST_BUFFER_SIZE,
-    },
+    render::cluster::{FROXELS_X, FROXELS_Y, FROXELS_Z, FROXEL_COUNT},
     *,
 };
 
@@ -22,42 +20,32 @@ pub struct LightCulling {
 impl LightCulling {
     pub fn new(
         device: &Device,
-        encoder: &mut CommandEncoder,
+        _encoder: &mut CommandEncoder,
         frustum_buffer: &Buffer,
         light_buffer: &Buffer,
         light_list_buffer: &Buffer,
     ) -> Self {
         let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             bindings: &[
-                BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: ShaderStage::COMPUTE,
-                    ty: BindingType::UniformBuffer { dynamic: false },
-                },
-                BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: ShaderStage::COMPUTE,
-                    ty: BindingType::StorageBuffer {
-                        dynamic: false,
-                        readonly: true,
-                    },
-                },
-                BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: ShaderStage::COMPUTE,
-                    ty: BindingType::StorageBuffer {
-                        dynamic: false,
-                        readonly: true,
-                    },
-                },
-                BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: ShaderStage::COMPUTE,
-                    ty: BindingType::StorageBuffer {
-                        dynamic: false,
-                        readonly: false,
-                    },
-                },
+                BindGroupLayoutEntry::new(0, ShaderStage::COMPUTE, BindingType::UniformBuffer {
+                    dynamic: false,
+                    min_binding_size: None,
+                }),
+                BindGroupLayoutEntry::new(1, ShaderStage::COMPUTE, BindingType::StorageBuffer {
+                    dynamic: false,
+                    readonly: true,
+                    min_binding_size: None,
+                }),
+                BindGroupLayoutEntry::new(2, ShaderStage::COMPUTE, BindingType::StorageBuffer {
+                    dynamic: false,
+                    readonly: true,
+                    min_binding_size: None,
+                }),
+                BindGroupLayoutEntry::new(3, ShaderStage::COMPUTE, BindingType::StorageBuffer {
+                    dynamic: false,
+                    readonly: false,
+                    min_binding_size: None,
+                }),
             ],
             label: Some("light culling bind group"),
         });
@@ -76,58 +64,33 @@ impl LightCulling {
             },
         });
 
-        let uniform_buffer = device.create_buffer(&BufferDescriptor {
-            usage: BufferUsage::COPY_DST | BufferUsage::UNIFORM,
-            size: size_of::<CullingUniforms>() as BufferAddress,
-            label: Some("light culling uniforms"),
-        });
-
         let uniforms = CullingUniforms {
             _cluster_count: [FROXELS_X, FROXELS_Y, FROXELS_Z],
             _light_count: 0,
             _max_depth: FAR_PLANE_DISTANCE,
         };
 
-        let uniform_staging_buffer = device.create_buffer_with_data(uniforms.as_bytes(), BufferUsage::COPY_SRC);
-
-        encoder.copy_buffer_to_buffer(
-            &uniform_staging_buffer,
-            0,
-            &uniform_buffer,
-            0,
-            size_of::<CullingUniforms>() as BufferAddress,
-        );
+        let uniform_buffer =
+            device.create_buffer_with_data(uniforms.as_bytes(), BufferUsage::UNIFORM | BufferUsage::COPY_DST);
 
         let bind_group = device.create_bind_group(&BindGroupDescriptor {
             layout: &bind_group_layout,
             bindings: &[
                 Binding {
                     binding: 0,
-                    resource: BindingResource::Buffer {
-                        buffer: &uniform_buffer,
-                        range: 0..(size_of::<CullingUniforms>() as BufferAddress),
-                    },
+                    resource: BindingResource::Buffer(uniform_buffer.slice(..)),
                 },
                 Binding {
                     binding: 1,
-                    resource: BindingResource::Buffer {
-                        buffer: frustum_buffer,
-                        range: 0..FRUSTUM_BUFFER_SIZE,
-                    },
+                    resource: BindingResource::Buffer(frustum_buffer.slice(..)),
                 },
                 Binding {
                     binding: 2,
-                    resource: BindingResource::Buffer {
-                        buffer: light_buffer,
-                        range: 0..LIGHT_BUFFER_SIZE,
-                    },
+                    resource: BindingResource::Buffer(light_buffer.slice(..)),
                 },
                 Binding {
                     binding: 3,
-                    resource: BindingResource::Buffer {
-                        buffer: light_list_buffer,
-                        range: 0..LIGHT_LIST_BUFFER_SIZE,
-                    },
+                    resource: BindingResource::Buffer(light_list_buffer.slice(..)),
                 },
             ],
             label: Some("light culling bind group"),

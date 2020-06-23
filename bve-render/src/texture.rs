@@ -35,33 +35,28 @@ impl Renderer {
         let mip_levels = render::mip_levels(UVec2::new(image.width(), image.height()));
         let mut texture_descriptor = TextureDescriptor {
             size: extent,
-            array_layer_count: 1,
             mip_level_count: 1,
             sample_count: 1,
             dimension: TextureDimension::D2,
-            format: TextureFormat::Rgba8Uint,
+            format: TextureFormat::Rgba8Unorm,
             usage: TextureUsage::SAMPLED | TextureUsage::COPY_DST | TextureUsage::STORAGE,
             label: None,
         };
         let base_texture = self.device.create_texture(&texture_descriptor);
-        let tmp_buf = self
-            .device
-            .create_buffer_with_data(image.as_ref(), BufferUsage::COPY_SRC);
         let mut encoder = self.device.create_command_encoder(&CommandEncoderDescriptor {
             label: Some("texture copy"),
         });
-        encoder.copy_buffer_to_texture(
-            BufferCopyView {
-                buffer: &tmp_buf,
-                offset: 0,
-                bytes_per_row: 4 * image.width(),
-                rows_per_image: 0,
-            },
+        self.queue.write_texture(
             TextureCopyView {
                 texture: &base_texture,
                 mip_level: 0,
-                array_layer: 0,
                 origin: Origin3d::ZERO,
+            },
+            image.as_ref(),
+            TextureDataLayout {
+                offset: 0,
+                bytes_per_row: 4 * image.width(),
+                rows_per_image: 0,
             },
             extent,
         );

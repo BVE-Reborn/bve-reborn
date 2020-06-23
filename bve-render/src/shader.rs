@@ -3,10 +3,9 @@ use log::debug;
 use once_cell::sync::Lazy;
 use std::{
     collections::HashMap,
-    io::Cursor,
     sync::{Arc, Mutex},
 };
-use wgpu::{read_spirv, Device, ShaderModule};
+use wgpu::{Device, ShaderModule, ShaderModuleSource};
 
 #[cfg(debug_assertions)]
 const COMPILED_SHADERS: Dir<'static> = include_dir::include_dir!("shaders/spirv-debug");
@@ -23,9 +22,9 @@ pub fn find_shader_module(device: &Device, name: &str) -> Arc<ShaderModule> {
         let source = COMPILED_SHADERS
             .get_file(&name)
             .unwrap_or_else(|| panic!("Shader {} not found", name))
-            .contents();
-        let spirv = read_spirv(Cursor::new(source)).expect("Could not read shader spirv");
-        let shader = device.create_shader_module(&spirv);
+            .contents()
+            .to_vec();
+        let shader = device.create_shader_module(ShaderModuleSource::SpirV(bytemuck::cast_slice(&source)));
         Arc::new(shader)
     }))
 }

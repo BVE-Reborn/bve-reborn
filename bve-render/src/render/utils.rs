@@ -106,7 +106,6 @@ pub fn create_depth_buffer(device: &Device, size: PhysicalSize<u32>, samples: MS
             height: size.height,
             depth: 1,
         },
-        array_layer_count: 1,
         mip_level_count: 1,
         sample_count: samples as u32,
         dimension: TextureDimension::D2,
@@ -130,7 +129,6 @@ pub fn create_framebuffer(device: &Device, size: PhysicalSize<u32>, samples: MSA
 
     let tex = device.create_texture(&TextureDescriptor {
         size: extent,
-        array_layer_count: 1,
         mip_level_count: 1,
         sample_count: samples as u32,
         dimension: TextureDimension::D2,
@@ -222,7 +220,7 @@ impl Renderer {
 
     pub async fn recompute_uniforms(
         &self,
-        encoder: &mut CommandEncoder,
+        _encoder: &mut CommandEncoder,
         objects: &[&object::Object],
     ) -> Option<Buffer> {
         if objects.is_empty() {
@@ -250,23 +248,9 @@ impl Renderer {
             }
         }
 
-        let tmp_buffer = self
+        let matrix_buffer = self
             .device
-            .create_buffer_with_data(&matrix_buffer_data, BufferUsage::COPY_SRC);
-
-        let matrix_buffer = self.device.create_buffer(&BufferDescriptor {
-            size: matrix_buffer_data.len() as BufferAddress,
-            usage: BufferUsage::COPY_DST | BufferUsage::VERTEX,
-            label: Some("matrix buffer"),
-        });
-
-        encoder.copy_buffer_to_buffer(
-            &tmp_buffer,
-            0,
-            &matrix_buffer,
-            0,
-            matrix_buffer_data.len() as BufferAddress,
-        );
+            .create_buffer_with_data(&matrix_buffer_data, BufferUsage::VERTEX);
 
         Some(matrix_buffer)
     }
