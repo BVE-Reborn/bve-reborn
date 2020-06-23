@@ -38,7 +38,7 @@ impl Renderer {
             mip_level_count: 1,
             sample_count: 1,
             dimension: TextureDimension::D2,
-            format: TextureFormat::Rgba8Uint,
+            format: TextureFormat::Rgba8Unorm,
             usage: TextureUsage::SAMPLED | TextureUsage::COPY_DST | TextureUsage::STORAGE,
             label: None,
         };

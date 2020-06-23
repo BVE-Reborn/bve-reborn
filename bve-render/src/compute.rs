@@ -103,7 +103,7 @@ impl MipmapCompute {
         for (level, dimensions) in render::enumerate_mip_levels(dimensions) {
             let parent = texture.create_view(&TextureViewDescriptor {
                 dimension: TextureViewDimension::D2,
-                format: TextureFormat::Rgba8Uint,
+                format: TextureFormat::Rgba8Unorm,
                 aspect: TextureAspect::All,
                 base_mip_level: level - 1,
                 level_count: 1,
@@ -114,7 +114,7 @@ impl MipmapCompute {
 
             let child = texture.create_view(&TextureViewDescriptor {
                 dimension: TextureViewDimension::D2,
-                format: TextureFormat::Rgba8Uint,
+                format: TextureFormat::Rgba8Unorm,
                 aspect: TextureAspect::All,
                 base_mip_level: level,
                 level_count: 1,
@@ -164,7 +164,7 @@ impl CutoutTransparencyCompute {
     ) {
         let mut view = TextureViewDescriptor {
             dimension: TextureViewDimension::D2,
-            format: TextureFormat::Rgba8Uint,
+            format: TextureFormat::Rgba8Unorm,
             aspect: TextureAspect::All,
             base_mip_level: 0,
             level_count: 1,
