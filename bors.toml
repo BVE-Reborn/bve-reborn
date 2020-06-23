@@ -1,9 +1,9 @@
 status = [
     "windows-build",
-    "mac-build",
+    "macos-build",
     "linux-build",
     "windows-release",
-    "mac-release",
+    "macos-release",
     "linux-release",
     "clippy",
     "rustfmt",
