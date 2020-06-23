@@ -14,20 +14,20 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        rust: [nightly-2020-05-07]
+        rust: [nightly-2020-06-22]
         os: [windows-2019, macos-latest, ubuntu-18.04]
         include:
-          - rust: nightly-2020-05-07
+          - rust: nightly-2020-06-22
             triple: x86_64-pc-windows-msvc
             os: windows-2019
             name: windows-build
 
-          - rust: nightly-2020-05-07
+          - rust: nightly-2020-06-22
             triple: x86_64-apple-darwin
             os: macos-latest
             name: macos-build
 
-          - rust: nightly-2020-05-07
+          - rust: nightly-2020-06-22
             triple: x86_64-unknown-linux-gnu
             os: ubuntu-18.04
             name: linux-build

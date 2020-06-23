@@ -19,7 +19,7 @@ make use of BVE-Reborn. If you are a developer the following is how you build fr
 You need to install the 2020-03-19 nightly toolchain of rust:
 
 ```
-rustup install nightly-2020-05-07
+rustup install nightly-2020-06-22
 ```
 
 Then you may run the main build process:
