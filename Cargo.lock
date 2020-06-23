@@ -330,6 +330,7 @@ version = "0.0.1"
 dependencies = [
  "async-std",
  "bve",
+ "bytemuck",
  "cc",
  "dashmap",
  "glam",
@@ -1089,8 +1090,7 @@ dependencies = [
 [[package]]
 name = "gfx-descriptor"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1bf35f5d66d1bc56e63e68d7528441453f25992bd954b84309d23c659df2c5da"
+source = "git+https://github.com/gfx-rs/gfx-extras?rev=0f7dac1b05813948fa0e5999c4fe6473f0c98f9b#0f7dac1b05813948fa0e5999c4fe6473f0c98f9b"
 dependencies = [
  "fxhash",
  "gfx-hal",
@@ -1110,7 +1110,7 @@ dependencies = [
 [[package]]
 name = "gfx-memory"
 version = "0.1.3"
-source = "git+https://github.com/gfx-rs/gfx-extras?rev=438353c3f75368c12024ad2fc03cbeb15f351fd9#438353c3f75368c12024ad2fc03cbeb15f351fd9"
+source = "git+https://github.com/gfx-rs/gfx-extras?rev=0f7dac1b05813948fa0e5999c4fe6473f0c98f9b#0f7dac1b05813948fa0e5999c4fe6473f0c98f9b"
 dependencies = [
  "fxhash",
  "gfx-hal",
@@ -1253,7 +1253,7 @@ dependencies = [
 [[package]]
 name = "imgui-wgpu"
 version = "0.6.0"
-source = "git+https://github.com/BVE-Reborn/imgui-wgpu-rs.git?rev=f3bd10474483672f3830fca5274fd6012bd9946f#f3bd10474483672f3830fca5274fd6012bd9946f"
+source = "git+https://github.com/BVE-Reborn/imgui-wgpu-rs.git?rev=9cb992fe2949d7f43266a2748cfd98a8ac41bede#9cb992fe2949d7f43266a2748cfd98a8ac41bede"
 dependencies = [
  "imgui",
  "log",
@@ -1648,7 +1648,7 @@ dependencies = [
 [[package]]
 name = "naga"
 version = "0.1.0"
-source = "git+https://github.com/gfx-rs/naga?rev=bce6358eb1026c13d2f1c6d365af37afe8869a86#bce6358eb1026c13d2f1c6d365af37afe8869a86"
+source = "git+https://github.com/gfx-rs/naga?rev=a9228d2aed38c71388489a95817238ff98198fa3#a9228d2aed38c71388489a95817238ff98198fa3"
 dependencies = [
  "bitflags",
  "fxhash",
@@ -1888,28 +1888,6 @@ dependencies = [
  "redox_syscall",
  "smallvec",
  "winapi 0.3.8",
-]
-
-[[package]]
-name = "peek-poke"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d93fd6a575ebf1ac2668d08443c97a22872cfb463fd8b7ddd141e9f6be59af2f"
-dependencies = [
- "peek-poke-derive",
-]
-
-[[package]]
-name = "peek-poke-derive"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6fb44a25c5bba983be0fc8592dfaf3e6d0935ce8be0c6b15b2a39507af34a926"
-dependencies = [
- "proc-macro2 1.0.18",
- "quote 1.0.7",
- "syn",
- "synstructure",
- "unicode-xid 0.2.0",
 ]
 
 [[package]]
@@ -2451,6 +2429,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "tracing"
+version = "0.1.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a41f40ed0e162c911ac6fcb53ecdc8134c46905fdbbae8c50add462a538b495f"
+dependencies = [
+ "cfg-if",
+ "tracing-core",
+]
+
+[[package]]
+name = "tracing-core"
+version = "0.1.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0aa83a9a47081cd522c09c81b31aec2c9273424976f922ad61c053b58350b715"
+dependencies = [
+ "lazy_static",
+]
+
+[[package]]
 name = "type-map"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2745,7 +2742,7 @@ dependencies = [
 [[package]]
 name = "wgpu"
 version = "0.5.0"
-source = "git+https://github.com/gfx-rs/wgpu-rs.git?rev=0f55a67af2a012cea7681318b3786cf6aebde598#0f55a67af2a012cea7681318b3786cf6aebde598"
+source = "git+https://github.com/gfx-rs/wgpu-rs.git?rev=90307b6715f5c591db3dc7a067b704a501756557#90307b6715f5c591db3dc7a067b704a501756557"
 dependencies = [
  "arrayvec",
  "env_logger",
@@ -2756,6 +2753,7 @@ dependencies = [
  "parking_lot",
  "raw-window-handle",
  "smallvec",
+ "tracing",
  "typed-arena",
  "wasm-bindgen",
  "wasm-bindgen-futures",
@@ -2767,7 +2765,7 @@ dependencies = [
 [[package]]
 name = "wgpu-core"
 version = "0.5.0"
-source = "git+https://github.com/gfx-rs/wgpu?rev=fc2dd481b2713cd0eda6ffa540faeaf7418fd051#fc2dd481b2713cd0eda6ffa540faeaf7418fd051"
+source = "git+https://github.com/gfx-rs/wgpu?rev=285b31a6a1d041cd8983f951817390a85191ac6d#285b31a6a1d041cd8983f951817390a85191ac6d"
 dependencies = [
  "arrayvec",
  "bitflags",
@@ -2784,10 +2782,10 @@ dependencies = [
  "log",
  "naga",
  "parking_lot",
- "peek-poke",
  "raw-window-handle",
  "smallvec",
  "spirv_headers",
+ "tracing",
  "vec_map",
  "wgpu-types",
 ]
@@ -2795,10 +2793,9 @@ dependencies = [
 [[package]]
 name = "wgpu-types"
 version = "0.5.0"
-source = "git+https://github.com/gfx-rs/wgpu?rev=fc2dd481b2713cd0eda6ffa540faeaf7418fd051#fc2dd481b2713cd0eda6ffa540faeaf7418fd051"
+source = "git+https://github.com/gfx-rs/wgpu?rev=285b31a6a1d041cd8983f951817390a85191ac6d#285b31a6a1d041cd8983f951817390a85191ac6d"
 dependencies = [
  "bitflags",
- "peek-poke",
 ]
 
 [[package]]

@@ -205,25 +205,23 @@ impl Renderer {
                 color_attachments: &[RenderPassColorAttachmentDescriptor {
                     attachment: &self.framebuffer,
                     resolve_target: None,
-                    load_op: LoadOp::Clear,
-                    store_op: StoreOp::Store,
-                    clear_color: Color {
-                        r: 0.3,
-                        g: 0.3,
-                        b: 0.3,
-                        a: 1.0,
+                    ops: Operations {
+                        load: LoadOp::Clear(Color {
+                            r: 0.3,
+                            g: 0.3,
+                            b: 0.3,
+                            a: 1.0,
+                        }),
+                        store: true,
                     },
                 }],
                 depth_stencil_attachment: Some(RenderPassDepthStencilAttachmentDescriptor {
                     attachment: &self.depth_buffer,
-                    depth_load_op: LoadOp::Clear,
-                    depth_store_op: StoreOp::Store,
-                    stencil_load_op: LoadOp::Clear,
-                    stencil_store_op: StoreOp::Store,
-                    clear_depth: 0.0,
-                    clear_stencil: 0,
-                    depth_read_only: false,
-                    stencil_read_only: false,
+                    depth_ops: Some(Operations {
+                        load: LoadOp::Clear(0.0),
+                        store: true,
+                    }),
+                    stencil_ops: None,
                 }),
             });
 
@@ -300,9 +298,10 @@ impl Renderer {
                 color_attachments: &[RenderPassColorAttachmentDescriptor {
                     attachment: &frame.output.view,
                     resolve_target: None,
-                    load_op: LoadOp::Clear,
-                    store_op: StoreOp::Store,
-                    clear_color: Color::BLACK,
+                    ops: Operations {
+                        load: LoadOp::Clear(Color::BLACK),
+                        store: true,
+                    },
                 }],
                 depth_stencil_attachment: None,
             });

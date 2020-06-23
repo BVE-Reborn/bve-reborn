@@ -19,12 +19,13 @@ default = []
 [dependencies]
 async-std = "1.5.0"
 bve = { version = "0.0.1", path = "../bve" }
+bytemuck = "1"
 cc = "=1.0.50" # Fix bug in cc
 dashmap = "3.11.1"
 log = "0.4.8"
 num-traits = "0.2.11"
 imgui = "0.4.0"
-imgui-wgpu = { git = "https://github.com/BVE-Reborn/imgui-wgpu-rs.git", rev = "f3bd10474483672f3830fca5274fd6012bd9946f" }
+imgui-wgpu = { git = "https://github.com/BVE-Reborn/imgui-wgpu-rs.git", rev = "9cb992fe2949d7f43266a2748cfd98a8ac41bede" }
 include_dir = "0.6.0"
 image = { version = "0.23.2", default-features = false }
 itertools = "0.9"
@@ -33,5 +34,5 @@ once_cell = "1.3.1"
 renderdoc = { version = "0.8.1", default-features = false, optional = true }
 slotmap = { version = "0.4.0", features = ["unstable"] }
 winit = "0.22.1"
-wgpu = { git = "https://github.com/gfx-rs/wgpu-rs.git", rev = "0f55a67af2a012cea7681318b3786cf6aebde598" }
+wgpu = { git = "https://github.com/gfx-rs/wgpu-rs.git", rev = "90307b6715f5c591db3dc7a067b704a501756557" }
 zerocopy = "0.3.0"

@@ -163,7 +163,7 @@ impl Renderer {
             screen_size.width, screen_size.height, oit_node_count as u8, samples as u8, vsync
         );
 
-        let instance = Instance::new();
+        let instance = Instance::new(BackendBit::VULKAN | BackendBit::METAL);
         let surface = unsafe { instance.create_surface(window) };
         let adapter = instance
             .request_adapter(
@@ -172,7 +172,6 @@ impl Renderer {
                     compatible_surface: Some(&surface),
                 },
                 UnsafeExtensions::disallow(),
-                BackendBit::VULKAN | BackendBit::METAL,
             )
             .await
             .expect("Could not create Adapter");
