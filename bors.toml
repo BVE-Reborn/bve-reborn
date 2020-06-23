@@ -1,0 +1,11 @@
+status = [
+    "build/windows-build",
+    "build/mac-build",
+    "build/linux-build",
+    "release/windows-release",
+    "release/mac-release",
+    "release/linux-release",
+    "repo-state/clippy",
+    "repo-state/rustfmt",
+    "repo-state/deny",
+]
