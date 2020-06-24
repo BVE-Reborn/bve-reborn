@@ -8,5 +8,6 @@ edition = "2018"
 
 [dependencies]
 async-std = "1.6"
+bitflags = "1"
 smallvec = "1"
 wgpu = { git = "https://github.com/gfx-rs/wgpu-rs.git", rev = "90307b6715f5c591db3dc7a067b704a501756557" }
