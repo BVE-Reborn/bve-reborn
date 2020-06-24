@@ -278,6 +278,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "bve-conveyor"
+version = "0.1.0"
+dependencies = [
+ "async-std",
+ "smallvec",
+ "wgpu",
+]
+
+[[package]]
 name = "bve-corpus"
 version = "0.1.0"
 dependencies = [
