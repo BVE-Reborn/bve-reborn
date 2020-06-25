@@ -234,24 +234,6 @@ impl AutomatedBuffer {
     }
 
     /// Writes to the underlying buffer using the proper write style.
-    ///
-    /// This function is safe, but has the following constraints so as to not cause a panic in wgpu:
-    ///  - Buffer usage must contain [`WRITE`](AutomatedBufferUsage::WRITE)
-    ///  - The returned future must be awaited _after_ calling device.poll() to resolve it.
-    ///  - The command buffer created by `encoder` must **not** be submitted to a queue before this future is awaited.
-    ///
-    /// Example:
-    ///
-    /// ```ignore
-    /// let buffer = AutomatedBuffer::new(..);
-    ///
-    /// let map_write = buffer.write_to_buffer(&device, &mut encoder, &data);
-    /// device.poll(...); // must happen before await
-    ///
-    /// let mapping = map_write.await; // Calling await will write to the mapping
-    ///
-    /// queue.submit(&[encoder.submit()]); // must happen after await
-    /// ```
     pub async fn write_to_buffer<'a, DataFn>(
         &'a mut self,
         device: &Device,
