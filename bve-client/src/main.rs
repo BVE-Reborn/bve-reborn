@@ -542,6 +542,10 @@ fn client_main() {
                             frame.text(format!("Main Render: {:.3}ms", renderer_stats.render_main_cpu_time));
                             frame.text(format!("imgui Render: {:.3}ms", renderer_stats.render_imgui_cpu_time));
                             frame.text(format!("wgpu Render: {:.3}ms", renderer_stats.render_wgpu_cpu_time));
+                            frame.text(format!(
+                                "buffer pump: {:.3}ms",
+                                renderer_stats.render_buffer_pump_cpu_time
+                            ));
                             frame.separator();
                             frame.text(format!("Total: {:.3}ms", renderer_stats.total_renderer_tick_time));
                             frame.separator();

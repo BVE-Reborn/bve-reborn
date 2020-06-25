@@ -65,6 +65,14 @@ pub enum UploadStyle {
     Mapping,
     Staging,
 }
+impl UploadStyle {
+    pub fn from_device_type(ty: DeviceType) -> Self {
+        match ty {
+            DeviceType::IntegratedGpu | DeviceType::Cpu => UploadStyle::Mapping,
+            DeviceType::DiscreteGpu | DeviceType::VirtualGpu | DeviceType::Other => UploadStyle::Staging,
+        }
+    }
+}
 
 enum UpstreamBuffer {
     Mapping,

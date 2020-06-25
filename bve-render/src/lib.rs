@@ -180,9 +180,10 @@ impl Renderer {
             .await
             .expect("Could not create Adapter");
 
+        let adapter_info = adapter.get_info();
         let adapter_extensions = adapter.extensions();
         let needed_extensions =
-            Extensions::ANISOTROPIC_FILTERING | Extensions::BINDING_INDEXING | Extensions::BINDING_INDEXING;
+            Extensions::ANISOTROPIC_FILTERING | Extensions::BINDING_INDEXING | Extensions::MAPPABLE_PRIMARY_BUFFERS;
         let needed_capabilities =
             Capabilities::SAMPLED_TEXTURE_BINDING_ARRAY | Capabilities::SAMPLED_TEXTURE_ARRAY_NON_UNIFORM_INDEXING;
 
@@ -270,7 +271,7 @@ impl Renderer {
 
         let opaque_pipeline = render::create_pipeline(&device, &pipeline_layout, &vs_module, &fs_module, samples);
 
-        let mut buffer_manager = AutomatedBufferManager::new(UploadStyle::Staging);
+        let mut buffer_manager = AutomatedBufferManager::new(UploadStyle::from_device_type(adapter_info.device_type));
 
         let transparency_processor = compute::CutoutTransparencyCompute::new(&device);
         let mip_creator = compute::MipmapCompute::new(&device);
