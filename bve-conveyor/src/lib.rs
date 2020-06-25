@@ -234,13 +234,9 @@ impl AutomatedBuffer {
     }
 
     /// Writes to the underlying buffer using the proper write style.
-    pub async fn write_to_buffer<'a, DataFn>(
-        &'a mut self,
-        device: &Device,
-        encoder: &mut CommandEncoder,
-        data_fn: DataFn,
-    ) where
-        DataFn: FnOnce(&mut [u8]) + 'a,
+    pub async fn write_to_buffer<DataFn>(&mut self, device: &Device, encoder: &mut CommandEncoder, data_fn: DataFn)
+    where
+        DataFn: FnOnce(&mut [u8]),
     {
         let mut inner = self.belt.lock().await;
         inner.ensure_buffer(device);
