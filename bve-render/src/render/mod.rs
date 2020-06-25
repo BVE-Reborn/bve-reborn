@@ -164,7 +164,8 @@ impl Renderer {
         let ts_start = Instant::now();
         // Update skybox
         self.skybox_renderer
-            .update(&self.device, &mut encoder, &self.camera, &self.projection_matrix);
+            .update(&self.device, &mut encoder, &self.camera, &self.projection_matrix)
+            .await;
         let ts_skybox = create_timestamp(&mut stats.compute_skybox_update_time, ts_start);
 
         // Update objects and uniforms
@@ -323,7 +324,11 @@ impl Renderer {
 
         self.queue.submit(self.command_buffers.drain(..));
 
-        let _ts_wgpu_time = create_timestamp(&mut stats.render_wgpu_cpu_time, ts_imgui_render);
+        let ts_wgpu_time = create_timestamp(&mut stats.render_wgpu_cpu_time, ts_imgui_render);
+
+        self.buffer_manager.pump().await;
+
+        let _ts_pump_time = create_timestamp(&mut stats.render_buffer_pump_cpu_time, ts_wgpu_time);
 
         create_timestamp(&mut stats.total_renderer_tick_time, ts_start);
 

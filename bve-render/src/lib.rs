@@ -65,6 +65,7 @@ pub use crate::{
 };
 use crate::{object::perspective_matrix, render::UniformVerts};
 use bve::{load::mesh::Vertex as MeshVertex, runtime::RenderLightDescriptor, UVec2};
+use bve_conveyor::{AutomatedBufferManager, UploadStyle};
 use glam::{Mat4, Vec3};
 use image::RgbaImage;
 use itertools::Itertools;
@@ -132,6 +133,8 @@ pub struct Renderer {
     pipeline_layout: PipelineLayout,
     texture_bind_group_layout: BindGroupLayout,
     sampler: Sampler,
+
+    buffer_manager: AutomatedBufferManager,
 
     vert_shader: Arc<ShaderModule>,
     frag_shader: Arc<ShaderModule>,
@@ -267,6 +270,8 @@ impl Renderer {
 
         let opaque_pipeline = render::create_pipeline(&device, &pipeline_layout, &vs_module, &fs_module, samples);
 
+        let mut buffer_manager = AutomatedBufferManager::new(UploadStyle::Staging);
+
         let transparency_processor = compute::CutoutTransparencyCompute::new(&device);
         let mip_creator = compute::MipmapCompute::new(&device);
         let oit_renderer = render::oit::Oit::new(
@@ -280,7 +285,8 @@ impl Renderer {
             oit_node_count,
             samples,
         );
-        let skybox_renderer = render::skybox::Skybox::new(&device, &texture_bind_group_layout, samples);
+        let skybox_renderer =
+            render::skybox::Skybox::new(&mut buffer_manager, &device, &texture_bind_group_layout, samples);
         let imgui_renderer = imgui_wgpu::Renderer::new(imgui_context, &device, &mut queue, swapchain_desc.format, None);
 
         let screenspace_triangle_verts = screenspace::create_screen_space_verts(&device);
@@ -315,6 +321,8 @@ impl Renderer {
             pipeline_layout,
             texture_bind_group_layout,
             sampler,
+
+            buffer_manager,
 
             vert_shader: vs_module,
             frag_shader: fs_module,

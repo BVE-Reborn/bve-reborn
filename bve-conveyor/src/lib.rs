@@ -51,9 +51,12 @@
 #![allow(clippy::wildcard_enum_match_arm)]
 #![allow(clippy::wildcard_imports)]
 
+use async_std::sync::Mutex;
+use smallvec::SmallVec;
 use std::{
     future::Future,
-    ops::{Deref, DerefMut},
+    ops::DerefMut,
+    sync::{Arc, Weak},
 };
 use wgpu::*;
 
@@ -63,82 +66,162 @@ pub enum UploadStyle {
     Staging,
 }
 
-bitflags::bitflags! {
-    pub struct AutomatedBufferUsage: u8 {
-        const READ = 0b01;
-        const WRITE = 0b10;
-        const ALL = Self::READ.bits | Self::WRITE.bits;
+enum UpstreamBuffer {
+    Mapping,
+    Staging(Arc<IdBuffer>),
+}
+
+pub struct AutomatedBufferManager {
+    belts: Vec<Weak<Mutex<Belt>>>,
+    style: UploadStyle,
+}
+impl AutomatedBufferManager {
+    pub fn new(style: UploadStyle) -> Self {
+        AutomatedBufferManager {
+            belts: Vec::new(),
+            style,
+        }
+    }
+
+    pub fn create_new_buffer(
+        &mut self,
+        device: &Device,
+        size: BufferAddress,
+        usage: BufferUsage,
+        label: Option<&str>,
+    ) -> AutomatedBuffer {
+        let buffer = AutomatedBuffer::new(device, size, usage, label, self.style);
+        self.belts.push(Arc::downgrade(&buffer.belt));
+        buffer
+    }
+
+    pub async fn pump(&mut self) {
+        let mut valid = Vec::with_capacity(self.belts.len());
+        for belt in &self.belts {
+            if let Some(belt) = belt.upgrade() {
+                async_std::task::spawn(Belt::pump(belt).await);
+                valid.push(true);
+            } else {
+                valid.push(false);
+            }
+        }
+        let mut valid_iter = valid.into_iter();
+        self.belts.retain(|_| valid_iter.next().unwrap_or(false));
     }
 }
 
-impl AutomatedBufferUsage {
-    pub fn into_buffer_usage(self, style: UploadStyle) -> BufferUsage {
-        let mut usage = BufferUsage::empty();
-        if self.contains(Self::READ) {
-            match style {
-                UploadStyle::Mapping => usage.insert(BufferUsage::MAP_READ),
-                UploadStyle::Staging => usage.insert(BufferUsage::COPY_SRC),
-            }
-        }
-        if self.contains(Self::WRITE) {
-            match style {
-                UploadStyle::Mapping => usage.insert(BufferUsage::MAP_WRITE),
-                UploadStyle::Staging => usage.insert(BufferUsage::COPY_DST),
-            }
-        }
-        usage
-    }
+pub struct IdBuffer {
+    pub inner: Buffer,
+    pub id: usize,
 }
 
-type BufferWriteResult = Result<(), BufferAsyncError>;
+struct Belt {
+    usable: SmallVec<[Arc<IdBuffer>; 4]>,
+    usage: BufferUsage,
+    size: BufferAddress,
+    current_id: usize,
+}
+
+impl Belt {
+    fn new(usage: BufferUsage, size: BufferAddress) -> Arc<Mutex<Self>> {
+        Arc::new(Mutex::new(Self {
+            usable: SmallVec::new(),
+            usage,
+            size,
+            current_id: 0,
+        }))
+    }
+
+    fn ensure_buffer(&mut self, device: &Device) {
+        if self.usable.is_empty() {
+            let raw_buffer = device.create_buffer(&BufferDescriptor {
+                usage: self.usage,
+                size: self.size,
+                mapped_at_creation: true,
+                label: None,
+            });
+            let buffer_id = self.current_id;
+            self.current_id += 1;
+            self.usable.push(Arc::new(IdBuffer {
+                inner: raw_buffer,
+                id: buffer_id,
+            }));
+        }
+    }
+
+    fn get_buffer(&self) -> &IdBuffer {
+        self.get_buffer_arc()
+    }
+
+    fn get_buffer_arc(&self) -> &Arc<IdBuffer> {
+        self.usable
+            .first()
+            .expect("Cannot call get_buffer without calling ensure_buffer first")
+    }
+
+    async fn pump(lockable: Arc<Mutex<Self>>) -> impl Future<Output = ()> {
+        let mut inner = lockable.lock().await;
+        assert!(
+            !inner.usable.is_empty(),
+            "Cannot call pump without calling ensure_buffer first"
+        );
+
+        let buffer = inner.usable.remove(0);
+        drop(inner);
+
+        let mapping = buffer.inner.slice(..).map_async(MapMode::Write);
+        async move {
+            mapping.await.expect("Could not map buffer");
+            let mut inner = lockable.lock().await;
+            inner.usable.push(buffer);
+        }
+    }
+}
 
 /// A buffer which automatically uses either staging buffers or direct mapping to read/write to its
 /// internal buffer based on the provided [`UploadStyle`]
 pub struct AutomatedBuffer {
-    inner: Buffer,
-    style: UploadStyle,
-    usage: AutomatedBufferUsage,
+    belt: Arc<Mutex<Belt>>,
+    upstream: UpstreamBuffer,
     size: BufferAddress,
 }
 impl AutomatedBuffer {
     /// Creates a new AutomatedBuffer with given settings. All operations directly
     /// done on the automated buffer according to `usage` will be added to the
     /// internal buffer's usage flags.
-    pub fn new(
-        device: &Device,
-        size: BufferAddress,
-        usage: AutomatedBufferUsage,
-        other_usages: BufferUsage,
-        label: Option<&str>,
-        style: UploadStyle,
-    ) -> Self {
-        let inner = device.create_buffer(&BufferDescriptor {
-            size,
-            usage: usage.into_buffer_usage(style) | other_usages,
-            label,
-            mapped_at_creation: false,
-        });
+    fn new(device: &Device, size: BufferAddress, usage: BufferUsage, label: Option<&str>, style: UploadStyle) -> Self {
+        let (upstream, belt_usage) = if style == UploadStyle::Staging {
+            (
+                UpstreamBuffer::Staging(Arc::new(IdBuffer {
+                    inner: device.create_buffer(&BufferDescriptor {
+                        size,
+                        usage: BufferUsage::COPY_DST | usage,
+                        label,
+                        mapped_at_creation: false,
+                    }),
+                    id: 0,
+                })),
+                BufferUsage::MAP_WRITE | BufferUsage::COPY_SRC,
+            )
+        } else {
+            (UpstreamBuffer::Mapping, BufferUsage::MAP_WRITE | usage)
+        };
 
         Self {
-            inner,
-            style,
-            usage,
+            belt: Belt::new(belt_usage, size),
+            upstream,
             size,
         }
     }
 
-    /// When the returned future is awaited, writes the data to the buffer if it is a mapped buffer.
-    /// No-op for the use of a staging buffer.
-    fn map_write<'a, DataFn, Fut>(&'a mut self, mapping: Option<(DataFn, Fut)>) -> impl Future<Output = ()> + 'a
-    where
-        DataFn: FnOnce(&mut [u8]) + 'a,
-        Fut: Future<Output = BufferWriteResult> + 'a,
-    {
-        async move {
-            if let Some((data_fn, future)) = mapping {
-                future.await.unwrap();
-                data_fn(self.inner.slice(..).get_mapped_range_mut().deref_mut());
-            }
+    pub async fn count(&self) -> usize {
+        self.belt.lock().await.current_id
+    }
+
+    pub async fn get_current_inner(&self) -> Arc<IdBuffer> {
+        match self.upstream {
+            UpstreamBuffer::Mapping => Arc::clone(self.belt.lock().await.get_buffer_arc()),
+            UpstreamBuffer::Staging(ref arc) => Arc::clone(arc),
         }
     }
 
@@ -161,41 +244,25 @@ impl AutomatedBuffer {
     ///
     /// queue.submit(&[encoder.submit()]); // must happen after await
     /// ```
-    pub fn write_to_buffer<'a, DataFn>(
+    pub async fn write_to_buffer<'a, DataFn>(
         &'a mut self,
         device: &Device,
         encoder: &mut CommandEncoder,
         data_fn: DataFn,
-    ) -> impl Future<Output = ()> + 'a
-    where
+    ) where
         DataFn: FnOnce(&mut [u8]) + 'a,
     {
-        assert!(
-            self.usage.contains(AutomatedBufferUsage::WRITE),
-            "Must have usage WRITE to write to buffer. Current usage {:?}",
-            self.usage
-        );
-        match self.style {
-            UploadStyle::Mapping => self.map_write(Some((data_fn, self.inner.slice(..).map_async(MapMode::Write)))),
-            UploadStyle::Staging => {
-                let staging = device.create_buffer(&BufferDescriptor {
-                    size: self.size,
-                    usage: BufferUsage::MAP_WRITE | BufferUsage::COPY_SRC,
-                    mapped_at_creation: false,
-                    label: None,
-                });
-                data_fn(staging.slice(..).get_mapped_range_mut().deref_mut());
-                encoder.copy_buffer_to_buffer(&staging, 0, &self.inner, 0, self.size);
-                self.map_write(None)
-            }
+        let mut inner = self.belt.lock().await;
+        inner.ensure_buffer(device);
+        let buffer = inner.get_buffer();
+        let slice = buffer.inner.slice(..);
+        let mut mapping = slice.get_mapped_range_mut();
+        data_fn(mapping.deref_mut());
+        drop(mapping);
+        buffer.inner.unmap();
+
+        if let UpstreamBuffer::Staging(ref upstream) = self.upstream {
+            encoder.copy_buffer_to_buffer(&buffer.inner, 0, &upstream.inner, 0, self.size);
         }
-    }
-}
-
-impl Deref for AutomatedBuffer {
-    type Target = Buffer;
-
-    fn deref(&self) -> &Self::Target {
-        &self.inner
     }
 }

@@ -353,6 +353,7 @@ version = "0.0.1"
 dependencies = [
  "async-std",
  "bve",
+ "bve-conveyor",
  "bytemuck",
  "cc",
  "dashmap",
