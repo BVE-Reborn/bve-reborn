@@ -51,7 +51,10 @@
 #![allow(clippy::wildcard_enum_match_arm)]
 #![allow(clippy::wildcard_imports)]
 
-use std::{future::Future, ops::Deref};
+use std::{
+    future::Future,
+    ops::{Deref, DerefMut},
+};
 use wgpu::*;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
@@ -126,13 +129,15 @@ impl AutomatedBuffer {
 
     /// When the returned future is awaited, writes the data to the buffer if it is a mapped buffer.
     /// No-op for the use of a staging buffer.
-    fn map_write<'a>(
-        data: &'a [u8],
-        mapping: Option<impl Future<Output = BufferWriteResult> + 'a>,
-    ) -> impl Future<Output = ()> + 'a {
+    fn map_write<'a, DataFn, Fut>(&'a mut self, mapping: Option<(DataFn, Fut)>) -> impl Future<Output = ()> + 'a
+    where
+        DataFn: FnOnce(&mut [u8]) + 'a,
+        Fut: Future<Output = BufferWriteResult> + 'a,
+    {
         async move {
-            if let Some(mapping) = mapping {
-                mapping.await.unwrap().as_slice().copy_from_slice(data);
+            if let Some((data_fn, future)) = mapping {
+                future.await.unwrap();
+                data_fn(self.inner.slice(..).get_mapped_range_mut().deref_mut());
             }
         }
     }
@@ -156,23 +161,32 @@ impl AutomatedBuffer {
     ///
     /// queue.submit(&[encoder.submit()]); // must happen after await
     /// ```
-    pub fn write_to_buffer<'a>(
-        &mut self,
+    pub fn write_to_buffer<'a, DataFn>(
+        &'a mut self,
         device: &Device,
         encoder: &mut CommandEncoder,
-        data: &'a [u8],
-    ) -> impl Future<Output = ()> + 'a {
+        data_fn: DataFn,
+    ) -> impl Future<Output = ()> + 'a
+    where
+        DataFn: FnOnce(&mut [u8]) + 'a,
+    {
         assert!(
             self.usage.contains(AutomatedBufferUsage::WRITE),
             "Must have usage WRITE to write to buffer. Current usage {:?}",
             self.usage
         );
         match self.style {
-            UploadStyle::Mapping => Self::map_write(data, Some(self.inner.map_write(0, data.len() as BufferAddress))),
+            UploadStyle::Mapping => self.map_write(Some((data_fn, self.inner.slice(..).map_async(MapMode::Write)))),
             UploadStyle::Staging => {
-                let staging = device.create_buffer_with_data(data, BufferUsage::COPY_SRC);
-                encoder.copy_buffer_to_buffer(&staging, 0, &self.inner, 0, data.len() as BufferAddress);
-                Self::map_write(data, None)
+                let staging = device.create_buffer(&BufferDescriptor {
+                    size: self.size,
+                    usage: BufferUsage::MAP_WRITE | BufferUsage::COPY_SRC,
+                    mapped_at_creation: false,
+                    label: None,
+                });
+                data_fn(staging.slice(..).get_mapped_range_mut().deref_mut());
+                encoder.copy_buffer_to_buffer(&staging, 0, &self.inner, 0, self.size);
+                self.map_write(None)
             }
         }
     }
