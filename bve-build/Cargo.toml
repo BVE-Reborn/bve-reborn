@@ -20,4 +20,4 @@ independent = true
 [dependencies]
 itertools = "0.9.0"
 nom = { version = "5", default-features = false, features = ["alloc"] }
-pico-args = "0.3.1"
+pico-args = "0.3.3"
