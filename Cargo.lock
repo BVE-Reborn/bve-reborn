@@ -284,7 +284,6 @@ dependencies = [
  "async-std",
  "bitflags",
  "lru",
- "smallvec",
  "wgpu",
 ]
 

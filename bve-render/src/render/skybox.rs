@@ -132,10 +132,12 @@ impl Skybox {
         };
 
         self.uniform_buffer
-            .write_to_buffer(device, encoder, |data| data.copy_from_slice(uniform.as_bytes()))
+            .write_to_buffer(device, encoder, size_of::<SkyboxUniforms>() as BufferAddress, |data| {
+                data.copy_from_slice(uniform.as_bytes())
+            })
             .await;
 
-        dbg!(self.uniform_buffer.count().await);
+        dbg!(self.uniform_buffer.stats().await);
 
         self.bind_group = Some(device.create_bind_group(&BindGroupDescriptor {
             layout: &self.bind_group_layout,
