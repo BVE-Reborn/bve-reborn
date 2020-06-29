@@ -12,5 +12,5 @@ async-std = "1.6"
 bitflags = "1"
 lru = { version = "0.5", default-features = false }
 log = "0.4"
-wgpu = { git = "https://github.com/gfx-rs/wgpu-rs.git", rev = "90307b6715f5c591db3dc7a067b704a501756557" }
+wgpu = { git = "https://github.com/gfx-rs/wgpu-rs.git", rev = "d272a69f676ce4b82692d976a8f9d4a8d93293b9" }
 

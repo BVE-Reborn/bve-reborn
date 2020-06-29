@@ -175,29 +175,29 @@ impl Renderer {
                     power_preference: PowerPreference::HighPerformance,
                     compatible_surface: Some(&surface),
                 },
-                UnsafeExtensions::disallow(),
+                UnsafeFeatures::disallow(),
             )
             .await
             .expect("Could not create Adapter");
 
         let adapter_info = adapter.get_info();
-        let adapter_extensions = adapter.extensions();
-        let needed_extensions =
-            Extensions::ANISOTROPIC_FILTERING | Extensions::BINDING_INDEXING | Extensions::MAPPABLE_PRIMARY_BUFFERS;
-        let needed_capabilities =
-            Capabilities::SAMPLED_TEXTURE_BINDING_ARRAY | Capabilities::SAMPLED_TEXTURE_ARRAY_NON_UNIFORM_INDEXING;
+        let adapter_features = adapter.features();
+        let needed_features = Features::MAPPABLE_PRIMARY_BUFFERS
+            | Features::SAMPLED_TEXTURE_BINDING_ARRAY
+            | Features::SAMPLED_TEXTURE_ARRAY_NON_UNIFORM_INDEXING
+            | Features::MULTI_DRAW_INDIRECT
+            | Features::MULTI_DRAW_INDIRECT_COUNT;
 
-        if !adapter_extensions.contains(needed_extensions) {
-            panic!(
-                "Adapter must support all extensions needed. Missing extensions: {:?}",
-                adapter_extensions - needed_extensions
-            );
-        }
+        assert!(
+            adapter_features.contains(needed_features),
+            "Adapter must support all features needed. Missing features: {:?}",
+            adapter_features - needed_features
+        );
 
         let (device, mut queue) = adapter
             .request_device(
                 &DeviceDescriptor {
-                    extensions: needed_extensions,
+                    features: needed_features,
                     limits: Limits::default(),
                     shader_validation: false,
                 },
@@ -205,15 +205,6 @@ impl Renderer {
             )
             .await
             .expect("Could not create device");
-
-        let device_capabilities = device.capabilities();
-
-        if !device_capabilities.contains(needed_capabilities) {
-            panic!(
-                "Device must support all capabilities needed. Missing capabilities: {:?}",
-                device_capabilities - needed_capabilities
-            );
-        }
 
         let mut startup_encoder = device.create_command_encoder(&CommandEncoderDescriptor { label: Some("startup") });
 

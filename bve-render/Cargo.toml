@@ -35,5 +35,5 @@ once_cell = "1.3.1"
 renderdoc = { version = "0.9.0", default-features = false, optional = true }
 slotmap = { version = "0.4.0", features = ["unstable"] }
 winit = "0.22.1"
-wgpu = { git = "https://github.com/gfx-rs/wgpu-rs.git", rev = "90307b6715f5c591db3dc7a067b704a501756557" }
+wgpu = { git = "https://github.com/gfx-rs/wgpu-rs.git", rev = "d272a69f676ce4b82692d976a8f9d4a8d93293b9" }
 zerocopy = "0.3.0"
