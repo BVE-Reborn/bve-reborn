@@ -207,12 +207,17 @@ impl Renderer {
         let frame = frame_res.expect("Could not get next swapchain texture");
 
         self.cluster_renderer
-            .execute(&self.device, &mut encoder, &self.lights, self.camera.compute_matrix());
+            .execute(&self.device, &mut encoder, &self.lights, self.camera.compute_matrix())
+            .await;
 
         {
             self.oit_renderer.clear_buffers(&mut encoder);
 
-            let matrix_buffer = self.matrix_buffer.get_current_inner().await;
+            let matrix_buffer = if !object_references.is_empty() {
+                Some(self.matrix_buffer.get_current_inner().await)
+            } else {
+                None
+            };
 
             let mut rpass = encoder.begin_render_pass(&RenderPassDescriptor {
                 color_attachments: &[RenderPassColorAttachmentDescriptor {
@@ -239,12 +244,12 @@ impl Renderer {
             });
 
             // If se don't have a matrix buffer we have nothing to render
-            if !object_references.is_empty() {
+            if let Some(ref matrix_buffer) = matrix_buffer {
                 let mut current_matrix_offset = 0 as BufferAddress;
 
                 let mut rendering_opaque = true;
                 rpass.set_pipeline(&self.opaque_pipeline);
-                rpass.set_bind_group(1, self.cluster_renderer.bind_group(), &[]);
+                rpass.set_bind_group(1, &self.cluster_renderer.bind_group(), &[]);
                 for ((mesh_idx, texture_idx, transparent), group) in &object_references
                     .into_iter()
                     .group_by(|o| (o.mesh, o.texture, o.transparent))

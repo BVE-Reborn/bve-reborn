@@ -247,8 +247,11 @@ impl Renderer {
             screen_size.width as f32 / screen_size.height as f32,
         );
 
+        let mut buffer_manager = AutomatedBufferManager::new(UploadStyle::from_device_type(adapter_info.device_type));
+
         let cluster_renderer = render::cluster::Clustering::new(
             &device,
+            &mut buffer_manager,
             &mut startup_encoder,
             projection_matrix.inverse(),
             frustum::Frustum::from_matrix(projection_matrix),
@@ -271,7 +274,6 @@ impl Renderer {
 
         let opaque_pipeline = render::create_pipeline(&device, &pipeline_layout, &vs_module, &fs_module, samples);
 
-        let mut buffer_manager = AutomatedBufferManager::new(UploadStyle::from_device_type(adapter_info.device_type));
         let matrix_buffer = buffer_manager.create_new_buffer(&device, 0, BufferUsage::VERTEX, Some("uniform buffer"));
 
         let transparency_processor = compute::CutoutTransparencyCompute::new(&device);

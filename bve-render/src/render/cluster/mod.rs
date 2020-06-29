@@ -18,9 +18,6 @@ const MAX_LIGHTS_PER_FROXEL: u32 = 128;
 const LIGHT_LIST_BUFFER_SIZE: BufferAddress =
     (FROXEL_COUNT * MAX_LIGHTS_PER_FROXEL * size_of::<u32>() as u32) as BufferAddress;
 
-const MAX_TOTAL_LIGHTS: u32 = 16384;
-const LIGHT_BUFFER_SIZE: BufferAddress = (MAX_TOTAL_LIGHTS * size_of::<ConeLightBytes>() as u32) as BufferAddress;
-
 #[derive(AsBytes)]
 #[repr(C)]
 struct PlaneBytes {
@@ -71,6 +68,7 @@ struct ConeLightBytes {
     _padding0: [u8; 7],
 }
 
+/// TODO: have this write directly into the buffer
 fn convert_lights_to_data(input: &SlotMap<DefaultKey, RenderLightDescriptor>, mx_view: Mat4) -> Vec<ConeLightBytes> {
     input
         .values()
@@ -114,13 +112,22 @@ pub struct Clustering {
     frustum_creation: FrustumCreation,
     light_culling: LightCulling,
 
-    light_buffer: Buffer,
+    light_buffer: AutomatedBuffer,
+    cluster_uniforms_buffer: Buffer,
+    frustum_buffer: Buffer,
+    light_list_buffer: Buffer,
 
     render_bind_group_layout: BindGroupLayout,
-    render_bind_group: BindGroup,
+    render_bind_group: Option<BindGroup>,
 }
 impl Clustering {
-    pub fn new(device: &Device, encoder: &mut CommandEncoder, mx_inv_proj: Mat4, frustum: Frustum) -> Self {
+    pub fn new(
+        device: &Device,
+        buffer_manager: &mut AutomatedBufferManager,
+        encoder: &mut CommandEncoder,
+        mx_inv_proj: Mat4,
+        frustum: Frustum,
+    ) -> Self {
         let frustum_buffer = device.create_buffer(&BufferDescriptor {
             usage: BufferUsage::COPY_DST | BufferUsage::STORAGE,
             size: FRUSTUM_BUFFER_SIZE,
@@ -151,14 +158,9 @@ impl Clustering {
             label: Some("light list buffer"),
         });
 
-        let light_buffer = device.create_buffer(&BufferDescriptor {
-            usage: BufferUsage::COPY_DST | BufferUsage::STORAGE,
-            size: LIGHT_BUFFER_SIZE,
-            mapped_at_creation: false,
-            label: Some("light buffer"),
-        });
+        let light_buffer = buffer_manager.create_new_buffer(device, 0, BufferUsage::STORAGE, Some("light buffer"));
 
-        let light_culling = LightCulling::new(device, encoder, &frustum_buffer, &light_buffer, &light_list_buffer);
+        let light_culling = LightCulling::new(device, buffer_manager);
 
         let render_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             bindings: &[
@@ -185,35 +187,17 @@ impl Clustering {
             label: Some("clustering bind group layout"),
         });
 
-        let render_bind_group = device.create_bind_group(&BindGroupDescriptor {
-            layout: &render_bind_group_layout,
-            bindings: &[
-                Binding {
-                    binding: 0,
-                    resource: BindingResource::Buffer(cluster_uniforms_buffer.slice(..)),
-                },
-                Binding {
-                    binding: 1,
-                    resource: BindingResource::Buffer(frustum_buffer.slice(..)),
-                },
-                Binding {
-                    binding: 2,
-                    resource: BindingResource::Buffer(light_buffer.slice(..)),
-                },
-                Binding {
-                    binding: 3,
-                    resource: BindingResource::Buffer(light_list_buffer.slice(..)),
-                },
-            ],
-            label: Some("clustering bind group"),
-        });
-
         Self {
             frustum_creation,
             light_culling,
+
             light_buffer,
+            cluster_uniforms_buffer,
+            frustum_buffer,
+            light_list_buffer,
+
             render_bind_group_layout,
-            render_bind_group,
+            render_bind_group: None,
         }
     }
 
@@ -226,26 +210,64 @@ impl Clustering {
         &self.render_bind_group_layout
     }
 
-    pub const fn bind_group(&self) -> &BindGroup {
-        &self.render_bind_group
+    pub fn bind_group(&self) -> &BindGroup {
+        self.render_bind_group
+            .as_ref()
+            .expect("Must call execute before bind_group")
     }
 
-    pub fn execute(
-        &self,
+    pub async fn execute(
+        &mut self,
         device: &Device,
         encoder: &mut CommandEncoder,
         lights: &SlotMap<DefaultKey, RenderLightDescriptor>,
         mx_view: Mat4,
     ) {
-        let light_count = lights.len().min(MAX_TOTAL_LIGHTS as usize);
+        let light_count = lights.len();
         if !lights.is_empty() {
             let lights = convert_lights_to_data(lights, mx_view);
-            let light_tmp_buffer = device.create_buffer_with_data(lights.as_bytes(), BufferUsage::COPY_SRC);
             let light_buffer_size = (light_count * size_of::<ConeLightBytes>()) as BufferAddress;
-            encoder.copy_buffer_to_buffer(&light_tmp_buffer, 0, &self.light_buffer, 0, light_buffer_size);
+
+            self.light_buffer
+                .write_to_buffer(device, encoder, light_buffer_size, |buf| {
+                    buf.copy_from_slice(lights.as_bytes())
+                })
+                .await;
+
+            let light_buffer = self.light_buffer.get_current_inner().await;
+            self.render_bind_group = Some(device.create_bind_group(&BindGroupDescriptor {
+                layout: &self.render_bind_group_layout,
+                bindings: &[
+                    Binding {
+                        binding: 0,
+                        resource: BindingResource::Buffer(self.cluster_uniforms_buffer.slice(..)),
+                    },
+                    Binding {
+                        binding: 1,
+                        resource: BindingResource::Buffer(self.frustum_buffer.slice(..)),
+                    },
+                    Binding {
+                        binding: 2,
+                        resource: BindingResource::Buffer(light_buffer.inner.slice(..)),
+                    },
+                    Binding {
+                        binding: 3,
+                        resource: BindingResource::Buffer(self.light_list_buffer.slice(..)),
+                    },
+                ],
+                label: Some("clustering bind group"),
+            }));
 
             self.light_culling
-                .update_light_counts(device, encoder, light_count as u32);
+                .update_light_counts(
+                    device,
+                    encoder,
+                    &self.frustum_buffer,
+                    &light_buffer.inner,
+                    &self.light_list_buffer,
+                    light_count as u32,
+                )
+                .await;
 
             let mut pass = encoder.begin_compute_pass();
             self.frustum_creation.execute(&mut pass);
