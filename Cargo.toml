@@ -15,9 +15,6 @@ members = [
     "extern/bve-imgui-wgpu"
 ]
 
-[patch.crates-io]
-obj = { git = "https://github.com/kvark/obj.git", rev = "a1df2284ea11112aba5ee38b39b208344b634d7d" }
-
 [profile.opt-dev]
 inherits = "dev"
 opt-level = 3
