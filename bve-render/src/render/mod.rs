@@ -164,7 +164,8 @@ impl Renderer {
         let ts_start = Instant::now();
         // Update skybox
         self.skybox_renderer
-            .update(&self.device, &mut encoder, &self.camera, &self.projection_matrix);
+            .update(&self.device, &mut encoder, &self.camera, &self.projection_matrix)
+            .await;
         let ts_skybox = create_timestamp(&mut stats.compute_skybox_update_time, ts_start);
 
         // Update objects and uniforms
@@ -181,7 +182,16 @@ impl Renderer {
         let object_references = Self::sort_objects(object_references);
         let ts_sorting = create_timestamp(&mut stats.compute_object_sorting_time, ts_frustum);
 
-        let matrix_buffer_opt = self.recompute_uniforms(&mut encoder, &object_references).await;
+        Self::recompute_uniforms(
+            &self.device,
+            self.projection_matrix,
+            self.camera.compute_matrix(),
+            &mut self.matrix_buffer,
+            &mut encoder,
+            &object_references,
+        )
+        .await;
+
         let ts_uniforms = create_timestamp(&mut stats.compute_uniforms_time, ts_sorting);
 
         // Retry getting a swapchain texture a couple times to smooth over spurious timeouts when tons of state changes
@@ -197,10 +207,18 @@ impl Renderer {
         let frame = frame_res.expect("Could not get next swapchain texture");
 
         self.cluster_renderer
-            .execute(&self.device, &mut encoder, &self.lights, self.camera.compute_matrix());
+            .execute(&self.device, &mut encoder, &self.lights, self.camera.compute_matrix())
+            .await;
 
         {
             self.oit_renderer.clear_buffers(&mut encoder);
+
+            let matrix_buffer = if !object_references.is_empty() {
+                Some(self.matrix_buffer.get_current_inner().await)
+            } else {
+                None
+            };
+
             let mut rpass = encoder.begin_render_pass(&RenderPassDescriptor {
                 color_attachments: &[RenderPassColorAttachmentDescriptor {
                     attachment: &self.framebuffer,
@@ -226,7 +244,7 @@ impl Renderer {
             });
 
             // If se don't have a matrix buffer we have nothing to render
-            if let Some(matrix_buffer) = matrix_buffer_opt.as_ref() {
+            if let Some(ref matrix_buffer) = matrix_buffer {
                 let mut current_matrix_offset = 0 as BufferAddress;
 
                 let mut rendering_opaque = true;
@@ -257,7 +275,9 @@ impl Renderer {
                     rpass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
                     rpass.set_vertex_buffer(
                         1,
-                        matrix_buffer.slice(current_matrix_offset..(current_matrix_offset + matrix_buffer_size)),
+                        matrix_buffer
+                            .inner
+                            .slice(current_matrix_offset..(current_matrix_offset + matrix_buffer_size)),
                     );
                     rpass.set_index_buffer(mesh.index_buffer.slice(..));
                     rpass.draw_indexed(0..(mesh.index_count as u32), 0, 0..(count as u32));
@@ -313,7 +333,14 @@ impl Renderer {
 
         if let Some(imgui_frame) = imgui_frame_opt {
             self.imgui_renderer
-                .render(imgui_frame.render(), &self.device, &mut encoder, &frame.output.view)
+                .render(
+                    imgui_frame.render(),
+                    &self.device,
+                    &mut self.buffer_manager,
+                    &mut encoder,
+                    &frame.output.view,
+                )
+                .await
                 .expect("Imgui rendering failed");
         }
 
@@ -323,7 +350,11 @@ impl Renderer {
 
         self.queue.submit(self.command_buffers.drain(..));
 
-        let _ts_wgpu_time = create_timestamp(&mut stats.render_wgpu_cpu_time, ts_imgui_render);
+        let ts_wgpu_time = create_timestamp(&mut stats.render_wgpu_cpu_time, ts_imgui_render);
+
+        self.buffer_manager.pump().await;
+
+        let _ts_pump_time = create_timestamp(&mut stats.render_buffer_pump_cpu_time, ts_wgpu_time);
 
         create_timestamp(&mut stats.total_renderer_tick_time, ts_start);
 

@@ -20,4 +20,4 @@ independent = true
 async-std = "1.5.0"
 bve = { version = "0.0.1", path = "../bve" }
 itertools = "0.9.0"
-obj = "0.9.1"
+obj = "0.10"

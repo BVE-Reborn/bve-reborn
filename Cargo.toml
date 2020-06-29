@@ -5,16 +5,18 @@ members = [
     "bve",
     "bve-build",
     "bve-client",
+    "bve-conveyor",
     "bve-corpus",
     "bve-derive",
     "bve-fuzz",
     "bve-native",
     "bve-obj-conv",
     "bve-render",
+    "extern/bve-imgui-wgpu"
 ]
 
 [patch.crates-io]
-obj = { git = "https://github.com/kvark/obj.git", rev = "a1df2284ea11112aba5ee38b39b208344b634d7d" }
+d3d12 = { git = "https://github.com/cwfitzgerald/d3d12-rs.git", rev = "832f1243a4f67e1383ea0ef8599a03f5f65c8e58" }
 
 [profile.opt-dev]
 inherits = "dev"
@@ -27,7 +29,7 @@ debug = true
 [profile.release]
 debug = false
 debug-assertions = false
-lto = true
+lto = "thin"
 
 [profile.profile]
 inherits = "release"

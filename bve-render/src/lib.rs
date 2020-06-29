@@ -32,6 +32,7 @@
 #![allow(clippy::float_cmp)]
 #![allow(clippy::float_cmp_const)]
 #![allow(clippy::future_not_send)]
+#![allow(clippy::if_not_else)]
 #![allow(clippy::implicit_return)]
 #![allow(clippy::indexing_slicing)]
 #![allow(clippy::integer_arithmetic)]
@@ -65,6 +66,7 @@ pub use crate::{
 };
 use crate::{object::perspective_matrix, render::UniformVerts};
 use bve::{load::mesh::Vertex as MeshVertex, runtime::RenderLightDescriptor, UVec2};
+use bve_conveyor::{AutomatedBuffer, AutomatedBufferManager, UploadStyle};
 use glam::{Mat4, Vec3};
 use image::RgbaImage;
 use itertools::Itertools;
@@ -133,17 +135,19 @@ pub struct Renderer {
     texture_bind_group_layout: BindGroupLayout,
     sampler: Sampler,
 
+    buffer_manager: AutomatedBufferManager,
+    screenspace_triangle_verts: Buffer,
+    matrix_buffer: AutomatedBuffer,
+
     vert_shader: Arc<ShaderModule>,
     frag_shader: Arc<ShaderModule>,
-
-    screenspace_triangle_verts: Buffer,
 
     transparency_processor: compute::CutoutTransparencyCompute,
     mip_creator: compute::MipmapCompute,
     cluster_renderer: render::cluster::Clustering,
     oit_renderer: render::oit::Oit,
     skybox_renderer: render::skybox::Skybox,
-    imgui_renderer: imgui_wgpu::Renderer,
+    imgui_renderer: bve_imgui_wgpu::Renderer,
 
     command_buffers: Vec<CommandBuffer>,
     _renderdoc_capture: bool,
@@ -172,28 +176,29 @@ impl Renderer {
                     power_preference: PowerPreference::HighPerformance,
                     compatible_surface: Some(&surface),
                 },
-                UnsafeExtensions::disallow(),
+                UnsafeFeatures::disallow(),
             )
             .await
             .expect("Could not create Adapter");
 
-        let adapter_extensions = adapter.extensions();
-        let needed_extensions =
-            Extensions::ANISOTROPIC_FILTERING | Extensions::BINDING_INDEXING | Extensions::BINDING_INDEXING;
-        let needed_capabilities =
-            Capabilities::SAMPLED_TEXTURE_BINDING_ARRAY | Capabilities::SAMPLED_TEXTURE_ARRAY_NON_UNIFORM_INDEXING;
+        let adapter_info = adapter.get_info();
+        let adapter_features = adapter.features();
+        let needed_features = Features::MAPPABLE_PRIMARY_BUFFERS
+            | Features::SAMPLED_TEXTURE_BINDING_ARRAY
+            | Features::SAMPLED_TEXTURE_ARRAY_NON_UNIFORM_INDEXING
+            | Features::MULTI_DRAW_INDIRECT
+            | Features::MULTI_DRAW_INDIRECT_COUNT;
 
-        if !adapter_extensions.contains(needed_extensions) {
-            panic!(
-                "Adapter must support all extensions needed. Missing extensions: {:?}",
-                adapter_extensions - needed_extensions
-            );
-        }
+        assert!(
+            adapter_features.contains(needed_features),
+            "Adapter must support all features needed. Missing features: {:?}",
+            adapter_features - needed_features
+        );
 
         let (device, mut queue) = adapter
             .request_device(
                 &DeviceDescriptor {
-                    extensions: needed_extensions,
+                    features: needed_features,
                     limits: Limits::default(),
                     shader_validation: false,
                 },
@@ -201,15 +206,6 @@ impl Renderer {
             )
             .await
             .expect("Could not create device");
-
-        let device_capabilities = device.capabilities();
-
-        if !device_capabilities.contains(needed_capabilities) {
-            panic!(
-                "Device must support all capabilities needed. Missing capabilities: {:?}",
-                device_capabilities - needed_capabilities
-            );
-        }
 
         let mut startup_encoder = device.create_command_encoder(&CommandEncoderDescriptor { label: Some("startup") });
 
@@ -243,8 +239,11 @@ impl Renderer {
             screen_size.width as f32 / screen_size.height as f32,
         );
 
+        let mut buffer_manager = AutomatedBufferManager::new(UploadStyle::from_device_type(&adapter_info.device_type));
+
         let cluster_renderer = render::cluster::Clustering::new(
             &device,
+            &mut buffer_manager,
             &mut startup_encoder,
             projection_matrix.inverse(),
             frustum::Frustum::from_matrix(projection_matrix),
@@ -267,6 +266,8 @@ impl Renderer {
 
         let opaque_pipeline = render::create_pipeline(&device, &pipeline_layout, &vs_module, &fs_module, samples);
 
+        let matrix_buffer = buffer_manager.create_new_buffer(&device, 0, BufferUsage::VERTEX, Some("uniform buffer"));
+
         let transparency_processor = compute::CutoutTransparencyCompute::new(&device);
         let mip_creator = compute::MipmapCompute::new(&device);
         let oit_renderer = render::oit::Oit::new(
@@ -280,8 +281,16 @@ impl Renderer {
             oit_node_count,
             samples,
         );
-        let skybox_renderer = render::skybox::Skybox::new(&device, &texture_bind_group_layout, samples);
-        let imgui_renderer = imgui_wgpu::Renderer::new(imgui_context, &device, &mut queue, swapchain_desc.format, None);
+        let skybox_renderer =
+            render::skybox::Skybox::new(&mut buffer_manager, &device, &texture_bind_group_layout, samples);
+        let imgui_renderer = bve_imgui_wgpu::Renderer::new(
+            imgui_context,
+            &device,
+            &mut queue,
+            &mut buffer_manager,
+            swapchain_desc.format,
+            None,
+        );
 
         let screenspace_triangle_verts = screenspace::create_screen_space_verts(&device);
 
@@ -315,6 +324,9 @@ impl Renderer {
             pipeline_layout,
             texture_bind_group_layout,
             sampler,
+
+            buffer_manager,
+            matrix_buffer,
 
             vert_shader: vs_module,
             frag_shader: fs_module,

@@ -1,4 +1,5 @@
 use crate::{screenspace::ScreenSpaceVertex, *};
+use bve_conveyor::AutomatedBuffer;
 use log::debug;
 use zerocopy::AsBytes;
 
@@ -63,15 +64,21 @@ fn create_pipeline(device: &Device, pipeline_layout: &PipelineLayout, samples: M
 pub struct Skybox {
     pipeline: RenderPipeline,
     pipeline_layout: PipelineLayout,
-    bind_group: BindGroup,
+    bind_group: Option<BindGroup>,
+    bind_group_layout: BindGroupLayout,
 
-    uniform_buffer: Buffer,
+    uniform_buffer: AutomatedBuffer,
 
     pub texture_id: DefaultKey,
     pub repeats: f32,
 }
 impl Skybox {
-    pub fn new(device: &Device, texture_bind_group_layout: &BindGroupLayout, samples: MSAASetting) -> Self {
+    pub fn new(
+        buffer_manager: &mut AutomatedBufferManager,
+        device: &Device,
+        texture_bind_group_layout: &BindGroupLayout,
+        samples: MSAASetting,
+    ) -> Self {
         let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             bindings: &[BindGroupLayoutEntry::new(
                 0,
@@ -89,33 +96,31 @@ impl Skybox {
         });
         let pipeline = create_pipeline(device, &pipeline_layout, samples);
 
-        let uniform_buffer = device.create_buffer(&BufferDescriptor {
-            size: size_of::<SkyboxUniforms>() as BufferAddress,
-            usage: BufferUsage::UNIFORM | BufferUsage::COPY_DST,
-            mapped_at_creation: false,
-            label: Some("skybox uniform"),
-        });
-
-        let bind_group = device.create_bind_group(&BindGroupDescriptor {
-            layout: &bind_group_layout,
-            bindings: &[Binding {
-                binding: 0,
-                resource: BindingResource::Buffer(uniform_buffer.slice(..)),
-            }],
-            label: Some("skybox"),
-        });
+        let uniform_buffer = buffer_manager.create_new_buffer(
+            device,
+            size_of::<SkyboxUniforms>() as BufferAddress,
+            BufferUsage::UNIFORM,
+            Some("skybox uniform"),
+        );
 
         Self {
             pipeline,
             pipeline_layout,
-            bind_group,
+            bind_group: None,
+            bind_group_layout,
             uniform_buffer,
             texture_id: DefaultKey::default(),
             repeats: 1.0,
         }
     }
 
-    pub fn update(&mut self, device: &Device, encoder: &mut CommandEncoder, camera: &camera::Camera, mx_proj: &Mat4) {
+    pub async fn update(
+        &mut self,
+        device: &Device,
+        encoder: &mut CommandEncoder,
+        camera: &camera::Camera,
+        mx_proj: &Mat4,
+    ) {
         let mx_view = camera.compute_origin_matrix();
         let mx_view_proj = *mx_proj * mx_view;
         let mx_inv_view_proj = mx_view_proj.inverse();
@@ -126,15 +131,20 @@ impl Skybox {
             _repeats: self.repeats,
         };
 
-        let tmp_buffer = device.create_buffer_with_data(uniform.as_bytes(), BufferUsage::COPY_SRC);
+        self.uniform_buffer
+            .write_to_buffer(device, encoder, size_of::<SkyboxUniforms>() as BufferAddress, |data| {
+                data.copy_from_slice(uniform.as_bytes())
+            })
+            .await;
 
-        encoder.copy_buffer_to_buffer(
-            &tmp_buffer,
-            0,
-            &self.uniform_buffer,
-            0,
-            size_of::<SkyboxUniforms>() as BufferAddress,
-        );
+        self.bind_group = Some(device.create_bind_group(&BindGroupDescriptor {
+            layout: &self.bind_group_layout,
+            bindings: &[Binding {
+                binding: 0,
+                resource: BindingResource::Buffer(self.uniform_buffer.get_current_inner().await.inner.slice(..)),
+            }],
+            label: Some("skybox"),
+        }));
     }
 
     pub fn set_samples(&mut self, device: &Device, samples: MSAASetting) {
@@ -148,7 +158,11 @@ impl Skybox {
         screenspace_verts: &'a Buffer,
     ) {
         rpass.set_pipeline(&self.pipeline);
-        rpass.set_bind_group(0, &self.bind_group, &[]);
+        rpass.set_bind_group(
+            0,
+            self.bind_group.as_ref().expect("update not called before render"),
+            &[],
+        );
         rpass.set_bind_group(1, texture_bind_group, &[]);
         rpass.set_vertex_buffer(0, screenspace_verts.slice(..));
         rpass.draw(0..3, 0..1);

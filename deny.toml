@@ -14,11 +14,7 @@ allow = [
 multiple-versions = "deny"
 skip = [
     # Winit
-    { name = "rusttype", version = "0.7.9" }, # smithay-clinet-toolkit requires this; shell around 0.8.2, not really worrying
-    { name = "winapi", version = "0.2.8" }, # smithay-clinet-toolkit requires this
-    { name = "quote", version = "0.6.13" }, # wayland-client requires this
-    { name = "proc-macro2", version = "0.4.30" }, # wayland-client requires this
-    { name = "unicode-xid", version = "0.1.0" }, # wayland-client requires this
+    { name = "winapi", version = "0.2.8" }, # winit -> mio-extras -> mio requires this
     # graphics
     { name = "libloading", version = "0.5.2" }, # graphics stack uses old verison
 ]

@@ -1,0 +1,3 @@
+[submodule "imgui-wgpu-rs"]
+	path = extern/bve-imgui-wgpu
+	url = https://github.com/BVE-Reborn/imgui-wgpu-rs.git

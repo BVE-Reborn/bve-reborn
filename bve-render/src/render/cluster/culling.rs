@@ -4,6 +4,7 @@ use crate::{
     *,
 };
 
+// TODO: Unify these with the regular uniforms? This would make bind groups sharable.
 #[derive(AsBytes)]
 #[repr(C)]
 struct CullingUniforms {
@@ -13,18 +14,13 @@ struct CullingUniforms {
 }
 
 pub struct LightCulling {
-    uniform_buffer: Buffer,
-    bind_group: BindGroup,
+    uniform_buffer: AutomatedBuffer,
+    bind_group_layout: BindGroupLayout,
+    bind_group: Option<BindGroup>,
     pipeline: ComputePipeline,
 }
 impl LightCulling {
-    pub fn new(
-        device: &Device,
-        _encoder: &mut CommandEncoder,
-        frustum_buffer: &Buffer,
-        light_buffer: &Buffer,
-        light_list_buffer: &Buffer,
-    ) -> Self {
+    pub fn new(device: &Device, buffer_manager: &mut AutomatedBufferManager) -> Self {
         let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             bindings: &[
                 BindGroupLayoutEntry::new(0, ShaderStage::COMPUTE, BindingType::UniformBuffer {
@@ -64,21 +60,49 @@ impl LightCulling {
             },
         });
 
+        let uniform_buffer = buffer_manager.create_new_buffer(
+            device,
+            size_of::<CullingUniforms>() as BufferAddress,
+            BufferUsage::UNIFORM,
+            Some("culling uniform buffer"),
+        );
+
+        Self {
+            uniform_buffer,
+            bind_group_layout,
+            bind_group: None,
+            pipeline,
+        }
+    }
+
+    pub async fn update_light_counts(
+        &mut self,
+        device: &Device,
+        encoder: &mut CommandEncoder,
+        frustum_buffer: &Buffer,
+        light_buffer: &Buffer,
+        light_list_buffer: &Buffer,
+        light_count: u32,
+    ) {
         let uniforms = CullingUniforms {
             _cluster_count: [FROXELS_X, FROXELS_Y, FROXELS_Z],
-            _light_count: 0,
+            _light_count: light_count,
             _max_depth: FAR_PLANE_DISTANCE,
         };
 
-        let uniform_buffer =
-            device.create_buffer_with_data(uniforms.as_bytes(), BufferUsage::UNIFORM | BufferUsage::COPY_DST);
+        self.uniform_buffer
+            .write_to_buffer(device, encoder, size_of::<CullingUniforms>() as BufferAddress, |buf| {
+                buf.copy_from_slice(uniforms.as_bytes())
+            })
+            .await;
 
-        let bind_group = device.create_bind_group(&BindGroupDescriptor {
-            layout: &bind_group_layout,
+        let uniform_buffer = self.uniform_buffer.get_current_inner().await;
+        self.bind_group = Some(device.create_bind_group(&BindGroupDescriptor {
+            layout: &self.bind_group_layout,
             bindings: &[
                 Binding {
                     binding: 0,
-                    resource: BindingResource::Buffer(uniform_buffer.slice(..)),
+                    resource: BindingResource::Buffer(uniform_buffer.inner.slice(..)),
                 },
                 Binding {
                     binding: 1,
@@ -94,36 +118,18 @@ impl LightCulling {
                 },
             ],
             label: Some("light culling bind group"),
-        });
-
-        Self {
-            uniform_buffer,
-            bind_group,
-            pipeline,
-        }
-    }
-
-    pub fn update_light_counts(&self, device: &Device, encoder: &mut CommandEncoder, light_count: u32) {
-        let uniforms = CullingUniforms {
-            _cluster_count: [FROXELS_X, FROXELS_Y, FROXELS_Z],
-            _light_count: light_count,
-            _max_depth: FAR_PLANE_DISTANCE,
-        };
-
-        let uniform_staging_buffer = device.create_buffer_with_data(uniforms.as_bytes(), BufferUsage::COPY_SRC);
-
-        encoder.copy_buffer_to_buffer(
-            &uniform_staging_buffer,
-            0,
-            &self.uniform_buffer,
-            0,
-            size_of::<CullingUniforms>() as BufferAddress,
-        );
+        }));
     }
 
     pub fn execute<'a>(&'a self, pass: &mut ComputePass<'a>) {
         pass.set_pipeline(&self.pipeline);
-        pass.set_bind_group(0, &self.bind_group, &[]);
+        pass.set_bind_group(
+            0,
+            self.bind_group
+                .as_ref()
+                .expect("update_light_count must be called before execute"),
+            &[],
+        );
         pass.dispatch(1, FROXEL_COUNT / 64, 1);
     }
 }

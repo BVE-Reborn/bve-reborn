@@ -21,5 +21,6 @@ pub struct RendererStatistics {
     pub render_main_cpu_time: f32,
     pub render_imgui_cpu_time: f32,
     pub render_wgpu_cpu_time: f32,
+    pub render_buffer_pump_cpu_time: f32,
     pub total_renderer_tick_time: f32,
 }
