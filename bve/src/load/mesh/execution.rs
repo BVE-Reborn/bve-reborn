@@ -330,7 +330,7 @@ mod test {
         ColorU8RGB, ColorU8RGBA,
     };
     use glam::{Vec2, Vec3};
-    use obj::{Obj, SimplePolygon};
+    use obj::ObjData;
     use std::{
         io::{BufReader, Cursor},
         iter::FromIterator,
@@ -342,7 +342,7 @@ mod test {
         let input = input.as_bytes().to_vec();
         let mut buf = BufReader::new(Cursor::new(input));
 
-        let obj: Obj<'_, SimplePolygon> = Obj::load_buf(&mut buf).expect("Unable to parse obj");
+        let obj: ObjData = ObjData::load_buf(&mut buf).expect("Unable to parse obj");
         let mut result = vec![Instruction {
             span: Span::none(),
             data: InstructionData::CreateMeshBuilder(CreateMeshBuilder),
@@ -351,7 +351,7 @@ mod test {
         // For every face, we separately create the vertices needed
         let mut index_count = 0;
         for face in &obj.objects[0].groups[0].polys {
-            for (offset, vert) in face.iter().enumerate() {
+            for (offset, vert) in face.0.iter().enumerate() {
                 let position = obj.position[vert.0];
                 let position = Vec3::from(position);
                 let normal = obj.normal[vert.2.expect("OBJ must have normals")];
@@ -374,7 +374,7 @@ mod test {
                     }),
                 });
             }
-            let face_vertices = face.len();
+            let face_vertices = face.0.len();
             result.push(Instruction {
                 span: Span::none(),
                 data: InstructionData::AddFace(AddFace {
