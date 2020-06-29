@@ -29,7 +29,7 @@ debug = true
 [profile.release]
 debug = false
 debug-assertions = false
-lto = true
+lto = "thin"
 
 [profile.profile]
 inherits = "release"
