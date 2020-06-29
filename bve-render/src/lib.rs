@@ -32,6 +32,7 @@
 #![allow(clippy::float_cmp)]
 #![allow(clippy::float_cmp_const)]
 #![allow(clippy::future_not_send)]
+#![allow(clippy::if_not_else)]
 #![allow(clippy::implicit_return)]
 #![allow(clippy::indexing_slicing)]
 #![allow(clippy::integer_arithmetic)]
@@ -238,7 +239,7 @@ impl Renderer {
             screen_size.width as f32 / screen_size.height as f32,
         );
 
-        let mut buffer_manager = AutomatedBufferManager::new(UploadStyle::from_device_type(adapter_info.device_type));
+        let mut buffer_manager = AutomatedBufferManager::new(UploadStyle::from_device_type(&adapter_info.device_type));
 
         let cluster_renderer = render::cluster::Clustering::new(
             &device,

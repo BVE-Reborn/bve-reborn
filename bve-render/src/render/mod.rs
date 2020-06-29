@@ -249,7 +249,7 @@ impl Renderer {
 
                 let mut rendering_opaque = true;
                 rpass.set_pipeline(&self.opaque_pipeline);
-                rpass.set_bind_group(1, &self.cluster_renderer.bind_group(), &[]);
+                rpass.set_bind_group(1, self.cluster_renderer.bind_group(), &[]);
                 for ((mesh_idx, texture_idx, transparent), group) in &object_references
                     .into_iter()
                     .group_by(|o| (o.mesh, o.texture, o.transparent))

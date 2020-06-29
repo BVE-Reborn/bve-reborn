@@ -56,7 +56,6 @@ use async_std::sync::Mutex;
 use std::{
     borrow::Borrow,
     future::Future,
-    ops::DerefMut,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc, Weak,
@@ -70,10 +69,11 @@ pub enum UploadStyle {
     Staging,
 }
 impl UploadStyle {
-    pub fn from_device_type(ty: DeviceType) -> Self {
+    #[must_use]
+    pub fn from_device_type(ty: &DeviceType) -> Self {
         match ty {
-            DeviceType::IntegratedGpu | DeviceType::Cpu => UploadStyle::Mapping,
-            DeviceType::DiscreteGpu | DeviceType::VirtualGpu | DeviceType::Other => UploadStyle::Staging,
+            DeviceType::IntegratedGpu | DeviceType::Cpu => Self::Mapping,
+            DeviceType::DiscreteGpu | DeviceType::VirtualGpu | DeviceType::Other => Self::Staging,
         }
     }
 }
@@ -83,8 +83,9 @@ pub struct AutomatedBufferManager {
     style: UploadStyle,
 }
 impl AutomatedBufferManager {
-    pub fn new(style: UploadStyle) -> Self {
-        AutomatedBufferManager {
+    #[must_use]
+    pub const fn new(style: UploadStyle) -> Self {
+        Self {
             belts: Vec::new(),
             style,
         }
@@ -177,7 +178,12 @@ impl Belt {
     }
 
     fn ensure_buffer(&mut self, device: &Device, size: BufferAddress) {
-        if !self.usable.is_empty() {
+        if self.usable.is_empty() {
+            let new_size = size.next_power_of_two().max(16);
+            log::debug!("No buffers in belt, creating new buffer of size {}", new_size);
+            self.create_buffer(device, new_size);
+            self.live_buffers += 1;
+        } else {
             let old = &self.usable[0];
             if let Some(new_size) = check_should_resize(old.size, size) {
                 log::debug!(
@@ -189,11 +195,6 @@ impl Belt {
                 self.usable.remove(0);
                 self.create_buffer(device, new_size);
             }
-        } else {
-            let new_size = size.next_power_of_two().max(16);
-            log::debug!("No buffers in belt, creating new buffer of size {}", new_size);
-            self.create_buffer(device, new_size);
-            self.live_buffers += 1;
         }
     }
 
@@ -215,10 +216,10 @@ impl Belt {
         }
 
         let buffer_ref = &inner.usable[0];
-        let buffer = if !buffer_ref.dirty.load(Ordering::Relaxed) {
-            return None;
-        } else {
+        let buffer = if buffer_ref.dirty.load(Ordering::Relaxed) {
             inner.usable.remove(0)
+        } else {
+            return None;
         };
         drop(inner);
 
@@ -283,7 +284,7 @@ impl AutomatedBuffer {
                     size: initial_size,
                 }),
                 usage: upstream_usage,
-                label: label.map(|v| v.into()),
+                label: label.map(Into::into),
             };
             (upstream, belt_usage)
         } else {
@@ -355,7 +356,7 @@ impl AutomatedBuffer {
         let buffer = inner.get_buffer();
         let slice = buffer.inner.slice(0..size);
         let mut mapping = slice.get_mapped_range_mut();
-        data_fn(mapping.deref_mut());
+        data_fn(&mut *mapping);
         drop(mapping);
         buffer.dirty.store(true, Ordering::Relaxed);
         buffer.inner.unmap();
