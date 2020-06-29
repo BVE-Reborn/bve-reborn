@@ -15,6 +15,9 @@ members = [
     "extern/bve-imgui-wgpu"
 ]
 
+[patch.crates-io]
+d3d12 = { git = "https://github.com/cwfitzgerald/d3d12-rs.git", rev = "832f1243a4f67e1383ea0ef8599a03f5f65c8e58" }
+
 [profile.opt-dev]
 inherits = "dev"
 opt-level = 3

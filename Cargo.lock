@@ -602,11 +602,10 @@ dependencies = [
 [[package]]
 name = "d3d12"
 version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc7ed48e89905e5e146bcc1951cc3facb9e44aea9adf5dc01078cda1bd24b662"
+source = "git+https://github.com/cwfitzgerald/d3d12-rs.git?rev=832f1243a4f67e1383ea0ef8599a03f5f65c8e58#832f1243a4f67e1383ea0ef8599a03f5f65c8e58"
 dependencies = [
  "bitflags",
- "libloading 0.5.2",
+ "libloading 0.6.2",
  "winapi 0.3.9",
 ]
 
