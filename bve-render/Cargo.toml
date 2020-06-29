@@ -20,13 +20,13 @@ default = []
 async-std = "1.5.0"
 bve = { version = "0.0.1", path = "../bve" }
 bve-conveyor = { version = "0.1.0", path = "../bve-conveyor" }
+bve-imgui-wgpu = { version = "0.6", path = "../extern/bve-imgui-wgpu" }
 bytemuck = "1"
 cc = "1.0.50" # Fix bug in cc
 dashmap = "3.11.1"
 log = "0.4.8"
 num-traits = "0.2.11"
 imgui = "0.4.0"
-imgui-wgpu = { git = "https://github.com/BVE-Reborn/imgui-wgpu-rs.git", rev = "9cb992fe2949d7f43266a2748cfd98a8ac41bede" }
 include_dir = "0.6.0"
 image = { version = "0.23.2", default-features = false }
 itertools = "0.9"

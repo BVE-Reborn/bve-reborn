@@ -329,6 +329,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "bve-imgui-wgpu"
+version = "0.6.0"
+dependencies = [
+ "bve-conveyor",
+ "bytemuck",
+ "imgui",
+ "log",
+ "smallvec",
+ "wgpu",
+]
+
+[[package]]
 name = "bve-native"
 version = "0.0.1"
 dependencies = [
@@ -356,13 +368,13 @@ dependencies = [
  "async-std",
  "bve",
  "bve-conveyor",
+ "bve-imgui-wgpu",
  "bytemuck",
  "cc",
  "dashmap",
  "glam",
  "image",
  "imgui",
- "imgui-wgpu",
  "include_dir",
  "itertools",
  "log",
@@ -1258,16 +1270,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72be9671d64dd0ed26bb708cd10060a431262ac90ae70cf7c5912feefe6849da"
 dependencies = [
  "cc",
-]
-
-[[package]]
-name = "imgui-wgpu"
-version = "0.6.0"
-source = "git+https://github.com/BVE-Reborn/imgui-wgpu-rs.git?rev=9cb992fe2949d7f43266a2748cfd98a8ac41bede#9cb992fe2949d7f43266a2748cfd98a8ac41bede"
-dependencies = [
- "imgui",
- "log",
- "wgpu",
 ]
 
 [[package]]

@@ -54,6 +54,7 @@
 use arrayvec::ArrayVec;
 use async_std::sync::Mutex;
 use std::{
+    borrow::Borrow,
     future::Future,
     ops::DerefMut,
     sync::{
@@ -94,7 +95,7 @@ impl AutomatedBufferManager {
         device: &Device,
         size: BufferAddress,
         usage: BufferUsage,
-        label: Option<&str>,
+        label: Option<impl Into<String> + Borrow<str>>,
     ) -> AutomatedBuffer {
         let buffer = AutomatedBuffer::new(device, size, usage, label, self.style);
         self.belts.push(Arc::downgrade(&buffer.belt));
@@ -262,7 +263,7 @@ impl AutomatedBuffer {
         device: &Device,
         initial_size: BufferAddress,
         usage: BufferUsage,
-        label: Option<&str>,
+        label: Option<impl Into<String> + Borrow<str>>,
         style: UploadStyle,
     ) -> Self {
         let initial_size = initial_size.next_power_of_two().max(16);
@@ -274,7 +275,7 @@ impl AutomatedBuffer {
                     inner: device.create_buffer(&BufferDescriptor {
                         size: initial_size,
                         usage: upstream_usage,
-                        label,
+                        label: label.as_ref().map(|v| v.borrow()),
                         mapped_at_creation: false,
                     }),
                     id: 0,
@@ -282,7 +283,7 @@ impl AutomatedBuffer {
                     size: initial_size,
                 }),
                 usage: upstream_usage,
-                label: label.map(String::from),
+                label: label.map(|v| v.into()),
             };
             (upstream, belt_usage)
         } else {

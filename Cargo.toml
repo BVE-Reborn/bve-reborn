@@ -12,6 +12,7 @@ members = [
     "bve-native",
     "bve-obj-conv",
     "bve-render",
+    "extern/bve-imgui-wgpu"
 ]
 
 [patch.crates-io]

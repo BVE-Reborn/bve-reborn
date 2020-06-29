@@ -146,7 +146,7 @@ pub struct Renderer {
     cluster_renderer: render::cluster::Clustering,
     oit_renderer: render::oit::Oit,
     skybox_renderer: render::skybox::Skybox,
-    imgui_renderer: imgui_wgpu::Renderer,
+    imgui_renderer: bve_imgui_wgpu::Renderer,
 
     command_buffers: Vec<CommandBuffer>,
     _renderdoc_capture: bool,
@@ -289,7 +289,14 @@ impl Renderer {
         );
         let skybox_renderer =
             render::skybox::Skybox::new(&mut buffer_manager, &device, &texture_bind_group_layout, samples);
-        let imgui_renderer = imgui_wgpu::Renderer::new(imgui_context, &device, &mut queue, swapchain_desc.format, None);
+        let imgui_renderer = bve_imgui_wgpu::Renderer::new(
+            imgui_context,
+            &device,
+            &mut queue,
+            &mut buffer_manager,
+            swapchain_desc.format,
+            None,
+        );
 
         let screenspace_triangle_verts = screenspace::create_screen_space_verts(&device);
 

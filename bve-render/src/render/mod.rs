@@ -191,7 +191,6 @@ impl Renderer {
             &object_references,
         )
         .await;
-        dbg!(self.matrix_buffer.stats().await);
 
         let ts_uniforms = create_timestamp(&mut stats.compute_uniforms_time, ts_sorting);
 
@@ -329,7 +328,14 @@ impl Renderer {
 
         if let Some(imgui_frame) = imgui_frame_opt {
             self.imgui_renderer
-                .render(imgui_frame.render(), &self.device, &mut encoder, &frame.output.view)
+                .render(
+                    imgui_frame.render(),
+                    &self.device,
+                    &mut self.buffer_manager,
+                    &mut encoder,
+                    &frame.output.view,
+                )
+                .await
                 .expect("Imgui rendering failed");
         }
 

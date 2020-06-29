@@ -137,8 +137,6 @@ impl Skybox {
             })
             .await;
 
-        dbg!(self.uniform_buffer.stats().await);
-
         self.bind_group = Some(device.create_bind_group(&BindGroupDescriptor {
             layout: &self.bind_group_layout,
             bindings: &[Binding {
