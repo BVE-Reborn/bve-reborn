@@ -219,22 +219,23 @@ impl Renderer {
     }
 
     pub async fn recompute_uniforms(
-        &self,
-        _encoder: &mut CommandEncoder,
+        device: &Device,
+        projection_matrix: Mat4,
+        camera_mat: Mat4,
+        matrix_buffer: &mut AutomatedBuffer,
+        encoder: &mut CommandEncoder,
         objects: &[&object::Object],
-    ) -> Option<Buffer> {
+    ) {
         if objects.is_empty() {
-            return None;
+            return;
         }
-
-        let camera_mat = self.camera.compute_matrix();
 
         let mut matrix_buffer_data = Vec::new();
 
         for (_, group) in &objects.iter().group_by(|o| (o.mesh, o.texture, o.transparent)) {
             for object in group {
                 let (mx_model_view_proj, mx_model_view, mx_inv_trans_model_view) =
-                    object::generate_matrix(&self.projection_matrix, &camera_mat, object.location);
+                    object::generate_matrix(&projection_matrix, &camera_mat, object.location);
                 let uniforms = UniformVerts {
                     _model_view_proj: *mx_model_view_proj.as_ref(),
                     _model_view: *mx_model_view.as_ref(),
@@ -248,11 +249,11 @@ impl Renderer {
             }
         }
 
-        let matrix_buffer = self
-            .device
-            .create_buffer_with_data(&matrix_buffer_data, BufferUsage::VERTEX);
-
-        Some(matrix_buffer)
+        matrix_buffer
+            .write_to_buffer(device, encoder, matrix_buffer_data.len() as BufferAddress, |arr| {
+                arr.copy_from_slice(&matrix_buffer_data)
+            })
+            .await;
     }
 
     pub fn compute_object_distances(&mut self) {

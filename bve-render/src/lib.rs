@@ -65,7 +65,7 @@ pub use crate::{
 };
 use crate::{object::perspective_matrix, render::UniformVerts};
 use bve::{load::mesh::Vertex as MeshVertex, runtime::RenderLightDescriptor, UVec2};
-use bve_conveyor::{AutomatedBufferManager, UploadStyle};
+use bve_conveyor::{AutomatedBuffer, AutomatedBufferManager, UploadStyle};
 use glam::{Mat4, Vec3};
 use image::RgbaImage;
 use itertools::Itertools;
@@ -135,11 +135,11 @@ pub struct Renderer {
     sampler: Sampler,
 
     buffer_manager: AutomatedBufferManager,
+    screenspace_triangle_verts: Buffer,
+    matrix_buffer: AutomatedBuffer,
 
     vert_shader: Arc<ShaderModule>,
     frag_shader: Arc<ShaderModule>,
-
-    screenspace_triangle_verts: Buffer,
 
     transparency_processor: compute::CutoutTransparencyCompute,
     mip_creator: compute::MipmapCompute,
@@ -272,6 +272,7 @@ impl Renderer {
         let opaque_pipeline = render::create_pipeline(&device, &pipeline_layout, &vs_module, &fs_module, samples);
 
         let mut buffer_manager = AutomatedBufferManager::new(UploadStyle::from_device_type(adapter_info.device_type));
+        let matrix_buffer = buffer_manager.create_new_buffer(&device, 0, BufferUsage::VERTEX, Some("uniform buffer"));
 
         let transparency_processor = compute::CutoutTransparencyCompute::new(&device);
         let mip_creator = compute::MipmapCompute::new(&device);
@@ -324,6 +325,7 @@ impl Renderer {
             sampler,
 
             buffer_manager,
+            matrix_buffer,
 
             vert_shader: vs_module,
             frag_shader: fs_module,

@@ -51,6 +51,7 @@
 #![allow(clippy::wildcard_enum_match_arm)]
 #![allow(clippy::wildcard_imports)]
 
+use arrayvec::ArrayVec;
 use async_std::sync::Mutex;
 use std::{
     future::Future,
@@ -104,7 +105,9 @@ impl AutomatedBufferManager {
         let mut valid = Vec::with_capacity(self.belts.len());
         for belt in &self.belts {
             if let Some(belt) = belt.upgrade() {
-                async_std::task::spawn(Belt::pump(belt).await);
+                if let Some(future) = Belt::pump(belt).await {
+                    async_std::task::spawn(future);
+                }
                 valid.push(true);
             } else {
                 valid.push(false);
@@ -136,7 +139,7 @@ pub struct IdBuffer {
 }
 
 struct Belt {
-    usable: Option<Arc<IdBuffer>>,
+    usable: ArrayVec<[Arc<IdBuffer>; 2]>,
     usage: BufferUsage,
     current_id: usize,
     live_buffers: usize,
@@ -145,7 +148,7 @@ struct Belt {
 impl Belt {
     fn new(usage: BufferUsage) -> Arc<Mutex<Self>> {
         Arc::new(Mutex::new(Self {
-            usable: None,
+            usable: ArrayVec::new(),
             usage,
             current_id: 0,
             live_buffers: 0,
@@ -161,21 +164,34 @@ impl Belt {
         });
         let buffer_id = self.current_id;
         self.current_id += 1;
-        self.usable = Some(Arc::new(IdBuffer {
-            inner: raw_buffer,
-            id: buffer_id,
-            size,
-            dirty: AtomicBool::new(false),
-        }));
+        self.usable.insert(
+            0,
+            Arc::new(IdBuffer {
+                inner: raw_buffer,
+                id: buffer_id,
+                size,
+                dirty: AtomicBool::new(false),
+            }),
+        );
     }
 
     fn ensure_buffer(&mut self, device: &Device, size: BufferAddress) {
-        if let Some(ref old) = self.usable {
+        if !self.usable.is_empty() {
+            let old = &self.usable[0];
             if let Some(new_size) = check_should_resize(old.size, size) {
+                log::debug!(
+                    "Resizing to {} from {} due to desired size {}",
+                    new_size,
+                    old.size,
+                    size
+                );
+                self.usable.remove(0);
                 self.create_buffer(device, new_size);
             }
         } else {
-            self.create_buffer(device, size.next_power_of_two().max(16));
+            let new_size = size.next_power_of_two().max(16);
+            log::debug!("No buffers in belt, creating new buffer of size {}", new_size);
+            self.create_buffer(device, new_size);
             self.live_buffers += 1;
         }
     }
@@ -186,32 +202,36 @@ impl Belt {
 
     fn get_buffer_arc(&self) -> &Arc<IdBuffer> {
         self.usable
-            .as_ref()
+            .get(0)
             .expect("Cannot call get_buffer without calling ensure_buffer first")
     }
 
-    async fn pump(lockable: Arc<Mutex<Self>>) -> impl Future<Output = ()> {
+    async fn pump(lockable: Arc<Mutex<Self>>) -> Option<impl Future<Output = ()>> {
         let mut inner = lockable.lock().await;
 
-        let buffer = inner
-            .usable
-            .take()
-            .expect("Cannot call pump without calling ensure_buffer first");
+        if inner.usable.is_empty() {
+            return None;
+        }
+
+        let buffer_ref = &inner.usable[0];
+        let buffer = if !buffer_ref.dirty.load(Ordering::Relaxed) {
+            return None;
+        } else {
+            inner.usable.remove(0)
+        };
         drop(inner);
 
-        if !buffer.dirty.load(Ordering::Relaxed) {
-            buffer.inner.unmap()
-        }
         let mapping = buffer.inner.slice(..).map_async(MapMode::Write);
-        async move {
+        Some(async move {
             mapping.await.expect("Could not map buffer");
             let mut inner = lockable.lock().await;
             buffer.dirty.store(false, Ordering::Relaxed);
-            if let Some(old) = inner.usable.replace(buffer) {
-                drop(old);
+            if inner.usable.is_full() {
+                inner.usable.remove(0);
                 inner.live_buffers -= 1;
-            };
-        }
+            }
+            inner.usable.push(buffer);
+        })
     }
 }
 
@@ -219,6 +239,7 @@ impl Belt {
 pub struct AutomatedBufferStats {
     current_id: usize,
     live_buffers: usize,
+    current_size: Option<BufferAddress>,
 }
 
 enum UpstreamBuffer {
@@ -237,9 +258,6 @@ pub struct AutomatedBuffer {
     upstream: UpstreamBuffer,
 }
 impl AutomatedBuffer {
-    /// Creates a new AutomatedBuffer with given settings. All operations directly
-    /// done on the automated buffer according to `usage` will be added to the
-    /// internal buffer's usage flags.
     fn new(
         device: &Device,
         initial_size: BufferAddress,
@@ -284,6 +302,7 @@ impl AutomatedBuffer {
         AutomatedBufferStats {
             current_id: guard.current_id,
             live_buffers: guard.live_buffers,
+            current_size: guard.usable.get(0).map(|v| v.size),
         }
     }
 

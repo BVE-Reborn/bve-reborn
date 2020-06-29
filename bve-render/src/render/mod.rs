@@ -182,7 +182,17 @@ impl Renderer {
         let object_references = Self::sort_objects(object_references);
         let ts_sorting = create_timestamp(&mut stats.compute_object_sorting_time, ts_frustum);
 
-        let matrix_buffer_opt = self.recompute_uniforms(&mut encoder, &object_references).await;
+        Self::recompute_uniforms(
+            &self.device,
+            self.projection_matrix,
+            self.camera.compute_matrix(),
+            &mut self.matrix_buffer,
+            &mut encoder,
+            &object_references,
+        )
+        .await;
+        dbg!(self.matrix_buffer.stats().await);
+
         let ts_uniforms = create_timestamp(&mut stats.compute_uniforms_time, ts_sorting);
 
         // Retry getting a swapchain texture a couple times to smooth over spurious timeouts when tons of state changes
@@ -202,6 +212,9 @@ impl Renderer {
 
         {
             self.oit_renderer.clear_buffers(&mut encoder);
+
+            let matrix_buffer = self.matrix_buffer.get_current_inner().await;
+
             let mut rpass = encoder.begin_render_pass(&RenderPassDescriptor {
                 color_attachments: &[RenderPassColorAttachmentDescriptor {
                     attachment: &self.framebuffer,
@@ -227,7 +240,7 @@ impl Renderer {
             });
 
             // If se don't have a matrix buffer we have nothing to render
-            if let Some(matrix_buffer) = matrix_buffer_opt.as_ref() {
+            if !object_references.is_empty() {
                 let mut current_matrix_offset = 0 as BufferAddress;
 
                 let mut rendering_opaque = true;
@@ -258,7 +271,9 @@ impl Renderer {
                     rpass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
                     rpass.set_vertex_buffer(
                         1,
-                        matrix_buffer.slice(current_matrix_offset..(current_matrix_offset + matrix_buffer_size)),
+                        matrix_buffer
+                            .inner
+                            .slice(current_matrix_offset..(current_matrix_offset + matrix_buffer_size)),
                     );
                     rpass.set_index_buffer(mesh.index_buffer.slice(..));
                     rpass.draw_indexed(0..(mesh.index_count as u32), 0, 0..(count as u32));
