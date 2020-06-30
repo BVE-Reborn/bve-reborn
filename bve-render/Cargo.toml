@@ -20,7 +20,7 @@ default = []
 async-std = "1.5.0"
 bve = { version = "0.0.1", path = "../bve" }
 bve-conveyor = { version = "0.1.0", path = "../bve-conveyor" }
-bve-imgui-wgpu = { version = "0.6", path = "../extern/bve-imgui-wgpu" }
+bve-imgui-wgpu = { version = "0.0.1", path = "../extern/bve-imgui-wgpu" }
 bytemuck = "1"
 cc = "1.0.55" # Fix bug in cc
 dashmap = "3.11.1"

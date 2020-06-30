@@ -307,7 +307,7 @@ dependencies = [
 
 [[package]]
 name = "bve-imgui-wgpu"
-version = "0.6.0"
+version = "0.0.1"
 dependencies = [
  "bve-conveyor",
  "bytemuck",

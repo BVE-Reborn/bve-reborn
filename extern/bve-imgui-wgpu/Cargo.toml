@@ -1,0 +1,27 @@
+[package]
+name = "bve-imgui-wgpu"
+version = "0.0.1"
+authors = ["Noah Hüsser <yatekii@yatekii.ch>", "Steven Wittens <steven@acko.net>", "Connor Fitzgerald <connorwadefitzgerald@gmail.com>"]
+edition = "2018"
+description = "A wgpu render backend for imgui-rs. Modified for use in bve-reborn."
+documentation = "https://docs.rs/bve-imgui-wgpu/"
+homepage = "https://github.com/BVE-Reborn/bve-reborn"
+repository = "https://github.com/BVE-Reborn/bve-reborn"
+readme = "README.md"
+categories = ["gui", "graphics", "rendering", "rendering::graphics-api"]
+keywords = ["gui", "graphics", "wgpu", "imgui"]
+license = "MIT OR Apache-2.0"
+
+[features]
+default = []
+
+[dependencies]
+bve-conveyor = { version = "0.1", path = "../../bve-conveyor" }
+bytemuck = "1"
+imgui = "0.4"
+log = "0.4"
+smallvec = "1"
+wgpu = { git = "https://github.com/gfx-rs/wgpu-rs.git", rev = "d272a69f676ce4b82692d976a8f9d4a8d93293b9" }
+
+[package.metadata.docs.rs]
+all-features = true

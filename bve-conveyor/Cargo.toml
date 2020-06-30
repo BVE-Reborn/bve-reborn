@@ -8,8 +8,8 @@ edition = "2018"
 
 repository = "https://github.com/BVE-Reborn/bve-reborn"
 readme = "README.md"
-categories = ["rendering"]
-keywords = ["bve", "buffer-belt", "wgpu"]
+categories = ["rendering", "memory-management"]
+keywords = ["bve", "memory", "buffer-belt", "wgpu"]
 
 [dependencies]
 arrayvec = "0.5"
