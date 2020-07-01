@@ -1,5 +1,5 @@
 use crate::{screenspace::ScreenSpaceVertex, *};
-use bve_conveyor::AutomatedBuffer;
+use bve_conveyor::{AutomatedBuffer, BeltBufferId, BindGroupCache};
 use log::debug;
 use zerocopy::AsBytes;
 
@@ -64,8 +64,9 @@ fn create_pipeline(device: &Device, pipeline_layout: &PipelineLayout, samples: M
 pub struct Skybox {
     pipeline: RenderPipeline,
     pipeline_layout: PipelineLayout,
-    bind_group: Option<BindGroup>,
+    bind_group: BindGroupCache<BeltBufferId>,
     bind_group_layout: BindGroupLayout,
+    bind_group_key: Option<BeltBufferId>,
 
     uniform_buffer: AutomatedBuffer,
 
@@ -106,7 +107,8 @@ impl Skybox {
         Self {
             pipeline,
             pipeline_layout,
-            bind_group: None,
+            bind_group: BindGroupCache::new(),
+            bind_group_key: None,
             bind_group_layout,
             uniform_buffer,
             texture_id: DefaultKey::default(),
@@ -137,14 +139,21 @@ impl Skybox {
             })
             .await;
 
-        self.bind_group = Some(device.create_bind_group(&BindGroupDescriptor {
-            layout: &self.bind_group_layout,
-            bindings: &[Binding {
-                binding: 0,
-                resource: BindingResource::Buffer(self.uniform_buffer.get_current_inner().await.inner.slice(..)),
-            }],
-            label: Some("skybox"),
-        }));
+        let bind_group_layout = &self.bind_group_layout;
+        self.bind_group_key = Some(
+            self.bind_group
+                .create_bind_group(&self.uniform_buffer, true, move |uniform_buffer| {
+                    device.create_bind_group(&BindGroupDescriptor {
+                        layout: bind_group_layout,
+                        bindings: &[Binding {
+                            binding: 0,
+                            resource: BindingResource::Buffer(uniform_buffer.inner.slice(..)),
+                        }],
+                        label: Some("skybox"),
+                    })
+                })
+                .await,
+        );
     }
 
     pub fn set_samples(&mut self, device: &Device, samples: MSAASetting) {
@@ -157,10 +166,13 @@ impl Skybox {
         texture_bind_group: &'a BindGroup,
         screenspace_verts: &'a Buffer,
     ) {
+        const ERROR_MSG: &str = "update not called before render";
         rpass.set_pipeline(&self.pipeline);
         rpass.set_bind_group(
             0,
-            self.bind_group.as_ref().expect("update not called before render"),
+            self.bind_group
+                .get(&self.bind_group_key.expect(ERROR_MSG))
+                .expect(ERROR_MSG),
             &[],
         );
         rpass.set_bind_group(1, texture_bind_group, &[]);
