@@ -1,3 +1,5 @@
+#![allow(clippy::eval_order_dependence)] // Tons of false positives
+
 use crate::{AutomatedBuffer, BeltBufferId, IdBuffer};
 use std::{future::Future, hash::Hash, sync::Arc};
 use wgpu::*;
@@ -126,24 +128,31 @@ pub struct BindGroupCache<Key: Hash + Eq + Clone> {
     cache: lru::LruCache<Key, BindGroup>,
 }
 impl<Key: Hash + Eq + Clone> BindGroupCache<Key> {
+    #[must_use]
     pub fn new() -> Self {
         Self::with_capacity(4)
     }
 
+    #[must_use]
     pub fn with_capacity(size: usize) -> Self {
         Self {
             cache: lru::LruCache::new(size),
         }
     }
 
-    pub async fn create_bind_group<'a, Set, BindGroupFn>(&mut self, buffers: Set, bind_group_fn: BindGroupFn) -> Key
+    pub async fn create_bind_group<'a, Set, BindGroupFn>(
+        &mut self,
+        buffers: Set,
+        use_cache: bool,
+        bind_group_fn: BindGroupFn,
+    ) -> Key
     where
         Set: AutomatedBufferSet<'a, Key = Key>,
         BindGroupFn: FnOnce(&Set::Value) -> BindGroup,
     {
         let value = buffers.get().await;
         let key = Set::value_to_key(&value);
-        if self.cache.contains(&key) {
+        if self.cache.contains(&key) && use_cache {
             return key;
         }
         // Bumps LRU-ness
@@ -151,7 +160,13 @@ impl<Key: Hash + Eq + Clone> BindGroupCache<Key> {
         key
     }
 
-    pub fn get(&self, key: Key) -> Option<&BindGroup> {
-        self.cache.peek(&key)
+    pub fn get(&self, key: &Key) -> Option<&BindGroup> {
+        self.cache.peek(key)
+    }
+}
+
+impl<Key: Hash + Eq + Clone> Default for BindGroupCache<Key> {
+    fn default() -> Self {
+        Self::new()
     }
 }

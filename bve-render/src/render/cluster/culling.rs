@@ -99,7 +99,7 @@ impl LightCulling {
 
         let bind_group_layout = &self.bind_group_layout;
         self.bind_group
-            .create_bind_group(&self.uniform_buffer, |uniform_buffer| {
+            .create_bind_group(&self.uniform_buffer, true, |uniform_buffer| {
                 dbg!(uniform_buffer.id);
                 device.create_bind_group(&BindGroupDescriptor {
                     layout: bind_group_layout,
@@ -129,7 +129,8 @@ impl LightCulling {
 
     pub fn execute<'a>(&'a self, pass: &mut ComputePass<'a>, bind_group_key: BeltBufferId) {
         pass.set_pipeline(&self.pipeline);
-        pass.set_bind_group(0, self.bind_group.get(bind_group_key).expect("missing bind group"), &[]);
+        pass.set_bind_group(0, self.bind_group.get(&bind_group_key).expect("missing bind group"), &[
+        ]);
         pass.dispatch(1, FROXEL_COUNT / 64, 1);
     }
 }
