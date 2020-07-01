@@ -224,41 +224,42 @@ impl Clustering {
         mx_view: Mat4,
     ) {
         let light_count = lights.len();
+        let lights = convert_lights_to_data(lights, mx_view);
+        let light_buffer_size = (light_count * size_of::<ConeLightBytes>()) as BufferAddress;
+
+        self.light_buffer
+            .write_to_buffer(device, encoder, light_buffer_size, |buf| {
+                buf.copy_from_slice(lights.as_bytes())
+            })
+            .await;
+
+        let light_buffer = self.light_buffer.get_current_inner().await;
+        self.render_bind_group = Some(device.create_bind_group(&BindGroupDescriptor {
+            layout: &self.render_bind_group_layout,
+            bindings: &[
+                Binding {
+                    binding: 0,
+                    resource: BindingResource::Buffer(self.cluster_uniforms_buffer.slice(..)),
+                },
+                Binding {
+                    binding: 1,
+                    resource: BindingResource::Buffer(self.frustum_buffer.slice(..)),
+                },
+                Binding {
+                    binding: 2,
+                    resource: BindingResource::Buffer(light_buffer.inner.slice(..)),
+                },
+                Binding {
+                    binding: 3,
+                    resource: BindingResource::Buffer(self.light_list_buffer.slice(..)),
+                },
+            ],
+            label: Some("clustering bind group"),
+        }));
+
         if !lights.is_empty() {
-            let lights = convert_lights_to_data(lights, mx_view);
-            let light_buffer_size = (light_count * size_of::<ConeLightBytes>()) as BufferAddress;
-
-            self.light_buffer
-                .write_to_buffer(device, encoder, light_buffer_size, |buf| {
-                    buf.copy_from_slice(lights.as_bytes())
-                })
-                .await;
-
-            let light_buffer = self.light_buffer.get_current_inner().await;
-            self.render_bind_group = Some(device.create_bind_group(&BindGroupDescriptor {
-                layout: &self.render_bind_group_layout,
-                bindings: &[
-                    Binding {
-                        binding: 0,
-                        resource: BindingResource::Buffer(self.cluster_uniforms_buffer.slice(..)),
-                    },
-                    Binding {
-                        binding: 1,
-                        resource: BindingResource::Buffer(self.frustum_buffer.slice(..)),
-                    },
-                    Binding {
-                        binding: 2,
-                        resource: BindingResource::Buffer(light_buffer.inner.slice(..)),
-                    },
-                    Binding {
-                        binding: 3,
-                        resource: BindingResource::Buffer(self.light_list_buffer.slice(..)),
-                    },
-                ],
-                label: Some("clustering bind group"),
-            }));
-
-            self.light_culling
+            let culling_bind_group = self
+                .light_culling
                 .update_light_counts(
                     device,
                     encoder,
@@ -271,7 +272,7 @@ impl Clustering {
 
             let mut pass = encoder.begin_compute_pass();
             self.frustum_creation.execute(&mut pass);
-            self.light_culling.execute(&mut pass);
+            self.light_culling.execute(&mut pass, culling_bind_group);
         }
     }
 }
