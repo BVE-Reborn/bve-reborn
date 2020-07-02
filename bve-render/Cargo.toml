@@ -22,7 +22,7 @@ bve = { version = "0.0.1", path = "../bve" }
 bve-conveyor = { version = "0.1.0", path = "../bve-conveyor" }
 bve-imgui-wgpu = { version = "0.0.1", path = "../extern/bve-imgui-wgpu" }
 bytemuck = "1"
-cc = "1.0.56" # Fix bug in cc
+cc = "1.0.57" # Fix bug in cc
 dashmap = "3.11.1"
 log = "0.4.8"
 num-traits = "0.2.11"
