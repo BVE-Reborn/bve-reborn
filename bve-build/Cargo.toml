@@ -1,19 +1,15 @@
 [package]
 name = "bve-build"
-version = "0.1.0"
-description = "Remaking OpenBVE using a modern architecture, using Rust."
+version = "0.0.1"
+description = "Build Tools for BVE-Reborn"
 license = "MPL-2.0"
 authors = ["Connor Fitzgerald <connorwadefitzgerald@gmail.com>"]
 edition = "2018"
-publish = false
 
 repository = "https://github.com/BVE-Reborn/bve-reborn"
 readme = "README.md"
 categories = ["games", "parsing", "rendering::data-formats", "simulation"]
 keywords = ["bve", "building", "serialization", "simulation"]
-
-[package.metadata.workspaces]
-independent = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

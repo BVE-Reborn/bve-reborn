@@ -37,3 +37,6 @@ slotmap = { version = "0.4.0", features = ["unstable"] }
 winit = { version = "0.22.2", git = "https://github.com/rust-windowing/winit.git", default-features = false, features = ["x11"] }
 wgpu = { git = "https://github.com/gfx-rs/wgpu-rs.git", rev = "d272a69f676ce4b82692d976a8f9d4a8d93293b9" }
 zerocopy = "0.3.0"
+
+[build-dependencies]
+bve-build = { version = "0.0.1", path = "../bve-build" }

@@ -226,7 +226,7 @@ dependencies = [
 
 [[package]]
 name = "bve-build"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "itertools",
  "nom",
@@ -344,6 +344,7 @@ version = "0.0.1"
 dependencies = [
  "async-std",
  "bve",
+ "bve-build",
  "bve-conveyor",
  "bve-imgui-wgpu",
  "bytemuck",

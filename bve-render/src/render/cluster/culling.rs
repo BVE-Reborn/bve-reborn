@@ -18,6 +18,7 @@ pub struct LightCulling {
     uniform_buffer: AutomatedBuffer,
     bind_group_layout: BindGroupLayout,
     bind_group: BindGroupCache<(BeltBufferId, BeltBufferId)>,
+    bind_group_key: Option<(BeltBufferId, BeltBufferId)>,
     pipeline: ComputePipeline,
 }
 impl LightCulling {
@@ -72,6 +73,7 @@ impl LightCulling {
             uniform_buffer,
             bind_group_layout,
             bind_group: BindGroupCache::new(),
+            bind_group_key: None,
             pipeline,
         }
     }
@@ -84,7 +86,7 @@ impl LightCulling {
         light_buffer: &AutomatedBuffer,
         light_list_buffer: &Buffer,
         light_count: u32,
-    ) -> (BeltBufferId, BeltBufferId) {
+    ) {
         let uniforms = CullingUniforms {
             _cluster_count: [FROXELS_X, FROXELS_Y, FROXELS_Z],
             _light_count: light_count,
@@ -98,43 +100,51 @@ impl LightCulling {
             .await;
 
         let bind_group_layout = &self.bind_group_layout;
-        self.bind_group
-            .create_bind_group(
-                (&self.uniform_buffer, light_buffer),
-                true,
-                move |(uniform_buffer, light_buffer)| {
-                    dbg!(uniform_buffer.id, light_buffer.id);
-                    device.create_bind_group(&BindGroupDescriptor {
-                        layout: bind_group_layout,
-                        bindings: &[
-                            Binding {
-                                binding: 0,
-                                resource: BindingResource::Buffer(uniform_buffer.inner.slice(..)),
-                            },
-                            Binding {
-                                binding: 1,
-                                resource: BindingResource::Buffer(frustum_buffer.slice(..)),
-                            },
-                            Binding {
-                                binding: 2,
-                                resource: BindingResource::Buffer(light_buffer.inner.slice(..)),
-                            },
-                            Binding {
-                                binding: 3,
-                                resource: BindingResource::Buffer(light_list_buffer.slice(..)),
-                            },
-                        ],
-                        label: Some("light culling bind group"),
-                    })
-                },
-            )
-            .await
+        self.bind_group_key = Some(
+            self.bind_group
+                .create_bind_group(
+                    (&self.uniform_buffer, light_buffer),
+                    true,
+                    move |(uniform_buffer, light_buffer)| {
+                        dbg!(uniform_buffer.id, light_buffer.id);
+                        device.create_bind_group(&BindGroupDescriptor {
+                            layout: bind_group_layout,
+                            bindings: &[
+                                Binding {
+                                    binding: 0,
+                                    resource: BindingResource::Buffer(uniform_buffer.inner.slice(..)),
+                                },
+                                Binding {
+                                    binding: 1,
+                                    resource: BindingResource::Buffer(frustum_buffer.slice(..)),
+                                },
+                                Binding {
+                                    binding: 2,
+                                    resource: BindingResource::Buffer(light_buffer.inner.slice(..)),
+                                },
+                                Binding {
+                                    binding: 3,
+                                    resource: BindingResource::Buffer(light_list_buffer.slice(..)),
+                                },
+                            ],
+                            label: Some("light culling bind group"),
+                        })
+                    },
+                )
+                .await,
+        );
     }
 
-    pub fn execute<'a>(&'a self, pass: &mut ComputePass<'a>, bind_group_key: (BeltBufferId, BeltBufferId)) {
+    pub fn execute<'a>(&'a self, pass: &mut ComputePass<'a>) {
+        const ERROR_MSG: &str = "missing bind group";
         pass.set_pipeline(&self.pipeline);
-        pass.set_bind_group(0, self.bind_group.get(&bind_group_key).expect("missing bind group"), &[
-        ]);
+        pass.set_bind_group(
+            0,
+            self.bind_group
+                .get(&self.bind_group_key.expect(ERROR_MSG))
+                .expect(ERROR_MSG),
+            &[],
+        );
         pass.dispatch(1, FROXEL_COUNT / 64, 1);
     }
 }

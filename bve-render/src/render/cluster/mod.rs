@@ -271,8 +271,7 @@ impl Clustering {
         );
 
         if !lights.is_empty() {
-            let culling_bind_group = self
-                .light_culling
+            self.light_culling
                 .update_light_counts(
                     device,
                     encoder,
@@ -285,7 +284,7 @@ impl Clustering {
 
             let mut pass = encoder.begin_compute_pass();
             self.frustum_creation.execute(&mut pass);
-            self.light_culling.execute(&mut pass, culling_bind_group);
+            self.light_culling.execute(&mut pass);
         }
     }
 }

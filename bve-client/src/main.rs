@@ -268,29 +268,29 @@ fn client_main() {
         let handle = client.renderer.add_texture(&rgba);
         client.renderer.set_skybox_image(&handle, loading.background.repeats);
 
-        const LIGHTS_X: u32 = 8;
-        const LIGHTS_Y: u32 = 30;
-        for x in 0..LIGHTS_X {
-            for y in 0..LIGHTS_Y {
-                let i = x * LIGHTS_X + y;
-                runtime
-                    .add_light(LightDescriptor {
-                        location: Location::from_absolute_position(Vec3::new(
-                            x as f32 * (42.0 / LIGHTS_X as f32),
-                            0.0,
-                            y as f32 * (480.0 / LIGHTS_Y as f32),
-                        )),
-                        radius: 10.0,
-                        color: Vec3::new(
-                            (i % 3 == 0) as u8 as f32,
-                            (i % 3 == 1) as u8 as f32,
-                            (i % 3 == 2) as u8 as f32,
-                        ),
-                        ty: LightType::Point,
-                    })
-                    .await;
-            }
-        }
+        // const LIGHTS_X: u32 = 8;
+        // const LIGHTS_Y: u32 = 30;
+        // for x in 0..LIGHTS_X {
+        //     for y in 0..LIGHTS_Y {
+        //         let i = x * LIGHTS_X + y;
+        //         runtime
+        //             .add_light(LightDescriptor {
+        //                 location: Location::from_absolute_position(Vec3::new(
+        //                     x as f32 * (42.0 / LIGHTS_X as f32),
+        //                     0.0,
+        //                     y as f32 * (480.0 / LIGHTS_Y as f32),
+        //                 )),
+        //                 radius: 10.0,
+        //                 color: Vec3::new(
+        //                     (i % 3 == 0) as u8 as f32,
+        //                     (i % 3 == 1) as u8 as f32,
+        //                     (i % 3 == 2) as u8 as f32,
+        //                 ),
+        //                 ty: LightType::Point,
+        //             })
+        //             .await;
+        //     }
+        // }
         runtime
             .add_light(LightDescriptor {
                 location: Location::from_absolute_position(Vec3::new(8.0, 0.0, 0.0)),
