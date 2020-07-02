@@ -9,7 +9,7 @@ use crate::{
     HexColorRGB, HexColorRGBA, IVec2, UVec2,
 };
 use glam::{
-    f32::{Vec3, Vec4},
+    f32::{Vec3A, Vec4},
     Vec2,
 };
 use std::str::FromStr;
@@ -140,7 +140,7 @@ impl FromKVPValue for Vec2 {
     }
 }
 
-impl FromKVPValue for Vec3 {
+impl FromKVPValue for Vec3A {
     fn from_kvp_value(value: &str) -> Option<Self> {
         let split: Vec<&str> = value.split(',').map(str::trim).collect();
         Some(Self::new(

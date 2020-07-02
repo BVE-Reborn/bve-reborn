@@ -9,7 +9,7 @@ use crate::{
 };
 use async_std::path::Path;
 pub use execution::*;
-use glam::{Vec2, Vec3};
+use glam::{Vec2, Vec3A};
 use indexmap::IndexSet;
 use std::{ffi::OsStr, ops::Deref};
 
@@ -155,8 +155,8 @@ pub const fn default_mesh() -> Mesh {
 #[repr(C)]
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Vertex {
-    pub position: Vec3,
-    pub normal: Vec3,
+    pub position: Vec3A,
+    pub normal: Vec3A,
     pub color: ColorU8RGBA,
     pub coord: Vec2,
     pub double_sided: bool,
@@ -176,7 +176,7 @@ impl Vertex {
     }
 
     #[must_use]
-    pub const fn from_position_normal_coord(position: Vec3, normal: Vec3, coord: Vec2) -> Self {
+    pub const fn from_position_normal_coord(position: Vec3A, normal: Vec3A, coord: Vec2) -> Self {
         Self {
             position,
             normal,
@@ -187,7 +187,7 @@ impl Vertex {
     }
 
     #[must_use]
-    pub fn from_position_normal(position: Vec3, normal: Vec3) -> Self {
+    pub fn from_position_normal(position: Vec3A, normal: Vec3A) -> Self {
         Self {
             position,
             normal,
@@ -198,10 +198,10 @@ impl Vertex {
     }
 
     #[must_use]
-    pub fn from_position(position: Vec3) -> Self {
+    pub fn from_position(position: Vec3A) -> Self {
         Self {
             position,
-            normal: Vec3::zero(),
+            normal: Vec3A::zero(),
             coord: Vec2::zero(),
             color: ColorU8RGBA::splat(255),
             double_sided: false,

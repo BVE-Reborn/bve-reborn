@@ -67,7 +67,7 @@ use bve_render::{
     DebugMode, LightHandle, MSAASetting, MeshHandle, OITNodeCount, ObjectHandle, Renderer, RendererStatistics,
     TextureHandle, Vsync,
 };
-use glam::Vec3;
+use glam::Vec3A;
 use image::RgbaImage;
 use imgui::{im_str, FontSource};
 use itertools::Itertools;
@@ -114,13 +114,13 @@ impl runtime::Client for Client {
     type TextureHandle = TextureHandle;
     type LightHandle = LightHandle;
 
-    fn add_object(&mut self, location: Vec3, mesh: &Self::MeshHandle) -> Self::ObjectHandle {
+    fn add_object(&mut self, location: Vec3A, mesh: &Self::MeshHandle) -> Self::ObjectHandle {
         self.renderer.add_object(location, mesh)
     }
 
     fn add_object_texture(
         &mut self,
-        location: Vec3,
+        location: Vec3A,
         mesh: &Self::MeshHandle,
         texture: &Self::TextureHandle,
     ) -> Self::ObjectHandle {
@@ -155,11 +155,11 @@ impl runtime::Client for Client {
         self.renderer.remove_light(light);
     }
 
-    fn set_camera_location(&mut self, location: Vec3) {
+    fn set_camera_location(&mut self, location: Vec3A) {
         self.renderer.set_camera_location(location);
     }
 
-    fn set_object_location(&mut self, object: &Self::ObjectHandle, location: Vec3) {
+    fn set_object_location(&mut self, object: &Self::ObjectHandle, location: Vec3A) {
         self.renderer.set_location(object, location);
     }
 
@@ -229,7 +229,7 @@ fn client_main() {
     let client = block_on(async { Client::new(&window, &mut imgui, oit_node_count, sample_count, vsync).await });
     let runtime = runtime::Runtime::new(Arc::clone(&client));
 
-    let mut camera_location = Vec3::new(-7.0, 3.0, 0.0);
+    let mut camera_location = Vec3A::new(-7.0, 3.0, 0.0);
     block_on(async {
         client
             .lock()
@@ -247,7 +247,7 @@ fn client_main() {
             for idx in 0..object.count {
                 runtime
                     .add_static_object(
-                        runtime::Location::from_absolute_position(Vec3::new(
+                        runtime::Location::from_absolute_position(Vec3A::new(
                             f32::mul_add(object.offset_x, idx as f32, object.x),
                             0.0,
                             f32::mul_add(object.offset_z, idx as f32, object.z),
@@ -268,34 +268,34 @@ fn client_main() {
         let handle = client.renderer.add_texture(&rgba);
         client.renderer.set_skybox_image(&handle, loading.background.repeats);
 
-        const LIGHTS_X: u32 = 8;
-        const LIGHTS_Y: u32 = 30;
-        for x in 0..LIGHTS_X {
-            for y in 0..LIGHTS_Y {
-                let i = x * LIGHTS_X + y;
-                runtime
-                    .add_light(LightDescriptor {
-                        location: Location::from_absolute_position(Vec3::new(
-                            x as f32 * (42.0 / LIGHTS_X as f32),
-                            0.0,
-                            y as f32 * (480.0 / LIGHTS_Y as f32),
-                        )),
-                        radius: 10.0,
-                        color: Vec3::new(
-                            (i % 3 == 0) as u8 as f32,
-                            (i % 3 == 1) as u8 as f32,
-                            (i % 3 == 2) as u8 as f32,
-                        ),
-                        ty: LightType::Point,
-                    })
-                    .await;
-            }
-        }
+        // const LIGHTS_X: u32 = 8;
+        // const LIGHTS_Y: u32 = 30;
+        // for x in 0..LIGHTS_X {
+        //     for y in 0..LIGHTS_Y {
+        //         let i = x * LIGHTS_X + y;
+        //         runtime
+        //             .add_light(LightDescriptor {
+        //                 location: Location::from_absolute_position(Vec3A::new(
+        //                     x as f32 * (42.0 / LIGHTS_X as f32),
+        //                     0.0,
+        //                     y as f32 * (480.0 / LIGHTS_Y as f32),
+        //                 )),
+        //                 radius: 10.0,
+        //                 color: Vec3A::new(
+        //                     (i % 3 == 0) as u8 as f32,
+        //                     (i % 3 == 1) as u8 as f32,
+        //                     (i % 3 == 2) as u8 as f32,
+        //                 ),
+        //                 ty: LightType::Point,
+        //             })
+        //             .await;
+        //     }
+        // }
         runtime
             .add_light(LightDescriptor {
-                location: Location::from_absolute_position(Vec3::new(8.0, 0.0, 0.0)),
+                location: Location::from_absolute_position(Vec3A::new(8.0, 0.0, 0.0)),
                 radius: 10.0,
-                color: Vec3::one(),
+                color: Vec3A::one(),
                 ty: LightType::Point,
             })
             .await;
@@ -335,7 +335,7 @@ fn client_main() {
 
                 let speed = if shift { 20.0 } else { 2.0 };
 
-                let raw_dir_vec = Vec3::new(
+                let raw_dir_vec = Vec3A::new(
                     if left {
                         -1.0
                     } else if right {
@@ -358,8 +358,8 @@ fn client_main() {
                         0.0
                     },
                 );
-                let dir_vec = if raw_dir_vec == Vec3::zero() {
-                    Vec3::zero()
+                let dir_vec = if raw_dir_vec == Vec3A::zero() {
+                    Vec3A::zero()
                 } else {
                     raw_dir_vec.normalize() * speed
                 } * last_frame_time.as_secs_f32();

@@ -1,26 +1,26 @@
 use crate::parse::{function_scripts::ParsedFunctionScript, kvp::FromKVPValue, PrettyPrintResult};
 use bve_derive::{FromKVPSection, FromKVPValue};
-use glam::{Vec2, Vec3};
+use glam::{Vec2, Vec3A};
 use std::io;
 
 #[derive(Debug, Clone, PartialEq, FromKVPSection)]
 pub struct AnimatedObject {
-    pub position: Vec3,
+    pub position: Vec3A,
     #[kvp(variadic)]
     pub states: Vec<String>,
     pub state_function: Option<ParsedFunctionScript>,
 
-    pub translate_x_direction: Vec3,
-    pub translate_y_direction: Vec3,
-    pub translate_z_direction: Vec3,
+    pub translate_x_direction: Vec3A,
+    pub translate_y_direction: Vec3A,
+    pub translate_z_direction: Vec3A,
 
     pub translate_x_function: Option<ParsedFunctionScript>,
     pub translate_y_function: Option<ParsedFunctionScript>,
     pub translate_z_function: Option<ParsedFunctionScript>,
 
-    pub rotate_x_direction: Vec3,
-    pub rotate_y_direction: Vec3,
-    pub rotate_z_direction: Vec3,
+    pub rotate_x_direction: Vec3A,
+    pub rotate_y_direction: Vec3A,
+    pub rotate_z_direction: Vec3A,
 
     pub rotate_x_function: Option<ParsedFunctionScript>,
     pub rotate_y_function: Option<ParsedFunctionScript>,
@@ -46,18 +46,18 @@ pub struct AnimatedObject {
 impl Default for AnimatedObject {
     fn default() -> Self {
         Self {
-            position: Vec3::zero(),
+            position: Vec3A::zero(),
             states: Vec::default(),
             state_function: None,
-            translate_x_direction: Vec3::unit_x(),
-            translate_y_direction: Vec3::unit_y(),
-            translate_z_direction: Vec3::unit_z(),
+            translate_x_direction: Vec3A::unit_x(),
+            translate_y_direction: Vec3A::unit_y(),
+            translate_z_direction: Vec3A::unit_z(),
             translate_x_function: None,
             translate_y_function: None,
             translate_z_function: None,
-            rotate_x_direction: Vec3::unit_x(),
-            rotate_y_direction: Vec3::unit_y(),
-            rotate_z_direction: Vec3::unit_z(),
+            rotate_x_direction: Vec3A::unit_x(),
+            rotate_y_direction: Vec3A::unit_y(),
+            rotate_z_direction: Vec3A::unit_z(),
             rotate_x_function: None,
             rotate_y_function: None,
             rotate_z_function: None,

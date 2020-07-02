@@ -1,5 +1,6 @@
 use crate::{camera::FAR_PLANE_DISTANCE, frustum::Frustum, *};
 use bve::{runtime::LightType, UVec2};
+use bve_conveyor::{BeltBufferId, BindGroupCache};
 use culling::*;
 use froxels::*;
 
@@ -118,7 +119,8 @@ pub struct Clustering {
     light_list_buffer: Buffer,
 
     render_bind_group_layout: BindGroupLayout,
-    render_bind_group: Option<BindGroup>,
+    render_bind_group: BindGroupCache<BeltBufferId>,
+    render_bind_group_key: Option<BeltBufferId>,
 }
 impl Clustering {
     pub fn new(
@@ -197,7 +199,8 @@ impl Clustering {
             light_list_buffer,
 
             render_bind_group_layout,
-            render_bind_group: None,
+            render_bind_group: BindGroupCache::new(),
+            render_bind_group_key: None,
         }
     }
 
@@ -211,9 +214,10 @@ impl Clustering {
     }
 
     pub fn bind_group(&self) -> &BindGroup {
+        const ERROR_MESSAGE: &str = "Must call execute before bind_group";
         self.render_bind_group
-            .as_ref()
-            .expect("Must call execute before bind_group")
+            .get(&self.render_bind_group_key.expect(ERROR_MESSAGE))
+            .expect(ERROR_MESSAGE)
     }
 
     pub async fn execute(
@@ -224,46 +228,55 @@ impl Clustering {
         mx_view: Mat4,
     ) {
         let light_count = lights.len();
-        if !lights.is_empty() {
-            let lights = convert_lights_to_data(lights, mx_view);
-            let light_buffer_size = (light_count * size_of::<ConeLightBytes>()) as BufferAddress;
+        let lights = convert_lights_to_data(lights, mx_view);
+        let light_buffer_size = (light_count * size_of::<ConeLightBytes>()) as BufferAddress;
 
-            self.light_buffer
-                .write_to_buffer(device, encoder, light_buffer_size, |buf| {
-                    buf.copy_from_slice(lights.as_bytes())
+        self.light_buffer
+            .write_to_buffer(device, encoder, light_buffer_size, |buf| {
+                buf.copy_from_slice(lights.as_bytes())
+            })
+            .await;
+
+        let cluster_uniforms_buffer_slice = self.cluster_uniforms_buffer.slice(..);
+        let frustum_buffer_slice = self.frustum_buffer.slice(..);
+        let light_list_buffer_slice = self.light_list_buffer.slice(..);
+        let render_group_layout = &self.render_bind_group_layout;
+        self.render_bind_group_key = Some(
+            self.render_bind_group
+                .create_bind_group(&self.light_buffer, true, move |light_buffer| {
+                    device.create_bind_group(&BindGroupDescriptor {
+                        layout: render_group_layout,
+                        bindings: &[
+                            Binding {
+                                binding: 0,
+                                resource: BindingResource::Buffer(cluster_uniforms_buffer_slice),
+                            },
+                            Binding {
+                                binding: 1,
+                                resource: BindingResource::Buffer(frustum_buffer_slice),
+                            },
+                            Binding {
+                                binding: 2,
+                                resource: BindingResource::Buffer(light_buffer.inner.slice(..)),
+                            },
+                            Binding {
+                                binding: 3,
+                                resource: BindingResource::Buffer(light_list_buffer_slice),
+                            },
+                        ],
+                        label: Some("clustering bind group"),
+                    })
                 })
-                .await;
+                .await,
+        );
 
-            let light_buffer = self.light_buffer.get_current_inner().await;
-            self.render_bind_group = Some(device.create_bind_group(&BindGroupDescriptor {
-                layout: &self.render_bind_group_layout,
-                bindings: &[
-                    Binding {
-                        binding: 0,
-                        resource: BindingResource::Buffer(self.cluster_uniforms_buffer.slice(..)),
-                    },
-                    Binding {
-                        binding: 1,
-                        resource: BindingResource::Buffer(self.frustum_buffer.slice(..)),
-                    },
-                    Binding {
-                        binding: 2,
-                        resource: BindingResource::Buffer(light_buffer.inner.slice(..)),
-                    },
-                    Binding {
-                        binding: 3,
-                        resource: BindingResource::Buffer(self.light_list_buffer.slice(..)),
-                    },
-                ],
-                label: Some("clustering bind group"),
-            }));
-
+        if !lights.is_empty() {
             self.light_culling
                 .update_light_counts(
                     device,
                     encoder,
                     &self.frustum_buffer,
-                    &light_buffer.inner,
+                    &self.light_buffer,
                     &self.light_list_buffer,
                     light_count as u32,
                 )

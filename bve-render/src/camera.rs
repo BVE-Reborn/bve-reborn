@@ -1,5 +1,5 @@
 use crate::*;
-use glam::{Mat3, Vec3};
+use glam::{Mat3, Vec3, Vec3A};
 
 pub const NEAR_PLANE_DISTANCE: f32 = 0.1;
 
@@ -8,7 +8,7 @@ pub const NEAR_PLANE_DISTANCE: f32 = 0.1;
 pub const FAR_PLANE_DISTANCE: f32 = 33.0 /* blocks */ * 64.0 /* m */;
 
 pub struct Camera {
-    pub location: Vec3,
+    pub location: Vec3A,
     /// radians
     pub pitch: f32,
     /// radians
@@ -16,8 +16,8 @@ pub struct Camera {
 }
 
 impl Camera {
-    pub fn compute_look_offset(&self) -> Vec3 {
-        let starting = Vec3::unit_z();
+    pub fn compute_look_offset(&self) -> Vec3A {
+        let starting = Vec3A::unit_z();
         let post_pitch = Mat3::from_rotation_x(self.pitch) * starting;
         Mat3::from_rotation_y(self.yaw) * post_pitch
     }
@@ -25,13 +25,17 @@ impl Camera {
     pub fn compute_matrix(&self) -> Mat4 {
         let look_offset = self.compute_look_offset();
 
-        Mat4::look_at_lh(self.location, self.location + look_offset, Vec3::unit_y())
+        Mat4::look_at_lh(
+            Vec3::from(self.location),
+            Vec3::from(self.location + look_offset),
+            Vec3::unit_y(),
+        )
     }
 
     pub fn compute_origin_matrix(&self) -> Mat4 {
         let look_offset = self.compute_look_offset();
 
-        Mat4::look_at_lh(Vec3::zero(), look_offset, Vec3::unit_y())
+        Mat4::look_at_lh(Vec3::zero(), Vec3::from(look_offset), Vec3::unit_y())
     }
 }
 
@@ -41,7 +45,7 @@ impl Renderer {
         self.camera.yaw = yaw;
     }
 
-    pub fn set_camera_location(&mut self, location: Vec3) {
+    pub fn set_camera_location(&mut self, location: Vec3A) {
         self.camera.location = location;
     }
 }

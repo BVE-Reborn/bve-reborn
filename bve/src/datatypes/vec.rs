@@ -1,4 +1,4 @@
-use glam::{Vec2, Vec3, Vec4};
+use glam::{Vec2, Vec3A, Vec4};
 
 macro_rules! gen_uivec2 {
     ($($name:ident => $ty:ty),*) => {$(
@@ -233,8 +233,8 @@ macro_rules! gen_uivec3 {
             }
 
             #[inline]
-            pub fn map_f32(self, mut f: impl FnMut($ty) -> f32) -> Vec3 {
-                Vec3::new(
+            pub fn map_f32(self, mut f: impl FnMut($ty) -> f32) -> Vec3A {
+                Vec3A::new(
                     f(self.x),
                     f(self.y),
                     f(self.z)
@@ -242,8 +242,8 @@ macro_rules! gen_uivec3 {
             }
 
             #[inline]
-            pub fn map_i32(self, mut f: impl FnMut($ty) -> i32) -> IVec3 {
-                IVec3 {
+            pub fn map_i32(self, mut f: impl FnMut($ty) -> i32) -> IVec3A {
+                IVec3A {
                     x: f(self.x),
                     y: f(self.y),
                     z: f(self.z),
@@ -251,8 +251,8 @@ macro_rules! gen_uivec3 {
             }
 
             #[inline]
-            pub fn map_u32(self, mut f: impl FnMut($ty) -> u32) -> UVec3 {
-                UVec3 {
+            pub fn map_u32(self, mut f: impl FnMut($ty) -> u32) -> UVec3A {
+                UVec3A {
                     x: f(self.x),
                     y: f(self.y),
                     z: f(self.z),
@@ -269,8 +269,8 @@ macro_rules! gen_uivec3 {
             }
 
             #[inline]
-            pub fn map_bool(self, mut f: impl FnMut($ty) -> bool) -> BVec3 {
-                BVec3 {
+            pub fn map_bool(self, mut f: impl FnMut($ty) -> bool) -> BVec3A {
+                BVec3A {
                     x: f(self.x),
                     y: f(self.y),
                     z: f(self.y),
@@ -600,7 +600,7 @@ macro_rules! numeric_uivec4 {
 
 gen_uivec2!(BVec2 => bool);
 numeric_uivec2!(UVec2 => u32, IVec2 => i32);
-gen_uivec3!(BVec3 => bool);
-numeric_uivec3!(ColorU8RGB => u8, UVec3 => u32, IVec3 => i32);
+gen_uivec3!(BVec3A => bool);
+numeric_uivec3!(ColorU8RGB => u8, UVec3A => u32, IVec3A => i32);
 gen_uivec4!(BVec4 => bool);
 numeric_uivec4!(ColorU8RGBA => u8, UVec4 => u32, IVec4 => i32);

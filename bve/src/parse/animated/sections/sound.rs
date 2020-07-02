@@ -1,11 +1,11 @@
 use crate::parse::function_scripts::ParsedFunctionScript;
 use bve_derive::FromKVPSection;
-use glam::Vec3;
+use glam::Vec3A;
 
 #[derive(Debug, Clone, PartialEq, FromKVPSection)]
 pub struct AnimatedSound {
     filename: String,
-    position: Vec3,
+    position: Vec3A,
     volume: f32,
     volume_function: Option<ParsedFunctionScript>,
     pitch: f32,
@@ -18,7 +18,7 @@ impl Default for AnimatedSound {
     fn default() -> Self {
         Self {
             filename: String::new(),
-            position: Vec3::zero(),
+            position: Vec3A::zero(),
             volume: 1.0,
             pitch: 1.0,
             radius: 30.0,

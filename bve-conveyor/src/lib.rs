@@ -1,3 +1,6 @@
+#![allow(incomplete_features)]
+#![feature(generic_associated_types)]
+#![feature(type_alias_impl_trait)]
 // Rust warnings
 #![warn(unused)]
 #![deny(future_incompatible)]
@@ -53,6 +56,7 @@
 
 use arrayvec::ArrayVec;
 use async_std::sync::Mutex;
+pub use cache::*;
 use std::{
     borrow::Borrow,
     future::Future,
@@ -62,6 +66,10 @@ use std::{
     },
 };
 use wgpu::*;
+
+mod cache;
+
+pub type BeltBufferId = usize;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum UploadStyle {
@@ -135,7 +143,7 @@ fn check_should_resize(current: BufferAddress, desired: BufferAddress) -> Option
 
 pub struct IdBuffer {
     pub inner: Buffer,
-    pub id: usize,
+    pub id: BeltBufferId,
     size: BufferAddress,
     dirty: AtomicBool,
 }
@@ -356,7 +364,7 @@ impl AutomatedBuffer {
         let buffer = inner.get_buffer();
         let slice = buffer.inner.slice(0..size);
         let mut mapping = slice.get_mapped_range_mut();
-        data_fn(&mut *mapping);
+        data_fn(&mut mapping[0..size as usize]);
         drop(mapping);
         buffer.dirty.store(true, Ordering::Relaxed);
         buffer.inner.unmap();

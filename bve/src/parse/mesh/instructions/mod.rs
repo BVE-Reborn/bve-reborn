@@ -19,10 +19,10 @@ use crate::{
         mesh::{BlendMode, GlowAttenuationMode, MeshError, MeshWarning},
         util, PrettyPrintResult, Span,
     },
-    BVec3, ColorU8RGB, ColorU8RGBA,
+    BVec3A, ColorU8RGB, ColorU8RGBA,
 };
 pub use creation::*;
-use glam::{Vec2, Vec3};
+use glam::{Vec2, Vec3A};
 pub use post_processing::*;
 use serde::Deserialize;
 use std::io;
@@ -142,9 +142,9 @@ pub struct CreateMeshBuilder;
 #[bve_derive::serde_proxy]
 pub struct AddVertex {
     #[default("util::some_zero_f32")]
-    pub position: Vec3,
+    pub position: Vec3A,
     #[default("util::some_zero_f32")]
-    pub normal: Vec3,
+    pub normal: Vec3A,
     /// Only relevant after postprocessing away the [`SetTextureCoordinates`] command.
     #[serde(skip)]
     pub texture_coord: Vec2,
@@ -161,7 +161,7 @@ pub struct AddFace {
 #[bve_derive::serde_proxy]
 pub struct Cube {
     #[default("util::some_one_f32")]
-    pub half_dim: Vec3,
+    pub half_dim: Vec3A,
 }
 
 /// Cannot be executed, must be preprocessed away to [`AddVertex`] and [`AddFace`] commands
@@ -180,7 +180,7 @@ pub struct Cylinder {
 #[bve_derive::serde_proxy]
 pub struct Translate {
     #[default("util::some_zero_f32")]
-    pub value: Vec3,
+    pub value: Vec3A,
     #[serde(skip)]
     pub application: ApplyTo,
 }
@@ -188,7 +188,7 @@ pub struct Translate {
 #[bve_derive::serde_proxy]
 pub struct Scale {
     #[default("util::some_one_f32")]
-    pub value: Vec3,
+    pub value: Vec3A,
     #[serde(skip)]
     pub application: ApplyTo,
 }
@@ -196,7 +196,7 @@ pub struct Scale {
 #[bve_derive::serde_proxy]
 pub struct Rotate {
     #[default("util::some_zero_f32")]
-    pub axis: Vec3,
+    pub axis: Vec3A,
     #[default("util::some_zero_f32")]
     pub angle: f32,
     #[serde(skip)]
@@ -206,9 +206,9 @@ pub struct Rotate {
 #[bve_derive::serde_proxy]
 pub struct Shear {
     #[default("util::some_zero_f32")]
-    pub direction: Vec3,
+    pub direction: Vec3A,
     #[default("util::some_zero_f32")]
-    pub shear: Vec3,
+    pub shear: Vec3A,
     #[default("util::some_zero_f32")]
     pub ratio: f32,
     #[serde(skip)]
@@ -218,7 +218,7 @@ pub struct Shear {
 #[bve_derive::serde_proxy]
 pub struct Mirror {
     #[default("util::some_false")]
-    pub directions: BVec3,
+    pub directions: BVec3A,
     #[serde(skip)]
     pub application: ApplyTo,
 }

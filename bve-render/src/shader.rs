@@ -1,4 +1,3 @@
-use include_dir::Dir;
 use log::debug;
 use once_cell::sync::Lazy;
 use std::{
@@ -7,10 +6,7 @@ use std::{
 };
 use wgpu::{Device, ShaderModule, ShaderModuleSource};
 
-#[cfg(debug_assertions)]
-const COMPILED_SHADERS: Dir<'static> = include_dir::include_dir!("shaders/spirv-debug");
-#[cfg(not(debug_assertions))]
-const COMPILED_SHADERS: Dir<'static> = include_dir::include_dir!("shaders/spirv");
+include!(concat!(env!("OUT_DIR"), "/shaders-include.rs"));
 
 static SHADER_MODULES: Lazy<Mutex<HashMap<String, Arc<ShaderModule>>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 

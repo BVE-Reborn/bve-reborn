@@ -67,7 +67,7 @@ pub use crate::{
 use crate::{object::perspective_matrix, render::UniformVerts};
 use bve::{load::mesh::Vertex as MeshVertex, runtime::RenderLightDescriptor, UVec2};
 use bve_conveyor::{AutomatedBuffer, AutomatedBufferManager, UploadStyle};
-use glam::{Mat4, Vec3};
+use glam::{Mat4, Vec3A};
 use image::RgbaImage;
 use itertools::Itertools;
 use log::{debug, error, info};
@@ -303,7 +303,7 @@ impl Renderer {
             lights: SlotMap::new(),
 
             camera: camera::Camera {
-                location: Vec3::new(-6.0, 0.0, 0.0),
+                location: Vec3A::new(-6.0, 0.0, 0.0),
                 pitch: 0.0,
                 yaw: 0.0,
             },
