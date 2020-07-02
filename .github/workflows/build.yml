@@ -146,7 +146,6 @@ jobs:
                 target/debug/bve{-,_}corpus*\
                 target/debug/bve{-,_}parser{-,_}run*\
                 target/debug/bve{-,_}obj{-,_}conv*\
-                bve-render/shaders/spirv-debug bve-render/shaders/spirv\
                 ${{ matrix.name }} || true
         shell: bash
 

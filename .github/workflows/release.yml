@@ -119,7 +119,11 @@ jobs:
       - name: Prepare for artifact upload
         run: |
           mkdir ${{ matrix.name }}
-          cp -r target/release/bve-client${{ matrix.suffix }} target/release/bve-corpus${{ matrix.suffix }} target/release/bve-parser-run${{ matrix.suffix }} target/release/bve-obj-conv${{ matrix.suffix }} bve-render/shaders/spirv ${{ matrix.name }}
+          cp -r target/release/bve{-,_}client*\
+                target/release/bve{-,_}corpus*\
+                target/release/bve{-,_}parser{-,_}run*\
+                target/release/bve{-,_}obj{-,_}conv*\
+                ${{ matrix.name }} || true
         shell: bash
 
       - uses: actions/upload-artifact@v1
