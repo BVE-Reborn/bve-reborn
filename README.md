@@ -35,6 +35,4 @@ cargo build  # Debug Build
 cargo build --release  # Release build
 ```
 
-This will build bve, generate C/C++ bindings, and build the game.
-
 Running it requires data files, so contact me directly on the discord if you want to try building it.
