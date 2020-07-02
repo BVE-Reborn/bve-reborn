@@ -26,7 +26,7 @@ env_logger = "0.7.1"
 image = { version = "0.23.2", default-features = false, features = ["bmp", "gif", "png", "jpeg"] }
 imgui = "0.4.0"
 imgui-winit-support = { version = "0.4.0", git = "https://github.com/BVE-Reborn/imgui-rs.git", rev = "765f76b78610625f7c9b4eed23b97327cbc162be" }
-glam = "0.9.0"
+glam = "0.9.1"
 mimalloc = "0.1"
 num-traits = "0.2.11"
 itertools = "0.9"
