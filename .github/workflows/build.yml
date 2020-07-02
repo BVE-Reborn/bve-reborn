@@ -106,11 +106,11 @@ jobs:
           cargo build --all
         shell: bash
 
-      - name: Build C API
-        run: |
-          cargo run --bin bve-build -- --color=always --cbindgen
-        shell: bash
-        if: matrix.os == 'windows-2019'
+#      - name: Build C API
+#        run: |
+#          cargo run --bin bve-build -- --color=always --cbindgen
+#        shell: bash
+#        if: matrix.os == 'windows-2019'
 
       - name: Run tests
         run: |
@@ -122,22 +122,22 @@ jobs:
           cargo doc --all --no-deps
         shell: bash
 
-      - name: CMake on C API
-        run: |
-          mkdir -p target/capi/debug/
-          cd target/capi/debug/
-          cmake ../../../bve-native/tests/
-          cmake --build .
-          cd -
-        shell: bash
-        if: matrix.os == 'windows-2019'
-
-      - name: Run C API (win)
-        run: |
-          target/capi/debug/Debug/bve-native-c.exe
-          target/capi/debug/Debug/bve-native-c.exe
-        shell: bash
-        if: matrix.os == 'windows-2019'
+#      - name: CMake on C API
+#        run: |
+#          mkdir -p target/capi/debug/
+#          cd target/capi/debug/
+#          cmake ../../../bve-native/tests/
+#          cmake --build .
+#          cd -
+#        shell: bash
+#        if: matrix.os == 'windows-2019'
+#
+#      - name: Run C API (win)
+#        run: |
+#          target/capi/debug/Debug/bve-native-c.exe
+#          target/capi/debug/Debug/bve-native-c.exe
+#        shell: bash
+#        if: matrix.os == 'windows-2019'
 
       - name: Prepare for artifact upload
         run: |
