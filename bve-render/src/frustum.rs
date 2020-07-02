@@ -1,24 +1,24 @@
 //! This entire module only exists because of <https://www.gamedevs.org/uploads/fast-extraction-viewing-frustum-planes-from-world-view-projection-matrix.pdf/>
 //! and contains basically zero original work
 
-use glam::{Mat4, Vec3};
+use glam::{Mat4, Vec3A};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Sphere {
-    pub location: Vec3,
+    pub location: Vec3A,
     pub radius: f32,
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct Plane {
-    pub abc: Vec3,
+    pub abc: Vec3A,
     pub d: f32,
 }
 
 impl Plane {
     pub fn new(a: f32, b: f32, c: f32, d: f32) -> Self {
         Self {
-            abc: Vec3::new(a, b, c),
+            abc: Vec3A::new(a, b, c),
             d,
         }
     }
@@ -32,7 +32,7 @@ impl Plane {
         self
     }
 
-    pub fn distance(&self, point: Vec3) -> f32 {
+    pub fn distance(&self, point: Vec3A) -> f32 {
         self.abc.dot(point) + self.d
     }
 }

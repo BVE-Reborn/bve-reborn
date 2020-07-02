@@ -1,5 +1,5 @@
 use crate::runtime::chunk::{ChunkAddress, ChunkOffset, CHUNK_SIZE};
-use glam::Vec3;
+use glam::Vec3A;
 use std::{
     fmt,
     fmt::{Display, Formatter},
@@ -14,10 +14,10 @@ pub struct Location {
 
 impl Location {
     #[must_use]
-    pub fn from_absolute_position(position: Vec3) -> Self {
+    pub fn from_absolute_position(position: Vec3A) -> Self {
         let x_chunk = (position.x() / CHUNK_SIZE).floor();
         let y_chunk = (position.z() / CHUNK_SIZE).floor();
-        let chunk_start_position = Vec3::new(x_chunk * CHUNK_SIZE, 0.0, y_chunk * CHUNK_SIZE);
+        let chunk_start_position = Vec3A::new(x_chunk * CHUNK_SIZE, 0.0, y_chunk * CHUNK_SIZE);
         Self {
             chunk: ChunkAddress::new(x_chunk as i32, y_chunk as i32),
             offset: (position - chunk_start_position).into(),
@@ -30,9 +30,9 @@ impl Location {
     }
 
     #[must_use]
-    pub fn to_relative_position(&self, base_chunk: ChunkAddress) -> Vec3 {
+    pub fn to_relative_position(&self, base_chunk: ChunkAddress) -> Vec3A {
         let chunk_offset = *self.chunk - *base_chunk;
-        Vec3::new(
+        Vec3A::new(
             chunk_offset.x as f32 * CHUNK_SIZE,
             0.0,
             chunk_offset.y as f32 * CHUNK_SIZE,

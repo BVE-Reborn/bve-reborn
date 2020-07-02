@@ -1,5 +1,5 @@
 use crate::{load::mesh::Vertex, runtime::RenderLightDescriptor};
-use glam::Vec3;
+use glam::Vec3A;
 use image::RgbaImage;
 use std::hash::Hash;
 
@@ -9,10 +9,10 @@ pub trait Client: Send + Sync + 'static {
     type TextureHandle: Clone + Default + Hash + Send + Sync + 'static;
     type LightHandle: Clone + Hash + Send + Sync + 'static;
 
-    fn add_object(&mut self, location: Vec3, mesh: &Self::MeshHandle) -> Self::ObjectHandle;
+    fn add_object(&mut self, location: Vec3A, mesh: &Self::MeshHandle) -> Self::ObjectHandle;
     fn add_object_texture(
         &mut self,
-        location: Vec3,
+        location: Vec3A,
         mesh: &Self::MeshHandle,
         texture: &Self::TextureHandle,
     ) -> Self::ObjectHandle;
@@ -25,7 +25,7 @@ pub trait Client: Send + Sync + 'static {
     fn remove_texture(&mut self, texture: &Self::TextureHandle);
     fn remove_light(&mut self, light: &Self::LightHandle);
 
-    fn set_camera_location(&mut self, location: Vec3);
-    fn set_object_location(&mut self, object: &Self::ObjectHandle, location: Vec3);
+    fn set_camera_location(&mut self, location: Vec3A);
+    fn set_object_location(&mut self, object: &Self::ObjectHandle, location: Vec3A);
     fn set_light_descriptor(&mut self, light: &Self::LightHandle, descriptor: RenderLightDescriptor);
 }

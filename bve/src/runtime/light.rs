@@ -1,9 +1,9 @@
 use crate::runtime::{ChunkAddress, Location};
-use glam::Vec3;
+use glam::Vec3A;
 
 #[derive(Debug, Copy, Clone)]
 pub struct ConeLight {
-    pub direction: Vec3,
+    pub direction: Vec3A,
     pub angle: f32,
 }
 
@@ -16,7 +16,7 @@ pub enum LightType {
 #[derive(Debug, Copy, Clone)]
 pub struct LightDescriptor {
     pub location: Location,
-    pub color: Vec3,
+    pub color: Vec3A,
     pub radius: f32,
     pub ty: LightType,
 }
@@ -25,7 +25,7 @@ impl LightDescriptor {
     #[must_use]
     pub fn into_render_light_descriptor(self, base_chunk: ChunkAddress) -> RenderLightDescriptor {
         RenderLightDescriptor {
-            location: Vec3::from(*AsRef::<[f32; 3]>::as_ref(
+            location: Vec3A::from(*AsRef::<[f32; 3]>::as_ref(
                 &self.location.to_relative_position(base_chunk),
             )),
             color: self.color,
@@ -37,8 +37,8 @@ impl LightDescriptor {
 
 #[derive(Debug, Copy, Clone)]
 pub struct RenderLightDescriptor {
-    pub location: Vec3,
-    pub color: Vec3,
+    pub location: Vec3A,
+    pub color: Vec3A,
     pub radius: f32,
     pub ty: LightType,
 }

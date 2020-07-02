@@ -1,5 +1,5 @@
 use crate::*;
-use glam::Vec3;
+use glam::Vec3A;
 use log::trace;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -11,7 +11,7 @@ pub struct Mesh {
     pub index_buffer: Buffer,
     pub index_count: u32,
 
-    pub mesh_center_offset: Vec3,
+    pub mesh_center_offset: Vec3A,
     pub mesh_bounding_sphere_radius: f32,
     pub transparent: bool,
 }
@@ -66,18 +66,18 @@ pub fn convert_mesh_verts_to_render_verts(
     (out_verts, indices)
 }
 
-pub fn find_mesh_center(mesh: &[render::Vertex]) -> Vec3 {
+pub fn find_mesh_center(mesh: &[render::Vertex]) -> Vec3A {
     let first = if let Some(first) = mesh.first() {
         *first
     } else {
-        return Vec3::zero();
+        return Vec3A::zero();
     };
     // Bounding box time baby!
-    let mut max = Vec3::from(first.pos);
-    let mut min = Vec3::from(first.pos);
+    let mut max = Vec3A::from(first.pos);
+    let mut min = Vec3A::from(first.pos);
 
     for vert in mesh.iter().skip(1) {
-        let pos = Vec3::from(vert.pos);
+        let pos = Vec3A::from(vert.pos);
         max = max.max(pos);
         min = min.min(pos);
     }
@@ -85,9 +85,9 @@ pub fn find_mesh_center(mesh: &[render::Vertex]) -> Vec3 {
     (max + min) / 2.0
 }
 
-pub fn find_mesh_bounding_sphere_radius(mesh_center: Vec3, mesh: &[render::Vertex]) -> f32 {
+pub fn find_mesh_bounding_sphere_radius(mesh_center: Vec3A, mesh: &[render::Vertex]) -> f32 {
     mesh.iter().fold(0.0, |distance, vert| {
-        distance.max((Vec3::from(vert.pos) - mesh_center).length())
+        distance.max((Vec3A::from(vert.pos) - mesh_center).length())
     })
 }
 

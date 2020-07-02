@@ -5,7 +5,7 @@ use crate::{
 use async_std::sync::{Arc, RwLock};
 use dashmap::{DashMap, DashSet};
 use derive_more::{AsMut, AsRef, Deref, Display, From as DmFrom, Into};
-use glam::f32::Vec3;
+use glam::f32::Vec3A;
 use std::{
     hash::{Hash, Hasher},
     sync::atomic::AtomicU8,
@@ -26,12 +26,12 @@ impl ChunkAddress {
 
 #[derive(Debug, Copy, Clone, PartialEq, Deref, DmFrom, Into, Display, AsRef, AsMut)]
 #[display(fmt = "({}, {}, {})", "self.0.x()", "self.0.y()", "self.0.z()")]
-pub struct ChunkOffset(Vec3);
+pub struct ChunkOffset(Vec3A);
 
 impl ChunkOffset {
     #[must_use]
     pub fn new(x: f32, y: f32, z: f32) -> Self {
-        Self(Vec3::new(x, y, z))
+        Self(Vec3A::new(x, y, z))
     }
 }
 

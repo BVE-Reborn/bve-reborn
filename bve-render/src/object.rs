@@ -1,5 +1,5 @@
 use crate::{camera::NEAR_PLANE_DISTANCE, *};
-use glam::{Mat4, Vec3};
+use glam::{Mat4, Vec3, Vec3A};
 use slotmap::Key;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -9,7 +9,7 @@ pub struct Object {
     pub mesh: DefaultKey,
     pub texture: DefaultKey,
 
-    pub location: Vec3,
+    pub location: Vec3A,
     pub camera_distance: f32,
 
     pub transparent: bool,
@@ -19,8 +19,8 @@ pub fn perspective_matrix(fovy: f32, aspect: f32) -> Mat4 {
     Mat4::perspective_infinite_reverse_lh(fovy, aspect, NEAR_PLANE_DISTANCE)
 }
 
-pub fn generate_matrix(mx_proj: &Mat4, mx_view: &Mat4, location: Vec3) -> (Mat4, Mat4, Mat4) {
-    let mx_model = Mat4::from_translation(location);
+pub fn generate_matrix(mx_proj: &Mat4, mx_view: &Mat4, location: Vec3A) -> (Mat4, Mat4, Mat4) {
+    let mx_model = Mat4::from_translation(Vec3::from(location));
     let mx_model_view = *mx_view * mx_model;
     let mx_model_view_proj = *mx_proj * mx_model_view;
     let mx_inv_trans_model_view = mx_model_view.transpose().inverse();
@@ -28,13 +28,13 @@ pub fn generate_matrix(mx_proj: &Mat4, mx_view: &Mat4, location: Vec3) -> (Mat4,
 }
 
 impl Renderer {
-    pub fn add_object(&mut self, location: Vec3, mesh_handle: &mesh::MeshHandle) -> ObjectHandle {
+    pub fn add_object(&mut self, location: Vec3A, mesh_handle: &mesh::MeshHandle) -> ObjectHandle {
         self.add_object_texture(location, mesh_handle, &texture::TextureHandle::default())
     }
 
     pub fn add_object_texture(
         &mut self,
-        location: Vec3,
+        location: Vec3A,
         mesh::MeshHandle(mesh_idx): &mesh::MeshHandle,
         texture::TextureHandle(tex_idx): &texture::TextureHandle,
     ) -> ObjectHandle {
@@ -56,7 +56,7 @@ impl Renderer {
         ObjectHandle(handle)
     }
 
-    pub fn set_location(&mut self, object::ObjectHandle(handle): &object::ObjectHandle, location: Vec3) {
+    pub fn set_location(&mut self, object::ObjectHandle(handle): &object::ObjectHandle, location: Vec3A) {
         let object: &mut object::Object = &mut self.objects[*handle];
 
         object.location = location;

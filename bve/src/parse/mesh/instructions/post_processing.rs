@@ -2,7 +2,7 @@ use crate::parse::{
     mesh::{instructions::*, MeshError, MeshErrorKind},
     Span,
 };
-use glam::{f32::Vec3, Vec2};
+use glam::{f32::Vec3A, Vec2};
 use log::trace;
 use std::f32::consts::PI;
 
@@ -43,12 +43,12 @@ pub fn post_process(mut instructions: InstructionList) -> InstructionList {
 }
 
 /// Creates a `AddVertex` instruction from a position.
-fn create_vertex(original: &Instruction, position: Vec3) -> Instruction {
+fn create_vertex(original: &Instruction, position: Vec3A) -> Instruction {
     Instruction {
         span: original.span,
         data: InstructionData::AddVertex(AddVertex {
             position,
-            normal: Vec3::zero(),
+            normal: Vec3A::zero(),
             texture_coord: Vec2::zero(),
         }),
     }
@@ -86,14 +86,14 @@ fn process_compound(mesh: &[Instruction]) -> Vec<Instruction> {
                 let y = cube.half_dim.y();
                 let z = cube.half_dim.z();
 
-                result.push(create_vertex(instruction, Vec3::new(x, y, -z)));
-                result.push(create_vertex(instruction, Vec3::new(x, -y, -z)));
-                result.push(create_vertex(instruction, Vec3::new(-x, -y, -z)));
-                result.push(create_vertex(instruction, Vec3::new(-x, y, -z)));
-                result.push(create_vertex(instruction, Vec3::new(x, y, z)));
-                result.push(create_vertex(instruction, Vec3::new(x, -y, z)));
-                result.push(create_vertex(instruction, Vec3::new(-x, -y, z)));
-                result.push(create_vertex(instruction, Vec3::new(-x, y, z)));
+                result.push(create_vertex(instruction, Vec3A::new(x, y, -z)));
+                result.push(create_vertex(instruction, Vec3A::new(x, -y, -z)));
+                result.push(create_vertex(instruction, Vec3A::new(-x, -y, -z)));
+                result.push(create_vertex(instruction, Vec3A::new(-x, y, -z)));
+                result.push(create_vertex(instruction, Vec3A::new(x, y, z)));
+                result.push(create_vertex(instruction, Vec3A::new(x, -y, z)));
+                result.push(create_vertex(instruction, Vec3A::new(-x, -y, z)));
+                result.push(create_vertex(instruction, Vec3A::new(-x, y, z)));
 
                 let vi = vertex_index;
 
@@ -121,8 +121,8 @@ fn process_compound(mesh: &[Instruction]) -> Vec<Instruction> {
                     let trig_arg = (2.0 * PI * i) / n_f32;
                     let cos = trig_arg.cos();
                     let sin = trig_arg.sin();
-                    result.push(create_vertex(instruction, Vec3::new(cos * r1, h / 2.0, sin * r1)));
-                    result.push(create_vertex(instruction, Vec3::new(cos * r2, -h / 2.0, sin * r2)));
+                    result.push(create_vertex(instruction, Vec3A::new(cos * r1, h / 2.0, sin * r1)));
+                    result.push(create_vertex(instruction, Vec3A::new(cos * r2, -h / 2.0, sin * r2)));
                 }
 
                 // Faces

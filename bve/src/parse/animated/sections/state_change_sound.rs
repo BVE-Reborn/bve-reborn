@@ -1,6 +1,6 @@
 use crate::parse::{kvp::FromKVPValue, PrettyPrintResult};
 use bve_derive::FromKVPSection;
-use glam::Vec3;
+use glam::Vec3A;
 use std::io;
 
 #[derive(Debug, Clone, PartialEq, FromKVPSection)]
@@ -8,7 +8,7 @@ pub struct AnimatedStateChangeSound {
     filename: String,
     #[kvp(variadic)]
     filenames: Vec<String>,
-    position: Vec3,
+    position: Vec3A,
     volume: f32,
     pitch: f32,
     radius: f32,
@@ -21,7 +21,7 @@ impl Default for AnimatedStateChangeSound {
         Self {
             filename: String::new(),
             filenames: Vec::new(),
-            position: Vec3::zero(),
+            position: Vec3A::zero(),
             volume: 1.0,
             pitch: 1.0,
             radius: 30.0,

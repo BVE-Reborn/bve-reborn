@@ -248,7 +248,6 @@ pub fn build_shaders(out_dir: &Path, release: bool) {
     {
         let mut source_name = bve_render.join(format!("shaders/{}", &combination.name));
         let spirv_name = mangle_shader_name(out_dir, &combination);
-        dbg!(&spirv_name.debug);
         let stage = match combination.ty {
             ShaderType::Vertex => {
                 source_name.set_extension("vs.glsl");
@@ -319,6 +318,12 @@ pub fn build_shaders(out_dir: &Path, release: bool) {
                     );
                     exit(1);
                 }
+            } else if !release {
+                println!(
+                    "Ignoring {}. {} already up to date.",
+                    source_name.display(),
+                    spirv_name.debug.display()
+                );
             }
         }
 
@@ -360,6 +365,12 @@ pub fn build_shaders(out_dir: &Path, release: bool) {
                     );
                     exit(1);
                 }
+            } else if release {
+                println!(
+                    "Ignoring {}. {} already up to date.",
+                    source_name.display(),
+                    spirv_name.debug.display()
+                );
             }
         }
     }

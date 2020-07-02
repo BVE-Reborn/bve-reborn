@@ -1,5 +1,5 @@
 use crate::{render::Vertex, *};
-use glam::{Vec2, Vec3};
+use glam::{Vec2, Vec3A};
 use log::trace;
 use std::cmp::Ordering;
 
@@ -259,8 +259,8 @@ impl Renderer {
     pub fn compute_object_distances(&mut self) {
         for obj in self.objects.values_mut() {
             let mesh = &self.mesh[obj.mesh];
-            let mesh_center: Vec3 = obj.location + mesh.mesh_center_offset;
-            let camera_mesh_vector: Vec3 = self.camera.location - mesh_center;
+            let mesh_center: Vec3A = obj.location + mesh.mesh_center_offset;
+            let camera_mesh_vector: Vec3A = self.camera.location - mesh_center;
             let distance = camera_mesh_vector.length_squared();
             obj.camera_distance = distance;
             // println!(

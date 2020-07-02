@@ -1,9 +1,9 @@
 use crate::{
-    parse::util, BVec2, BVec3, BVec4, ColorU8RGB, ColorU8RGBA, HexColorRGB, HexColorRGBA, IVec2, IVec3, IVec4, UVec2,
-    UVec3, UVec4,
+    parse::util, BVec2, BVec3A, BVec4, ColorU8RGB, ColorU8RGBA, HexColorRGB, HexColorRGBA, IVec2, IVec3A, IVec4, UVec2,
+    UVec3A, UVec4,
 };
 use glam::{
-    f32::{Vec3, Vec4},
+    f32::{Vec3A, Vec4},
     Vec2,
 };
 use itertools::Itertools;
@@ -185,7 +185,7 @@ impl PrettyPrintResult for Vec2 {
     }
 }
 
-impl PrettyPrintResult for Vec3 {
+impl PrettyPrintResult for Vec3A {
     fn fmt(&self, _indent: usize, out: &mut dyn io::Write) -> io::Result<()> {
         writeln!(out, "{}, {}, {}", self.x(), self.y(), self.z())?;
         Ok(())
@@ -233,5 +233,5 @@ macro_rules! vec4_pretty_print {
 }
 
 vec2_pretty_print!(BVec2, IVec2, UVec2);
-vec3_pretty_print!(BVec3, ColorU8RGB, IVec3, UVec3);
+vec3_pretty_print!(BVec3A, ColorU8RGB, IVec3A, UVec3A);
 vec4_pretty_print!(BVec4, ColorU8RGBA, IVec4, UVec4);

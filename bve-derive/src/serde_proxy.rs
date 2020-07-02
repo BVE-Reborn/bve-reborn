@@ -99,12 +99,12 @@ fn process_explicit_type_proxy(t: Type) -> TokenStream2 {
 fn get_first_generic_argument(name_vec: &[String], path: &TypePath) -> TokenStream2 {
     let last_name = name_vec.last().map(String::as_str);
     match last_name {
-        Some("BVec2") | Some("BVec3") | Some("BVec4") => quote!(crate::parse::util::LooseNumericBool),
+        Some("BVec2") | Some("BVec3A") | Some("BVec4") => quote!(crate::parse::util::LooseNumericBool),
         Some("ColorU8RGB") | Some("ColorU8RGBA") => quote!(crate::parse::util::LooseNumber<u8>),
-        Some("UVec2") | Some("UVec3") | Some("UVec4") => quote!(crate::parse::util::LooseNumber<u32>),
-        Some("IVec2") | Some("IVec3") | Some("IVec4") => quote!(crate::parse::util::LooseNumber<i32>),
+        Some("UVec2") | Some("UVec3A") | Some("UVec4") => quote!(crate::parse::util::LooseNumber<u32>),
+        Some("IVec2") | Some("IVec3A") | Some("IVec4") => quote!(crate::parse::util::LooseNumber<i32>),
         Some("ColorF32R") | Some("ColorF32RG") | Some("ColorF32RGB") | Some("ColorF32RGBA") | Some("Vec2")
-        | Some("Vec3") | Some("Vec4") => quote!(crate::parse::util::LooseNumber<f32>),
+        | Some("Vec3A") | Some("Vec4") => quote!(crate::parse::util::LooseNumber<f32>),
         name => match &path.path.segments.last().expect("Type path must exist.").arguments {
             PathArguments::AngleBracketed(arg) => match &arg.args[0] {
                 GenericArgument::Type(t) => process_explicit_type_proxy((*t).clone()),
@@ -215,7 +215,7 @@ fn generate_proxy_object(name: &Ident, fields: &[Field]) -> TokenStream2 {
                 (proxy_fields, from_fields)
             }
             vec if match vec.last().map(String::as_str) {
-                Some("ColorU8RGB") | Some("Vec3") | Some("BVec3") | Some("UVec3") | Some("IVec3") => true,
+                Some("ColorU8RGB") | Some("Vec3A") | Some("BVec3A") | Some("UVec3A") | Some("IVec3A") => true,
                 _ => false,
             } =>
             {

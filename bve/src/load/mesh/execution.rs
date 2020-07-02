@@ -6,7 +6,7 @@ use crate::{
         Span,
     },
 };
-use glam::{Mat3, Vec3};
+use glam::{Mat3, Vec3, Vec3A};
 use itertools::Itertools;
 use log::trace;
 
@@ -82,7 +82,7 @@ fn triangulate_faces(input_face: &[usize]) -> Vec<usize> {
 }
 
 fn calculate_normals(mesh: &mut Mesh) {
-    mesh.vertices.iter_mut().for_each(|v| v.normal = Vec3::zero());
+    mesh.vertices.iter_mut().for_each(|v| v.normal = Vec3A::zero());
 
     for (&i1, &i2, &i3) in mesh.indices.iter().tuples() {
         let a_vert: &Vertex = &mesh.vertices[i1];
@@ -234,13 +234,13 @@ impl Executable for Scale {
 
 impl Executable for Rotate {
     fn execute(&self, _span: Span, ctx: &mut MeshBuildContext) {
-        let axis = if self.axis == Vec3::zero() {
-            Vec3::unit_x()
+        let axis = if self.axis == Vec3A::zero() {
+            Vec3A::unit_x()
         } else {
             self.axis.normalize()
         };
 
-        let rotation = Mat3::from_axis_angle(axis, self.angle.to_radians());
+        let rotation = Mat3::from_axis_angle(Vec3::from(axis), self.angle.to_radians());
 
         apply_transform(self.application, ctx, |v| {
             v.position = rotation * v.position;
@@ -329,7 +329,7 @@ mod test {
         parse::{mesh::instructions::*, Span},
         ColorU8RGB, ColorU8RGBA,
     };
-    use glam::{Vec2, Vec3};
+    use glam::{Vec2, Vec3A};
     use obj::ObjData;
     use std::{
         io::{BufReader, Cursor},
@@ -353,9 +353,9 @@ mod test {
         for face in &obj.objects[0].groups[0].polys {
             for (offset, vert) in face.0.iter().enumerate() {
                 let position = obj.position[vert.0];
-                let position = Vec3::from(position);
+                let position = Vec3A::from(position);
                 let normal = obj.normal[vert.2.expect("OBJ must have normals")];
-                let normal = Vec3::from(normal);
+                let normal = Vec3A::from(normal);
                 result.push(Instruction {
                     span: Span::none(),
                     data: InstructionData::AddVertex(AddVertex {
@@ -415,18 +415,18 @@ mod test {
         let v = generate_instruction_list!(
             0: CreateMeshBuilder {},
             1: AddVertex {
-                position: Vec3::zero(),
-                normal: Vec3::zero(),
+                position: Vec3A::zero(),
+                normal: Vec3A::zero(),
                 texture_coord: Vec2::zero(),
             },
             2: AddVertex {
-                position: Vec3::new(-0.866_025, 0.0, 0.5),
-                normal: Vec3::zero(),
+                position: Vec3A::new(-0.866_025, 0.0, 0.5),
+                normal: Vec3A::zero(),
                 texture_coord: Vec2::zero(),
             },
             3: AddVertex {
-                position: Vec3::new(0.866_025, 0.0, 0.5),
-                normal: Vec3::zero(),
+                position: Vec3A::new(0.866_025, 0.0, 0.5),
+                normal: Vec3A::zero(),
                 texture_coord: Vec2::zero(),
             },
             4: AddFace {
@@ -442,11 +442,11 @@ mod test {
         let result = generate_meshes(post_process(v));
         assert_eq!(result.meshes.len(), 1);
         let mesh = &result.meshes[0];
-        assert_eq!(mesh.vertices[0].position, Vec3::zero());
-        assert_eq!(mesh.vertices[1].position, Vec3::new(-0.866_025, 0.0, 0.5));
-        assert_eq!(mesh.vertices[2].position, Vec3::new(0.866_025, 0.0, 0.5));
+        assert_eq!(mesh.vertices[0].position, Vec3A::zero());
+        assert_eq!(mesh.vertices[1].position, Vec3A::new(-0.866_025, 0.0, 0.5));
+        assert_eq!(mesh.vertices[2].position, Vec3A::new(0.866_025, 0.0, 0.5));
         for v in &mesh.vertices {
-            assert_eq!(v.normal, Vec3::new(0.0, 1.0, 0.0));
+            assert_eq!(v.normal, Vec3A::new(0.0, 1.0, 0.0));
         }
         for &v in &mesh.vertices {
             assert_eq!(v.coord, Vec2::zero());
@@ -471,18 +471,18 @@ mod test {
         let v = generate_instruction_list!(
             0: CreateMeshBuilder {},
             1: AddVertex {
-                position: Vec3::zero(),
-                normal: Vec3::zero(),
+                position: Vec3A::zero(),
+                normal: Vec3A::zero(),
                 texture_coord: Vec2::zero(),
             },
             2: AddVertex {
-                position: Vec3::new(-0.866_025, 0.0, 0.5),
-                normal: Vec3::zero(),
+                position: Vec3A::new(-0.866_025, 0.0, 0.5),
+                normal: Vec3A::zero(),
                 texture_coord: Vec2::zero(),
             },
             3: AddVertex {
-                position: Vec3::new(0.866_025, 0.0, 0.5),
-                normal: Vec3::zero(),
+                position: Vec3A::new(0.866_025, 0.0, 0.5),
+                normal: Vec3A::zero(),
                 texture_coord: Vec2::zero(),
             },
             4: AddFace {
@@ -509,18 +509,18 @@ mod test {
             },
             10: CreateMeshBuilder {},
             11: AddVertex {
-                position: Vec3::zero(),
-                normal: Vec3::zero(),
+                position: Vec3A::zero(),
+                normal: Vec3A::zero(),
                 texture_coord: Vec2::zero(),
             },
             12: AddVertex {
-                position: Vec3::new(-0.866_025, 0.0, 0.5),
-                normal: Vec3::zero(),
+                position: Vec3A::new(-0.866_025, 0.0, 0.5),
+                normal: Vec3A::zero(),
                 texture_coord: Vec2::zero(),
             },
             13: AddVertex {
-                position: Vec3::new(0.866_025, 0.0, 0.5),
-                normal: Vec3::zero(),
+                position: Vec3A::new(0.866_025, 0.0, 0.5),
+                normal: Vec3A::zero(),
                 texture_coord: Vec2::zero(),
             },
             14: AddFace {
@@ -539,11 +539,11 @@ mod test {
         // First Mesh
         let mesh = &result.meshes[0];
         assert_eq!(mesh.vertices.len(), 3);
-        assert_eq!(mesh.vertices[0].position, Vec3::zero());
-        assert_eq!(mesh.vertices[1].position, Vec3::new(-0.866_025, 0.0, 0.5));
-        assert_eq!(mesh.vertices[2].position, Vec3::new(0.866_025, 0.0, 0.5));
+        assert_eq!(mesh.vertices[0].position, Vec3A::zero());
+        assert_eq!(mesh.vertices[1].position, Vec3A::new(-0.866_025, 0.0, 0.5));
+        assert_eq!(mesh.vertices[2].position, Vec3A::new(0.866_025, 0.0, 0.5));
         for v in &mesh.vertices {
-            assert_eq!(v.normal, Vec3::unit_y());
+            assert_eq!(v.normal, Vec3A::unit_y());
         }
         for &v in &mesh.vertices {
             assert_eq!(v.coord, Vec2::zero());
@@ -561,11 +561,11 @@ mod test {
         // Second Mesh
         let mesh = &result.meshes[1];
         assert_eq!(mesh.vertices.len(), 3);
-        assert_eq!(mesh.vertices[0].position, Vec3::zero());
-        assert_eq!(mesh.vertices[1].position, Vec3::new(-0.866_025, 0.0, 0.5));
-        assert_eq!(mesh.vertices[2].position, Vec3::new(0.866_025, 0.0, 0.5));
+        assert_eq!(mesh.vertices[0].position, Vec3A::zero());
+        assert_eq!(mesh.vertices[1].position, Vec3A::new(-0.866_025, 0.0, 0.5));
+        assert_eq!(mesh.vertices[2].position, Vec3A::new(0.866_025, 0.0, 0.5));
         for v in &mesh.vertices {
-            assert_eq!(v.normal, Vec3::unit_y());
+            assert_eq!(v.normal, Vec3A::unit_y());
         }
         for &v in &mesh.vertices {
             assert_eq!(v.coord, Vec2::zero());
@@ -589,18 +589,18 @@ mod test {
         let v = generate_instruction_list!(
             0: CreateMeshBuilder {},
             1: AddVertex {
-                position: Vec3::zero(),
-                normal: Vec3::zero(),
+                position: Vec3A::zero(),
+                normal: Vec3A::zero(),
                 texture_coord: Vec2::zero(),
             },
             2: AddVertex {
-                position: Vec3::new(-0.866_025, 0.0, 0.5),
-                normal: Vec3::zero(),
+                position: Vec3A::new(-0.866_025, 0.0, 0.5),
+                normal: Vec3A::zero(),
                 texture_coord: Vec2::zero(),
             },
             3: AddVertex {
-                position: Vec3::new(0.866_025, 0.0, 0.5),
-                normal: Vec3::zero(),
+                position: Vec3A::new(0.866_025, 0.0, 0.5),
+                normal: Vec3A::zero(),
                 texture_coord: Vec2::zero(),
             },
             4: AddFace {
@@ -629,11 +629,11 @@ mod test {
         assert_eq!(result.meshes.len(), 1);
         let mesh = &result.meshes[0];
         assert_eq!(mesh.vertices.len(), 3);
-        assert_eq!(mesh.vertices[0].position, Vec3::zero());
-        assert_eq!(mesh.vertices[1].position, Vec3::new(-0.866_025, 0.0, 0.5));
-        assert_eq!(mesh.vertices[2].position, Vec3::new(0.866_025, 0.0, 0.5));
+        assert_eq!(mesh.vertices[0].position, Vec3A::zero());
+        assert_eq!(mesh.vertices[1].position, Vec3A::new(-0.866_025, 0.0, 0.5));
+        assert_eq!(mesh.vertices[2].position, Vec3A::new(0.866_025, 0.0, 0.5));
         for v in &mesh.vertices {
-            assert_eq!(v.normal, Vec3::unit_y());
+            assert_eq!(v.normal, Vec3A::unit_y());
         }
         for (i, &v) in mesh.vertices.iter().enumerate() {
             assert_eq!(v.coord, Vec2::splat((i + 1) as f32));
