@@ -15,7 +15,7 @@ vec4 srgb_to_linear(vec4 srgb) {
     vec3 under = color_srgb / 12.92;
     vec3 over = pow((color_srgb + 0.055) / 1.055, vec3(2.4));
     vec3 result = mix(under, over, selector);
-    return vec4(pow(srgb.rgb, vec3(2.2)), srgb.a);
+    return vec4(result, srgb.a);
 }
 
 vec4 linear_to_srgb(vec4 linear) {
