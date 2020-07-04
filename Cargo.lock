@@ -25,6 +25,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ahash"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "94e200a506d98f285fcd550bd2b0e5eacdfd53775e6d3aefaf2781571aabfe6f"
+dependencies = [
+ "const-random",
+]
+
+[[package]]
 name = "aho-corasick"
 version = "0.7.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -647,11 +656,12 @@ dependencies = [
 
 [[package]]
 name = "dashmap"
-version = "3.11.4"
+version = "3.11.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8cfcd41ae02d60edded204341d2798ba519c336c51a37330aa4b98a1128def32"
+checksum = "7daf68f8d2587be01687a29f5f7206f67448745d16b280686790a1a8632d9f07"
 dependencies = [
- "ahash",
+ "ahash 0.3.8",
+ "ahash 0.4.0",
  "cfg-if",
  "num_cpus",
 ]
@@ -1129,7 +1139,7 @@ version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "96282e96bfcd3da0d3aa9938bedf1e50df3269b6db08b4876d2da0bb1a0841cf"
 dependencies = [
- "ahash",
+ "ahash 0.3.8",
  "autocfg",
 ]
 
