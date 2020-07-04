@@ -2,7 +2,7 @@ use nom::{
     branch::alt,
     bytes::complete::{is_a, is_not, tag_no_case},
     character::complete::char as char_c,
-    combinator::opt,
+    combinator::{map_res, opt},
     sequence::{delimited, preceded},
     IResult,
 };
@@ -62,31 +62,30 @@ where
     }
 
     fn value<'i>(&self, input: &'i str) -> IResult<&'i str, i64> {
-        let (input, value) = is_a("0123456789")(input)?;
-        let value_num: i64 = value.parse().ok()?;
-        Ok((input, value_num))
+        map_res(is_a("0123456789"), |i: &'i str| i.parse())(input)
     }
 
     fn value_directive<'i>(&self, input: &'i str) -> IResult<&'i str, i64> {
-        self.directive(input)
-            .and_then(|(input, v)| Ok((input, v.parse().ok()?)))
+        map_res(|i: &'i str| self.directive(i), |v| v.parse())(input)
     }
 
     fn directive<'i>(&self, input: &'i str) -> IResult<&'i str, String> {
-        preceded(char_c('$'), alt(()))(input)
+        preceded(char_c('$'), alt((|i: &'i str| self.directive_chr(i),)))(input)
     }
 
     fn directive_chr<'i>(&self, input: &'i str) -> IResult<&'i str, String> {
         let (input, _) = tag_no_case("chr")(input)?;
-        let (input, value) = delimited(char_c('('), |i: &str| self.value_or_directive(i), char_c(')'))(input)?;
-        Ok((input, match value {
-            x @ 10 | x @ 13 | x @ 20..=127 => {
-                let mut string = String::new();
-                string.push(char::from(x as u8));
-                string
-            }
-            _ => None?,
-        }))
+        map_res(
+            delimited(char_c('('), |i: &str| self.value_or_directive(i), char_c(')')),
+            |value| match value {
+                x @ 10 | x @ 13 | x @ 20..=127 => {
+                    let mut string = String::new();
+                    string.push(char::from(x as u8));
+                    Ok(string)
+                }
+                _ => Err(()),
+            },
+        )(input)
     }
 
     fn glob<'i>(&self, input: &'i str) -> IResult<&'i str, &'i str> {
