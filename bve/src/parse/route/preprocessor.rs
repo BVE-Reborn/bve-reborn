@@ -1,12 +1,6 @@
-use nom::{
-    branch::alt,
-    bytes::complete::{is_a, is_not, tag_no_case},
-    character::complete::char as char_c,
-    combinator::{map_res, opt},
-    sequence::{delimited, preceded},
-    IResult,
-};
-use std::future::Future;
+use once_cell::sync::Lazy;
+use rand::Rng;
+use regex::Regex;
 
 pub struct FileInput<'a> {
     base_path: &'a str,
@@ -18,136 +12,226 @@ pub struct FileOutput {
     output: String,
 }
 
-pub struct PreprocessingContext<FileFunc, FileFuncFut>
-where
-    FileFunc: Fn(FileInput<'_>) -> FileFuncFut,
-    FileFuncFut: Future<Output = FileOutput>,
-{
-    file_func: FileFunc,
+static INCLUDE_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r#"(?i)\$include\s*\([^\n]*"#).expect("invalid regex"));
+static RND_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r#"(?i)\$rnd\s*\(\s*(\d+)\s*;\s*(\d+)\s*\)"#).expect("invalid regex"));
+static CHR_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r#"(?i)\$chr\s*\(\s*(\d+)\s*\)"#).expect("invalid regex"));
+static IF_SEARCH_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r#"(?i)\$(if|else|endif)\s*\([^\n]*"#).expect("invalid regex"));
+static IF_PARSE_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r#"(?i)\$if\s*\(\s*(\d+)\s*\)"#).expect("invalid regex"));
+
+pub async fn preprocess_route<R: Rng + ?Sized>(content: &str, rng: &mut R) -> String {
+    unimplemented!()
 }
-impl<FileFunc, FileFuncFut> PreprocessingContext<FileFunc, FileFuncFut>
-where
-    FileFunc: Fn(FileInput<'_>) -> FileFuncFut,
-    FileFuncFut: Future<Output = FileOutput>,
-{
-    pub fn new(file_func: FileFunc) -> Self {
-        Self { file_func }
+
+fn run_includes<R: Rng + ?Sized>(content: &str, rng: &mut R) -> String {
+    // Content will likely get much bigger
+    let mut output = String::with_capacity(content.len() * 2);
+    let mut last_match = 0_usize;
+    for mat in INCLUDE_REGEX.find_iter(content) {
+        output.push_str(&content[last_match..mat.start()]);
+        let include = &content[mat.range()];
+        let include = run_rnd(include, rng);
+        let include = run_chr(&include);
+        output.push_str(&parse_include(&include));
+        last_match = mat.end();
     }
+    output.push_str(&content[last_match..]);
 
-    pub fn preprocess_file(&self, file_path: &str, file_contents: &str) -> Option<String> {
-        let mut output = String::with_capacity(file_contents.len() * 2);
-        let mut contents = file_contents;
-        while !contents.is_empty() {
-            let (remaining, out) = self.glob(contents).ok()?;
-            output += out;
+    output
+}
 
-            let remaining = match self.directive(remaining) {
-                Ok((remaining, out)) => {
-                    output.push_str(&out);
-                    remaining
+fn run_rnd<R: Rng + ?Sized>(content: &str, rng: &mut R) -> String {
+    // Content by definition only gets smaller.
+    let mut output = String::with_capacity(content.len());
+    let mut last_match = 0_usize;
+    for capture_set in RND_REGEX.captures_iter(content) {
+        let mat = capture_set.get(0).unwrap_or_else(|| unreachable!());
+        output.push_str(&content[last_match..mat.start()]);
+
+        let begin = capture_set.get(1).expect("regex has 2 groups").as_str();
+        let end = capture_set.get(2).expect("regex has 2 groups").as_str();
+
+        let begin_int: u64 = begin.parse().expect("unable to parse number");
+        let end_int: u64 = end.parse().expect("unable to parse number");
+
+        let value = rng.gen_range(begin_int, end_int.saturating_add(1));
+        output.push_str(&value.to_string());
+
+        last_match = mat.end();
+    }
+    output.push_str(&content[last_match..]);
+
+    output
+}
+
+fn run_chr(content: &str) -> String {
+    // Content gets a bit larger.
+    let mut output = String::with_capacity(content.len() + content.len() / 16);
+    let mut last_match = 0_usize;
+    for capture_set in CHR_REGEX.captures_iter(content) {
+        let mat = capture_set.get(0).unwrap_or_else(|| unreachable!());
+        output.push_str(&content[last_match..mat.start()]);
+
+        let value = capture_set.get(1).expect("regex has 1 group").as_str();
+
+        output.push_str(&format!("%C{}%", value));
+
+        last_match = mat.end();
+    }
+    output.push_str(&content[last_match..]);
+
+    output
+}
+
+struct IfStackMember {
+    start: usize,
+    value: bool,
+    enabled: bool,
+}
+
+fn run_if<R: Rng + ?Sized>(content: &str, rng: &mut R) -> String {
+    dbg!(content);
+    // Content always gets smaller
+    let mut output = String::with_capacity(content.len());
+    let mut last_match = 0_usize;
+
+    let mut stack_depth = 0_usize;
+
+    let mut if_value = false;
+    let mut if_start = 0_usize;
+
+    for capture_set in IF_SEARCH_REGEX.captures_iter(content) {
+        let mat = capture_set.get(0).unwrap_or_else(|| unreachable!());
+        let command = capture_set.get(1).expect("regex has 1 group");
+        match command.as_str().to_lowercase().as_str() {
+            "if" => {
+                stack_depth += 1;
+                if stack_depth != 1 {
+                    continue;
                 }
-                Err(..) => {
-                    let (remaining, _) = self.new_line(remaining).ok()?;
-                    remaining
+                output.push_str(&content[last_match..mat.start()]);
+                // TODO: sub
+                let statement = &content[mat.range()];
+                let statement = run_rnd(statement, rng);
+                if let Some(parsed) = IF_PARSE_REGEX.captures(&statement) {
+                    let group = parsed.get(1).expect("regex has 1 group");
+                    let value: i64 = group.as_str().parse().expect("unable to parse if value");
+                    if_value = value != 0;
+                    if_start = mat.end();
+                } else {
+                    unimplemented!()
                 }
-            };
-
-            contents = remaining;
+            }
+            "else" => {
+                if stack_depth != 1 {
+                    continue;
+                }
+                if if_value {
+                    let body = &content[if_start..mat.start()];
+                    let body = run_if(body, rng);
+                    output.push_str(&body);
+                }
+                if_value = !if_value;
+                if_start = mat.end();
+            }
+            "endif" => {
+                if stack_depth == 0 {
+                    continue;
+                }
+                stack_depth -= 1;
+                if stack_depth != 0 {
+                    continue;
+                }
+                if if_value {
+                    let body = &content[if_start..mat.start()];
+                    let body = run_if(body, rng);
+                    output.push_str(&body);
+                }
+            }
+            _ => unreachable!(),
         }
-        unimplemented!()
+        last_match = mat.end();
     }
-
-    fn value_or_directive<'i>(&self, input: &'i str) -> IResult<&'i str, i64> {
-        alt((|i: &'i str| self.value(i), |i: &'i str| self.value_directive(i)))(input)
-    }
-
-    fn value<'i>(&self, input: &'i str) -> IResult<&'i str, i64> {
-        map_res(is_a("0123456789"), |i: &'i str| i.parse())(input)
-    }
-
-    fn value_directive<'i>(&self, input: &'i str) -> IResult<&'i str, i64> {
-        map_res(|i: &'i str| self.directive(i), |v| v.parse())(input)
-    }
-
-    fn directive<'i>(&self, input: &'i str) -> IResult<&'i str, String> {
-        preceded(char_c('$'), alt((|i: &'i str| self.directive_chr(i),)))(input)
-    }
-
-    fn directive_chr<'i>(&self, input: &'i str) -> IResult<&'i str, String> {
-        let (input, _) = tag_no_case("chr")(input)?;
-        map_res(
-            delimited(char_c('('), |i: &str| self.value_or_directive(i), char_c(')')),
-            |value| match value {
-                x @ 10 | x @ 13 | x @ 20..=127 => {
-                    let mut string = String::new();
-                    string.push(char::from(x as u8));
-                    Ok(string)
-                }
-                _ => Err(()),
-            },
-        )(input)
-    }
-
-    fn glob<'i>(&self, input: &'i str) -> IResult<&'i str, &'i str> {
-        is_not("$\r\n")(input)
-    }
-
-    fn new_line<'i>(&self, input: &'i str) -> IResult<&'i str, ()> {
-        let (input, out) = opt(is_a("\r\n"))(input)?;
-        if out.is_some() {
-            let (input, _) = opt(|i| self.comment(i))(input)?;
-            Ok((input, ()))
-        } else {
-            Ok((input, ()))
+    if stack_depth != 0 {
+        if if_value {
+            let body = &content[last_match..];
+            let body = run_if(body, rng);
+            output.push_str(&body);
         }
+    } else {
+        output.push_str(&content[last_match..]);
     }
 
-    fn comment<'i>(&self, input: &'i str) -> IResult<&'i str, ()> {
-        let (input, _) = char_c(';')(input)?;
-        let (input, _) = is_not("\r\n")(input)?;
-        Ok((input, ()))
-    }
+    output
+}
+
+fn parse_include(include: &str) -> String {
+    unimplemented!()
 }
 
 #[cfg(test)]
 mod test {
-    use super::{FileInput, FileOutput, PreprocessingContext};
-    use std::future::Future;
+    use super::*;
+    use rand::SeedableRng;
 
-    type DummyReturnFuture = impl Future<Output = FileOutput>;
-    fn create_dummy_context() -> PreprocessingContext<impl Fn(FileInput<'_>) -> DummyReturnFuture, DummyReturnFuture> {
-        PreprocessingContext::new(|input| async move {
-            FileOutput {
-                output: String::new(),
-                path: String::new(),
-            }
-        })
+    fn new_rng() -> impl Rng {
+        rand::rngs::StdRng::seed_from_u64(42)
     }
 
     #[test]
-    fn glob() {
-        let ctx = create_dummy_context();
-        assert_eq!(ctx.glob("hi, hello; how're you"), Ok(("", "hi, hello; how're you")));
-        assert_eq!(ctx.glob("hi, hello;\nhow're you"), Ok(("\nhow're you", "hi, hello;")));
-        assert_eq!(ctx.glob("hi, hello;$how're you"), Ok(("$how're you", "hi, hello;")));
+    fn chr() {
+        assert_eq!(run_chr("$chr(10)"), "%C10%");
+        assert_eq!(run_chr("$chr(13)"), "%C13%");
+        assert_eq!(run_chr("$CHR ( 13 )"), "%C13%");
     }
 
     #[test]
-    fn comment() {
-        let ctx = create_dummy_context();
-        assert_eq!(ctx.comment(";I am a comment"), Ok(("", ())));
-        assert_eq!(ctx.comment(";I am a comment\n"), Ok(("\n", ())));
-        assert!(matches!(
-            ctx.comment(" ;I am not a comment\n"),
-            Err(nom::Err::Error((" ;I am not a comment\n", ..)))
-        ));
+    fn rnd() {
+        assert_eq!(run_rnd("$rnd(1; 6)", &mut new_rng()), "4");
+        assert_eq!(run_rnd("$RND ( 1 ; 6 )", &mut new_rng()), "4");
+        assert_eq!(run_rnd("$rnd(1;1)", &mut new_rng()), "1");
     }
 
     #[test]
-    fn new_line() {
-        let ctx = create_dummy_context();
-        assert_eq!(ctx.new_line("\n\r\n\r\n"), Ok(("", ())));
-        assert_eq!(ctx.new_line("\n\r\n\r;comment\n"), Ok(("\n", ())));
-        assert_eq!(ctx.new_line(";I am a comment"), Ok((";I am a comment", ())));
+    fn i_f() {
+        assert_eq!(
+            run_if("$if(1)\ntrue\n$else()\nfalse\n$endif()", &mut new_rng()),
+            "\ntrue\n"
+        );
+        assert_eq!(
+            run_if("$if(0)\ntrue\n$else()\nfalse\n$endif()", &mut new_rng()),
+            "\nfalse\n"
+        );
+        assert_eq!(
+            run_if("$if($rnd(1;1))\ntrue\n$else()\nfalse\n$endif()", &mut new_rng()),
+            "\ntrue\n"
+        );
+        assert_eq!(
+            run_if("$if($rnd(0;0))\ntrue\n$else()\nfalse\n$endif()", &mut new_rng()),
+            "\nfalse\n"
+        );
+        assert_eq!(run_if("$if(1)\ntrue\n", &mut new_rng()), "\ntrue\n");
+        assert_eq!(run_if("$if(0)\nfalse\n", &mut new_rng()), "");
+        assert_eq!(run_if("$if(1)\ntrue\n$else()\nfalse\n", &mut new_rng()), "\ntrue\n");
+        assert_eq!(run_if("$if(0)\nfalse\n$else()\ntrue\n", &mut new_rng()), "\ntrue\n");
+    }
+
+    #[test]
+    fn nested_if() {
+        assert_eq!(
+            run_if(
+                "$if(1)\n$if(1)\ntrue\n$endif()\n$else()\n$if(1)\nfalse\n$endif()\n$endif()",
+                &mut new_rng()
+            ),
+            "\n\ntrue\n\n"
+        );
+        assert_eq!(
+            run_if(
+                "$if(0)\n$if(1)\ntrue\n$endif()\n$else()\n$if(1)\nfalse\n$endif()\n$endif()",
+                &mut new_rng()
+            ),
+            "\n\nfalse\n\n"
+        );
     }
 }
