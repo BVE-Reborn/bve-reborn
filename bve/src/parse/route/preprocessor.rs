@@ -1,6 +1,7 @@
 use once_cell::sync::Lazy;
 use rand::Rng;
 use regex::Regex;
+use std::collections::HashMap;
 
 pub struct FileInput<'a> {
     base_path: &'a str,
@@ -16,9 +17,13 @@ static INCLUDE_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r#"(?i)\$include\s*\
 static RND_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r#"(?i)\$rnd\s*\(\s*(\d+)\s*;\s*(\d+)\s*\)"#).expect("invalid regex"));
 static CHR_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r#"(?i)\$chr\s*\(\s*(\d+)\s*\)"#).expect("invalid regex"));
+static SUB_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r#"(?i)\$sub\s*\(\s*(\d+)\s*\)(?:\s*=\s*([^\n]*))?"#).expect("invalid regex"));
 static IF_SEARCH_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r#"(?i)\$(if|else|endif)\s*\([^\n]*"#).expect("invalid regex"));
 static IF_PARSE_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r#"(?i)\$if\s*\(\s*(\d+)\s*\)"#).expect("invalid regex"));
+
+type SubMap = HashMap<u64, String>;
 
 pub async fn preprocess_route<R: Rng + ?Sized>(content: &str, rng: &mut R) -> String {
     unimplemented!()
@@ -31,9 +36,37 @@ fn run_includes<R: Rng + ?Sized>(content: &str, rng: &mut R) -> String {
     for mat in INCLUDE_REGEX.find_iter(content) {
         output.push_str(&content[last_match..mat.start()]);
         let include = &content[mat.range()];
-        let include = run_rnd(include, rng);
+        let include = run_rnd(&include, rng);
         let include = run_chr(&include);
         output.push_str(&parse_include(&include));
+        last_match = mat.end();
+    }
+    output.push_str(&content[last_match..]);
+
+    output
+}
+
+fn run_sub<R: Rng + ?Sized>(content: &str, rng: &mut R, sub_map: &mut SubMap) -> String {
+    // Content likely gets larger
+    let mut output = String::with_capacity(content.len() * 2);
+    let mut last_match = 0_usize;
+    for capture_set in SUB_REGEX.captures_iter(content) {
+        let mat = capture_set.get(0).unwrap_or_else(|| unreachable!());
+        output.push_str(&content[last_match..mat.start()]);
+
+        let index = capture_set.get(1).expect("regex has 1-2 groups").as_str();
+        let assignment = capture_set.get(2).map(|v| v.as_str());
+
+        let index_int: u64 = index.parse().expect("unable to parse number");
+
+        if let Some(assignment) = assignment {
+            sub_map.insert(index_int, assignment.to_string());
+        } else {
+            let value = sub_map.get(&index_int).map_or("", |s| s.as_str());
+            let value = run_rnd(value, rng);
+            let value = run_chr(&value);
+            output.push_str(&value);
+        }
         last_match = mat.end();
     }
     output.push_str(&content[last_match..]);
@@ -84,14 +117,7 @@ fn run_chr(content: &str) -> String {
     output
 }
 
-struct IfStackMember {
-    start: usize,
-    value: bool,
-    enabled: bool,
-}
-
-fn run_if<R: Rng + ?Sized>(content: &str, rng: &mut R) -> String {
-    dbg!(content);
+fn run_if<R: Rng + ?Sized>(content: &str, rng: &mut R, sub_map: &mut SubMap) -> String {
     // Content always gets smaller
     let mut output = String::with_capacity(content.len());
     let mut last_match = 0_usize;
@@ -111,9 +137,9 @@ fn run_if<R: Rng + ?Sized>(content: &str, rng: &mut R) -> String {
                     continue;
                 }
                 output.push_str(&content[last_match..mat.start()]);
-                // TODO: sub
                 let statement = &content[mat.range()];
-                let statement = run_rnd(statement, rng);
+                let statement = run_sub(statement, rng, sub_map);
+                let statement = run_rnd(&statement, rng);
                 if let Some(parsed) = IF_PARSE_REGEX.captures(&statement) {
                     let group = parsed.get(1).expect("regex has 1 group");
                     let value: i64 = group.as_str().parse().expect("unable to parse if value");
@@ -129,7 +155,7 @@ fn run_if<R: Rng + ?Sized>(content: &str, rng: &mut R) -> String {
                 }
                 if if_value {
                     let body = &content[if_start..mat.start()];
-                    let body = run_if(body, rng);
+                    let body = run_if(body, rng, sub_map);
                     output.push_str(&body);
                 }
                 if_value = !if_value;
@@ -145,7 +171,7 @@ fn run_if<R: Rng + ?Sized>(content: &str, rng: &mut R) -> String {
                 }
                 if if_value {
                     let body = &content[if_start..mat.start()];
-                    let body = run_if(body, rng);
+                    let body = run_if(body, rng, sub_map);
                     output.push_str(&body);
                 }
             }
@@ -156,7 +182,7 @@ fn run_if<R: Rng + ?Sized>(content: &str, rng: &mut R) -> String {
     if stack_depth != 0 {
         if if_value {
             let body = &content[last_match..];
-            let body = run_if(body, rng);
+            let body = run_if(body, rng, sub_map);
             output.push_str(&body);
         }
     } else {
@@ -194,27 +220,65 @@ mod test {
     }
 
     #[test]
+    fn sub() {
+        assert_eq!(
+            run_sub("$sub(0) = hi\n$sub(0)", &mut new_rng(), &mut SubMap::new()),
+            "\nhi"
+        );
+        assert_eq!(
+            run_sub(
+                "$sub(0) = hi\n$sub(0) = bye\n$sub(0)",
+                &mut new_rng(),
+                &mut SubMap::new()
+            ),
+            "\n\nbye"
+        );
+    }
+
+    #[test]
     fn i_f() {
         assert_eq!(
-            run_if("$if(1)\ntrue\n$else()\nfalse\n$endif()", &mut new_rng()),
+            run_if(
+                "$if(1)\ntrue\n$else()\nfalse\n$endif()",
+                &mut new_rng(),
+                &mut SubMap::new()
+            ),
             "\ntrue\n"
         );
         assert_eq!(
-            run_if("$if(0)\ntrue\n$else()\nfalse\n$endif()", &mut new_rng()),
+            run_if(
+                "$if(0)\ntrue\n$else()\nfalse\n$endif()",
+                &mut new_rng(),
+                &mut SubMap::new()
+            ),
             "\nfalse\n"
         );
         assert_eq!(
-            run_if("$if($rnd(1;1))\ntrue\n$else()\nfalse\n$endif()", &mut new_rng()),
+            run_if(
+                "$if($rnd(1;1))\ntrue\n$else()\nfalse\n$endif()",
+                &mut new_rng(),
+                &mut SubMap::new()
+            ),
             "\ntrue\n"
         );
         assert_eq!(
-            run_if("$if($rnd(0;0))\ntrue\n$else()\nfalse\n$endif()", &mut new_rng()),
+            run_if(
+                "$if($rnd(0;0))\ntrue\n$else()\nfalse\n$endif()",
+                &mut new_rng(),
+                &mut SubMap::new()
+            ),
             "\nfalse\n"
         );
-        assert_eq!(run_if("$if(1)\ntrue\n", &mut new_rng()), "\ntrue\n");
-        assert_eq!(run_if("$if(0)\nfalse\n", &mut new_rng()), "");
-        assert_eq!(run_if("$if(1)\ntrue\n$else()\nfalse\n", &mut new_rng()), "\ntrue\n");
-        assert_eq!(run_if("$if(0)\nfalse\n$else()\ntrue\n", &mut new_rng()), "\ntrue\n");
+        assert_eq!(run_if("$if(1)\ntrue\n", &mut new_rng(), &mut SubMap::new()), "\ntrue\n");
+        assert_eq!(run_if("$if(0)\nfalse\n", &mut new_rng(), &mut SubMap::new()), "");
+        assert_eq!(
+            run_if("$if(1)\ntrue\n$else()\nfalse\n", &mut new_rng(), &mut SubMap::new()),
+            "\ntrue\n"
+        );
+        assert_eq!(
+            run_if("$if(0)\nfalse\n$else()\ntrue\n", &mut new_rng(), &mut SubMap::new()),
+            "\ntrue\n"
+        );
     }
 
     #[test]
@@ -222,14 +286,16 @@ mod test {
         assert_eq!(
             run_if(
                 "$if(1)\n$if(1)\ntrue\n$endif()\n$else()\n$if(1)\nfalse\n$endif()\n$endif()",
-                &mut new_rng()
+                &mut new_rng(),
+                &mut SubMap::new()
             ),
             "\n\ntrue\n\n"
         );
         assert_eq!(
             run_if(
                 "$if(0)\n$if(1)\ntrue\n$endif()\n$else()\n$if(1)\nfalse\n$endif()\n$endif()",
-                &mut new_rng()
+                &mut new_rng(),
+                &mut SubMap::new()
             ),
             "\n\nfalse\n\n"
         );
