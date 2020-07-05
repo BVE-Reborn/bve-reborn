@@ -3,6 +3,7 @@ name = "bve-common"
 version = "0.0.1"
 authors = ["Connor Fitzgerald <connorwadefitzgerald@gmail.com>"]
 edition = "2018"
+license = "MPL-2.0"
 
 description = "Common utilites used in various parts of the codebase"
 repository = "https://github.com/BVE-Reborn/bve-reborn"
