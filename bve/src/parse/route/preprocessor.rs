@@ -11,11 +11,11 @@ use once_cell::sync::Lazy;
 use rand::{distributions::WeightedIndex, prelude::*};
 use regex::Regex;
 use smallvec::SmallVec;
-use std::collections::HashMap;
+use std::{collections::HashMap, future::Future, pin::Pin};
 
-pub struct FileInput<'a> {
-    base_path: &'a str,
-    requested_path: &'a str,
+pub struct FileInput {
+    base_path: String,
+    requested_path: String,
 }
 
 pub struct FileOutput {
@@ -35,30 +35,71 @@ static IF_PARSE_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r#"(?i)\$if\s*\(\s*
 
 type SubMap = HashMap<u64, String>;
 
-// include(rnd, chr) -> (sub <- if(sub, rnd)) -> rnd -> chr
-pub async fn preprocess_route<R: Rng + ?Sized>(_content: &str, _rng: &mut R) -> String {
-    unimplemented!()
+// (pass -> pass2) means pass2 is applied to the result of pass
+// (pass2 <- pass) means pass2 is applied to the skipped input between the last tag and the current
+// pass(pass2) means pass2 is applied to pass's arguments
+//
+// Preprocessing happens as:
+// (include(rnd -> chr) -> include) -> (sub <- if(sub -> rnd)) -> rnd -> chr
+pub async fn preprocess_route<R, FileFn, FileFut>(
+    file_path: &str,
+    content: &str,
+    rng: &mut R,
+    file_fn: FileFn,
+) -> String
+where
+    R: Rng + ?Sized,
+    FileFn: FnMut(FileInput) -> FileFut + Copy,
+    FileFut: Future<Output = Option<FileOutput>>,
+{
+    let content = run_includes(file_path, content, rng, file_fn).await;
+    let content = run_if(&content, rng, &mut SubMap::new());
+    let content = run_rnd(&content, rng);
+    let content = run_chr(&content);
+    content
 }
 
-fn run_includes<R: Rng + ?Sized>(content: &str, rng: &mut R) -> String {
-    // Content will likely get much bigger
-    let mut output = String::with_capacity(content.len() * 2);
-    let mut last_match = 0_usize;
-    for mat in INCLUDE_REGEX.find_iter(content) {
-        output.push_str(&content[last_match..mat.start()]);
-        let include = &content[mat.range()];
-        let include = run_rnd(&include, rng);
-        let include = run_chr(&include);
-        let parsed = parse_include(&include);
-        let chosen = choose_include(&parsed, rng);
-        output.push_str(&format!("\n%O{}%\n", chosen.offset));
-        output.push_str(unimplemented!());
-        output.push_str(&format!("\n%O-{}%\n", chosen.offset));
-        last_match = mat.end();
-    }
-    output.push_str(&content[last_match..]);
+fn run_includes<'a, R, FileFn, FileFut>(
+    file_path: &'a str,
+    content: &'a str,
+    rng: &'a mut R,
+    mut file_fn: FileFn,
+) -> Pin<Box<dyn Future<Output = String> + 'a>>
+where
+    R: Rng + ?Sized,
+    FileFn: FnMut(FileInput) -> FileFut + Copy + 'a,
+    FileFut: Future<Output = Option<FileOutput>>,
+{
+    Box::pin(async move {
+        // Content will likely get much bigger
+        let mut output = String::with_capacity(content.len() * 2);
+        let mut last_match = 0_usize;
+        for mat in INCLUDE_REGEX.find_iter(content) {
+            output.push_str(&content[last_match..mat.start()]);
+            let include = &content[mat.range()];
+            let include = run_rnd(&include, rng);
+            let include = run_chr(&include);
+            let parsed = parse_include(&include);
+            let chosen = choose_include(&parsed, rng);
 
-    output
+            let content: FileOutput = file_fn(FileInput {
+                base_path: file_path.to_owned(),
+                requested_path: chosen.file.to_owned(),
+            })
+            .await
+            .unwrap_or_else(|| unimplemented!());
+
+            let recursive_processed = run_includes(&content.path, &content.output, rng, file_fn).await;
+
+            output.push_str(&format!("\n%O{}%\n", chosen.offset));
+            output.push_str(&recursive_processed);
+            output.push_str(&format!("\n%O-{}%\n", chosen.offset));
+            last_match = mat.end();
+        }
+        output.push_str(&content[last_match..]);
+
+        output
+    })
 }
 
 fn run_sub<R: Rng + ?Sized>(content: &str, rng: &mut R, sub_map: &mut SubMap) -> String {
@@ -299,6 +340,23 @@ mod test {
         rand::rngs::StdRng::seed_from_u64(42)
     }
 
+    type NewFileFnFut = impl Future<Output = Option<FileOutput>>;
+    fn new_file_fn(file_database: HashMap<String, String>) -> impl Fn(FileInput) -> NewFileFnFut {
+        move |file_input| {
+            let requested = file_input.requested_path.to_owned();
+            let output_opt = file_database.get(&requested).map(String::clone);
+            async move {
+                Some(FileOutput {
+                    path: requested,
+                    output: output_opt?,
+                })
+            }
+        }
+    }
+
+    static PREPROCESSING_VALIDATION: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r#"(?i)(include|if|else|endif|sub|rnd|chr)"#).expect("invalid regex"));
+
     #[test]
     fn chr() {
         assert_eq!(run_chr("$chr(10)"), "%C10%");
@@ -399,9 +457,6 @@ mod test {
         );
     }
 
-    static PP_VALIDATION: Lazy<Regex> =
-        Lazy::new(|| Regex::new(r#"(?i)(include|if|else|endif|sub|rnd|chr)"#).expect("invalid regex"));
-
     #[test]
     fn if_sub_integration() {
         let input_positive: &str = indoc::indoc!(
@@ -428,7 +483,7 @@ mod test {
         assert!(processed.contains("true"), "output missing true: {}", processed);
         assert!(!processed.contains("false"), "output contains false: {}", processed);
         assert!(
-            !PP_VALIDATION.is_match(&processed),
+            !PREPROCESSING_VALIDATION.is_match(&processed),
             "contains preprocessing directives: {}",
             processed
         );
@@ -437,7 +492,7 @@ mod test {
         assert!(processed.contains("false"), "output missing false: {}", processed);
         assert!(!processed.contains("true"), "output contains true: {}", processed);
         assert!(
-            !PP_VALIDATION.is_match(&processed),
+            !PREPROCESSING_VALIDATION.is_match(&processed),
             "contains preprocessing directives: {}",
             processed
         );
@@ -466,7 +521,7 @@ mod test {
         assert!(processed.contains("true"), "output missing true: {}", processed);
         assert!(!processed.contains("false"), "output contains false: {}", processed);
         assert!(
-            !PP_VALIDATION.is_match(&processed),
+            !PREPROCESSING_VALIDATION.is_match(&processed),
             "contains preprocessing directives: {}",
             processed
         );
@@ -475,7 +530,7 @@ mod test {
         assert!(processed.contains("false"), "output missing false: {}", processed);
         assert!(!processed.contains("true"), "output contains true: {}", processed);
         assert!(
-            !PP_VALIDATION.is_match(&processed),
+            !PREPROCESSING_VALIDATION.is_match(&processed),
             "contains preprocessing directives: {}",
             processed
         );
@@ -509,7 +564,7 @@ mod test {
         assert!(processed.contains("true"), "output missing true: {}", processed);
         assert!(!processed.contains("false"), "output contains false: {}", processed);
         assert!(
-            !PP_VALIDATION.is_match(&processed),
+            !PREPROCESSING_VALIDATION.is_match(&processed),
             "contains preprocessing directives: {}",
             processed
         );
@@ -518,7 +573,7 @@ mod test {
         assert!(processed.contains("false"), "output missing false: {}", processed);
         assert!(!processed.contains("true"), "output contains true: {}", processed);
         assert!(
-            !PP_VALIDATION.is_match(&processed),
+            !PREPROCESSING_VALIDATION.is_match(&processed),
             "contains preprocessing directives: {}",
             processed
         );
@@ -580,6 +635,148 @@ mod test {
                     weight: 76,
                 }
             ],
+        );
+    }
+
+    #[async_std::test]
+    async fn include() {
+        let file_database = maplit::hashmap! {
+            String::from("file1") => String::from("contents1"),
+        };
+
+        let file_fn = new_file_fn(file_database);
+        let mut rng = new_rng();
+
+        let input: &str = indoc::indoc!(
+            r"
+            $include(file1)
+        "
+        );
+
+        let processed: String = run_includes("", input, &mut rng, &file_fn).await;
+        assert!(
+            processed.contains("contents1"),
+            "output missing contents: {}",
+            processed
+        );
+        assert!(
+            !PREPROCESSING_VALIDATION.is_match(&processed),
+            "contains preprocessing directives: {}",
+            processed
+        );
+    }
+
+    #[async_std::test]
+    async fn offset_include() {
+        let file_database = maplit::hashmap! {
+            String::from("file1") => String::from("contents1"),
+        };
+
+        let file_fn = new_file_fn(file_database);
+        let mut rng = new_rng();
+
+        let input: &str = indoc::indoc!(
+            r"
+            $include(file1:1000)
+        "
+        );
+
+        let processed: String = run_includes("", input, &mut rng, &file_fn).await;
+        assert!(
+            processed.contains("contents1"),
+            "output missing contents: {}",
+            processed
+        );
+        assert!(processed.contains("%O1000%"), "output missing offset: {}", processed);
+        assert!(
+            processed.contains("%O-1000%"),
+            "output missing reverse offset: {}",
+            processed
+        );
+        assert!(
+            !PREPROCESSING_VALIDATION.is_match(&processed),
+            "contains preprocessing directives: {}",
+            processed
+        );
+    }
+
+    #[async_std::test]
+    async fn rng_include() {
+        let file_database = maplit::hashmap! {
+            String::from("file1") => String::from("contents1"),
+            String::from("file2") => String::from("contents2"),
+        };
+
+        let file_fn = new_file_fn(file_database);
+        let mut rng = new_rng();
+
+        let positive_input: &str = indoc::indoc!(
+            r"
+            $include(file1;1;file2;0)
+        "
+        );
+        let negative_input: &str = indoc::indoc!(
+            r"
+            $include(file1;0;file2;1)
+        "
+        );
+
+        let processed: String = run_includes("", positive_input, &mut rng, &file_fn).await;
+        assert!(
+            processed.contains("contents1"),
+            "output missing contents: {}",
+            processed
+        );
+        assert!(
+            !PREPROCESSING_VALIDATION.is_match(&processed),
+            "contains preprocessing directives: {}",
+            processed
+        );
+
+        let processed: String = run_includes("", negative_input, &mut rng, &file_fn).await;
+        assert!(
+            processed.contains("contents2"),
+            "output missing contents: {}",
+            processed
+        );
+        assert!(
+            !PREPROCESSING_VALIDATION.is_match(&processed),
+            "contains preprocessing directives: {}",
+            processed
+        );
+    }
+
+    #[async_std::test]
+    async fn recursive_include() {
+        let file_database = maplit::hashmap! {
+            String::from("file1") => String::from("$include(file2)\ncontents1"),
+            String::from("file2") => String::from("contents2"),
+        };
+
+        let file_fn = new_file_fn(file_database);
+        let mut rng = new_rng();
+
+        let input: &str = indoc::indoc!(
+            r"
+            $include(file1)
+        "
+        );
+
+        let processed: String = run_includes("", input, &mut rng, &file_fn).await;
+        assert!(
+            processed.contains("contents1"),
+            "output missing contents: {}",
+            processed
+        );
+        assert!(
+            processed.contains("contents2"),
+            "output missing contents: {}",
+            processed
+        );
+        assert!(
+            !PREPROCESSING_VALIDATION.is_match(&processed),
+            "contains preprocessing directives: {}",
+            processed
         );
     }
 }
