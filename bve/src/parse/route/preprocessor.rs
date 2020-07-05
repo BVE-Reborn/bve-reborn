@@ -779,4 +779,33 @@ mod test {
             processed
         );
     }
+
+    #[async_std::test]
+    async fn include_sub_integration() {
+        let file_database = maplit::hashmap! {
+            String::from("file1") => String::from("$sub(0) = contents1"),
+        };
+
+        let file_fn = new_file_fn(file_database);
+        let mut rng = new_rng();
+
+        let input: &str = indoc::indoc!(
+            r"
+            $include(file1)
+            $sub(0)
+        "
+        );
+
+        let processed: String = preprocess_route("", input, &mut rng, &file_fn).await;
+        assert!(
+            processed.contains("contents1"),
+            "output missing contents: {}",
+            processed
+        );
+        assert!(
+            !PREPROCESSING_VALIDATION.is_match(&processed),
+            "contains preprocessing directives: {}",
+            processed
+        );
+    }
 }
