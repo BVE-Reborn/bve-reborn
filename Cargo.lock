@@ -223,6 +223,7 @@ dependencies = [
  "serde_json",
  "serde_plain",
  "serde_test",
+ "smallvec",
  "unic-langid",
  "unic-locale",
 ]
@@ -2177,8 +2178,7 @@ checksum = "c46a3482db8f247956e464d783693ece164ca056e6e67563ee5505bdb86452cd"
 [[package]]
 name = "smallvec"
 version = "1.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c7cb5678e1615754284ec264d9bb5b4c27d2018577fd90ac0ceb578591ed5ee4"
+source = "git+https://github.com/servo/rust-smallvec.git?rev=5f42f5f8e2fcdbbee8ccf42a7d4dde43bb40c9dd#5f42f5f8e2fcdbbee8ccf42a7d4dde43bb40c9dd"
 
 [[package]]
 name = "smol"

@@ -9,21 +9,10 @@ use nom::{
     sequence::tuple,
     AsChar, IResult,
 };
+use smallvec::SmallVec;
 use std::num::ParseFloatError;
 
-enum OneOrManyInstructions {
-    One(Instruction),
-    Many(Vec<Instruction>),
-}
-
-impl From<OneOrManyInstructions> for Vec<Instruction> {
-    fn from(rhs: OneOrManyInstructions) -> Self {
-        match rhs {
-            OneOrManyInstructions::One(instruction) => vec![instruction],
-            OneOrManyInstructions::Many(instructions) => instructions,
-        }
-    }
-}
+pub type InstructionSmallVec = SmallVec<[Instruction; 8]>;
 
 /// Parses the function script string into function script IR.
 ///
@@ -35,11 +24,11 @@ pub fn parse_function_script(input: &str) -> IResult<&str, ParsedFunctionScript>
     expression(input).map(|(input, output)| (input, output.into()))
 }
 
-fn expression(input: &str) -> IResult<&str, Vec<Instruction>> {
+fn expression(input: &str) -> IResult<&str, InstructionSmallVec> {
     logical_or(input)
 }
 
-fn logical_or(input: &str) -> IResult<&str, Vec<Instruction>> {
+fn logical_or(input: &str) -> IResult<&str, InstructionSmallVec> {
     binary_right(logical_xor, char_f('|'), logical_or)(input).map(|(input, (mut left, right_opt))| {
         if let Some((_, right)) = right_opt {
             left.extend(right.into_iter());
@@ -49,7 +38,7 @@ fn logical_or(input: &str) -> IResult<&str, Vec<Instruction>> {
     })
 }
 
-fn logical_xor(input: &str) -> IResult<&str, Vec<Instruction>> {
+fn logical_xor(input: &str) -> IResult<&str, InstructionSmallVec> {
     binary_right(logical_and, char_f('^'), logical_xor)(input).map(|(input, (mut left, right_opt))| {
         if let Some((_, right)) = right_opt {
             left.extend(right.into_iter());
@@ -59,7 +48,7 @@ fn logical_xor(input: &str) -> IResult<&str, Vec<Instruction>> {
     })
 }
 
-fn logical_and(input: &str) -> IResult<&str, Vec<Instruction>> {
+fn logical_and(input: &str) -> IResult<&str, InstructionSmallVec> {
     binary_right(logical_not, char_f('&'), logical_and)(input).map(|(input, (mut left, right_opt))| {
         if let Some((_, right)) = right_opt {
             left.extend(right.into_iter());
@@ -69,7 +58,7 @@ fn logical_and(input: &str) -> IResult<&str, Vec<Instruction>> {
     })
 }
 
-fn logical_not(input: &str) -> IResult<&str, Vec<Instruction>> {
+fn logical_not(input: &str) -> IResult<&str, InstructionSmallVec> {
     unary(char_f('!'), equal_expr)(input).map(|(input, (operator, mut child))| {
         if operator.is_some() {
             child.push(Instruction::UnaryLogicalNot);
@@ -82,7 +71,7 @@ fn equal_symbol(input: &str) -> IResult<&str, &str> {
     w(alt((tag("=="), tag("!="), tag("<="), tag(">="), tag(">"), tag("<"))))(input)
 }
 
-fn equal_expr(input: &str) -> IResult<&str, Vec<Instruction>> {
+fn equal_expr(input: &str) -> IResult<&str, InstructionSmallVec> {
     // This is left associative while the rest of everything is right associative
     binary_left(plus_expr, equal_symbol, plus_expr)(input).map(|(input, (mut left, right_vec))| {
         for (operator, right) in right_vec {
@@ -105,7 +94,7 @@ fn plus_symbol(input: &str) -> IResult<&str, char> {
     w(alt((char_f('+'), char_f('-'))))(input)
 }
 
-fn plus_expr(input: &str) -> IResult<&str, Vec<Instruction>> {
+fn plus_expr(input: &str) -> IResult<&str, InstructionSmallVec> {
     // This is left associative while the rest of everything is right associative
     // Idk man
     binary_left(times_expr, plus_symbol, times_expr)(input).map(|(input, (mut left, right_vec))| {
@@ -121,7 +110,7 @@ fn plus_expr(input: &str) -> IResult<&str, Vec<Instruction>> {
     })
 }
 
-fn times_expr(input: &str) -> IResult<&str, Vec<Instruction>> {
+fn times_expr(input: &str) -> IResult<&str, InstructionSmallVec> {
     binary_right(divide_expr, char_f('*'), times_expr)(input).map(|(input, (mut left, right_opt))| {
         if let Some((_, right)) = right_opt {
             left.extend(right.into_iter());
@@ -131,8 +120,9 @@ fn times_expr(input: &str) -> IResult<&str, Vec<Instruction>> {
     })
 }
 
-fn divide_expr(input: &str) -> IResult<&str, Vec<Instruction>> {
-    binary_right(unary_negative_expr, char_f('/'), divide_expr)(input).map(|(input, (mut left, right_opt))| {
+fn divide_expr(input: &str) -> IResult<&str, InstructionSmallVec> {
+    binary_right(unary_negative_expr, char_f('/'), divide_expr)(input).map(|(input, (left, right_opt))| {
+        let mut left: InstructionSmallVec = left.into_iter().collect();
         if let Some((_, right)) = right_opt {
             left.extend(right.into_iter());
             left.push(Instruction::Division);
@@ -141,7 +131,7 @@ fn divide_expr(input: &str) -> IResult<&str, Vec<Instruction>> {
     })
 }
 
-fn unary_negative_expr(input: &str) -> IResult<&str, Vec<Instruction>> {
+fn unary_negative_expr(input: &str) -> IResult<&str, InstructionSmallVec> {
     unary(char_f('-'), function_expr)(input).map(|(input, (operator, mut child))| {
         if operator.is_some() {
             child.push(Instruction::UnaryNegative);
@@ -150,11 +140,11 @@ fn unary_negative_expr(input: &str) -> IResult<&str, Vec<Instruction>> {
     })
 }
 
-fn function_expr(input: &str) -> IResult<&str, Vec<Instruction>> {
+fn function_expr(input: &str) -> IResult<&str, InstructionSmallVec> {
     alt((function_call, term))(input)
 }
 
-fn function_call(input: &str) -> IResult<&str, Vec<Instruction>> {
+fn function_call(input: &str) -> IResult<&str, InstructionSmallVec> {
     tuple((
         name,
         w(char_f('[')),
@@ -163,7 +153,7 @@ fn function_call(input: &str) -> IResult<&str, Vec<Instruction>> {
         w(char_f(']')),
     ))(input)
     .map(|(input, (name, _, arg1, argn, _))| {
-        let mut instructions = Vec::new();
+        let mut instructions = InstructionSmallVec::new();
         instructions.extend(arg1);
         let arg_count = argn.len() + 1;
         argn.into_iter()
@@ -173,28 +163,26 @@ fn function_call(input: &str) -> IResult<&str, Vec<Instruction>> {
     })
 }
 
-fn term(input: &str) -> IResult<&str, Vec<Instruction>> {
-    alt((parens_expr, variable_name, number))(input)
-        .map(|(input, child_instructions)| (input, Vec::<Instruction>::from(child_instructions)))
+fn term(input: &str) -> IResult<&str, InstructionSmallVec> {
+    alt((parens_expr, variable_name, number))(input).map(|(input, child_instructions)| (input, child_instructions))
 }
 
-fn variable_name(input: &str) -> IResult<&str, OneOrManyInstructions> {
-    name(input).map(|(input, name)| (input, OneOrManyInstructions::One(Instruction::Variable { name })))
+fn variable_name(input: &str) -> IResult<&str, InstructionSmallVec> {
+    name(input).map(|(input, name)| (input, smallvec::smallvec![Instruction::Variable { name }]))
 }
 
-fn parens_expr(input: &str) -> IResult<&str, OneOrManyInstructions> {
-    tuple((w(char_f('(')), expression, w(char_f(')'))))(input)
-        .map(|(input, (_, expr, _))| (input, OneOrManyInstructions::Many(expr)))
+fn parens_expr(input: &str) -> IResult<&str, InstructionSmallVec> {
+    tuple((w(char_f('(')), expression, w(char_f(')'))))(input).map(|(input, (_, expr, _))| (input, expr))
 }
 
-fn number(input: &str) -> IResult<&str, OneOrManyInstructions> {
+fn number(input: &str) -> IResult<&str, InstructionSmallVec> {
     map_res(
         w(take_while(|c: char| {
             c.is_dec_digit() || c == '.' || c == 'e' || c == 'E'
         })),
-        |digits: &str| -> Result<OneOrManyInstructions, ParseFloatError> {
+        |digits: &str| -> Result<InstructionSmallVec, ParseFloatError> {
             let value: f64 = digits.parse()?;
-            Ok(OneOrManyInstructions::One(Instruction::Number { value }))
+            Ok(smallvec::smallvec![Instruction::Number { value }])
         },
     )(input)
 }

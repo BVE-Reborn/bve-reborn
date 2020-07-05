@@ -18,6 +18,7 @@ members = [
 
 [patch.crates-io]
 d3d12 = { git = "https://github.com/cwfitzgerald/d3d12-rs.git", rev = "832f1243a4f67e1383ea0ef8599a03f5f65c8e58" }
+smallvec = { git = "https://github.com/servo/rust-smallvec.git", rev = "5f42f5f8e2fcdbbee8ccf42a7d4dde43bb40c9dd" }
 
 [profile.opt-dev]
 inherits = "dev"

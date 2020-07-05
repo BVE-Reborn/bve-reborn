@@ -8,11 +8,11 @@ use std::io;
 
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct ParsedFunctionScript {
-    pub instructions: Vec<Instruction>,
+    pub instructions: parser::InstructionSmallVec,
 }
 
-impl From<Vec<Instruction>> for ParsedFunctionScript {
-    fn from(instructions: Vec<Instruction>) -> Self {
+impl From<parser::InstructionSmallVec> for ParsedFunctionScript {
+    fn from(instructions: parser::InstructionSmallVec) -> Self {
         Self { instructions }
     }
 }
