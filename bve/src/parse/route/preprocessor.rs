@@ -13,16 +13,6 @@ use regex::Regex;
 use smallvec::SmallVec;
 use std::{collections::HashMap, future::Future, pin::Pin};
 
-pub struct FileInput {
-    base_path: String,
-    requested_path: String,
-}
-
-pub struct FileOutput {
-    path: String,
-    output: String,
-}
-
 static INCLUDE_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r#"(?i)\$include\s*\([^\n]*"#).expect("invalid regex"));
 static RND_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r#"(?i)\$rnd\s*\(\s*(\d+)\s*;\s*(\d+)\s*\)"#).expect("invalid regex"));
@@ -34,6 +24,16 @@ static IF_SEARCH_REGEX: Lazy<Regex> =
 static IF_PARSE_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r#"(?i)\$if\s*\(\s*(\d+)\s*\)"#).expect("invalid regex"));
 
 type SubMap = HashMap<u64, String>;
+
+pub struct FileInput {
+    pub base_path: String,
+    pub requested_path: String,
+}
+
+pub struct FileOutput {
+    pub path: String,
+    pub output: String,
+}
 
 // (pass -> pass2) means pass2 is applied to the result of pass
 // (pass2 <- pass) means pass2 is applied to the skipped input between the last tag and the current
@@ -55,8 +55,7 @@ where
     let content = run_includes(file_path, content, rng, file_fn).await;
     let content = run_if(&content, rng, &mut SubMap::new());
     let content = run_rnd(&content, rng);
-    let content = run_chr(&content);
-    content
+    run_chr(&content)
 }
 
 fn run_includes<'a, R, FileFn, FileFut>(
@@ -77,17 +76,27 @@ where
         for mat in INCLUDE_REGEX.find_iter(content) {
             output.push_str(&content[last_match..mat.start()]);
             let include = &content[mat.range()];
-            let include = run_rnd(&include, rng);
+            let include = run_rnd(include, rng);
             let include = run_chr(&include);
-            let parsed = parse_include(&include);
-            let chosen = choose_include(&parsed, rng);
-
-            let content: FileOutput = file_fn(FileInput {
-                base_path: file_path.to_owned(),
-                requested_path: chosen.file.to_owned(),
-            })
-            .await
-            .unwrap_or_else(|| unimplemented!());
+            let chosen_opt: Option<(Include<'_>, FileOutput)> = try {
+                let parsed = parse_include(&include)?;
+                let chosen = choose_include(&parsed, rng)?;
+                (
+                    chosen,
+                    file_fn(FileInput {
+                        base_path: file_path.to_owned(),
+                        requested_path: chosen.file.to_owned(),
+                    })
+                    .await?,
+                )
+            };
+            let (chosen, content) = match chosen_opt {
+                Some(c) => c,
+                None => {
+                    last_match = mat.end();
+                    continue;
+                }
+            };
 
             let recursive_processed = run_includes(&content.path, &content.output, rng, file_fn).await;
 
@@ -110,10 +119,19 @@ fn run_sub<R: Rng + ?Sized>(content: &str, rng: &mut R, sub_map: &mut SubMap) ->
         let mat = capture_set.get(0).unwrap_or_else(|| unreachable!());
         output.push_str(&content[last_match..mat.start()]);
 
-        let index = capture_set.get(1).expect("regex has 1-2 groups").as_str();
-        let assignment = capture_set.get(2).map(|v| v.as_str());
+        let index_int_opt: Option<u64> = try {
+            let index = capture_set.get(1)?.as_str();
+            index.parse().ok()?
+        };
+        let index_int = match index_int_opt {
+            Some(v) => v,
+            None => {
+                last_match = mat.end();
+                continue;
+            }
+        };
 
-        let index_int: u64 = index.parse().expect("unable to parse number");
+        let assignment = capture_set.get(2).map(|v| v.as_str());
 
         if let Some(assignment) = assignment {
             sub_map.insert(index_int, assignment.to_string());
@@ -138,11 +156,21 @@ fn run_rnd<R: Rng + ?Sized>(content: &str, rng: &mut R) -> String {
         let mat = capture_set.get(0).unwrap_or_else(|| unreachable!());
         output.push_str(&content[last_match..mat.start()]);
 
-        let begin = capture_set.get(1).expect("regex has 2 groups").as_str();
-        let end = capture_set.get(2).expect("regex has 2 groups").as_str();
+        let ints_opt = try {
+            let begin = capture_set.get(1)?.as_str();
+            let end = capture_set.get(2)?.as_str();
 
-        let begin_int: u64 = begin.parse().expect("unable to parse number");
-        let end_int: u64 = end.parse().expect("unable to parse number");
+            let begin_int: u64 = begin.parse().ok()?;
+            let end_int: u64 = end.parse().ok()?;
+            (begin_int, end_int)
+        };
+        let (begin_int, end_int): (u64, u64) = match ints_opt {
+            Some(v) => v,
+            None => {
+                last_match = mat.end();
+                continue;
+            }
+        };
 
         let value = rng.gen_range(begin_int, end_int.saturating_add(1));
         output.push_str(&value.to_string());
@@ -162,7 +190,14 @@ fn run_chr(content: &str) -> String {
         let mat = capture_set.get(0).unwrap_or_else(|| unreachable!());
         output.push_str(&content[last_match..mat.start()]);
 
-        let value = capture_set.get(1).expect("regex has 1 group").as_str();
+        let value_opt = try { capture_set.get(1)?.as_str() };
+        let value: &str = match value_opt {
+            Some(v) => v,
+            None => {
+                last_match = mat.end();
+                continue;
+            }
+        };
 
         output.push_str(&format!("%C{}%", value));
 
@@ -199,14 +234,19 @@ fn run_if<R: Rng + ?Sized>(content: &str, rng: &mut R, sub_map: &mut SubMap) -> 
                 let statement = &content[mat.range()];
                 let statement = run_sub(statement, rng, sub_map);
                 let statement = run_rnd(&statement, rng);
-                if let Some(parsed) = IF_PARSE_REGEX.captures(&statement) {
-                    let group = parsed.get(1).expect("regex has 1 group");
-                    let value: i64 = group.as_str().parse().expect("unable to parse if value");
-                    if_value = value != 0;
-                    if_start = mat.end();
+                let bool_value = if let Some(parsed) = IF_PARSE_REGEX.captures(&statement) {
+                    let bool_value_opt: Option<bool> = try {
+                        let group = parsed.get(1)?;
+                        let value: i64 = group.as_str().parse().ok()?;
+                        value != 0
+                    };
+
+                    bool_value_opt.unwrap_or(false)
                 } else {
-                    unimplemented!()
-                }
+                    false
+                };
+                if_value = bool_value;
+                if_start = mat.end();
             }
             "else" => {
                 if stack_depth != 1 {
@@ -238,15 +278,13 @@ fn run_if<R: Rng + ?Sized>(content: &str, rng: &mut R, sub_map: &mut SubMap) -> 
         }
         last_match = mat.end();
     }
-    if stack_depth != 0 {
-        if if_value {
-            let remaining = &content[last_match..];
-            let remaining = run_if(remaining, rng, sub_map);
-            output.push_str(&remaining);
-        }
-    } else {
+    if stack_depth == 0 {
         let remaining = &content[last_match..];
         let remaining = run_sub(remaining, rng, sub_map);
+        output.push_str(&remaining);
+    } else if if_value {
+        let remaining = &content[last_match..];
+        let remaining = run_if(remaining, rng, sub_map);
         output.push_str(&remaining);
     }
 
@@ -262,27 +300,26 @@ struct Include<'a> {
     weight: i64,
 }
 
-fn choose_include<'a, R: Rng + ?Sized>(includes: &IncludeSmallVec<'a>, rng: &mut R) -> Include<'a> {
+fn choose_include<'a, R: Rng + ?Sized>(includes: &IncludeSmallVec<'a>, rng: &mut R) -> Option<Include<'a>> {
     if includes.len() == 1 {
-        return includes[0];
+        return Some(includes[0]);
     }
-    let index = WeightedIndex::new(includes.iter().map(|inc| inc.weight)).expect("Could not build weighted index");
-    includes[index.sample(rng)]
+    let index = WeightedIndex::new(includes.iter().map(|inc| inc.weight)).ok()?;
+    Some(includes[index.sample(rng)])
 }
 
-fn parse_include(include: &str) -> IncludeSmallVec<'_> {
+fn parse_include(include: &str) -> Option<IncludeSmallVec<'_>> {
     delimited(
         tuple((w(tag_no_case("$include")), w(tag("(")))),
         alt((parse_weighted_include, parse_offset_include, parse_naked_include)),
         w(tag(")")),
     )(include)
-    .unwrap_or_else(|e| unimplemented!("{:?}", e))
-    .1
+    .map(|(_, v)| v)
+    .ok()
 }
 
 fn parse_naked_include(include: &str) -> IResult<&str, IncludeSmallVec<'_>> {
-    dbg!(parse_filename(include)).map(|(input, file)| {
-        dbg!(file);
+    parse_filename(include).map(|(input, file)| {
         (input, smallvec::smallvec![Include {
             file,
             offset: 0,
@@ -302,7 +339,7 @@ fn parse_offset_include(include: &str) -> IResult<&str, IncludeSmallVec<'_>> {
 }
 
 fn parse_weighted_include(include: &str) -> IResult<&str, IncludeSmallVec<'_>> {
-    dbg!(map_res(
+    map_res(
         separated_list(
             w(tag(";")),
             separated_pair(w(parse_filename), w(tag(";")), w(parse_number)),
@@ -318,16 +355,16 @@ fn parse_weighted_include(include: &str) -> IResult<&str, IncludeSmallVec<'_>> {
                     offset: 0,
                 })
                 .collect())
-        }
-    )(include))
+        },
+    )(include)
 }
 
 fn parse_filename(include: &str) -> IResult<&str, &str> {
-    dbg!(is_not(";:()\n")(include).map(|(i, v)| (i, v.trim())))
+    is_not(";:()\n")(include).map(|(i, v)| (i, v.trim()))
 }
 
 fn parse_number(include: &str) -> IResult<&str, i64> {
-    dbg!(map_res(is_a("0123456789-"), |out: &str| out.parse())(include))
+    map_res(is_a("0123456789-"), str::parse)(include)
 }
 
 #[cfg(test)]
@@ -582,7 +619,7 @@ mod test {
     #[test]
     fn include_parse() {
         assert_equal(
-            parse_include(r#"$include(Thing\Other/Thing with Space)"#),
+            parse_include(r#"$include(Thing\Other/Thing with Space)"#).expect("parse failed"),
             std::iter::once(Include {
                 file: r#"Thing\Other/Thing with Space"#,
                 offset: 0,
@@ -590,7 +627,7 @@ mod test {
             }),
         );
         assert_equal(
-            parse_include(r#"$include(Thing\Other/Thing with Space:1000)"#),
+            parse_include(r#"$include(Thing\Other/Thing with Space:1000)"#).expect("parse failed"),
             std::iter::once(Include {
                 file: r#"Thing\Other/Thing with Space"#,
                 offset: 1000,
@@ -598,7 +635,7 @@ mod test {
             }),
         );
         assert_equal(
-            parse_include(r#"$include(Thing\Other/Thing with Space:-1000)"#),
+            parse_include(r#"$include(Thing\Other/Thing with Space:-1000)"#).expect("parse failed"),
             std::iter::once(Include {
                 file: r#"Thing\Other/Thing with Space"#,
                 offset: -1000,
@@ -606,7 +643,7 @@ mod test {
             }),
         );
         assert_equal(
-            parse_include(r#"$include(Thing\Other/Thing with Space   :  1000)"#),
+            parse_include(r#"$include(Thing\Other/Thing with Space   :  1000)"#).expect("parse failed"),
             std::iter::once(Include {
                 file: r#"Thing\Other/Thing with Space"#,
                 offset: 1000,
@@ -614,7 +651,7 @@ mod test {
             }),
         );
         assert_equal(
-            parse_include(r#"$include(Thing\Other/Thing with Space;12)"#),
+            parse_include(r#"$include(Thing\Other/Thing with Space;12)"#).expect("parse failed"),
             std::iter::once(Include {
                 file: r#"Thing\Other/Thing with Space"#,
                 offset: 0,
@@ -622,7 +659,7 @@ mod test {
             }),
         );
         assert_equal::<_, IncludeSmallVec<'_>>(
-            parse_include(r#"$include(Thing\Other/Thing with Space;12;OtherThing;76)"#),
+            parse_include(r#"$include(Thing\Other/Thing with Space;12;OtherThing;76)"#).expect("parse failed"),
             smallvec::smallvec![
                 Include {
                     file: r#"Thing\Other/Thing with Space"#,
