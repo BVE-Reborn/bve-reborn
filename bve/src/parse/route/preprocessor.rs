@@ -25,6 +25,7 @@ static IF_PARSE_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r#"(?i)\$if\s*\(\s*
 
 type SubMap = HashMap<u64, String>;
 
+// include(rnd, chr) -> (sub <- if(sub, rnd)) -> rnd -> chr
 pub async fn preprocess_route<R: Rng + ?Sized>(content: &str, rng: &mut R) -> String {
     unimplemented!()
 }
@@ -136,7 +137,10 @@ fn run_if<R: Rng + ?Sized>(content: &str, rng: &mut R, sub_map: &mut SubMap) -> 
                 if stack_depth != 1 {
                     continue;
                 }
-                output.push_str(&content[last_match..mat.start()]);
+                let previous = &content[last_match..mat.start()];
+                let previous = run_sub(previous, rng, sub_map);
+                output.push_str(&previous);
+
                 let statement = &content[mat.range()];
                 let statement = run_sub(statement, rng, sub_map);
                 let statement = run_rnd(&statement, rng);
@@ -181,12 +185,14 @@ fn run_if<R: Rng + ?Sized>(content: &str, rng: &mut R, sub_map: &mut SubMap) -> 
     }
     if stack_depth != 0 {
         if if_value {
-            let body = &content[last_match..];
-            let body = run_if(body, rng, sub_map);
-            output.push_str(&body);
+            let remaining = &content[last_match..];
+            let remaining = run_if(remaining, rng, sub_map);
+            output.push_str(&remaining);
         }
     } else {
-        output.push_str(&content[last_match..]);
+        let remaining = &content[last_match..];
+        let remaining = run_sub(remaining, rng, sub_map);
+        output.push_str(&remaining);
     }
 
     output
@@ -223,6 +229,10 @@ mod test {
     fn sub() {
         assert_eq!(
             run_sub("$sub(0) = hi\n$sub(0)", &mut new_rng(), &mut SubMap::new()),
+            "\nhi"
+        );
+        assert_eq!(
+            run_sub("$sub ( 0 ) = hi\n$sub ( 0 )", &mut new_rng(), &mut SubMap::new()),
             "\nhi"
         );
         assert_eq!(
@@ -298,6 +308,131 @@ mod test {
                 &mut SubMap::new()
             ),
             "\n\nfalse\n\n"
+        );
+    }
+
+    static PP_VALIDATION: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r#"(?i)(include|if|else|endif|sub|rnd|chr)"#).expect("invalid regex"));
+
+    #[test]
+    fn if_sub_integration() {
+        let input_positive: &str = indoc::indoc!(
+            r"
+            $sub(0) = 1
+            $if($sub(0))
+                true
+            $else()
+                false
+            $endif()
+        "
+        );
+        let input_negative: &str = indoc::indoc!(
+            r"
+            $sub(0) = 0
+            $if($sub(0))
+                true
+            $else()
+                false
+            $endif()
+        "
+        );
+        let processed = run_if(input_positive, &mut new_rng(), &mut SubMap::new());
+        assert!(processed.contains("true"), "output missing true: {}", processed);
+        assert!(!processed.contains("false"), "output contains false: {}", processed);
+        assert!(
+            !PP_VALIDATION.is_match(&processed),
+            "contains preprocessing directives: {}",
+            processed
+        );
+
+        let processed = run_if(input_negative, &mut new_rng(), &mut SubMap::new());
+        assert!(processed.contains("false"), "output missing false: {}", processed);
+        assert!(!processed.contains("true"), "output contains true: {}", processed);
+        assert!(
+            !PP_VALIDATION.is_match(&processed),
+            "contains preprocessing directives: {}",
+            processed
+        );
+
+        let input_positive: &str = indoc::indoc!(
+            r"
+            $if(1)
+                $sub(0) = true
+            $else()
+                $sub(0) = false
+            $endif()
+            $sub(0)
+        "
+        );
+        let input_negative: &str = indoc::indoc!(
+            r"
+            $if(0)
+                $sub(0) = true
+            $else()
+                $sub(0) = false
+            $endif()
+            $sub(0)
+        "
+        );
+        let processed = run_if(input_positive, &mut new_rng(), &mut SubMap::new());
+        assert!(processed.contains("true"), "output missing true: {}", processed);
+        assert!(!processed.contains("false"), "output contains false: {}", processed);
+        assert!(
+            !PP_VALIDATION.is_match(&processed),
+            "contains preprocessing directives: {}",
+            processed
+        );
+
+        let processed = run_if(input_negative, &mut new_rng(), &mut SubMap::new());
+        assert!(processed.contains("false"), "output missing false: {}", processed);
+        assert!(!processed.contains("true"), "output contains true: {}", processed);
+        assert!(
+            !PP_VALIDATION.is_match(&processed),
+            "contains preprocessing directives: {}",
+            processed
+        );
+    }
+
+    #[test]
+    fn if_sub_rnd_integration() {
+        let input_positive: &str = indoc::indoc!(
+            r"
+            $sub(1) = $rnd(1;4)
+            $if($sub(1))
+                $sub(0) = true
+            $else()
+                $sub(0) = false
+            $endif()
+            $sub(0)
+        "
+        );
+        let input_negative: &str = indoc::indoc!(
+            r"
+            $sub(1) = $rnd(0;0)
+            $if($sub(1))
+                $sub(0) = true
+            $else()
+                $sub(0) = false
+            $endif()
+            $sub(0)
+        "
+        );
+        let processed = run_if(input_positive, &mut new_rng(), &mut SubMap::new());
+        assert!(processed.contains("true"), "output missing true: {}", processed);
+        assert!(!processed.contains("false"), "output contains false: {}", processed);
+        assert!(
+            !PP_VALIDATION.is_match(&processed),
+            "contains preprocessing directives: {}",
+            processed
+        );
+
+        let processed = run_if(input_negative, &mut new_rng(), &mut SubMap::new());
+        assert!(processed.contains("false"), "output missing false: {}", processed);
+        assert!(!processed.contains("true"), "output contains true: {}", processed);
+        assert!(
+            !PP_VALIDATION.is_match(&processed),
+            "contains preprocessing directives: {}",
+            processed
         );
     }
 }
