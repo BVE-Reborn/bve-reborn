@@ -1,6 +1,16 @@
+use bve_common::nom::w;
+use nom::{
+    branch::alt,
+    bytes::complete::{is_a, is_not, tag, tag_no_case},
+    combinator::map_res,
+    multi::separated_list,
+    sequence::{delimited, separated_pair, tuple},
+    IResult,
+};
 use once_cell::sync::Lazy;
-use rand::Rng;
+use rand::{distributions::WeightedIndex, prelude::*};
 use regex::Regex;
+use smallvec::SmallVec;
 use std::collections::HashMap;
 
 pub struct FileInput<'a> {
@@ -26,7 +36,7 @@ static IF_PARSE_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r#"(?i)\$if\s*\(\s*
 type SubMap = HashMap<u64, String>;
 
 // include(rnd, chr) -> (sub <- if(sub, rnd)) -> rnd -> chr
-pub async fn preprocess_route<R: Rng + ?Sized>(content: &str, rng: &mut R) -> String {
+pub async fn preprocess_route<R: Rng + ?Sized>(_content: &str, _rng: &mut R) -> String {
     unimplemented!()
 }
 
@@ -39,7 +49,11 @@ fn run_includes<R: Rng + ?Sized>(content: &str, rng: &mut R) -> String {
         let include = &content[mat.range()];
         let include = run_rnd(&include, rng);
         let include = run_chr(&include);
-        output.push_str(&parse_include(&include));
+        let parsed = parse_include(&include);
+        let chosen = choose_include(&parsed, rng);
+        output.push_str(&format!("\n%O{}%\n", chosen.offset));
+        output.push_str(unimplemented!());
+        output.push_str(&format!("\n%O-{}%\n", chosen.offset));
         last_match = mat.end();
     }
     output.push_str(&content[last_match..]);
@@ -198,13 +212,87 @@ fn run_if<R: Rng + ?Sized>(content: &str, rng: &mut R, sub_map: &mut SubMap) -> 
     output
 }
 
-fn parse_include(include: &str) -> String {
-    unimplemented!()
+type IncludeSmallVec<'a> = SmallVec<[Include<'a>; 4]>;
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+struct Include<'a> {
+    file: &'a str,
+    offset: i64,
+    weight: i64,
+}
+
+fn choose_include<'a, R: Rng + ?Sized>(includes: &IncludeSmallVec<'a>, rng: &mut R) -> Include<'a> {
+    if includes.len() == 1 {
+        return includes[0];
+    }
+    let index = WeightedIndex::new(includes.iter().map(|inc| inc.weight)).expect("Could not build weighted index");
+    includes[index.sample(rng)]
+}
+
+fn parse_include(include: &str) -> IncludeSmallVec<'_> {
+    delimited(
+        tuple((w(tag_no_case("$include")), w(tag("(")))),
+        alt((parse_weighted_include, parse_offset_include, parse_naked_include)),
+        w(tag(")")),
+    )(include)
+    .unwrap_or_else(|e| unimplemented!("{:?}", e))
+    .1
+}
+
+fn parse_naked_include(include: &str) -> IResult<&str, IncludeSmallVec<'_>> {
+    dbg!(parse_filename(include)).map(|(input, file)| {
+        dbg!(file);
+        (input, smallvec::smallvec![Include {
+            file,
+            offset: 0,
+            weight: 0
+        }])
+    })
+}
+
+fn parse_offset_include(include: &str) -> IResult<&str, IncludeSmallVec<'_>> {
+    separated_pair(w(parse_filename), w(tag(":")), w(parse_number))(include).map(|(input, (file, offset))| {
+        (input, smallvec::smallvec![Include {
+            file,
+            offset,
+            weight: 0
+        }])
+    })
+}
+
+fn parse_weighted_include(include: &str) -> IResult<&str, IncludeSmallVec<'_>> {
+    dbg!(map_res(
+        separated_list(
+            w(tag(";")),
+            separated_pair(w(parse_filename), w(tag(";")), w(parse_number)),
+        ),
+        |v| {
+            if v.is_empty() {
+                return Err(());
+            }
+            Ok(v.into_iter()
+                .map(|(file, weight)| Include {
+                    file,
+                    weight,
+                    offset: 0,
+                })
+                .collect())
+        }
+    )(include))
+}
+
+fn parse_filename(include: &str) -> IResult<&str, &str> {
+    dbg!(is_not(";:()\n")(include).map(|(i, v)| (i, v.trim())))
+}
+
+fn parse_number(include: &str) -> IResult<&str, i64> {
+    dbg!(map_res(is_a("0123456789-"), |out: &str| out.parse())(include))
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
+    use itertools::assert_equal;
     use rand::SeedableRng;
 
     fn new_rng() -> impl Rng {
@@ -433,6 +521,65 @@ mod test {
             !PP_VALIDATION.is_match(&processed),
             "contains preprocessing directives: {}",
             processed
+        );
+    }
+
+    #[test]
+    fn include_parse() {
+        assert_equal(
+            parse_include(r#"$include(Thing\Other/Thing with Space)"#),
+            std::iter::once(Include {
+                file: r#"Thing\Other/Thing with Space"#,
+                offset: 0,
+                weight: 0,
+            }),
+        );
+        assert_equal(
+            parse_include(r#"$include(Thing\Other/Thing with Space:1000)"#),
+            std::iter::once(Include {
+                file: r#"Thing\Other/Thing with Space"#,
+                offset: 1000,
+                weight: 0,
+            }),
+        );
+        assert_equal(
+            parse_include(r#"$include(Thing\Other/Thing with Space:-1000)"#),
+            std::iter::once(Include {
+                file: r#"Thing\Other/Thing with Space"#,
+                offset: -1000,
+                weight: 0,
+            }),
+        );
+        assert_equal(
+            parse_include(r#"$include(Thing\Other/Thing with Space   :  1000)"#),
+            std::iter::once(Include {
+                file: r#"Thing\Other/Thing with Space"#,
+                offset: 1000,
+                weight: 0,
+            }),
+        );
+        assert_equal(
+            parse_include(r#"$include(Thing\Other/Thing with Space;12)"#),
+            std::iter::once(Include {
+                file: r#"Thing\Other/Thing with Space"#,
+                offset: 0,
+                weight: 12,
+            }),
+        );
+        assert_equal::<_, IncludeSmallVec<'_>>(
+            parse_include(r#"$include(Thing\Other/Thing with Space;12;OtherThing;76)"#),
+            smallvec::smallvec![
+                Include {
+                    file: r#"Thing\Other/Thing with Space"#,
+                    offset: 0,
+                    weight: 12,
+                },
+                Include {
+                    file: r#"OtherThing"#,
+                    offset: 0,
+                    weight: 76,
+                }
+            ],
         );
     }
 }
