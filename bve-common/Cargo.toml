@@ -1,0 +1,22 @@
+[package]
+name = "bve-common"
+version = "0.0.1"
+authors = ["Connor Fitzgerald <connorwadefitzgerald@gmail.com>"]
+edition = "2018"
+
+description = "Common utilites used in various parts of the codebase"
+repository = "https://github.com/BVE-Reborn/bve-reborn"
+readme = "README.md"
+categories = ["games", "parsing", "rendering::data-formats", "simulation"]
+keywords = ["bve", "util", "simulation"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+iter = []
+
+[dependencies]
+nom = { version = "5", default-features = false, features = ["alloc"], optional = true }
+
+[dev-dependencies]
+itertools = "0.9"

@@ -191,6 +191,7 @@ version = "0.0.1"
 dependencies = [
  "async-std",
  "bincode",
+ "bve-common",
  "bve-derive",
  "chardetng",
  "chrono",
@@ -254,6 +255,14 @@ dependencies = [
  "serde",
  "serde_json",
  "winit",
+]
+
+[[package]]
+name = "bve-common"
+version = "0.0.1"
+dependencies = [
+ "itertools",
+ "nom",
 ]
 
 [[package]]

@@ -1,66 +1,15 @@
 use crate::parse::function_scripts::{Instruction, ParsedFunctionScript};
+use bve_common::nom::*;
 use nom::{
     branch::alt,
     bytes::complete::{tag, take_while},
     character::complete::{char as char_f, one_of},
-    combinator::{map_res, opt},
+    combinator::map_res,
     multi::many0,
-    sequence::{delimited, tuple},
-    AsChar, IResult, InputTakeAtPosition,
+    sequence::tuple,
+    AsChar, IResult,
 };
 use std::num::ParseFloatError;
-
-/// Takes a parser and wraps it so it delimited with whitespace
-fn w<F, I, O>(func: F) -> impl Fn(I) -> IResult<I, O>
-where
-    I: InputTakeAtPosition<Item = char>,
-    F: Fn(I) -> IResult<I, O>,
-{
-    move |input| {
-        delimited(
-            take_while(char::is_whitespace), //
-            &func,
-            take_while(char::is_whitespace),
-        )(input)
-    }
-}
-
-fn binary_left<F1, F2, F3, I, O1, O2, O3>(
-    left: F1,
-    middle: F2,
-    right: F3,
-) -> impl FnOnce(I) -> IResult<I, (O1, Vec<(O2, O3)>)>
-where
-    I: InputTakeAtPosition<Item = char> + Clone + PartialEq,
-    F1: Fn(I) -> IResult<I, O1>,
-    F2: Fn(I) -> IResult<I, O2>,
-    F3: Fn(I) -> IResult<I, O3>,
-{
-    move |input| tuple((left, many0(tuple((middle, right)))))(input)
-}
-
-fn binary_right<F1, F2, F3, I, O1, O2, O3>(
-    left: F1,
-    middle: F2,
-    right: F3,
-) -> impl FnOnce(I) -> IResult<I, (O1, Option<(O2, O3)>)>
-where
-    I: InputTakeAtPosition<Item = char> + Clone,
-    F1: Fn(I) -> IResult<I, O1>,
-    F2: Fn(I) -> IResult<I, O2>,
-    F3: Fn(I) -> IResult<I, O3>,
-{
-    move |input| tuple((left, opt(tuple((middle, right)))))(input)
-}
-
-fn unary<F1, F2, I, O1, O2>(left: F1, right: F2) -> impl FnOnce(I) -> IResult<I, (Option<O1>, O2)>
-where
-    I: InputTakeAtPosition<Item = char> + Clone,
-    F1: Fn(I) -> IResult<I, O1>,
-    F2: Fn(I) -> IResult<I, O2>,
-{
-    move |input| tuple((opt(w(left)), right))(input)
-}
 
 enum OneOrManyInstructions {
     One(Instruction),

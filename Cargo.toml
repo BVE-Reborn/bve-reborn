@@ -5,6 +5,7 @@ members = [
     "bve",
     "bve-build",
     "bve-client",
+    "bve-common",
     "bve-conveyor",
     "bve-corpus",
     "bve-derive",
