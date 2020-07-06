@@ -78,21 +78,18 @@ pub struct OptionsBlockLength {
     pub length: f32,
 }
 
-macro_rules! binary_flag_enum {
-    ($name:ident, $zero:ident, $one:ident) => {
+macro_rules! flag_enum {
+    ($name:ident, $ty:ty, $($variant:ident = $num:expr),*) => {
         #[derive(Debug, Clone, PartialEq)]
-        #[repr(u8)]
         pub enum $name {
-            $zero = 0,
-            $one = 1,
+            $($variant = $num,)*
         }
         impl FromStr for $name {
             type Err = ();
 
             fn from_str(s: &str) -> Result<Self, Self::Err> {
-                match s.parse::<u8>().map_err(|_| ())? {
-                    0 => Ok(Self::$zero),
-                    1 => Ok(Self::$one),
+                match s.parse::<$ty>().map_err(|_| ())? {
+                    $($num => Ok(Self::$variant),)*
                     _ => Err(()),
                 }
             }
@@ -100,37 +97,37 @@ macro_rules! binary_flag_enum {
     };
 }
 
-binary_flag_enum!(OptionObjectVisibilityMode, Legacy, TrackBased);
+flag_enum!(OptionObjectVisibilityMode, u8, Legacy = 0, TrackBased = 1);
 #[derive(Debug, Clone, PartialEq, FromRouteCommand)]
 pub struct OptionObjectVisibility {
     pub mode: OptionObjectVisibilityMode,
 }
 
-binary_flag_enum!(OptionSectionBehaviorMode, Default, Simplified);
+flag_enum!(OptionSectionBehaviorMode, u8, Default = 0, Simplified = 1);
 #[derive(Debug, Clone, PartialEq, FromRouteCommand)]
 pub struct OptionSectionBehavior {
     pub mode: OptionSectionBehaviorMode,
 }
 
-binary_flag_enum!(OptionCantBehaviorMode, Unsigned, Signed);
+flag_enum!(OptionCantBehaviorMode, u8, Unsigned = 0, Signed = 1);
 #[derive(Debug, Clone, PartialEq, FromRouteCommand)]
 pub struct OptionCantBehavior {
     pub mode: OptionCantBehaviorMode,
 }
 
-binary_flag_enum!(OptionFogBehaviorMode, BlockBased, Interpolated);
+flag_enum!(OptionFogBehaviorMode, u8, BlockBased = 0, Interpolated = 1);
 #[derive(Debug, Clone, PartialEq, FromRouteCommand)]
 pub struct OptionFogBehavior {
     pub mode: OptionFogBehaviorMode,
 }
 
-binary_flag_enum!(OptionCompatibleTransparencyMode, Off, On);
+flag_enum!(OptionCompatibleTransparencyMode, u8, Off = 0, On = 1);
 #[derive(Debug, Clone, PartialEq, FromRouteCommand)]
 pub struct OptionCompatibleTransparency {
     pub mode: OptionCompatibleTransparencyMode,
 }
 
-binary_flag_enum!(OptionEnableBveTsHacksMode, Off, On);
+flag_enum!(OptionEnableBveTsHacksMode, u8, Off = 0, On = 1);
 #[derive(Debug, Clone, PartialEq, FromRouteCommand)]
 pub struct OptionEnableBveTsHacks {
     pub mode: OptionEnableBveTsHacksMode,
@@ -151,26 +148,13 @@ pub struct RouteTimetable {
     pub text: String,
 }
 
-#[derive(Debug, Clone, PartialEq)]
-#[repr(i8)]
-pub enum RouteChangeMode {
+flag_enum!(
+    RouteChangeMode,
+    i8,
     SafetyActiveService = -1,
     SafetyActiveEmergency = 0,
-    SafetyInactiveEmergency = 1,
-}
-impl FromStr for RouteChangeMode {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.parse::<i8>().map_err(|_| ())? {
-            -1 => Ok(Self::SafetyActiveService),
-            0 => Ok(Self::SafetyActiveEmergency),
-            1 => Ok(Self::SafetyInactiveEmergency),
-            _ => Err(()),
-        }
-    }
-}
-
+    SafetyInactiveEmergency = 1
+);
 #[derive(Debug, Clone, PartialEq, FromRouteCommand)]
 pub struct RouteChange {
     pub text: RouteChangeMode,
@@ -262,28 +246,14 @@ pub struct RouteLightDirection {
     pub phi: f32,
 }
 
-#[derive(Debug, Clone, PartialEq)]
-#[repr(u8)]
-pub enum RouteInitialViewpointMode {
+flag_enum!(
+    RouteInitialViewpointMode,
+    u8,
     Cab = 0,
     TrackCamera = 1,
     FlybyCamera = 2,
-    FlybyZoomingCamera = 3,
-}
-impl FromStr for RouteInitialViewpointMode {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.parse::<u8>().map_err(|_| ())? {
-            0 => Ok(Self::Cab),
-            1 => Ok(Self::TrackCamera),
-            2 => Ok(Self::FlybyCamera),
-            3 => Ok(Self::FlybyZoomingCamera),
-            _ => Err(()),
-        }
-    }
-}
-
+    FlybyZoomingCamera = 3
+);
 #[derive(Debug, Clone, PartialEq, FromRouteCommand)]
 pub struct RouteInitialViewpoint {
     pub view: RouteInitialViewpointMode,
