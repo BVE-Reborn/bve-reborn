@@ -13,6 +13,7 @@ use smallvec::SmallVec;
 use std::num::ParseFloatError;
 
 pub type InstructionSmallVec = SmallVec<[Instruction; 8]>;
+type RecurseInstructionSmallVec<T> = SmallVec<[(T, InstructionSmallVec); 8]>;
 
 /// Parses the function script string into function script IR.
 ///
@@ -73,21 +74,23 @@ fn equal_symbol(input: &str) -> IResult<&str, &str> {
 
 fn equal_expr(input: &str) -> IResult<&str, InstructionSmallVec> {
     // This is left associative while the rest of everything is right associative
-    binary_left(plus_expr, equal_symbol, plus_expr)(input).map(|(input, (mut left, right_vec))| {
-        for (operator, right) in right_vec {
-            left.extend(right.into_iter());
-            left.push(match operator {
-                "==" => Instruction::Equal,
-                "!=" => Instruction::NotEqual,
-                "<" => Instruction::Less,
-                "<=" => Instruction::LessEqual,
-                ">" => Instruction::Greater,
-                ">=" => Instruction::GreaterEqual,
-                _ => unreachable!(),
-            });
-        }
-        (input, left)
-    })
+    binary_left(plus_expr, equal_symbol, plus_expr)(input).map(
+        |(input, (mut left, right_vec)): (&str, (InstructionSmallVec, RecurseInstructionSmallVec<&str>))| {
+            for (operator, right) in right_vec {
+                left.extend(right.into_iter());
+                left.push(match operator {
+                    "==" => Instruction::Equal,
+                    "!=" => Instruction::NotEqual,
+                    "<" => Instruction::Less,
+                    "<=" => Instruction::LessEqual,
+                    ">" => Instruction::Greater,
+                    ">=" => Instruction::GreaterEqual,
+                    _ => unreachable!(),
+                });
+            }
+            (input, left)
+        },
+    )
 }
 
 fn plus_symbol(input: &str) -> IResult<&str, char> {
@@ -97,17 +100,19 @@ fn plus_symbol(input: &str) -> IResult<&str, char> {
 fn plus_expr(input: &str) -> IResult<&str, InstructionSmallVec> {
     // This is left associative while the rest of everything is right associative
     // Idk man
-    binary_left(times_expr, plus_symbol, times_expr)(input).map(|(input, (mut left, right_vec))| {
-        for (operator, right) in right_vec {
-            left.extend(right.into_iter());
-            left.push(if operator == '+' {
-                Instruction::Addition
-            } else {
-                Instruction::Subtraction
-            });
-        }
-        (input, left)
-    })
+    binary_left(times_expr, plus_symbol, times_expr)(input).map(
+        |(input, (mut left, right_vec)): (&str, (InstructionSmallVec, RecurseInstructionSmallVec<char>))| {
+            for (operator, right) in right_vec {
+                left.extend(right.into_iter());
+                left.push(if operator == '+' {
+                    Instruction::Addition
+                } else {
+                    Instruction::Subtraction
+                });
+            }
+            (input, left)
+        },
+    )
 }
 
 fn times_expr(input: &str) -> IResult<&str, InstructionSmallVec> {
@@ -121,8 +126,7 @@ fn times_expr(input: &str) -> IResult<&str, InstructionSmallVec> {
 }
 
 fn divide_expr(input: &str) -> IResult<&str, InstructionSmallVec> {
-    binary_right(unary_negative_expr, char_f('/'), divide_expr)(input).map(|(input, (left, right_opt))| {
-        let mut left: InstructionSmallVec = left.into_iter().collect();
+    binary_right(unary_negative_expr, char_f('/'), divide_expr)(input).map(|(input, (mut left, right_opt))| {
         if let Some((_, right)) = right_opt {
             left.extend(right.into_iter());
             left.push(Instruction::Division);
