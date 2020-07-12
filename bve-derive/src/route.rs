@@ -11,6 +11,10 @@ struct Field {
     #[darling(default)]
     index: bool,
     #[darling(default)]
+    default: bool,
+    #[darling(default)]
+    suffix: bool,
+    #[darling(default)]
     variadic: bool,
 }
 
@@ -36,6 +40,14 @@ pub fn from_route_command(stream: TokenStream) -> TokenStream {
                 } else {
                     return None;
                 },
+            }
+        } else if f.suffix {
+            quote::quote! {
+                #ident: ::std::str::FromStr::from_str(command.suffix?).ok()?,
+            }
+        } else if f.default {
+            quote::quote! {
+                #ident: ::std::default::Default::default(),
             }
         } else {
             if f.variadic {

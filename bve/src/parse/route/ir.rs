@@ -2,7 +2,7 @@ use super::parser::{ArgumentSmallVec, Command};
 use crate::{ColorU8RGB, ColorU8RGBA};
 use bve_derive::FromRouteCommand;
 use smallvec::SmallVec;
-use std::str::FromStr;
+use std::{num::NonZeroU64, str::FromStr};
 
 pub trait FromRouteCommand {
     fn from_route_command(command: Command<'_>) -> Option<Self>
@@ -264,11 +264,179 @@ pub struct RouteDeveloperId {
     pub id: String,
 }
 
-#[derive(FromRouteCommand)]
-pub struct Pole {
+#[derive(Debug, Clone, PartialEq, FromRouteCommand)]
+pub struct TrainFolder {
+    pub folder: String,
+}
+
+#[derive(Debug, Clone, PartialEq, FromRouteCommand)]
+pub struct TrainRail {
+    #[command(index)]
+    pub rail_type_index: u64,
+    pub run_sound_index: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, FromRouteCommand)]
+pub struct TrainFlange {
+    #[command(index)]
+    pub rail_type_index: u64,
+    pub flange_sound_index: u64,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum TimetableSuffix {
+    Day,
+    Night,
+}
+impl FromStr for TimetableSuffix {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "day" => Ok(Self::Day),
+            "night" => Ok(Self::Night),
+            _ => Err(()),
+        }
+    }
+}
+#[derive(Debug, Clone, PartialEq, FromRouteCommand)]
+pub struct TrainTimetable {
+    #[command(index)]
+    pub timetable_index: u64,
+    #[command(suffix)]
+    pub timetable_suffix: TimetableSuffix,
+    pub filename: String,
+}
+
+#[derive(Debug, Clone, PartialEq, FromRouteCommand)]
+pub struct TrainVelocity {
+    /// unit: UnitOfSpeed
+    pub max_ai_speed: f32,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum StructureCommandKind {
+    Ground,
+    Rail,
+    WallL,
+    WallR,
+    DikeL,
+    DikeR,
+    FormL,
+    FormR,
+    FormCL,
+    FormCR,
+    RoofL,
+    RoofR,
+    RoofCL,
+    RoofCR,
+    CrackL,
+    CrackR,
+    FreeObj,
+    Beacon,
+}
+#[derive(Debug, Clone, PartialEq, FromRouteCommand)]
+pub struct StructureCommand {
+    #[command(default)]
+    pub command: Option<StructureCommandKind>,
+    #[command(index)]
+    pub structure_index: u64,
+    pub filename: String,
+}
+
+#[derive(Debug, Clone, PartialEq, FromRouteCommand)]
+pub struct StructurePole {
     #[command(index)]
     pub number_of_additional_rails: u64,
     #[command(index)]
-    pub pole_structure_idx: u64,
+    pub pole_structure_index: u64,
     pub file_name: String,
+}
+
+#[derive(Debug, Clone, PartialEq, FromRouteCommand)]
+pub struct TextureBackgroundLoad {
+    #[command(index)]
+    pub background_texture_index: u64,
+    pub file_name: String,
+}
+
+#[derive(Debug, Clone, PartialEq, FromRouteCommand)]
+pub struct TextureBackgroundX {
+    #[command(index)]
+    pub background_texture_index: u64,
+    pub repetition_count: u64,
+}
+
+flag_enum!(TextureBackgroundAspectMode, u8, Fixed = 0, Aspect = 1);
+#[derive(Debug, Clone, PartialEq, FromRouteCommand)]
+pub struct TextureBackgroundAspect {
+    #[command(index)]
+    pub background_texture_index: u64,
+    pub mode: TextureBackgroundAspectMode,
+}
+
+#[derive(Debug, Clone, PartialEq, FromRouteCommand)]
+pub struct CycleGround {
+    #[command(index)]
+    pub ground_structure_index: u64,
+    #[command(variadic)]
+    pub ground_structures: SmallVec<[u64; 8]>,
+}
+
+#[derive(Debug, Clone, PartialEq, FromRouteCommand)]
+pub struct CycleRail {
+    #[command(index)]
+    pub rail_structure_index: u64,
+    #[command(variadic)]
+    pub rail_structures: SmallVec<[u64; 8]>,
+}
+
+#[derive(Debug, Clone, PartialEq, FromRouteCommand)]
+pub struct SignalSingle {
+    #[command(index)]
+    pub signal_index: u64,
+    pub signal_file: String,
+}
+
+#[derive(Debug, Clone, PartialEq, FromRouteCommand)]
+pub struct SignalSplit {
+    #[command(index)]
+    pub signal_index: u64,
+    pub signal_file: String,
+    pub glow_file: String,
+}
+
+#[derive(Debug, Clone, PartialEq, FromRouteCommand)]
+pub struct TrackRailStart {
+    pub rail_index: NonZeroU64,
+    /// unit: UnitOfDistance
+    pub x_offset: f32,
+    /// unit: UnitOfDistance
+    pub y_offset: f32,
+    pub rail_type: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, FromRouteCommand)]
+pub struct TrackRail {
+    pub rail_index: NonZeroU64,
+    /// unit: UnitOfDistance
+    pub x_offset: f32,
+    /// unit: UnitOfDistance
+    pub y_offset: f32,
+    pub rail_type: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, FromRouteCommand)]
+pub struct TrackRailType {
+    pub rail_index: NonZeroU64,
+    pub rail_type: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, FromRouteCommand)]
+pub struct TrackRailEnd {
+    pub rail_index: NonZeroU64,
+    /// unit: UnitOfDistance
+    pub x_offset: f32,
+    /// unit: UnitOfDistance
+    pub y_offset: f32,
 }
