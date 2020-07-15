@@ -337,7 +337,7 @@ pub enum StructureCommandKind {
 }
 #[derive(Debug, Clone, PartialEq, FromRouteCommand)]
 pub struct StructureCommand {
-    #[command(default)]
+    #[command(ignore)]
     pub command: Option<StructureCommandKind>,
     #[command(index)]
     pub structure_index: u64,

@@ -1,21 +1,24 @@
 use crate::helpers::combine_token_streams;
 use darling::FromField;
 use proc_macro::TokenStream;
-use proc_macro2::Ident;
-use syn::ItemStruct;
+use proc_macro2::{Ident, Literal};
+use syn::{ItemStruct, Type};
 
 #[derive(Debug, FromField)]
 #[darling(attributes(command))]
 struct Field {
     ident: Option<Ident>,
+    ty: Type,
     #[darling(default)]
     index: bool,
     #[darling(default)]
-    default: bool,
+    ignore: bool,
     #[darling(default)]
     suffix: bool,
     #[darling(default)]
     variadic: bool,
+    #[darling(default)]
+    default: Option<Literal>,
 }
 
 pub fn from_route_command(stream: TokenStream) -> TokenStream {
@@ -28,29 +31,39 @@ pub fn from_route_command(stream: TokenStream) -> TokenStream {
     let mut argument_count = 0_usize;
     let members = combine_token_streams(fields.map(|f: Field| {
         let ident = f.ident;
+        let ty = f.ty.clone();
         let index = f.index;
         if index {
             assert!(!f.variadic, "Structs can't be indices and variadic");
             let idx = index_count;
             index_count += 1;
             let len = index_count;
+            let defaulted = f.default.map_or_else(|| quote::quote! {?}, |l| quote::quote! {
+                .unwrap_or(#l)
+            });
             quote::quote! {
-                #ident: if command.indices.len() >= #len {
-                    ::std::convert::TryFrom::try_from(command.indices[#idx]).ok()?
-                } else {
-                    return None;
+                #ident: {
+                    let value: Option<#ty>  = try {
+                        if command.indices.len() >= #len {
+                            ::std::convert::TryFrom::try_from(command.indices[#idx]?).ok()?
+                        } else {
+                            None?
+                        }
+                    };
+                    value #defaulted
                 },
             }
         } else if f.suffix {
             quote::quote! {
                 #ident: ::std::str::FromStr::from_str(command.suffix?).ok()?,
             }
-        } else if f.default {
+        } else if f.ignore {
             quote::quote! {
                 #ident: ::std::default::Default::default(),
             }
         } else {
             if f.variadic {
+                // TODO: Defaults
                 quote::quote! {
                     #ident: crate::parse::route::ir::FromVariadicRouteArgument::from_variadic_route_argument(&command.arguments).ok()?,
                 }
@@ -58,11 +71,19 @@ pub fn from_route_command(stream: TokenStream) -> TokenStream {
                 let idx = argument_count;
                 argument_count += 1;
                 let len = argument_count;
+                let defaulted = f.default.map_or_else(|| quote::quote! {?}, |l| quote::quote! {
+                    .unwrap_or(#l)
+                });
                 quote::quote! {
-                    #ident: if command.arguments.len() >= #len {
-                        ::std::str::FromStr::from_str(command.arguments[#idx]).ok()?
-                    } else {
-                        return None;
+                    #ident: {
+                        let value: Option<#ty> = try {
+                            if command.indices.len() >= #len {
+                                ::std::str::FromStr::from_str(command.arguments[#idx]).ok()?
+                            } else {
+                                None?
+                            }
+                        };
+                        value #defaulted
                     },
                 }
             }

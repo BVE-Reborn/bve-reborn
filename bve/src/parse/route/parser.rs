@@ -32,7 +32,7 @@ pub enum Directive<'a> {
 }
 
 pub type TrackPositionSmallVec = SmallVec<[f32; 4]>;
-pub type IndexSmallVec = SmallVec<[i64; 8]>;
+pub type IndexSmallVec = SmallVec<[Option<i64>; 8]>;
 pub type ArgumentSmallVec<'a> = SmallVec<[&'a str; 8]>;
 
 pub fn parse_route(preprocessed: &str) -> impl Iterator<Item = Directive<'_>> {
@@ -140,7 +140,7 @@ fn parse_indices(command: &str) -> IResult<&str, IndexSmallVec> {
             if list.is_empty() { Err(()) } else { Ok(list) }
         },
     )(command)
-    .map_output(|array: SmallVec<[Option<i64>; 8]>| array.into_iter().filter_map(identity).collect())
+    .map_output(|array: SmallVec<[Option<i64>; 8]>| array.into_iter().collect())
 }
 
 // Returns None if matched nothing
@@ -179,15 +179,8 @@ fn parse_argument_list1(command: &str) -> IResult<&str, ArgumentSmallVec<'_>> {
 }
 
 fn parse_argument_list(command: &str) -> IResult<&str, ArgumentSmallVec<'_>> {
-    separated_list_small(w(tag_no_case(";")), parse_argument)(command).map_output(
-        |array: SmallVec<[Option<&str>; 8]>| {
-            array
-                .into_iter()
-                .filter(|arg| arg.map(|v| !v.is_empty()).unwrap_or(false))
-                .map(|arg| arg.unwrap_or_else(|| unreachable!()))
-                .collect()
-        },
-    )
+    separated_list_small(w(tag_no_case(";")), parse_argument)(command)
+        .map_output(|array: SmallVec<[Option<&str>; 8]>| array.into_iter().map(|arg| arg.unwrap_or("")).collect())
 }
 
 fn parse_argument(command: &str) -> IResult<&str, Option<&str>> {
@@ -213,6 +206,10 @@ mod test {
         assert_eq!(parse_directive("With Blob"), Some(Directive::With("Blob")));
         assert_eq!(parse_directive("With    BlobH "), Some(Directive::With("BlobH")));
         assert_eq!(parse_directive("With"), None);
+    }
+
+    macro_rules! smallvec_opt {
+        ($($value:expr),*) => {smallvec::smallvec![$(Some($value)),*]};
     }
 
     #[test]
@@ -281,7 +278,7 @@ mod test {
             parse_directive(".command( a 1 ; b 2 ; c 3 ; ; ; )"),
             Some(Directive::Command(Command {
                 name: "command",
-                arguments: smallvec::smallvec!["a 1", "b 2", "c 3"],
+                arguments: smallvec::smallvec!["a 1", "b 2", "c 3", "", "", ""],
                 ..default_command()
             }))
         );
@@ -312,10 +309,10 @@ mod test {
             }))
         );
         assert_eq!(
-            parse_directive(".command a 1 ; b 2 ; c 3 ;;;;;;;; ;;;;"),
+            parse_directive(".command a 1 ; b 2 ; c 3 ; ; ; "),
             Some(Directive::Command(Command {
                 name: "command",
-                arguments: smallvec::smallvec!["a 1", "b 2", "c 3"],
+                arguments: smallvec::smallvec!["a 1", "b 2", "c 3", "", "", ""],
                 ..default_command()
             }))
         );
@@ -327,17 +324,17 @@ mod test {
             parse_directive(".command(-1;2;3;1) f"),
             Some(Directive::Command(Command {
                 name: "command",
-                indices: smallvec::smallvec![-1, 2, 3, 1],
+                indices: smallvec_opt![-1, 2, 3, 1],
                 arguments: smallvec::smallvec!["f"],
                 ..default_command()
             }))
         );
         assert_eq!(
-            parse_directive(".command(-1;2;3;1;;  ;) f;; ;;"),
+            parse_directive(".command(-1;2;3;1;;) f;; ;;"),
             Some(Directive::Command(Command {
                 name: "command",
-                indices: smallvec::smallvec![-1, 2, 3, 1],
-                arguments: smallvec::smallvec!["f"],
+                indices: smallvec::smallvec![Some(-1), Some(2), Some(3), Some(1), None, None],
+                arguments: smallvec::smallvec!["f", "", "", "", ""],
                 ..default_command()
             }))
         );
@@ -351,7 +348,7 @@ mod test {
             parse_directive(".command(-1;2;3;1).h f"),
             Some(Directive::Command(Command {
                 name: "command",
-                indices: smallvec::smallvec![-1, 2, 3, 1],
+                indices: smallvec_opt![-1, 2, 3, 1],
                 suffix: Some("h"),
                 arguments: smallvec::smallvec!["f"],
                 ..default_command()
@@ -361,7 +358,7 @@ mod test {
             parse_directive(".command(-1;2;3;1).h(f)"),
             Some(Directive::Command(Command {
                 name: "command",
-                indices: smallvec::smallvec![-1, 2, 3, 1],
+                indices: smallvec_opt![-1, 2, 3, 1],
                 suffix: Some("h"),
                 arguments: smallvec::smallvec!["f"],
                 ..default_command()
@@ -372,9 +369,9 @@ mod test {
             Some(Directive::Command(Command {
                 namespace: Some("namespace"),
                 name: "command",
-                indices: smallvec::smallvec![-1, 2, 3, 1],
+                indices: smallvec_opt![-1, 2, 3, 1],
                 suffix: Some("h"),
-                arguments: smallvec::smallvec!["f", "f2", "3"],
+                arguments: smallvec::smallvec!["f", "f2", "3", "", ""],
             }))
         );
     }
