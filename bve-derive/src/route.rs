@@ -1,8 +1,8 @@
 use crate::helpers::combine_token_streams;
 use darling::FromField;
 use proc_macro::TokenStream;
-use proc_macro2::{Ident, Literal};
-use syn::{ItemStruct, Type};
+use proc_macro2::Ident;
+use syn::{Expr, ItemStruct, Type};
 
 #[derive(Debug, FromField)]
 #[darling(attributes(command))]
@@ -18,7 +18,7 @@ struct Field {
     #[darling(default)]
     variadic: bool,
     #[darling(default)]
-    default: Option<Literal>,
+    default: Option<String>,
 }
 
 pub fn from_route_command(stream: TokenStream) -> TokenStream {
@@ -33,14 +33,18 @@ pub fn from_route_command(stream: TokenStream) -> TokenStream {
         let ident = f.ident;
         let ty = f.ty.clone();
         let index = f.index;
+        let defaulted = f.default.map_or_else(|| quote::quote! {?}, |string| {
+            let expr: Expr = syn::parse_str(&string).unwrap();
+
+            quote::quote! {
+                .unwrap_or_else(|| #expr)
+            }
+        });
         if index {
             assert!(!f.variadic, "Structs can't be indices and variadic");
             let idx = index_count;
             index_count += 1;
             let len = index_count;
-            let defaulted = f.default.map_or_else(|| quote::quote! {?}, |l| quote::quote! {
-                .unwrap_or(#l)
-            });
             quote::quote! {
                 #ident: {
                     let value: Option<#ty>  = try {
@@ -63,17 +67,13 @@ pub fn from_route_command(stream: TokenStream) -> TokenStream {
             }
         } else {
             if f.variadic {
-                // TODO: Defaults
                 quote::quote! {
-                    #ident: crate::parse::route::ir::FromVariadicRouteArgument::from_variadic_route_argument(&command.arguments).ok()?,
+                    #ident: crate::parse::route::ir::FromVariadicRouteArgument::from_variadic_route_argument(&command.arguments).ok() #defaulted,
                 }
             } else {
                 let idx = argument_count;
                 argument_count += 1;
                 let len = argument_count;
-                let defaulted = f.default.map_or_else(|| quote::quote! {?}, |l| quote::quote! {
-                    .unwrap_or(#l)
-                });
                 quote::quote! {
                     #ident: {
                         let value: Option<#ty> = try {
