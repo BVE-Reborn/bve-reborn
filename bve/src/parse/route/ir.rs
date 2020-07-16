@@ -5,7 +5,7 @@ use smallvec::SmallVec;
 use std::{num::NonZeroU64, str::FromStr};
 
 pub trait FromRouteCommand {
-    fn from_route_command(command: Command<'_>) -> Option<Self>
+    fn from_route_command(command: Command) -> Option<Self>
     where
         Self: Sized;
 }
@@ -13,7 +13,7 @@ pub trait FromRouteCommand {
 pub trait FromVariadicRouteArgument<'a> {
     type Error;
 
-    fn from_variadic_route_argument(value: &ArgumentSmallVec<'a>) -> Result<Self, Self::Error>
+    fn from_variadic_route_argument(value: &ArgumentSmallVec) -> Result<Self, Self::Error>
     where
         Self: Sized;
 }
@@ -25,12 +25,12 @@ where
 {
     type Error = <Array::Item as FromStr>::Err;
 
-    fn from_variadic_route_argument(value: &ArgumentSmallVec<'a>) -> Result<Self, Self::Error>
+    fn from_variadic_route_argument(value: &ArgumentSmallVec) -> Result<Self, Self::Error>
     where
         Self: Sized,
     {
         let mut out = Self::new();
-        for &v in value {
+        for v in value {
             out.push(v.parse()?)
         }
         Ok(out)
@@ -40,7 +40,7 @@ where
 impl<'a> FromVariadicRouteArgument<'a> for ColorU8RGB {
     type Error = ();
 
-    fn from_variadic_route_argument(value: &ArgumentSmallVec<'a>) -> Result<Self, Self::Error>
+    fn from_variadic_route_argument(value: &ArgumentSmallVec) -> Result<Self, Self::Error>
     where
         Self: Sized,
     {
@@ -52,7 +52,7 @@ impl<'a> FromVariadicRouteArgument<'a> for ColorU8RGB {
 impl<'a> FromVariadicRouteArgument<'a> for ColorU8RGBA {
     type Error = ();
 
-    fn from_variadic_route_argument(value: &ArgumentSmallVec<'a>) -> Result<Self, Self::Error>
+    fn from_variadic_route_argument(value: &ArgumentSmallVec) -> Result<Self, Self::Error>
     where
         Self: Sized,
     {

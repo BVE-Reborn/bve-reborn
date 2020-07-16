@@ -59,7 +59,7 @@ pub fn from_route_command(stream: TokenStream) -> TokenStream {
             }
         } else if f.suffix {
             quote::quote! {
-                #ident: ::std::str::FromStr::from_str(command.suffix?).ok()?,
+                #ident: ::std::str::FromStr::from_str(&command.suffix?).ok()?,
             }
         } else if f.ignore {
             quote::quote! {
@@ -78,7 +78,7 @@ pub fn from_route_command(stream: TokenStream) -> TokenStream {
                     #ident: {
                         let value: Option<#ty> = try {
                             if command.indices.len() >= #len {
-                                ::std::str::FromStr::from_str(command.arguments[#idx]).ok()?
+                                ::std::str::FromStr::from_str(&command.arguments[#idx]).ok()?
                             } else {
                                 None?
                             }
@@ -93,7 +93,7 @@ pub fn from_route_command(stream: TokenStream) -> TokenStream {
     let output = quote::quote! {
         #[automatically_derived]
         impl crate::parse::route::ir::FromRouteCommand for #ident {
-            fn from_route_command(command: crate::parse::route::parser::Command<'_>) -> Option<Self>
+            fn from_route_command(command: crate::parse::route::parser::Command) -> Option<Self>
             where
                 Self: Sized
             {

@@ -235,6 +235,7 @@ dependencies = [
  "serde_plain",
  "serde_test",
  "smallvec",
+ "smartstring",
  "unic-langid",
  "unic-locale",
 ]
@@ -2193,6 +2194,16 @@ version = "1.4.0"
 source = "git+https://github.com/servo/rust-smallvec.git?rev=5f42f5f8e2fcdbbee8ccf42a7d4dde43bb40c9dd#5f42f5f8e2fcdbbee8ccf42a7d4dde43bb40c9dd"
 
 [[package]]
+name = "smartstring"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2bdec7d62192ad94e7b16d49856c007d81ae1cf541cd29b4c04b755df39fd80d"
+dependencies = [
+ "serde",
+ "static_assertions",
+]
+
+[[package]]
 name = "smol"
 version = "0.1.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2257,6 +2268,12 @@ name = "stable_deref_trait"
 version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dba1a27d3efae4351c8051072d619e3ade2820635c3958d826bfea39d59b54c8"
+
+[[package]]
+name = "static_assertions"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
 name = "storage-map"
