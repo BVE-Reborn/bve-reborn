@@ -24,7 +24,7 @@ bve-imgui-wgpu = { version = "0.0.1", path = "../extern/bve-imgui-wgpu" }
 bytemuck = "1"
 cc = "1.0.58" # Fix bug in cc
 dashmap = "3.11.1"
-log = "0.4.8"
+log = "0.4.11"
 num-traits = "0.2.11"
 imgui = "0.4.0"
 include_dir = "0.6.0"

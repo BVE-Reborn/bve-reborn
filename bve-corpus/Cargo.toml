@@ -26,7 +26,7 @@ crossbeam-utils = "0.7.2"
 indicatif = "0.15.0"
 itertools = "0.9"
 libc = "0.2.72"
-log = "0.4.8"
+log = "0.4.11"
 num_cpus = "1.12.0"
 pico-args = "0.3.3"
 serde = { version = "1.0.104", features = ["derive"] }
