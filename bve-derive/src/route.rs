@@ -2,7 +2,7 @@ use crate::helpers::combine_token_streams;
 use darling::FromField;
 use proc_macro::TokenStream;
 use proc_macro2::Ident;
-use syn::{Expr, ItemStruct, Type};
+use syn::{export::TokenStream2, Expr, ItemStruct, Type};
 
 #[derive(Debug, FromField)]
 #[darling(attributes(command))]
@@ -17,6 +17,8 @@ struct Field {
     suffix: bool,
     #[darling(default)]
     variadic: bool,
+    #[darling(default)]
+    optional: bool,
     #[darling(default)]
     default: Option<String>,
 }
@@ -33,7 +35,17 @@ pub fn from_route_command(stream: TokenStream) -> TokenStream {
         let ident = f.ident;
         let ty = f.ty.clone();
         let index = f.index;
-        let defaulted = f.default.map_or_else(|| quote::quote! {?}, |string| {
+        let optional = f.optional;
+        let optional_type = if f.optional {
+            quote::quote! {#ty}
+        } else {
+            quote::quote! {Option<#ty>}
+        };
+        let defaulted = f.default.map_or_else(|| if optional {
+            TokenStream2::new()
+        } else {
+            quote::quote! {?}
+        }, |string| {
             let expr: Expr = syn::parse_str(&string).unwrap();
 
             quote::quote! {
@@ -47,7 +59,7 @@ pub fn from_route_command(stream: TokenStream) -> TokenStream {
             let len = index_count;
             quote::quote! {
                 #ident: {
-                    let value: Option<#ty>  = try {
+                    let value: #optional_type  = try {
                         if command.indices.len() >= #len {
                             ::std::convert::TryFrom::try_from(command.indices[#idx]?).ok()?
                         } else {
@@ -76,7 +88,7 @@ pub fn from_route_command(stream: TokenStream) -> TokenStream {
                 let len = argument_count;
                 quote::quote! {
                     #ident: {
-                        let value: Option<#ty> = try {
+                        let value: #optional_type = try {
                             if command.indices.len() >= #len {
                                 ::std::str::FromStr::from_str(&command.arguments[#idx]).ok()?
                             } else {

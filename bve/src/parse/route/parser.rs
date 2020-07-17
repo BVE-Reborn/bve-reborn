@@ -147,7 +147,7 @@ fn parse_command_indices_args(command: &str) -> IResult<&str, Directive> {
             namespace: namespace.map(SmartString::from),
             name: SmartString::from(name),
             indices,
-            suffix: suffix2.or(suffix).map(SmartString::from),
+            suffix: suffix.or(suffix2).map(SmartString::from),
             arguments,
         }),
     ))
@@ -420,7 +420,7 @@ mod test {
             Some(Directive::Command(Command {
                 name: ss!("command"),
                 indices: smallvec_opt![-1, 2, 3, 1],
-                suffix: Some(ss!("j")),
+                suffix: Some(ss!("h")),
                 arguments: smallvec::smallvec![ss!("f")],
                 ..default_command()
             }))
