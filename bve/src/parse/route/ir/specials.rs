@@ -110,7 +110,10 @@ impl FromStr for DepartureTimeState {
                                 }
                             }
                         } else {
-                            None?
+                            Self::Jump {
+                                index: input[2..].parse().ok()?,
+                                time: None,
+                            }
                         }
                     };
                     output.unwrap_or_else(|| Self::Regular(None))
@@ -210,5 +213,182 @@ impl FromStr for TextMarkerColor {
             "magenta" => Ok(Self::Magenta),
             _ => Err(()),
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn timetable_suffix() {
+        assert_eq!(TimetableSuffix::from_str("day"), Ok(TimetableSuffix::Day));
+        assert_eq!(TimetableSuffix::from_str("night"), Ok(TimetableSuffix::Night));
+
+        assert_eq!(TimetableSuffix::from_str("22"), Err(()));
+        assert_eq!(TimetableSuffix::from_str("ATQ"), Err(()));
+        assert_eq!(TimetableSuffix::from_str("  "), Err(()));
+    }
+
+    #[test]
+    fn arrival_time_state() {
+        assert_eq!(
+            ArrivalTimeState::from_str("10.2346"),
+            Ok(ArrivalTimeState::Player(Some(Time {
+                hours: 10,
+                minutes: 23,
+                seconds: 46,
+            })))
+        );
+        assert_eq!(ArrivalTimeState::from_str(" "), Ok(ArrivalTimeState::Player(None)));
+        assert_eq!(ArrivalTimeState::from_str("P"), Ok(ArrivalTimeState::AllPass));
+        assert_eq!(ArrivalTimeState::from_str("L"), Ok(ArrivalTimeState::AllPass));
+        assert_eq!(ArrivalTimeState::from_str("B"), Ok(ArrivalTimeState::AiStop));
+        assert_eq!(ArrivalTimeState::from_str("S"), Ok(ArrivalTimeState::Player(None)));
+        assert_eq!(
+            ArrivalTimeState::from_str("S:10.2346"),
+            Ok(ArrivalTimeState::Player(Some(Time {
+                hours: 10,
+                minutes: 23,
+                seconds: 46,
+            })))
+        );
+
+        assert_eq!(ArrivalTimeState::from_str("1t45"), Ok(ArrivalTimeState::Player(None)));
+        assert_eq!(ArrivalTimeState::from_str("ATQ"), Ok(ArrivalTimeState::Player(None)));
+        assert_eq!(ArrivalTimeState::from_str(" "), Ok(ArrivalTimeState::Player(None)));
+    }
+
+    #[test]
+    fn departure_time_state() {
+        assert_eq!(
+            DepartureTimeState::from_str("10.2346"),
+            Ok(DepartureTimeState::Regular(Some(Time {
+                hours: 10,
+                minutes: 23,
+                seconds: 46,
+            })))
+        );
+        assert_eq!(DepartureTimeState::from_str(" "), Ok(DepartureTimeState::Regular(None)));
+        assert_eq!(
+            DepartureTimeState::from_str("T"),
+            Ok(DepartureTimeState::Terminal(None))
+        );
+        assert_eq!(
+            DepartureTimeState::from_str("="),
+            Ok(DepartureTimeState::Terminal(None))
+        );
+        assert_eq!(
+            DepartureTimeState::from_str("T:10.2346"),
+            Ok(DepartureTimeState::Terminal(Some(Time {
+                hours: 10,
+                minutes: 23,
+                seconds: 46,
+            })))
+        );
+        assert_eq!(
+            DepartureTimeState::from_str("C"),
+            Ok(DepartureTimeState::ChangeEnds(None))
+        );
+        assert_eq!(
+            DepartureTimeState::from_str("C:10.2346"),
+            Ok(DepartureTimeState::ChangeEnds(Some(Time {
+                hours: 10,
+                minutes: 23,
+                seconds: 46,
+            })))
+        );
+        assert_eq!(
+            DepartureTimeState::from_str("J:72"),
+            Ok(DepartureTimeState::Jump { index: 72, time: None })
+        );
+        assert_eq!(
+            DepartureTimeState::from_str("J:72:10.2346"),
+            Ok(DepartureTimeState::Jump {
+                index: 72,
+                time: Some(Time {
+                    hours: 10,
+                    minutes: 23,
+                    seconds: 46,
+                }),
+            })
+        );
+
+        assert_eq!(
+            DepartureTimeState::from_str("T2"),
+            Ok(DepartureTimeState::Terminal(None))
+        );
+        assert_eq!(
+            DepartureTimeState::from_str("C2"),
+            Ok(DepartureTimeState::ChangeEnds(None))
+        );
+        assert_eq!(
+            DepartureTimeState::from_str("J2"),
+            Ok(DepartureTimeState::Regular(None))
+        );
+        assert_eq!(
+            DepartureTimeState::from_str("J:-22"),
+            Ok(DepartureTimeState::Regular(None))
+        );
+        assert_eq!(
+            DepartureTimeState::from_str("J:22:H"),
+            Ok(DepartureTimeState::Jump { index: 22, time: None })
+        );
+        assert_eq!(DepartureTimeState::from_str(" "), Ok(DepartureTimeState::Regular(None)));
+    }
+
+    #[test]
+    fn station_door_mode() {
+        assert_eq!(StationDoorMode::from_str("L"), Ok(StationDoorMode::Left));
+        assert_eq!(StationDoorMode::from_str("-1"), Ok(StationDoorMode::Left));
+        assert_eq!(StationDoorMode::from_str("N"), Ok(StationDoorMode::None));
+        assert_eq!(StationDoorMode::from_str("0"), Ok(StationDoorMode::None));
+        assert_eq!(StationDoorMode::from_str("R"), Ok(StationDoorMode::Right));
+        assert_eq!(StationDoorMode::from_str("1"), Ok(StationDoorMode::Right));
+        assert_eq!(StationDoorMode::from_str("B"), Ok(StationDoorMode::Both));
+
+        assert_eq!(StationDoorMode::from_str("-23"), Err(()));
+        assert_eq!(StationDoorMode::from_str("TWE"), Err(()));
+        assert_eq!(StationDoorMode::from_str("  "), Err(()));
+    }
+
+    #[test]
+    fn system_ats_mode() {
+        assert_eq!(SystemAtsMode::from_str("ATS"), Ok(SystemAtsMode::ATS));
+        assert_eq!(SystemAtsMode::from_str("0"), Ok(SystemAtsMode::ATS));
+        assert_eq!(SystemAtsMode::from_str("ATC"), Ok(SystemAtsMode::ATC));
+        assert_eq!(SystemAtsMode::from_str("1"), Ok(SystemAtsMode::ATC));
+
+        assert_eq!(SystemAtsMode::from_str("-23"), Err(()));
+        assert_eq!(SystemAtsMode::from_str("ATQ"), Err(()));
+        assert_eq!(SystemAtsMode::from_str("  "), Err(()));
+    }
+
+    #[test]
+    fn form_rail_index2_data() {
+        assert_eq!(FormRailIndex2Data::from_str("2"), Ok(FormRailIndex2Data::Current(2)));
+        assert_eq!(FormRailIndex2Data::from_str("15"), Ok(FormRailIndex2Data::Current(15)));
+        assert_eq!(FormRailIndex2Data::from_str("L"), Ok(FormRailIndex2Data::Left));
+        assert_eq!(FormRailIndex2Data::from_str("R"), Ok(FormRailIndex2Data::Right));
+
+        assert_eq!(FormRailIndex2Data::from_str("-23"), Err(()));
+        assert_eq!(FormRailIndex2Data::from_str("oops"), Err(()));
+        assert_eq!(FormRailIndex2Data::from_str(" "), Err(()));
+    }
+
+    #[test]
+    fn text_marker_color() {
+        assert_eq!(TextMarkerColor::from_str("black"), Ok(TextMarkerColor::Black));
+        assert_eq!(TextMarkerColor::from_str("gray"), Ok(TextMarkerColor::Gray));
+        assert_eq!(TextMarkerColor::from_str("white"), Ok(TextMarkerColor::White));
+        assert_eq!(TextMarkerColor::from_str("red"), Ok(TextMarkerColor::Red));
+        assert_eq!(TextMarkerColor::from_str("orange"), Ok(TextMarkerColor::Orange));
+        assert_eq!(TextMarkerColor::from_str("green"), Ok(TextMarkerColor::Green));
+        assert_eq!(TextMarkerColor::from_str("blue"), Ok(TextMarkerColor::Blue));
+        assert_eq!(TextMarkerColor::from_str("magenta"), Ok(TextMarkerColor::Magenta));
+
+        assert_eq!(TextMarkerColor::from_str("grue"), Err(()));
+        assert_eq!(TextMarkerColor::from_str(""), Err(()));
+        assert_eq!(TextMarkerColor::from_str("asfa"), Err(()));
     }
 }

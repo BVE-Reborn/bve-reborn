@@ -55,3 +55,76 @@ impl FromStr for Time {
         })
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn time() {
+        assert_eq!(
+            Time::from_str("1"),
+            Ok(Time {
+                hours: 1,
+                minutes: 0,
+                seconds: 0
+            })
+        );
+        assert_eq!(
+            Time::from_str("137"),
+            Ok(Time {
+                hours: 137,
+                minutes: 0,
+                seconds: 0
+            })
+        );
+        assert_eq!(
+            Time::from_str("137."),
+            Ok(Time {
+                hours: 137,
+                minutes: 0,
+                seconds: 0
+            })
+        );
+        assert_eq!(
+            Time::from_str("137.2"),
+            Ok(Time {
+                hours: 137,
+                minutes: 2,
+                seconds: 0
+            })
+        );
+        assert_eq!(
+            Time::from_str("137.25"),
+            Ok(Time {
+                hours: 137,
+                minutes: 25,
+                seconds: 0
+            })
+        );
+        assert_eq!(
+            Time::from_str("137.259"),
+            Ok(Time {
+                hours: 137,
+                minutes: 25,
+                seconds: 9
+            })
+        );
+        assert_eq!(
+            Time::from_str("137.2597"),
+            Ok(Time {
+                hours: 137,
+                minutes: 25,
+                seconds: 97
+            })
+        );
+        assert_eq!(
+            Time::from_str("137.259723231"),
+            Ok(Time {
+                hours: 137,
+                minutes: 25,
+                seconds: 97
+            })
+        );
+    }
+}
