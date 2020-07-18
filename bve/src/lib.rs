@@ -1,5 +1,7 @@
 //! Implementation of the high performance runtime logic for the game BVE-Reborn.
 #![feature(async_closure)]
+#![feature(never_type)]
+#![feature(or_patterns)]
 #![feature(try_blocks)]
 #![feature(type_alias_impl_trait)]
 // Rust warnings

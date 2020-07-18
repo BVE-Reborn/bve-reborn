@@ -1,9 +1,13 @@
 use super::parser::{ArgumentSmallVec, Command};
-use crate::{ColorU8RGB, ColorU8RGBA};
+use crate::{ColorU8RGB, ColorU8RGBA, Time};
 use bve_derive::FromRouteCommand;
 use smallvec::SmallVec;
 use smartstring::{LazyCompact, SmartString};
+use specials::*;
 use std::{num::NonZeroU64, str::FromStr};
+
+#[macro_use]
+mod specials;
 
 pub trait FromRouteCommand {
     fn from_route_command(command: Command) -> Option<Self>
@@ -79,25 +83,6 @@ pub struct OptionsBlockLength {
     /// unit: UnitOfLength
     #[command(default = "25.0")]
     pub length: f32,
-}
-
-macro_rules! flag_enum {
-    ($name:ident, $ty:ty, $($variant:ident = $num:expr),*) => {
-        #[derive(Debug, Clone, PartialEq)]
-        pub enum $name {
-            $($variant = $num,)*
-        }
-        impl FromStr for $name {
-            type Err = ();
-
-            fn from_str(s: &str) -> Result<Self, Self::Err> {
-                match s.parse::<$ty>().map_err(|_| ())? {
-                    $($num => Ok(Self::$variant),)*
-                    _ => Err(()),
-                }
-            }
-        }
-    };
 }
 
 flag_enum!(OptionObjectVisibilityMode, u8, Legacy = 0, TrackBased = 1);
@@ -235,8 +220,7 @@ pub struct RouteLoadingScreen {
 
 #[derive(Debug, Clone, PartialEq, FromRouteCommand)]
 pub struct RouteStartTime {
-    // TODO: Actually implement time
-    pub time: SmartString<LazyCompact>,
+    pub time: Time,
 }
 
 #[derive(Debug, Clone, PartialEq, FromRouteCommand)]
@@ -302,22 +286,6 @@ pub struct TrainFlange {
     pub flange_sound_index: u64,
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum TimetableSuffix {
-    Day,
-    Night,
-}
-impl FromStr for TimetableSuffix {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
-            "day" => Ok(Self::Day),
-            "night" => Ok(Self::Night),
-            _ => Err(()),
-        }
-    }
-}
 #[derive(Debug, Clone, PartialEq, FromRouteCommand)]
 pub struct TrainTimetable {
     #[command(index)]
@@ -607,21 +575,14 @@ pub struct TrackGround {
 
 flag_enum!(PassAlarmMode, u8, Silent = 0, Enabled = 1);
 flag_enum!(ForcedRedSingleMode, u8, Unaffected = 0, Enabled = 1);
-flag_enum!(StationDoorMode, i8, Left = -1, None = 0, Right = 1);
-flag_enum!(SystemAtsMode, u8, ATS = 0, ATC = 1);
 #[derive(Debug, Clone, PartialEq, FromRouteCommand)]
 pub struct TrackSta {
     #[command(default = "SmartString::new()")]
     pub name: SmartString<LazyCompact>,
-    // TODO: Properly parse this value with special cases
-    #[command(default = "SmartString::new()")]
-    pub arrival_time: SmartString<LazyCompact>,
-    // TODO: Properly parse this value with special cases
-    #[command(default = "SmartString::new()")]
-    pub departure_time: SmartString<LazyCompact>,
+    pub arrival_time: ArrivalTimeState,
+    pub departure_time: DepartureTimeState,
     #[command(default = "PassAlarmMode::Silent")]
     pub pass_alarm: PassAlarmMode,
-    // TODO: Properly parse this value with special cases
     #[command(default = "StationDoorMode::None")]
     pub doors: StationDoorMode,
     #[command(default = "ForcedRedSingleMode::Unaffected")]
@@ -638,4 +599,37 @@ pub struct TrackSta {
     pub departure_sound: SmartString<LazyCompact>,
     #[command(optional)]
     pub timetable_index: Option<u64>,
+}
+
+#[derive(Debug, Clone, PartialEq, FromRouteCommand)]
+pub struct TrackStation {
+    #[command(default = "SmartString::new()")]
+    pub name: SmartString<LazyCompact>,
+    pub arrival_time: ArrivalTimeState,
+    pub departure_time: DepartureTimeState,
+    #[command(default = "ForcedRedSingleMode::Unaffected")]
+    pub forced_red_signal: ForcedRedSingleMode,
+    #[command(default = "SystemAtsMode::ATS")]
+    pub system: SystemAtsMode,
+    #[command(default = "SmartString::new()")]
+    pub departure_sound: SmartString<LazyCompact>,
+}
+
+impl From<TrackStation> for TrackSta {
+    fn from(station: TrackStation) -> Self {
+        Self {
+            name: station.name,
+            arrival_time: station.arrival_time,
+            departure_time: station.departure_time,
+            pass_alarm: PassAlarmMode::Silent,
+            doors: StationDoorMode::Both,
+            forced_red_signal: station.forced_red_signal,
+            system: station.system,
+            arrival_sound: SmartString::default(),
+            stop_duration: 15.0,
+            passenger_ratio: 100.0,
+            departure_sound: station.departure_sound,
+            timetable_index: None,
+        }
+    }
 }
