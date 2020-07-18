@@ -30,7 +30,7 @@ futures = { version = "0.3.4", default-features = false, features = ["std", "asy
 hecs = "0.2.10"
 image = { version = "0.23.2", default-features = false, features = ["bmp", "gif", "png"] }
 include_dir = "0.6.0"
-indexmap = "1.2"
+indexmap = "1.5"
 itertools = "0.9"
 locale_config = "0.3.0"
 log = "0.4.8"
