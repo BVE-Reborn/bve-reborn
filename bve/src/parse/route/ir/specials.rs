@@ -163,3 +163,52 @@ impl FromStr for SystemAtsMode {
         }
     }
 }
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum FormRailIndex2Data {
+    Current(u64),
+    Left,
+    Right,
+}
+impl FromStr for FormRailIndex2Data {
+    type Err = ();
+
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        let input: SmartString<LazyCompact> = input.trim().chars().flat_map(char::to_lowercase).collect();
+        Ok(match input.chars().next() {
+            Some('l') => Self::Left,
+            Some('r') => Self::Right,
+            _ => Self::Current(input.parse().map_err(|_| ())?),
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum TextMarkerColor {
+    Black,
+    Gray,
+    White,
+    Red,
+    Orange,
+    Green,
+    Blue,
+    Magenta,
+}
+impl FromStr for TextMarkerColor {
+    type Err = ();
+
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        let input: SmartString<LazyCompact> = input.trim().chars().flat_map(char::to_lowercase).collect();
+        match input.as_str() {
+            "black" => Ok(Self::Black),
+            "gray" => Ok(Self::Gray),
+            "white" => Ok(Self::White),
+            "red" => Ok(Self::Red),
+            "orange" => Ok(Self::Orange),
+            "green" => Ok(Self::Green),
+            "blue" => Ok(Self::Blue),
+            "magenta" => Ok(Self::Magenta),
+            _ => Err(()),
+        }
+    }
+}

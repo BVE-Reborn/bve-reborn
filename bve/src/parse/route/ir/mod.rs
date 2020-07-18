@@ -3,7 +3,7 @@ use crate::{ColorU8RGB, ColorU8RGBA, Time};
 use bve_derive::FromRouteCommand;
 use smallvec::SmallVec;
 use smartstring::{LazyCompact, SmartString};
-use specials::*;
+pub use specials::*;
 use std::{num::NonZeroU64, str::FromStr};
 
 #[macro_use]
@@ -85,46 +85,46 @@ pub struct OptionsBlockLength {
     pub length: f32,
 }
 
-flag_enum!(OptionObjectVisibilityMode, u8, Legacy = 0, TrackBased = 1);
+flag_enum!(OptionsObjectVisibilityMode, u8, Legacy = 0, TrackBased = 1);
 #[derive(Debug, Clone, PartialEq, FromRouteCommand)]
-pub struct OptionObjectVisibility {
-    #[command(default = "OptionObjectVisibilityMode::Legacy")]
-    pub mode: OptionObjectVisibilityMode,
+pub struct OptionsObjectVisibility {
+    #[command(default = "OptionsObjectVisibilityMode::Legacy")]
+    pub mode: OptionsObjectVisibilityMode,
 }
 
-flag_enum!(OptionSectionBehaviorMode, u8, Default = 0, Simplified = 1);
+flag_enum!(OptionsSectionBehaviorMode, u8, Default = 0, Simplified = 1);
 #[derive(Debug, Clone, PartialEq, FromRouteCommand)]
-pub struct OptionSectionBehavior {
-    #[command(default = "OptionSectionBehaviorMode::Default")]
-    pub mode: OptionSectionBehaviorMode,
+pub struct OptionsSectionBehavior {
+    #[command(default = "OptionsSectionBehaviorMode::Default")]
+    pub mode: OptionsSectionBehaviorMode,
 }
 
-flag_enum!(OptionCantBehaviorMode, u8, Unsigned = 0, Signed = 1);
+flag_enum!(OptionsCantBehaviorMode, u8, Unsigned = 0, Signed = 1);
 #[derive(Debug, Clone, PartialEq, FromRouteCommand)]
-pub struct OptionCantBehavior {
-    #[command(default = "OptionCantBehaviorMode::Unsigned")]
-    pub mode: OptionCantBehaviorMode,
+pub struct OptionsCantBehavior {
+    #[command(default = "OptionsCantBehaviorMode::Unsigned")]
+    pub mode: OptionsCantBehaviorMode,
 }
 
-flag_enum!(OptionFogBehaviorMode, u8, BlockBased = 0, Interpolated = 1);
+flag_enum!(OptionsFogBehaviorMode, u8, BlockBased = 0, Interpolated = 1);
 #[derive(Debug, Clone, PartialEq, FromRouteCommand)]
-pub struct OptionFogBehavior {
-    #[command(default = "OptionFogBehaviorMode::BlockBased")]
-    pub mode: OptionFogBehaviorMode,
+pub struct OptionsFogBehavior {
+    #[command(default = "OptionsFogBehaviorMode::BlockBased")]
+    pub mode: OptionsFogBehaviorMode,
 }
 
-flag_enum!(OptionCompatibleTransparencyMode, u8, Off = 0, On = 1);
+flag_enum!(OptionsCompatibleTransparencyMode, u8, Off = 0, On = 1);
 #[derive(Debug, Clone, PartialEq, FromRouteCommand)]
-pub struct OptionCompatibleTransparency {
-    #[command(default = "OptionCompatibleTransparencyMode::Off")]
-    pub mode: OptionCompatibleTransparencyMode,
+pub struct OptionsCompatibleTransparency {
+    #[command(default = "OptionsCompatibleTransparencyMode::Off")]
+    pub mode: OptionsCompatibleTransparencyMode,
 }
 
-flag_enum!(OptionEnableBveTsHacksMode, u8, Off = 0, On = 1);
+flag_enum!(OptionsEnableBveTsHacksMode, u8, Off = 0, On = 1);
 #[derive(Debug, Clone, PartialEq, FromRouteCommand)]
-pub struct OptionEnableBveTsHacks {
-    #[command(default = "OptionEnableBveTsHacksMode::Off")]
-    pub mode: OptionEnableBveTsHacksMode,
+pub struct OptionsEnableBveTsHacks {
+    #[command(default = "OptionsEnableBveTsHacksMode::Off")]
+    pub mode: OptionsEnableBveTsHacksMode,
 }
 
 #[derive(Debug, Clone, PartialEq, FromRouteCommand)]
@@ -632,4 +632,313 @@ impl From<TrackStation> for TrackSta {
             timetable_index: None,
         }
     }
+}
+
+flag_enum!(SignPostDirection, i8, Left = -1, None = 0, Right = 1);
+#[derive(Debug, Clone, PartialEq, FromRouteCommand)]
+pub struct TrackStop {
+    #[command(default = "SignPostDirection::None")]
+    pub direction: SignPostDirection,
+    /// unit: UnitOfLength
+    #[command(default = "5.0")]
+    pub backwards_tolerance: f32,
+    /// unit: UnitOfLength
+    #[command(default = "5.0")]
+    pub forwards_tolerance: f32,
+    #[command(default = "0")]
+    pub cars: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, FromRouteCommand)]
+pub struct TrackForm {
+    pub rail_index1: u64,
+    pub rail_index2: FormRailIndex2Data,
+    pub structure_index: u64,
+    pub form_structure_index: u64,
+}
+
+flag_enum!(TrackLimitPostDirection, i8, Left = -1, None = 0, Right = 1);
+flag_enum!(TrackLimitCourceDirection, i8, Left = -1, None = 0, Right = 1);
+#[derive(Debug, Clone, PartialEq, FromRouteCommand)]
+pub struct TrackLimit {
+    /// unit: UnitOfSpeed
+    #[command(default = "0.0")]
+    pub speed: f32,
+    #[command(default = "TrackLimitPostDirection::None")]
+    pub post: TrackLimitPostDirection,
+    #[command(default = "TrackLimitCourceDirection::None")]
+    pub cource: TrackLimitCourceDirection,
+}
+
+#[derive(Debug, Clone, PartialEq, FromRouteCommand)]
+pub struct TrackSection {
+    #[command(variadic)]
+    pub sections: SmallVec<[u64; 4]>,
+}
+
+#[derive(Debug, Clone, PartialEq, FromRouteCommand)]
+pub struct TrackSigF {
+    pub signal_index: u64,
+    pub section: u64,
+    /// unit: UnitOfLength
+    #[command(default = "0.0")]
+    pub x_offset: f32,
+    /// unit: UnitOfLength
+    #[command(default = "0.0")]
+    pub y_offset: f32,
+    /// unit: Degrees
+    #[command(default = "0.0")]
+    pub yaw: f32,
+    /// unit: Degrees
+    #[command(default = "0.0")]
+    pub pitch: f32,
+    /// unit: Degrees
+    #[command(default = "0.0")]
+    pub roll: f32,
+}
+
+#[derive(Debug, Clone, PartialEq, FromRouteCommand)]
+pub struct TrackSignal {
+    #[command(default = "-2")]
+    pub typ: i64,
+    #[command(default = "SmartString::new()")]
+    pub ignore: SmartString<LazyCompact>,
+    /// unit: UnitOfLength
+    #[command(default = "0.0")]
+    pub x_offset: f32,
+    /// unit: UnitOfLength
+    #[command(default = "0.0")]
+    pub y_offset: f32,
+    /// unit: Degrees
+    #[command(default = "0.0")]
+    pub yaw: f32,
+    /// unit: Degrees
+    #[command(default = "0.0")]
+    pub pitch: f32,
+    /// unit: Degrees
+    #[command(default = "0.0")]
+    pub roll: f32,
+}
+
+#[derive(Debug, Clone, PartialEq, FromRouteCommand)]
+pub struct TrackRelay {
+    /// unit: UnitOfLength
+    #[command(default = "0.0")]
+    pub x_offset: f32,
+    /// unit: UnitOfLength
+    #[command(default = "0.0")]
+    pub y_offset: f32,
+    /// unit: Degrees
+    #[command(default = "0.0")]
+    pub yaw: f32,
+    /// unit: Degrees
+    #[command(default = "0.0")]
+    pub pitch: f32,
+    /// unit: Degrees
+    #[command(default = "0.0")]
+    pub roll: f32,
+}
+
+#[derive(Debug, Clone, PartialEq, FromRouteCommand)]
+pub struct TrackBeacon {
+    pub typ: u64,
+    pub structure_index: i64,
+    #[command(default = "0")]
+    pub section: i64,
+    #[command(default = "0")]
+    pub data: i64,
+    /// unit: UnitOfLength
+    #[command(default = "0.0")]
+    pub x_offset: f32,
+    /// unit: UnitOfLength
+    #[command(default = "0.0")]
+    pub y_offset: f32,
+    /// unit: Degrees
+    #[command(default = "0.0")]
+    pub yaw: f32,
+    /// unit: Degrees
+    #[command(default = "0.0")]
+    pub pitch: f32,
+    /// unit: Degrees
+    #[command(default = "0.0")]
+    pub roll: f32,
+}
+
+flag_enum!(
+    TrackTransponderType,
+    u8,
+    SType = 0,
+    SNType = 1,
+    AccidentialDeparture = 2,
+    AtsPPaternRenewal = 3,
+    AtsPImmediateStop = 4
+);
+flag_enum!(TrackTransponderSwitchSystem, i8, DoNothing = -1, Switch = 0);
+#[derive(Debug, Clone, PartialEq, FromRouteCommand)]
+pub struct TrackTransponder {
+    #[command(default = "TrackTransponderType::SType")]
+    pub typ: TrackTransponderType,
+    #[command(default = "0")]
+    pub signal: u64,
+    #[command(default = "TrackTransponderSwitchSystem::Switch")]
+    pub switch_system: TrackTransponderSwitchSystem,
+    /// unit: UnitOfLength
+    #[command(default = "0.0")]
+    pub x_offset: f32,
+    /// unit: UnitOfLength
+    #[command(default = "0.0")]
+    pub y_offset: f32,
+    /// unit: Degrees
+    #[command(default = "0.0")]
+    pub yaw: f32,
+    /// unit: Degrees
+    #[command(default = "0.0")]
+    pub pitch: f32,
+    /// unit: Degrees
+    #[command(default = "0.0")]
+    pub roll: f32,
+}
+
+flag_enum!(TrackPatternType, u8, Temporary = 0, Permanent = 1);
+#[derive(Debug, Clone, PartialEq, FromRouteCommand)]
+pub struct TrackPattern {
+    pub typ: TrackPatternType,
+    /// unit: UnitOfSpeed
+    pub speed: f32,
+}
+
+#[derive(Debug, Clone, PartialEq, FromRouteCommand)]
+pub struct TrackPLimit {
+    /// unit: UnitOfSpeed
+    pub speed: f32,
+}
+
+impl From<TrackPLimit> for TrackPattern {
+    fn from(other: TrackPLimit) -> Self {
+        Self {
+            typ: TrackPatternType::Permanent,
+            speed: other.speed,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, FromRouteCommand)]
+pub struct TrackBack {
+    pub background_texture_index: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, FromRouteCommand)]
+pub struct TrackFog {
+    /// unit: UnitOfLength
+    #[command(default = "0.0")]
+    pub starting_distance: f32,
+    /// unit: UnitOfLength
+    #[command(default = "0.0")]
+    pub ending_distance: f32,
+    #[command(default = "128")]
+    pub red: u8,
+    #[command(default = "128")]
+    pub green: u8,
+    #[command(default = "128")]
+    pub blue: u8,
+}
+
+#[derive(Debug, Clone, PartialEq, FromRouteCommand)]
+pub struct TrackBrightness {
+    #[command(default = "255")]
+    pub brightness: u8,
+}
+
+#[derive(Debug, Clone, PartialEq, FromRouteCommand)]
+pub struct TrackMarker {
+    pub filename: SmartString<LazyCompact>,
+    #[command(default = "0.0")]
+    pub display_distance: f32,
+}
+
+#[derive(Debug, Clone, PartialEq, FromRouteCommand)]
+pub struct TrackMarkerXml {
+    pub filename: SmartString<LazyCompact>,
+}
+
+#[derive(Debug, Clone, PartialEq, FromRouteCommand)]
+pub struct TrackTextMarker {
+    pub text: SmartString<LazyCompact>,
+    #[command(default = "0.0")]
+    pub display_distance: f32,
+    pub color: TextMarkerColor,
+}
+
+#[derive(Debug, Clone, PartialEq, FromRouteCommand)]
+pub struct TrackPointOfInterest {
+    pub rail_index: u64,
+    /// unit: UnitOfLength
+    #[command(default = "0.0")]
+    pub x_offset: f32,
+    /// unit: UnitOfLength
+    #[command(default = "0.0")]
+    pub y_offset: f32,
+    /// unit: Degrees
+    #[command(default = "0.0")]
+    pub yaw: f32,
+    /// unit: Degrees
+    #[command(default = "0.0")]
+    pub pitch: f32,
+    /// unit: Degrees
+    #[command(default = "0.0")]
+    pub roll: f32,
+    pub text: SmartString<LazyCompact>,
+}
+
+#[derive(Debug, Clone, PartialEq, FromRouteCommand)]
+pub struct TrackPreTrain {
+    pub time: Time,
+}
+
+#[derive(Debug, Clone, PartialEq, FromRouteCommand)]
+pub struct TrackAnnounce {
+    pub filename: SmartString<LazyCompact>,
+    /// unit: UnitOfSpeed
+    #[command(default = "0.0")]
+    pub speed: f32,
+}
+
+#[derive(Debug, Clone, PartialEq, FromRouteCommand)]
+pub struct TrackDoppler {
+    pub filename: SmartString<LazyCompact>,
+    /// unit: UnitOfLength
+    #[command(default = "0.0")]
+    pub x_offset: f32,
+    /// unit: UnitOfLength
+    #[command(default = "0.0")]
+    pub y_offset: f32,
+}
+
+#[derive(Debug, Clone, PartialEq, FromRouteCommand)]
+pub struct TrackBuffer;
+
+flag_enum!(TrackDestinationType, i8, AiOnly = -1, All = 0, PlayerOnly = 1);
+flag_enum!(TrackDestinationTriggerOnce, u8, All = 0, Once = 1);
+#[derive(Debug, Clone, PartialEq, FromRouteCommand)]
+pub struct TrackDestination {
+    pub typ: TrackDestinationType,
+    pub beacon_structure_index: i64,
+    pub next_destination: i64,
+    pub previous_destination: i64,
+    pub trigger_once: TrackDestinationTriggerOnce,
+    /// unit: UnitOfLength
+    #[command(default = "0.0")]
+    pub x_offset: f32,
+    /// unit: UnitOfLength
+    #[command(default = "0.0")]
+    pub y_offset: f32,
+    /// unit: Degrees
+    #[command(default = "0.0")]
+    pub yaw: f32,
+    /// unit: Degrees
+    #[command(default = "0.0")]
+    pub pitch: f32,
+    /// unit: Degrees
+    #[command(default = "0.0")]
+    pub roll: f32,
 }
