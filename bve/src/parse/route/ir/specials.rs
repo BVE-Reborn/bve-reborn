@@ -391,4 +391,18 @@ mod test {
         assert_eq!(TextMarkerColor::from_str(""), Err(()));
         assert_eq!(TextMarkerColor::from_str("asfa"), Err(()));
     }
+
+    flag_enum!(TestFlagEnum, i8, NegOne = -1, Zero = 0, One = 1);
+    #[test]
+    fn flag_enum() {
+        assert_eq!(TestFlagEnum::from_str("-1"), Ok(TestFlagEnum::NegOne));
+        assert_eq!(TestFlagEnum::from_str("0"), Ok(TestFlagEnum::Zero));
+        assert_eq!(TestFlagEnum::from_str("1"), Ok(TestFlagEnum::One));
+
+        assert_eq!(TestFlagEnum::from_str(" "), Err(()));
+        assert_eq!(TestFlagEnum::from_str("ASJ"), Err(()));
+        assert_eq!(TestFlagEnum::from_str("-2"), Err(()));
+        assert_eq!(TestFlagEnum::from_str("2"), Err(()));
+        assert_eq!(TestFlagEnum::from_str("23123152"), Err(()));
+    }
 }
