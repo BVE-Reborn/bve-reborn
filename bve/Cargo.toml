@@ -25,7 +25,7 @@ derive_more = { version = "0.99.9", default-features = false, features = ["as_re
 encoding_rs = "0.8.22"
 fern = "0.6.0"
 fluent = "0.12.0"
-flume = "0.7.1"
+flume = "0.7.2"
 futures = { version = "0.3.4", default-features = false, features = ["std", "async-await"] }
 hecs = "0.2.10"
 image = { version = "0.23.2", default-features = false, features = ["bmp", "gif", "png"] }
