@@ -19,7 +19,7 @@ independent = true
 
 [dependencies]
 async-std = "1.5.0"
-backtrace = "0.3.42"
+backtrace = "0.3.50"
 bve = { version = "0.0.1", path = "../bve" }
 crossbeam-channel = "0.4.3"
 crossbeam-utils = "0.7.2"
