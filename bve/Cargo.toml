@@ -45,7 +45,7 @@ unic-langid = { version = "0.9.0", features = ["unic-langid-macros"] }
 unic-locale = "0.9.0"
 
 [dev-dependencies]
-indoc = "0.3.4"
+indoc = "1.0.2"
 fern = "0.6.0"
 maplit = "1"
 obj = "0.10"
