@@ -69,9 +69,8 @@ where
     G: Fn(I) -> IResult<I, O2, E>,
     E: ParseError<I>,
 {
-    move |i: I| {
+    move |mut i: I| {
         let mut res = SmallVec::new();
-        let mut i = i.clone();
 
         match f(i.clone()) {
             Err(nom::Err::Error(_)) => return Ok((i, res)),
@@ -120,9 +119,8 @@ where
     F: Fn(I) -> IResult<I, O, E>,
     E: ParseError<I>,
 {
-    move |i: I| {
+    move |mut i: I| {
         let mut acc = SmallVec::new();
-        let mut i = i.clone();
         loop {
             match f(i.clone()) {
                 Err(nom::Err::Error(_)) => return Ok((i, acc)),
@@ -141,6 +139,7 @@ where
 }
 
 pub trait MapOutput<I, O> {
+    #[allow(clippy::missing_errors_doc)]
     fn map_output<F, O2>(self, func: F) -> IResult<I, O2>
     where
         F: FnOnce(O) -> O2;
