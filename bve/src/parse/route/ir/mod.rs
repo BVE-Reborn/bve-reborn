@@ -74,7 +74,6 @@ enum ParsedCommand {
     TrackCrack(TrackCrack),
     TrackGround(TrackGround),
     TrackSta(TrackSta),
-    TrackStation(TrackStation),
     TrackStop(TrackStop),
     TrackForm(TrackForm),
     TrackLimit(TrackLimit),
