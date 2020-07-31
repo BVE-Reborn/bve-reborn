@@ -34,7 +34,7 @@ glam = { version = "0.9.1", features = ["debug-glam-assert"] }
 once_cell = "1.3.1"
 renderdoc = { version = "0.9.0", default-features = false, optional = true }
 slotmap = { version = "0.4.0", features = ["unstable"] }
-winit = { version = "0.22.2", git = "https://github.com/rust-windowing/winit.git", default-features = false, features = ["x11"] }
+winit = { git = "https://github.com/rust-windowing/winit.git", rev = "c1ea0dde92e1de9e029e7fbb2485a454aa81b918", default-features = false, features = ["x11"] }
 wgpu = { git = "https://github.com/gfx-rs/wgpu-rs.git", rev = "d272a69f676ce4b82692d976a8f9d4a8d93293b9" }
 zerocopy = "0.3.0"
 

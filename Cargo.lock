@@ -1236,7 +1236,7 @@ dependencies = [
 [[package]]
 name = "imgui-winit-support"
 version = "0.4.0"
-source = "git+https://github.com/BVE-Reborn/imgui-rs.git?rev=765f76b78610625f7c9b4eed23b97327cbc162be#765f76b78610625f7c9b4eed23b97327cbc162be"
+source = "git+https://github.com/BVE-Reborn/imgui-rs.git?rev=d95b63623ededc12b0536b7df7d80608b6a605a1#d95b63623ededc12b0536b7df7d80608b6a605a1"
 dependencies = [
  "imgui",
  "winit",
@@ -2710,7 +2710,7 @@ checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 [[package]]
 name = "winit"
 version = "0.22.2"
-source = "git+https://github.com/rust-windowing/winit.git#6919c2fb2d45dc4063c9ef52a69d857ed30657c7"
+source = "git+https://github.com/rust-windowing/winit.git?rev=c1ea0dde92e1de9e029e7fbb2485a454aa81b918#c1ea0dde92e1de9e029e7fbb2485a454aa81b918"
 dependencies = [
  "bitflags",
  "cocoa",
