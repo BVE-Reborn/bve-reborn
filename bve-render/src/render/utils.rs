@@ -60,7 +60,7 @@ pub fn create_pipeline(
         }),
         primitive_topology: PrimitiveTopology::TriangleList,
         color_states: &[ColorStateDescriptor {
-            format: TextureFormat::Rgba32Float,
+            format: TextureFormat::Rgba16Float,
             color_blend: BlendDescriptor::REPLACE,
             alpha_blend: BlendDescriptor::REPLACE,
             write_mask: ColorWrite::ALL,
@@ -132,7 +132,7 @@ pub fn create_framebuffer(device: &Device, size: PhysicalSize<u32>, samples: MSA
         mip_level_count: 1,
         sample_count: samples as u32,
         dimension: TextureDimension::D2,
-        format: TextureFormat::Rgba32Float,
+        format: TextureFormat::Rgba16Float,
         usage: TextureUsage::OUTPUT_ATTACHMENT | TextureUsage::SAMPLED,
         label: Some("framebuffer"),
     });

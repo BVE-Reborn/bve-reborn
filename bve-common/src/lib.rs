@@ -1,9 +1,3 @@
-//! Implementation of the high performance runtime logic for the game BVE-Reborn.
-#![feature(async_closure)]
-#![feature(never_type)]
-#![feature(or_patterns)]
-#![feature(try_blocks)]
-#![feature(type_alias_impl_trait)]
 // Rust warnings
 #![warn(unused)]
 #![deny(future_incompatible)]
@@ -56,13 +50,7 @@
 #![allow(clippy::wildcard_enum_match_arm)]
 #![allow(clippy::wildcard_imports)]
 
-pub use datatypes::*;
-
-pub mod data;
-mod datatypes;
-pub mod filesystem;
-pub mod l10n;
-pub mod load;
-pub mod log;
-pub mod parse;
-pub mod runtime;
+#[cfg(feature = "iter")]
+pub mod iter;
+#[cfg(feature = "nom")]
+pub mod nom;

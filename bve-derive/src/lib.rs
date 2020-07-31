@@ -22,6 +22,7 @@
 // Annoying/irrelevant clippy Restrictions
 #![allow(clippy::as_conversions)]
 #![allow(clippy::decimal_literal_representation)]
+#![allow(clippy::default_trait_access)]
 #![allow(clippy::else_if_without_else)]
 #![allow(clippy::expect_used)]
 #![allow(clippy::float_arithmetic)]
@@ -67,6 +68,9 @@ mod test;
 
 #[cfg_attr(tarpaulin, skip)]
 mod kvp;
+
+#[cfg_attr(tarpaulin, skip)]
+mod route;
 
 #[proc_macro_attribute]
 #[cfg_attr(tarpaulin, skip)]
@@ -114,4 +118,10 @@ pub fn from_kvp_value(item: TokenStream) -> TokenStream {
 #[cfg_attr(tarpaulin, skip)]
 pub fn from_kvp_value_enum_numbers(item: TokenStream) -> TokenStream {
     kvp::kvp_enum_numbers(item)
+}
+
+#[proc_macro_derive(FromRouteCommand, attributes(command))]
+#[cfg_attr(tarpaulin, skip)]
+pub fn from_route_command(item: TokenStream) -> TokenStream {
+    route::from_route_command(item)
 }

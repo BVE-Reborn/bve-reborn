@@ -110,7 +110,6 @@ mod test {
     use crate::iter::*;
     use itertools::multizip;
 
-    #[bve_derive::bve_test]
     #[test]
     fn collect1() {
         let in_vec: Vec<(i32,)> = vec![(0,), (1,), (2,)];
@@ -120,7 +119,6 @@ mod test {
         })
     }
 
-    #[bve_derive::bve_test]
     #[test]
     fn collect2() {
         let in_vec: Vec<(i32, i32)> = vec![(0, 1), (1, 2), (2, 3)];
@@ -131,7 +129,6 @@ mod test {
         })
     }
 
-    #[bve_derive::bve_test]
     #[test]
     fn collect3() {
         let in_vec: Vec<(i32, i32, i32)> = vec![(0, 1, 2), (1, 2, 3), (2, 3, 4)];
@@ -143,7 +140,6 @@ mod test {
         })
     }
 
-    #[bve_derive::bve_test]
     #[test]
     fn collect4() {
         let in_vec: Vec<(i32, i32, i32, i32)> = vec![(0, 1, 2, 3), (1, 2, 3, 4), (2, 3, 4, 5)];

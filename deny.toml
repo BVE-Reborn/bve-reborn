@@ -7,7 +7,6 @@ allow = [
     "MIT",
     "MPL-2.0",
     "Unlicense",
-    "WTFPL",
 ]
 
 [bans]
@@ -16,7 +15,9 @@ skip = [
     # Winit
     { name = "winapi", version = "0.2.8" }, # winit -> mio-extras -> mio requires this
     # graphics
-    { name = "libloading", version = "0.5.2" }, # graphics stack uses old verison
+    { name = "miniz_oxide", version = "0.3.7" }, # png uses old version
+    { name = "core-foundation", version = "0.7.0" }, # winit uses old version
+    { name = "core-foundation-sys", version = "0.7.0" }, # winit uses old version
 ]
 
 [advisories]

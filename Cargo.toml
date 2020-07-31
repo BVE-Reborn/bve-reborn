@@ -5,10 +5,10 @@ members = [
     "bve",
     "bve-build",
     "bve-client",
+    "bve-common",
     "bve-conveyor",
     "bve-corpus",
     "bve-derive",
-    "bve-fuzz",
     "bve-native",
     "bve-obj-conv",
     "bve-render",
@@ -16,7 +16,8 @@ members = [
 ]
 
 [patch.crates-io]
-d3d12 = { git = "https://github.com/cwfitzgerald/d3d12-rs.git", rev = "832f1243a4f67e1383ea0ef8599a03f5f65c8e58" }
+# Override for hashbrown
+hecs = { version = "0.2.12", git = "https://github.com/Ralith/hecs.git", rev = "79405e773c304f9f0f6d21b89a8982438f700adb" }
 
 [profile.opt-dev]
 inherits = "dev"

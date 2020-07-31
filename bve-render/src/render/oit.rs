@@ -79,7 +79,7 @@ fn create_pipeline_pass1(
         }),
         primitive_topology: PrimitiveTopology::TriangleList,
         color_states: &[ColorStateDescriptor {
-            format: TextureFormat::Rgba32Float,
+            format: TextureFormat::Rgba16Float,
             color_blend: BlendDescriptor::REPLACE,
             alpha_blend: BlendDescriptor::REPLACE,
             write_mask: ColorWrite::empty(),

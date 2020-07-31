@@ -1,6 +1,6 @@
 # BVE-Reborn
 
-![Discord](https://img.shields.io/discord/451037457475960852?color=7289DA&label=discord&style=flat-square)
+![[Discord](https://discord.gg/RxJHE2D)](https://img.shields.io/discord/451037457475960852?color=7289DA&label=discord&style=flat-square)
 ![Build Status](https://img.shields.io/github/workflow/status/BVE-Reborn/bve-reborn/build?label=build&style=flat-square)
 ![Release Status](https://img.shields.io/github/workflow/status/BVE-Reborn/bve-reborn/release?label=release&style=flat-square)
 ![Repo-State Status](https://img.shields.io/github/workflow/status/BVE-Reborn/bve-reborn/repo-state?label=repo-state&style=flat-square)
@@ -34,7 +34,5 @@ Then you may run the main build process:
 cargo build  # Debug Build
 cargo build --release  # Release build
 ```
-
-This will build bve, generate C/C++ bindings, and build the game.
 
 Running it requires data files, so contact me directly on the discord if you want to try building it.

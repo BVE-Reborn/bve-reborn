@@ -33,7 +33,7 @@ fn create_pipeline(device: &Device, pipeline_layout: &PipelineLayout, samples: M
         }),
         primitive_topology: PrimitiveTopology::TriangleList,
         color_states: &[ColorStateDescriptor {
-            format: TextureFormat::Rgba32Float,
+            format: TextureFormat::Rgba16Float,
             color_blend: BlendDescriptor::REPLACE,
             alpha_blend: BlendDescriptor::REPLACE,
             write_mask: ColorWrite::ALL,

@@ -1,24 +1,24 @@
 [package]
-name = "bve-fuzz"
+name = "bve-common"
 version = "0.0.1"
-description = "Remaking OpenBVE using a modern architecture, using Rust."
-license = "MPL-2.0"
 authors = ["Connor Fitzgerald <connorwadefitzgerald@gmail.com>"]
 edition = "2018"
-publish = false
+license = "MPL-2.0"
 
+description = "Common utilites used in various parts of the codebase"
 repository = "https://github.com/BVE-Reborn/bve-reborn"
 readme = "README.md"
 categories = ["games", "parsing", "rendering::data-formats", "simulation"]
-keywords = ["bve", "serialization", "simulation"]
-
-[package.metadata.workspaces]
-independent = true
+keywords = ["bve", "util", "simulation"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[dependencies]
-bve = { version = "0.0.1", path = "../bve" }
+[features]
+iter = []
 
-[target.'cfg(target_os = "linux")'.dependencies]
-honggfuzz = "0.5.45"
+[dependencies]
+nom = { version = "5", default-features = false, features = ["alloc"], optional = true }
+smallvec = "1"
+
+[dev-dependencies]
+itertools = "0.9"
