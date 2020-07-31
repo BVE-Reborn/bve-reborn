@@ -127,7 +127,13 @@ fn parse_command_args(command: &str) -> IResult<&str, Directive> {
 
 fn parse_command_indices_args(command: &str) -> IResult<&str, Directive> {
     let (command, (namespace, name)) =
-        separated_pair(opt(w(parse_identifier)), w(tag_no_case(".")), parse_identifier)(command)?;
+        match separated_pair(opt(w(parse_identifier)), w(tag_no_case(".")), parse_identifier)(command) {
+            Ok(v) => v,
+            Err(_) => {
+                let (command, name) = w(tag_no_case("signal"))(command)?;
+                (command, (None, name))
+            }
+        };
     let (command, indices) = delimited(w(tag_no_case("(")), parse_indices, w(tag_no_case(")")))(command)?;
     let (command, suffix) = opt(preceded(w(tag_no_case(".")), parse_identifier))(command)?;
     let (command, suffix2) = if suffix.is_some() {
@@ -435,6 +441,20 @@ mod test {
                 indices: smallvec_opt![-1, 2, 3, 1],
                 suffix: Some(ss!("h")),
                 arguments: smallvec::smallvec![ss!("f"), ss!("f2"), ss!("3"), ss!(""), ss!("")],
+            }))
+        );
+    }
+
+    #[test]
+    fn signal_command() {
+        assert_eq!(
+            parse_directive(ss!("signal(2).Load H; K")),
+            Some(Directive::Command(Command {
+                name: ss!("signal"),
+                indices: smallvec_opt![2],
+                suffix: Some(ss!("Load")),
+                arguments: smallvec::smallvec![ss!("H"), ss!("K")],
+                ..default_command()
             }))
         );
     }

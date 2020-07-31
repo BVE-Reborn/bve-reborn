@@ -104,7 +104,6 @@ where
                     },
                     ("cycle", "ground", _) => CycleGround,
                     ("cycle", "rail", _) => CycleRail,
-                    // TODO: Fix signal parsing
                     ("", "signal", _) =|> {
                         match command.arguments.len() {
                             0 => None?,
