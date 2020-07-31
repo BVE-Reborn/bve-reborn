@@ -50,8 +50,8 @@ unic-langid = { version = "0.9", features = ["unic-langid-macros"] }
 unic-locale = "0.9"
 
 [dev-dependencies]
-async-std = { version = "1.5", features = ["attributes"] }
-indoc = "0.3"
+async-std = { version = "1.6", features = ["attributes"] }
+indoc = "1.0"
 fern = "0.6"
 maplit = "1"
 obj = "0.10"
