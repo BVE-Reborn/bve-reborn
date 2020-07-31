@@ -28,6 +28,7 @@ pub struct Command {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[allow(clippy::large_enum_variant)] // We never have more than one of these, so being large is fine.
 pub enum Directive {
     TrackPosition(TrackPositionSmallVec),
     Command(Command),
@@ -55,7 +56,7 @@ fn split_into_commands(input: &str) -> impl Iterator<Item = &str> {
 fn apply_chr(input: &str) -> Option<SmartString<LazyCompact>> {
     let mut output = SmartString::new();
     let mut last_capture = 0_usize;
-    for capture in CHR_APPLY_REGEX.captures(input) {
+    for capture in CHR_APPLY_REGEX.captures_iter(input) {
         let mat = capture.get(0).unwrap_or_else(|| unreachable!());
         output.push_str(&input[last_capture..mat.start()]);
 
@@ -77,6 +78,7 @@ fn remove_comments(input: SmartString<LazyCompact>) -> Option<SmartString<LazyCo
     }
 }
 
+#[allow(clippy::needless_pass_by_value)] // this is only used in a iterator map call, so we need to take exactly what we get
 fn parse_directive(command: SmartString<LazyCompact>) -> Option<Directive> {
     alt((
         parse_with,

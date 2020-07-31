@@ -8,7 +8,8 @@ pub struct Time {
 }
 
 impl Time {
-    pub fn as_seconds(self) -> u64 {
+    #[must_use]
+    pub const fn as_seconds(self) -> u64 {
         3600 * self.hours + 60 * self.minutes as u64 + self.seconds as u64
     }
 }

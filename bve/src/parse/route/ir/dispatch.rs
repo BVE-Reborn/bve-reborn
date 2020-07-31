@@ -26,7 +26,7 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         while let Some(command) = self.instruction_stream.next() {
             let parsed_command: Option<ParsedCommand> = try {
-                let namespace = command.namespace.clone().or(self.current_namespace.clone())?;
+                let namespace = command.namespace.clone().or_else(|| self.current_namespace.clone())?;
                 let name: SmartString<LazyCompact> = command.name.chars().flat_map(char::to_lowercase).collect();
                 let suffix: Option<SmartString<LazyCompact>> = command
                     .suffix
@@ -47,7 +47,7 @@ where
                     ("route", "image", _) => RouteImage,
                     ("route", "timetable", _) => RouteTimetable,
                     ("route", "change", _) => RouteChange,
-                    ("route" | "train", "gauge", _) => RouteGauge,
+                    ("route", "gauge", _) | ("train", "gauge", _) => RouteGauge,
                     ("route", "signal", _) => RouteSignal,
                     ("route", "runinterval", _) | ("train", "interval", _) => RouteRunInterval,
                     ("route", "accelerationduetogravity", _) => RouteAccelerationDueToGravity,
@@ -63,8 +63,8 @@ where
                     ("route", "lightdirection", _) => RouteLightDirection,
                     ("route", "initialviewpoint", _) => RouteInitialViewpoint,
                     ("route", "developerid", _) => RouteDeveloperId,
-                    ("train", "folder" | "file", _) => TrainFolder,
-                    ("train", "run" | "rail", _) => TrainRail,
+                    ("train", "folder" , _) |("train", "file", _) => TrainFolder,
+                    ("train", "run", _) | ("train", "rail", _) => TrainRail,
                     ("train", "flange", _) => TrainFlange,
                     ("train", "timetable", Some("day" | "night")) => TrainTimetable,
                     ("train", "velocity", _) => TrainVelocity,
@@ -138,10 +138,10 @@ where
                     ("track", "limit", _) => TrackLimit,
                     ("track", "section", _) => TrackSection,
                     ("track", "sigf", _) => TrackSigF,
-                    ("track", "sig" | "signal", _) => TrackSignal,
+                    ("track", "signal", _) | ("track", "sig", _) => TrackSignal,
                     ("track", "relay", _) => TrackRelay,
                     ("track", "beacon", _) => TrackBeacon,
-                    ("track", "transponder" | "tr", _) => TrackTransponder,
+                    ("track", "tr", _) | ("track", "transponder", _) => TrackTransponder,
                     ("track", "atssn", _) =|> {
                         ParsedCommand::TrackTransponder(TrackTransponder {
                             typ: TrackTransponderType::SType,
@@ -179,7 +179,7 @@ where
                         }
                     },
                     ("track", "textmarker", _) => TrackTextMarker,
-                    ("track", "poi" | "pointofinterest", _) => TrackPointOfInterest,
+                    ("track", "poi", _) | ("track", "pointofinterest", _) => TrackPointOfInterest,
                     ("track", "pretrain", _) => TrackPreTrain,
                     ("track", "announce", _) => TrackAnnounce,
                     ("track", "doppler", _) => TrackDoppler,

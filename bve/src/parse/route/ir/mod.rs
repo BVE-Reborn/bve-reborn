@@ -108,6 +108,7 @@ pub trait FromRouteCommand {
 pub trait FromVariadicRouteArgument<'a> {
     type Error;
 
+    #[allow(clippy::missing_errors_doc)]
     fn from_variadic_route_argument(value: &ArgumentSmallVec) -> Result<Self, Self::Error>
     where
         Self: Sized;
@@ -233,16 +234,16 @@ pub struct RouteTimetable {
 }
 
 flag_enum!(
-    RouteChangeMode,
+    RouteChangeSafetyMode,
     i8,
-    SafetyActiveService = -1,
-    SafetyActiveEmergency = 0,
-    SafetyInactiveEmergency = 1
+    ActiveService = -1,
+    ActiveEmergency = 0,
+    InactiveEmergency = 1
 );
 #[derive(Debug, Clone, PartialEq, FromRouteCommand)]
 pub struct RouteChange {
-    #[command(default = "RouteChangeMode::SafetyActiveEmergency")]
-    pub text: RouteChangeMode,
+    #[command(default = "RouteChangeSafetyMode::ActiveEmergency")]
+    pub text: RouteChangeSafetyMode,
 }
 
 #[derive(Debug, Clone, PartialEq, FromRouteCommand)]

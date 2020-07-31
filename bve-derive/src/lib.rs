@@ -22,6 +22,7 @@
 // Annoying/irrelevant clippy Restrictions
 #![allow(clippy::as_conversions)]
 #![allow(clippy::decimal_literal_representation)]
+#![allow(clippy::default_trait_access)]
 #![allow(clippy::else_if_without_else)]
 #![allow(clippy::expect_used)]
 #![allow(clippy::float_arithmetic)]

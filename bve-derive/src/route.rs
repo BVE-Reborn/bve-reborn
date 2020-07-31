@@ -6,6 +6,7 @@ use syn::{export::TokenStream2, Expr, ItemStruct, Type};
 
 #[derive(Debug, FromField)]
 #[darling(attributes(command))]
+#[allow(clippy::struct_excessive_bools)]
 struct Field {
     ident: Option<Ident>,
     ty: Type,
@@ -46,7 +47,7 @@ pub fn from_route_command(stream: TokenStream) -> TokenStream {
         } else {
             quote::quote! {?}
         }, |string| {
-            let expr: Expr = syn::parse_str(&string).unwrap();
+            let expr: Expr = syn::parse_str(&string).expect("Could not parse default expression");
 
             quote::quote! {
                 .unwrap_or_else(|| #expr)
@@ -77,16 +78,15 @@ pub fn from_route_command(stream: TokenStream) -> TokenStream {
             quote::quote! {
                 #ident: ::std::default::Default::default(),
             }
-        } else {
-            if f.variadic {
-                quote::quote! {
+        } else if f.variadic {
+            quote::quote! {
                     #ident: crate::parse::route::ir::FromVariadicRouteArgument::from_variadic_route_argument(&command.arguments).ok() #defaulted,
                 }
-            } else {
-                let idx = argument_count;
-                argument_count += 1;
-                let len = argument_count;
-                quote::quote! {
+        } else {
+            let idx = argument_count;
+            argument_count += 1;
+            let len = argument_count;
+            quote::quote! {
                     #ident: {
                         let value: #optional_type = try {
                             if command.indices.len() >= #len {
@@ -98,7 +98,6 @@ pub fn from_route_command(stream: TokenStream) -> TokenStream {
                         value #defaulted
                     },
                 }
-            }
         }
     }));
 
