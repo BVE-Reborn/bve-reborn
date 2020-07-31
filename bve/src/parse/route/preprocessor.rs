@@ -380,7 +380,7 @@ mod test {
     type NewFileFnFut = impl Future<Output = Option<FileOutput>>;
     fn new_file_fn(file_database: HashMap<String, String>) -> impl Fn(FileInput) -> NewFileFnFut {
         move |file_input| {
-            let requested = file_input.requested_path.to_owned();
+            let requested = file_input.requested_path;
             let output_opt = file_database.get(&requested).map(String::clone);
             async move {
                 Some(FileOutput {
@@ -495,6 +495,7 @@ mod test {
     }
 
     #[test]
+    #[allow(clippy::shadow_unrelated)]
     fn if_sub_integration() {
         let input_positive: &str = indoc::indoc!(
             r"
