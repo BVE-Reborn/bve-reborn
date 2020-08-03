@@ -124,10 +124,10 @@ impl<'buf> AutomatedBufferSet<'buf>
     }
 }
 
-pub struct BindGroupCache<Key: Hash + Eq + Clone> {
+pub struct BindGroupCache<Key: Hash + Eq + Clone + lru::NotKeyRef> {
     cache: lru::LruCache<Key, BindGroup>,
 }
-impl<Key: Hash + Eq + Clone> BindGroupCache<Key> {
+impl<Key: Hash + Eq + Clone + lru::NotKeyRef> BindGroupCache<Key> {
     #[must_use]
     pub fn new() -> Self {
         Self::with_capacity(4)
@@ -165,7 +165,7 @@ impl<Key: Hash + Eq + Clone> BindGroupCache<Key> {
     }
 }
 
-impl<Key: Hash + Eq + Clone> Default for BindGroupCache<Key> {
+impl<Key: Hash + Eq + Clone + lru::NotKeyRef> Default for BindGroupCache<Key> {
     fn default() -> Self {
         Self::new()
     }
