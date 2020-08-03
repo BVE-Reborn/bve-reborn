@@ -15,7 +15,7 @@ keywords = ["bve", "memory", "buffer-belt", "wgpu"]
 arrayvec = "0.5"
 async-std = "1.6"
 bitflags = "1"
-lru = { version = "0.6", default-features = false }
+lru = { version = "0.6", features = ["nightly"] }
 log = "0.4"
 wgpu = { git = "https://github.com/gfx-rs/wgpu-rs.git", rev = "d272a69f676ce4b82692d976a8f9d4a8d93293b9" }
 
