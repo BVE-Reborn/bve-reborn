@@ -2108,9 +2108,9 @@ checksum = "26412eb97c6b088a6997e05f69403a802a92d520de2f8e63c2b65f9e0f47c4e8"
 
 [[package]]
 name = "renderdoc"
-version = "0.9.0"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1cfc83a56d86ef085c360a49ae88f8fcf1dd2507a8f38d14d580c4fbbb4b714a"
+checksum = "f084dd613b0ac0d206540f11f32e9627322479005733b17cc0c346afc2ec6e1a"
 dependencies = [
  "bitflags",
  "float-cmp",
