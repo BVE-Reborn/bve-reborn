@@ -25,36 +25,11 @@ impl UserError for RouteError {
 
     fn description(&self, en: ForceEnglish) -> String {
         match self {
-            Self::PreprocessingError(postprocessing_error) => match postprocessing_error {
-                PreprocessingError::MalformedDirective { directive } => {
-                    localize!(@en, "route-preprocessing-malformed-directive", "directive" -> directive.as_str())
-                }
-                PreprocessingError::IncludeFileNotFound { file } => {
-                    localize!(@en, "route-preprocessing-include-file-not-found", "file" -> file.as_str())
-                }
-                PreprocessingError::RandomIncludeError {
-                    weights,
-                    sub: weighted_error,
-                } => match weighted_error {
-                    WeightedError::NoItem => localize!(@en, "route-preprocessing-random-include-none"),
-                    WeightedError::InvalidWeight => {
-                        let weights_string = format!("{:?}", weights);
-                        localize!(@en, "route-preprocessing-random-invalid-weight", "weights" -> weights_string.as_str())
-                    }
-                    WeightedError::AllWeightsZero => localize!(@en, "route-preprocessing-random-all-zero"),
-                    WeightedError::TooMany => unreachable!("Should OOM before we get here :)"),
-                },
-                PreprocessingError::InvalidChrArgument { code } => {
-                    localize!(@en, "route-preprocessing-invalid-argument", "arg" -> code.as_str(), "directive" -> "chr")
-                }
-                PreprocessingError::InvalidSubArgument { code } => {
-                    localize!(@en, "route-preprocessing-invalid-argument", "arg" -> code.as_str(), "directive" -> "sub")
-                }
-            },
+            Self::PreprocessingError(err) => err.description(en),
             Self::ParsingError(command) => {
                 localize!(@en, "route-preprocessing-invalid-argument", "command" -> command.as_str())
             }
-            _ => unimplemented!(),
+            Self::CommandCreationError(err) => err.description(en),
         }
     }
 }
@@ -80,6 +55,37 @@ pub enum PreprocessingError {
         weights: SmallVec<[i64; 8]>,
         sub: WeightedError,
     },
+}
+
+impl PreprocessingError {
+    fn description(&self, en: ForceEnglish) -> String {
+        match self {
+            PreprocessingError::MalformedDirective { directive } => {
+                localize!(@en, "route-preprocessing-malformed-directive", "directive" -> directive.as_str())
+            }
+            PreprocessingError::IncludeFileNotFound { file } => {
+                localize!(@en, "route-preprocessing-include-file-not-found", "file" -> file.as_str())
+            }
+            PreprocessingError::RandomIncludeError {
+                weights,
+                sub: weighted_error,
+            } => match weighted_error {
+                WeightedError::NoItem => localize!(@en, "route-preprocessing-random-include-none"),
+                WeightedError::InvalidWeight => {
+                    let weights_string = format!("{:?}", weights);
+                    localize!(@en, "route-preprocessing-random-invalid-weight", "weights" -> weights_string.as_str())
+                }
+                WeightedError::AllWeightsZero => localize!(@en, "route-preprocessing-random-all-zero"),
+                WeightedError::TooMany => unreachable!("Should OOM before we get here :)"),
+            },
+            PreprocessingError::InvalidChrArgument { code } => {
+                localize!(@en, "route-preprocessing-invalid-argument", "arg" -> code.as_str(), "directive" -> "chr")
+            }
+            PreprocessingError::InvalidSubArgument { code } => {
+                localize!(@en, "route-preprocessing-invalid-argument", "arg" -> code.as_str(), "directive" -> "sub")
+            }
+        }
+    }
 }
 
 impl From<CommandCreationError> for RouteError {
@@ -110,4 +116,53 @@ pub enum CommandCreationError {
         command: SmartString<LazyCompact>,
         suffix: Option<SmartString<LazyCompact>>,
     },
+}
+impl CommandCreationError {
+    fn description(&self, en: ForceEnglish) -> String {
+        match self {
+            Self::MissingNamespace { command } => {
+                localize!(@en, "route-command-creation-missing-namespace", "command" -> command.as_str())
+            }
+            Self::MissingIndex { command, index } => {
+                localize!(@en, "route-command-creation-missing-index", "command" -> command.as_str(), "idx" -> index + 1)
+            }
+            Self::InvalidIndex { command, index } => {
+                localize!(@en, "route-command-creation-invalid-index", "command" -> command.as_str(), "idx" -> index + 1)
+            }
+            Self::MissingArgument { command, index } => {
+                localize!(@en, "route-command-creation-missing-argument", "command" -> command.as_str(), "idx" -> index + 1)
+            }
+            Self::InvalidArgument { command, index } => {
+                localize!(@en, "route-command-creation-invalid-argument", "command" -> command.as_str(), "idx" -> index + 1)
+            }
+            Self::MissingSuffix { command } => {
+                localize!(@en, "route-command-creation-missing-suffix", "command" -> command.as_str())
+            }
+            Self::InvalidSuffix { command } => {
+                localize!(@en, "route-command-creation-invalid-suffix", "command" -> command.as_str())
+            }
+            Self::UnknownCommand {
+                namespace,
+                command,
+                suffix,
+            } => {
+                if let Some(suffix) = suffix {
+                    localize!(
+                        @en,
+                        "route-command-creation-unknown-command-suffix",
+                        "namespace" -> namespace.as_str(),
+                        "name" -> command.as_str(),
+                        "suffix" -> suffix.as_str()
+                    )
+                } else {
+                    localize!(
+                        @en,
+                        "route-command-creation-unknown-command",
+                        "namespace" -> namespace.as_str(),
+                        "name" -> command.as_str(),
+                    )
+                }
+            }
+        }
+    }
 }

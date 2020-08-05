@@ -22,3 +22,13 @@ route-preprocessing-random-all-zero = List of include weights has all weights se
 route-preprocessing-invalid-argument = Invalid argument "{$arg}" provided to the {$directive} directive
 
 route-parse-failure = Route command "{$command}" has invalid syntax
+
+route-command-creation-missing-namespace = Command "{$command}": Executed without a namespace
+route-command-creation-missing-index = Command "{$command}": Index #{$idx} is missing
+route-command-creation-invalid-index = Command "{$command}": Index #{$idx} is present but invalid
+route-command-creation-missing-argument = Command "{$command}": Argument #{$idx} is missing
+route-command-creation-invalid-argument = Command "{$command}": Argument #{$idx} is present but invalid
+route-command-creation-missing-suffix = Command "{$command}": Suffix is missing
+route-command-creation-invalid-suffix = Command "{$command}": Suffix is present but invalid
+route-command-creation-unknown-command = Unknown command "{$namespace}.{$name}"
+route-command-creation-unknown-command-suffix = Unknown command "{$namespace}.{$name}.{$suffix}"
