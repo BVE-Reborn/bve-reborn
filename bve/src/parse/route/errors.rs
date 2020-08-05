@@ -10,6 +10,8 @@ use smartstring::{LazyCompact, SmartString};
 #[derive(Debug, Clone, PartialEq)]
 pub enum RouteError {
     PreprocessingError(PreprocessingError),
+    ParsingError(SmartString<LazyCompact>),
+    CommandCreationError(CommandCreationError),
 }
 
 impl UserError for RouteError {
@@ -49,7 +51,17 @@ impl UserError for RouteError {
                     localize!(@en, "route-preprocessing-invalid-argument", "arg" -> code.as_str(), "directive" -> "sub")
                 }
             },
+            Self::ParsingError(command) => {
+                localize!(@en, "route-preprocessing-invalid-argument", "command" -> command.as_str())
+            }
+            _ => unimplemented!(),
         }
+    }
+}
+
+impl From<PreprocessingError> for RouteError {
+    fn from(err: PreprocessingError) -> Self {
+        RouteError::PreprocessingError(err)
     }
 }
 
@@ -67,5 +79,35 @@ pub enum PreprocessingError {
     RandomIncludeError {
         weights: SmallVec<[i64; 8]>,
         sub: WeightedError,
+    },
+}
+
+impl From<CommandCreationError> for RouteError {
+    fn from(err: CommandCreationError) -> Self {
+        RouteError::CommandCreationError(err)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum CommandCreationError {
+    /// No namespace with a command that needs it
+    MissingNamespace { command: String },
+    /// Missing required index
+    MissingIndex { command: String, index: usize },
+    /// Index cannot be parsed
+    InvalidIndex { command: String, index: usize },
+    /// Missing required argument
+    MissingArgument { command: String, index: usize },
+    /// Argument cannot be parsed
+    InvalidArgument { command: String, index: usize },
+    /// Suffix is missing
+    MissingSuffix { command: String },
+    /// Suffix is missing
+    InvalidSuffix { command: String },
+    /// Namespace/command/suffix combination is unknown
+    UnknownCommand {
+        namespace: SmartString<LazyCompact>,
+        command: SmartString<LazyCompact>,
+        suffix: Option<SmartString<LazyCompact>>,
     },
 }

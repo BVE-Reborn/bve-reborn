@@ -1,4 +1,4 @@
-use crate::parse::route::errors::PreprocessingError;
+use crate::parse::route::errors::{PreprocessingError, RouteError};
 use bve_common::nom::w;
 use nom::{
     branch::alt,
@@ -47,7 +47,7 @@ pub async fn preprocess_route<R, FileFn, FileFut>(
     content: &str,
     rng: &mut R,
     file_fn: FileFn,
-) -> (String, Vec<PreprocessingError>)
+) -> (String, Vec<RouteError>)
 where
     R: Rng + ?Sized,
     FileFn: FnMut(FileInput) -> FileFut + Copy,
@@ -64,7 +64,7 @@ where
 fn run_includes<'a, R, FileFn, FileFut>(
     file_path: &'a str,
     content: &'a str,
-    errors: &'a mut Vec<PreprocessingError>,
+    errors: &'a mut Vec<RouteError>,
     rng: &'a mut R,
     mut file_fn: FileFn,
 ) -> Pin<Box<dyn Future<Output = String> + 'a>>
@@ -97,7 +97,7 @@ where
             let (chosen, content) = match chosen_opt {
                 Ok(c) => c,
                 Err(error) => {
-                    errors.push(error);
+                    errors.push(error.into());
                     last_match = mat.end();
                     continue;
                 }
@@ -116,12 +116,7 @@ where
     })
 }
 
-fn run_sub<R: Rng + ?Sized>(
-    content: &str,
-    errors: &mut Vec<PreprocessingError>,
-    rng: &mut R,
-    sub_map: &mut SubMap,
-) -> String {
+fn run_sub<R: Rng + ?Sized>(content: &str, errors: &mut Vec<RouteError>, rng: &mut R, sub_map: &mut SubMap) -> String {
     // Content likely gets larger
     let mut output = String::with_capacity(content.len() * 2);
     let mut last_match = 0_usize;
@@ -143,7 +138,7 @@ fn run_sub<R: Rng + ?Sized>(
         let index_int = match index_int_opt {
             Ok(v) => v,
             Err(error) => {
-                errors.push(error);
+                errors.push(error.into());
                 last_match = mat.end();
                 continue;
             }
@@ -166,7 +161,7 @@ fn run_sub<R: Rng + ?Sized>(
     output
 }
 
-fn run_rnd<R: Rng + ?Sized>(content: &str, errors: &mut Vec<PreprocessingError>, rng: &mut R) -> String {
+fn run_rnd<R: Rng + ?Sized>(content: &str, errors: &mut Vec<RouteError>, rng: &mut R) -> String {
     // Content by definition only gets smaller.
     let mut output = String::with_capacity(content.len());
     let mut last_match = 0_usize;
@@ -185,9 +180,12 @@ fn run_rnd<R: Rng + ?Sized>(content: &str, errors: &mut Vec<PreprocessingError>,
         let (begin_int, end_int): (u64, u64) = match ints_opt {
             Some(v) => v,
             None => {
-                errors.push(PreprocessingError::MalformedDirective {
-                    directive: mat.as_str().into(),
-                });
+                errors.push(
+                    PreprocessingError::MalformedDirective {
+                        directive: mat.as_str().into(),
+                    }
+                    .into(),
+                );
                 last_match = mat.end();
                 continue;
             }
@@ -203,7 +201,7 @@ fn run_rnd<R: Rng + ?Sized>(content: &str, errors: &mut Vec<PreprocessingError>,
     output
 }
 
-fn run_chr(content: &str, errors: &mut Vec<PreprocessingError>) -> String {
+fn run_chr(content: &str, errors: &mut Vec<RouteError>) -> String {
     // Content gets a bit larger.
     let mut output = String::with_capacity(content.len() + content.len() / 16);
     let mut last_match = 0_usize;
@@ -215,9 +213,12 @@ fn run_chr(content: &str, errors: &mut Vec<PreprocessingError>) -> String {
         let value: &str = match value_opt {
             Some(v) => v.as_str(),
             None => {
-                errors.push(PreprocessingError::InvalidChrArgument {
-                    code: mat.as_str().into(),
-                });
+                errors.push(
+                    PreprocessingError::InvalidChrArgument {
+                        code: mat.as_str().into(),
+                    }
+                    .into(),
+                );
                 last_match = mat.end();
                 continue;
             }
@@ -232,12 +233,7 @@ fn run_chr(content: &str, errors: &mut Vec<PreprocessingError>) -> String {
     output
 }
 
-fn run_if<R: Rng + ?Sized>(
-    content: &str,
-    errors: &mut Vec<PreprocessingError>,
-    rng: &mut R,
-    sub_map: &mut SubMap,
-) -> String {
+fn run_if<R: Rng + ?Sized>(content: &str, errors: &mut Vec<RouteError>, rng: &mut R, sub_map: &mut SubMap) -> String {
     // Content always gets smaller
     let mut output = String::with_capacity(content.len());
     let mut last_match = 0_usize;

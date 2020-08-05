@@ -1,4 +1,6 @@
+use crate::parse::route::errors::{PreprocessingError, RouteError};
 use bve_common::nom::{separated_list_small, w, MapOutput};
+use itertools::Itertools;
 use nom::{
     branch::alt,
     bytes::complete::{is_a, is_not, tag_no_case, take_while1},
@@ -11,7 +13,9 @@ use regex::Regex;
 use smallvec::SmallVec;
 use smartstring::{LazyCompact, SmartString};
 use std::{
+    cell::RefCell,
     convert::{identity, TryFrom},
+    fmt,
     str::FromStr,
 };
 
@@ -27,6 +31,32 @@ pub struct Command {
     pub arguments: ArgumentSmallVec,
 }
 
+impl fmt::Display for Command {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let Some(ref namespace) = self.namespace {
+            write!(f, "{}", namespace)?;
+        }
+        write!(f, ".{}", self.name)?;
+        if !self.indices.is_empty() {
+            write!(
+                f,
+                "({})",
+                self.indices
+                    .iter()
+                    .map(|v| v.map(|i| i.to_string()).unwrap_or_else(String::new))
+                    .join("; ")
+            )?;
+        }
+        if let Some(ref suffix) = self.suffix {
+            write!(f, ".{}", suffix)?;
+        }
+        if !self.arguments.is_empty() {
+            write!(f, " {}", &self.arguments.join("; "))?;
+        }
+        Ok(())
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 #[allow(clippy::large_enum_variant)] // We never have more than one of these, so being large is fine.
 pub enum Directive {
@@ -39,11 +69,26 @@ pub type TrackPositionSmallVec = SmallVec<[f32; 4]>;
 pub type IndexSmallVec = SmallVec<[Option<i64>; 8]>;
 pub type ArgumentSmallVec = SmallVec<[SmartString<LazyCompact>; 8]>;
 
-pub fn parse_route(preprocessed: &str) -> impl Iterator<Item = Directive> + '_ {
+pub fn parse_route<'a>(
+    preprocessed: &'a str,
+    errors: &'a RefCell<Vec<RouteError>>,
+) -> impl Iterator<Item = Directive> + 'a {
     split_into_commands(preprocessed)
-        .filter_map(apply_chr)
+        .filter_map(move |v| match apply_chr(v) {
+            Ok(r) => Some(r),
+            Err(err) => {
+                errors.borrow_mut().push(err.into());
+                None
+            }
+        })
         .filter_map(remove_comments)
-        .filter_map(parse_directive)
+        .filter_map(move |v| match parse_directive(&v) {
+            Some(r) => Some(r),
+            None => {
+                errors.borrow_mut().push(RouteError::ParsingError(v));
+                None
+            }
+        })
 }
 
 fn split_into_commands(input: &str) -> impl Iterator<Item = &str> {
@@ -53,7 +98,7 @@ fn split_into_commands(input: &str) -> impl Iterator<Item = &str> {
         .filter(|&s| !s.is_empty())
 }
 
-fn apply_chr(input: &str) -> Option<SmartString<LazyCompact>> {
+fn apply_chr(input: &str) -> Result<SmartString<LazyCompact>, PreprocessingError> {
     let mut output = SmartString::new();
     let mut last_capture = 0_usize;
     for capture in CHR_APPLY_REGEX.captures_iter(input) {
@@ -61,13 +106,19 @@ fn apply_chr(input: &str) -> Option<SmartString<LazyCompact>> {
         output.push_str(&input[last_capture..mat.start()]);
 
         let number_str = capture.get(1).unwrap_or_else(|| unreachable!()).as_str();
-        let number: u32 = number_str.parse().ok()?;
-        output.push(char::try_from(number).ok()?);
+        let number: u32 = number_str.parse().map_err(|_| PreprocessingError::InvalidChrArgument {
+            code: number_str.into(),
+        })?;
+        output.push(
+            char::try_from(number).map_err(|_| PreprocessingError::InvalidChrArgument {
+                code: number_str.into(),
+            })?,
+        );
 
         last_capture = mat.end();
     }
     output = SmartString::from(output.trim());
-    Some(output)
+    Ok(output)
 }
 
 fn remove_comments(input: SmartString<LazyCompact>) -> Option<SmartString<LazyCompact>> {
@@ -78,15 +129,14 @@ fn remove_comments(input: SmartString<LazyCompact>) -> Option<SmartString<LazyCo
     }
 }
 
-#[allow(clippy::needless_pass_by_value)] // this is only used in a iterator map call, so we need to take exactly what we get
-fn parse_directive(command: SmartString<LazyCompact>) -> Option<Directive> {
+fn parse_directive(command: &str) -> Option<Directive> {
     alt((
         parse_with,
         parse_track_position,
         parse_command_indices_args,
         parse_command_args,
         parse_command,
-    ))(&command)
+    ))(command)
     .ok()
     .and_then(|(input, directive)| if input.is_empty() { Some(directive) } else { None })
 }
@@ -131,7 +181,7 @@ fn parse_command_indices_args(command: &str) -> IResult<&str, Directive> {
             Ok(v) => v,
             Err(_) => {
                 let (command, name) = w(tag_no_case("signal"))(command)?;
-                (command, (None, name))
+                (command, (Some("signal"), name))
             }
         };
     let (command, indices) = delimited(w(tag_no_case("(")), parse_indices, w(tag_no_case(")")))(command)?;
@@ -259,12 +309,9 @@ mod test {
 
     #[test]
     fn with_statement() {
-        assert_eq!(parse_directive(ss!("With Blob")), Some(Directive::With(ss!("Blob"))));
-        assert_eq!(
-            parse_directive(ss!("With    BlobH ")),
-            Some(Directive::With(ss!("BlobH")))
-        );
-        assert_eq!(parse_directive(ss!("With")), None);
+        assert_eq!(parse_directive("With Blob"), Some(Directive::With(ss!("Blob"))));
+        assert_eq!(parse_directive("With    BlobH "), Some(Directive::With(ss!("BlobH"))));
+        assert_eq!(parse_directive("With"), None);
     }
 
     macro_rules! smallvec_opt {
@@ -274,47 +321,47 @@ mod test {
     #[test]
     fn track_position() {
         assert_eq!(
-            parse_directive(ss!("1000")),
+            parse_directive("1000"),
             Some(Directive::TrackPosition(smallvec::smallvec![1000.0]))
         );
         assert_eq!(
-            parse_directive(ss!("1000 ;;; ; ; ;; ;")),
+            parse_directive("1000 ;;; ; ; ;; ;"),
             Some(Directive::TrackPosition(smallvec::smallvec![1000.0]))
         );
         assert_eq!(
-            parse_directive(ss!("1000;2000")),
+            parse_directive("1000;2000"),
             Some(Directive::TrackPosition(smallvec::smallvec![1000.0, 2000.0]))
         );
         assert_eq!(
-            parse_directive(ss!("1000  ; 2000")),
+            parse_directive("1000  ; 2000"),
             Some(Directive::TrackPosition(smallvec::smallvec![1000.0, 2000.0]))
         );
         assert_eq!(
-            parse_directive(ss!("1000.42;2000.84")),
+            parse_directive("1000.42;2000.84"),
             Some(Directive::TrackPosition(smallvec::smallvec![1000.42, 2000.84]))
         );
-        assert_eq!(parse_directive(ss!("")), None);
-        assert_eq!(parse_directive(ss!(";")), None);
+        assert_eq!(parse_directive(""), None);
+        assert_eq!(parse_directive(";"), None);
     }
 
     #[test]
     fn command() {
         assert_eq!(
-            parse_directive(ss!(".command")),
+            parse_directive(".command"),
             Some(Directive::Command(Command {
                 name: ss!("command"),
                 ..default_command()
             }))
         );
         assert_eq!(
-            parse_directive(ss!("  .  command  ")),
+            parse_directive("  .  command  "),
             Some(Directive::Command(Command {
                 name: ss!("command"),
                 ..default_command()
             }))
         );
         assert_eq!(
-            parse_directive(ss!("namespace.command")),
+            parse_directive("namespace.command"),
             Some(Directive::Command(Command {
                 namespace: Some(ss!("namespace")),
                 name: ss!("command"),
@@ -322,7 +369,7 @@ mod test {
             }))
         );
         assert_eq!(
-            parse_directive(ss!("  namespace .  command  ")),
+            parse_directive("  namespace .  command  "),
             Some(Directive::Command(Command {
                 namespace: Some(ss!("namespace")),
                 name: ss!("command"),
@@ -334,7 +381,7 @@ mod test {
     #[test]
     fn command_arguments() {
         assert_eq!(
-            parse_directive(ss!(".command( a 1 ; b 2 ; c 3 ; ; ; )")),
+            parse_directive(".command( a 1 ; b 2 ; c 3 ; ; ; )"),
             Some(Directive::Command(Command {
                 name: ss!("command"),
                 arguments: smallvec::smallvec![ss!("a 1"), ss!("b 2"), ss!("c 3"), ss!(""), ss!(""), ss!("")],
@@ -343,7 +390,7 @@ mod test {
         );
         // makes sure this isn't mistaken for indices
         assert_eq!(
-            parse_directive(ss!(".command(0)")),
+            parse_directive(".command(0)"),
             Some(Directive::Command(Command {
                 name: ss!("command"),
                 arguments: smallvec::smallvec![ss!("0")],
@@ -351,7 +398,7 @@ mod test {
             }))
         );
         assert_eq!(
-            parse_directive(ss!("f  .  command   ( a 1 ; b 2 ; c 3 )  ")),
+            parse_directive("f  .  command   ( a 1 ; b 2 ; c 3 )  "),
             Some(Directive::Command(Command {
                 namespace: Some(ss!("f")),
                 name: ss!("command"),
@@ -360,7 +407,7 @@ mod test {
             }))
         );
         assert_eq!(
-            parse_directive(ss!(".command a 1 ; b 2 ; c 3 ")),
+            parse_directive(".command a 1 ; b 2 ; c 3 "),
             Some(Directive::Command(Command {
                 name: ss!("command"),
                 arguments: smallvec::smallvec![ss!("a 1"), ss!("b 2"), ss!("c 3")],
@@ -368,7 +415,7 @@ mod test {
             }))
         );
         assert_eq!(
-            parse_directive(ss!(".command a 1 ; b 2 ; c 3 ; ; ; ")),
+            parse_directive(".command a 1 ; b 2 ; c 3 ; ; ; "),
             Some(Directive::Command(Command {
                 name: ss!("command"),
                 arguments: smallvec::smallvec![ss!("a 1"), ss!("b 2"), ss!("c 3"), ss!(""), ss!(""), ss!("")],
@@ -380,7 +427,7 @@ mod test {
     #[test]
     fn command_indices() {
         assert_eq!(
-            parse_directive(ss!(".command(-1;2;3;1) f")),
+            parse_directive(".command(-1;2;3;1) f"),
             Some(Directive::Command(Command {
                 name: ss!("command"),
                 indices: smallvec_opt![-1, 2, 3, 1],
@@ -389,7 +436,7 @@ mod test {
             }))
         );
         assert_eq!(
-            parse_directive(ss!(".command(-1;2;3;1;;) f;; ;;")),
+            parse_directive(".command(-1;2;3;1;;) f;; ;;"),
             Some(Directive::Command(Command {
                 name: ss!("command"),
                 indices: smallvec::smallvec![Some(-1), Some(2), Some(3), Some(1), None, None],
@@ -398,13 +445,13 @@ mod test {
             }))
         );
         // Parens around arguments forbidden after indices
-        assert_eq!(parse_directive(ss!(".command(-1)(2)")), None);
+        assert_eq!(parse_directive(".command(-1)(2)"), None);
     }
 
     #[test]
     fn command_suffix() {
         assert_eq!(
-            parse_directive(ss!(".command(-1;2;3;1).h f")),
+            parse_directive(".command(-1;2;3;1).h f"),
             Some(Directive::Command(Command {
                 name: ss!("command"),
                 indices: smallvec_opt![-1, 2, 3, 1],
@@ -414,7 +461,7 @@ mod test {
             }))
         );
         assert_eq!(
-            parse_directive(ss!(".command(-1;2;3;1).h(f)")),
+            parse_directive(".command(-1;2;3;1).h(f)"),
             Some(Directive::Command(Command {
                 name: ss!("command"),
                 indices: smallvec_opt![-1, 2, 3, 1],
@@ -424,7 +471,7 @@ mod test {
             }))
         );
         assert_eq!(
-            parse_directive(ss!(".command(-1;2;3;1).h.j f")),
+            parse_directive(".command(-1;2;3;1).h.j f"),
             Some(Directive::Command(Command {
                 name: ss!("command"),
                 indices: smallvec_opt![-1, 2, 3, 1],
@@ -434,7 +481,7 @@ mod test {
             }))
         );
         assert_eq!(
-            parse_directive(ss!("namespace  . command (-1;2;3;1) . h (f;f2; 3;;)")),
+            parse_directive("namespace  . command (-1;2;3;1) . h (f;f2; 3;;)"),
             Some(Directive::Command(Command {
                 namespace: Some(ss!("namespace")),
                 name: ss!("command"),
@@ -448,7 +495,7 @@ mod test {
     #[test]
     fn signal_command() {
         assert_eq!(
-            parse_directive(ss!("signal(2).Load H; K")),
+            parse_directive("signal(2).Load H; K"),
             Some(Directive::Command(Command {
                 name: ss!("signal"),
                 indices: smallvec_opt![2],

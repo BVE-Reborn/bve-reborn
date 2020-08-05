@@ -1,5 +1,5 @@
-use super::parser::{ArgumentSmallVec, Command};
-use crate::{ColorU8RGB, ColorU8RGBA, Time};
+use super::parser::Command;
+use crate::{parse::route::errors::CommandCreationError, ColorU8RGB, ColorU8RGBA, Time};
 use bve_derive::FromRouteCommand;
 use smallvec::SmallVec;
 use smartstring::{LazyCompact, SmartString};
@@ -100,16 +100,14 @@ enum ParsedCommand {
 }
 
 pub trait FromRouteCommand {
-    fn from_route_command(command: Command) -> Option<Self>
+    fn from_route_command(command: Command) -> Result<Self, CommandCreationError>
     where
         Self: Sized;
 }
 
 pub trait FromVariadicRouteArgument<'a> {
-    type Error;
-
     #[allow(clippy::missing_errors_doc)]
-    fn from_variadic_route_argument(value: &ArgumentSmallVec) -> Result<Self, Self::Error>
+    fn from_variadic_route_argument(command: &Command) -> Result<Self, CommandCreationError>
     where
         Self: Sized;
 }
@@ -119,40 +117,63 @@ where
     Array: smallvec::Array,
     Array::Item: FromStr,
 {
-    type Error = <Array::Item as FromStr>::Err;
-
-    fn from_variadic_route_argument(value: &ArgumentSmallVec) -> Result<Self, Self::Error>
+    fn from_variadic_route_argument(command: &Command) -> Result<Self, CommandCreationError>
     where
         Self: Sized,
     {
         let mut out = Self::new();
-        for v in value {
-            out.push(v.parse()?)
+        for (idx, v) in command.arguments.iter().enumerate() {
+            out.push(v.parse().map_err(|_| CommandCreationError::InvalidArgument {
+                command: command.to_string(),
+                index: idx,
+            })?)
         }
         Ok(out)
     }
 }
 
 impl<'a> FromVariadicRouteArgument<'a> for ColorU8RGB {
-    type Error = ();
-
-    fn from_variadic_route_argument(value: &ArgumentSmallVec) -> Result<Self, Self::Error>
+    fn from_variadic_route_argument(command: &Command) -> Result<Self, CommandCreationError>
     where
         Self: Sized,
     {
-        let get = |idx: usize| value.get(idx).ok_or(())?.parse::<u8>().map_err(|_| ());
+        let get = |idx: usize| {
+            command
+                .arguments
+                .get(idx)
+                .ok_or_else(|| CommandCreationError::MissingArgument {
+                    command: command.to_string(),
+                    index: idx,
+                })?
+                .parse::<u8>()
+                .map_err(|_| CommandCreationError::InvalidArgument {
+                    command: command.to_string(),
+                    index: idx,
+                })
+        };
         Ok(Self::new(get(0)?, get(1)?, get(2)?))
     }
 }
 
 impl<'a> FromVariadicRouteArgument<'a> for ColorU8RGBA {
-    type Error = ();
-
-    fn from_variadic_route_argument(value: &ArgumentSmallVec) -> Result<Self, Self::Error>
+    fn from_variadic_route_argument(command: &Command) -> Result<Self, CommandCreationError>
     where
         Self: Sized,
     {
-        let get = |idx: usize| value.get(idx).ok_or(())?.parse::<u8>().map_err(|_| ());
+        let get = |idx: usize| {
+            command
+                .arguments
+                .get(idx)
+                .ok_or_else(|| CommandCreationError::MissingArgument {
+                    command: command.to_string(),
+                    index: idx,
+                })?
+                .parse::<u8>()
+                .map_err(|_| CommandCreationError::InvalidArgument {
+                    command: command.to_string(),
+                    index: idx,
+                })
+        };
         Ok(Self::new(get(0)?, get(1)?, get(2)?, get(3)?))
     }
 }

@@ -21,3 +21,4 @@ route-preprocessing-random-invalid-weight = List of include weights includes an 
 route-preprocessing-random-all-zero = List of include weights has all weights set at zero
 route-preprocessing-invalid-argument = Invalid argument "{$arg}" provided to the {$directive} directive
 
+route-parse-failure = Route command "{$command}" has invalid syntax

@@ -1,39 +1,48 @@
 use super::*;
+use crate::parse::route::errors::{CommandCreationError, RouteError};
+use std::cell::RefCell;
 
 macro_rules! command_match {
-    ($command:expr, $ns:expr, $name:expr, $suffix:expr, $($($pat:pat)|+ $(=> $variant:ident)? $(=|> $expression:expr)?),* $(,)?) => {
-        match ($ns, $name, $suffix) {$(
+    ($command:expr, $ns:ident, $name:ident, $suffix:ident, $($($pat:pat)|+ $(=> $variant:ident)? $(=|> $expression:expr)?),* $(,)?) => {
+        match ($ns.as_str(), $name.as_str(), $suffix.as_deref()) {$(
             $($pat)|+ => $(ParsedCommand::$variant($variant::from_route_command($command)?))? $($expression)?,
         )*
-             _ => None?,
+             _ => Err(CommandCreationError::UnknownCommand { $ns, command: $name, $suffix })?,
         }
     };
 }
 
-struct CommandParserIterator<T>
+struct CommandParserIterator<'a, T>
 where
-    T: Iterator<Item = Command>,
+    T: Iterator<Item = Command> + 'a,
 {
     current_namespace: Option<SmartString<LazyCompact>>,
+    errors: &'a RefCell<Vec<RouteError>>,
     instruction_stream: T,
 }
-impl<T> Iterator for CommandParserIterator<T>
+impl<'a, T> Iterator for CommandParserIterator<'a, T>
 where
-    T: Iterator<Item = Command>,
+    T: Iterator<Item = Command> + 'a,
 {
     type Item = ParsedCommand;
 
     fn next(&mut self) -> Option<Self::Item> {
         while let Some(command) = self.instruction_stream.next() {
-            let parsed_command: Option<ParsedCommand> = try {
-                let namespace = command.namespace.clone().or_else(|| self.current_namespace.clone())?;
+            let parsed_command: Result<ParsedCommand, CommandCreationError> = try {
+                let namespace = command
+                    .namespace
+                    .clone()
+                    .or_else(|| self.current_namespace.clone())
+                    .ok_or_else(|| CommandCreationError::MissingNamespace {
+                        command: command.to_string(),
+                    })?;
                 let name: SmartString<LazyCompact> = command.name.chars().flat_map(char::to_lowercase).collect();
                 let suffix: Option<SmartString<LazyCompact>> = command
                     .suffix
                     .as_ref()
                     .map(|s| s.chars().flat_map(char::to_lowercase).collect());
 
-                command_match!(command, namespace.as_str(), name.as_str(), suffix.as_deref(),
+                command_match!(command, namespace, name, suffix,
                     ("options", "unitoflength", _) => OptionsUnitOfLength,
                     ("options", "unitofspeed", _) => OptionsUnitOfSpeed,
                     ("options", "blocklength", _) => OptionsBlockLength,
@@ -90,23 +99,23 @@ where
                             "crackr" => StructureCommandKind::CrackR,
                             "freeobj" => StructureCommandKind::FreeObj,
                             "beacon" => StructureCommandKind::Beacon,
-                            _ => None?,
+                            _ => Err(CommandCreationError::UnknownCommand { namespace, command: name, suffix })?,
                         });
                         ParsedCommand::StructureCommand(parsed)
                     },
-                    ("texture", "background", suffix) =|> {
-                        match suffix {
+                    ("texture", "background", inner_suffix) =|> {
+                        match inner_suffix {
                             None | Some("load") => ParsedCommand::TextureBackgroundLoad(TextureBackgroundLoad::from_route_command(command)?),
                             Some("x") => ParsedCommand::TextureBackgroundX(TextureBackgroundX::from_route_command(command)?),
                             Some("aspect") => ParsedCommand::TextureBackgroundAspect(TextureBackgroundAspect::from_route_command(command)?),
-                            _ => None?,
+                            _ => Err(CommandCreationError::UnknownCommand {  namespace, command: name, suffix })?,
                         }
                     },
                     ("cycle", "ground", _) => CycleGround,
                     ("cycle", "rail", _) => CycleRail,
-                    ("", "signal", _) =|> {
+                    ("signal", "signal", _) =|> {
                         match command.arguments.len() {
-                            0 => None?,
+                            0 => Err(CommandCreationError::MissingArgument { command: command.to_string(), index: 0 })?,
                             1 => ParsedCommand::SignalSingle(SignalSingle::from_route_command(command)?),
                             _ => ParsedCommand::SignalSplit(SignalSplit::from_route_command(command)?),
                         }
@@ -172,7 +181,7 @@ where
                     ("track", "brightness", _) => TrackBrightness,
                     ("track", "marker", _) =|> {
                         match command.arguments.len() {
-                            0 => None?,
+                            0 => Err(CommandCreationError::MissingArgument { command: command.to_string(), index: 0 })?,
                             1 => ParsedCommand::TrackMarkerXml(TrackMarkerXml::from_route_command(command)?),
                             _ => ParsedCommand::TrackMarker(TrackMarker::from_route_command(command)?),
                         }
@@ -187,8 +196,9 @@ where
                 )
             };
 
-            if let Some(command) = parsed_command {
-                return Some(command);
+            match parsed_command {
+                Ok(command) => return Some(command),
+                Err(err) => self.errors.borrow_mut().push(err.into()),
             }
         }
         None
