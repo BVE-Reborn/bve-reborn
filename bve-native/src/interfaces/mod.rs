@@ -14,7 +14,7 @@ impl From<UserErrorData> for User_Error_Data {
     fn from(d: UserErrorData) -> Self {
         Self {
             category: d.category,
-            line: d.line,
+            line: d.line.unwrap_or(0),
             description: string_to_owned_ptr(d.description),
             description_english: string_to_owned_ptr(d.description_english),
         }
@@ -25,7 +25,7 @@ impl Into<UserErrorData> for User_Error_Data {
     fn into(self) -> UserErrorData {
         UserErrorData {
             category: self.category,
-            line: self.line,
+            line: Some(self.line),
             description: unsafe { owned_ptr_to_string(self.description) },
             description_english: unsafe { owned_ptr_to_string(self.description_english) },
         }

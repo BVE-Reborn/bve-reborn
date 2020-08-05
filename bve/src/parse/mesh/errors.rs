@@ -25,8 +25,8 @@ impl UserError for MeshWarning {
         UserErrorCategory::Warning
     }
 
-    fn line(&self) -> u64 {
-        self.location.line.unwrap_or(0)
+    fn line(&self) -> Option<u64> {
+        self.location.line
     }
 
     fn description(&self, en: ForceEnglish) -> String {
@@ -78,8 +78,8 @@ impl UserError for MeshError {
         UserErrorCategory::Error
     }
 
-    fn line(&self) -> u64 {
-        self.location.line.unwrap_or(0)
+    fn line(&self) -> Option<u64> {
+        self.location.line
     }
 
     fn description(&self, en: ForceEnglish) -> String {

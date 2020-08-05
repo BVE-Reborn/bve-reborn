@@ -13,3 +13,11 @@ mesh-error-utf8 = UTF-8 error on column {$column}
 mesh-error-out-of-bounds = Index {$idx} is out of bounds
 mesh-error-unknown-instruction = Unrecognized instruction {$name}
 mesh-error-unknown-csv = Unknown error in csv-like parsing
+
+route-preprocessing-malformed-directive = The syntax for preprocessing directive "{$directive}"" is incorrect
+route-preprocessing-include-file-not-found = File "{$file}" included is not found
+route-preprocessing-random-include-none = Empty include directive
+route-preprocessing-random-invalid-weight = List of include weights includes an invalid (weight < 0) weight: {$weights}
+route-preprocessing-random-all-zero = List of include weights has all weights set at zero
+route-preprocessing-invalid-argument = Invalid argument "{$arg}" provided to the {$directive} directive
+

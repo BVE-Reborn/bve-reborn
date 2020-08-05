@@ -167,7 +167,11 @@ async fn parse_file<T: FileParser>(source: &Path, options: &Arguments) {
         info!("Warnings:");
         for w in warnings {
             let w = w.to_data();
-            warn!("\t{} {:?}", w.line, w.description_english);
+            warn!(
+                "\t{} {:?}",
+                w.line.map(|v| v.to_string()).as_deref().unwrap_or("None"),
+                w.description_english
+            );
         }
     } else {
         info!("Warnings: {}", warnings.len());
@@ -176,7 +180,11 @@ async fn parse_file<T: FileParser>(source: &Path, options: &Arguments) {
         info!("Errors:");
         for e in errors {
             let e = e.to_data();
-            error!("\t{} {:?}", e.line, e.description_english);
+            error!(
+                "\t{} {:?}",
+                e.line.map(|v| v.to_string()).as_deref().unwrap_or("None"),
+                e.description_english
+            );
         }
     } else {
         info!("Errors: {}", errors.len());
