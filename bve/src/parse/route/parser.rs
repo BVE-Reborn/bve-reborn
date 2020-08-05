@@ -497,6 +497,7 @@ mod test {
         assert_eq!(
             parse_directive("signal(2).Load H; K"),
             Some(Directive::Command(Command {
+                namespace: Some(ss!("signal")),
                 name: ss!("signal"),
                 indices: smallvec_opt![2],
                 suffix: Some(ss!("Load")),
