@@ -1,4 +1,7 @@
-use crate::parse::route::errors::{PreprocessingError, RouteError};
+use crate::parse::route::{
+    errors::{PreprocessingError, RouteError},
+    TrackPositionSmallVec,
+};
 use bve_common::nom::{separated_list_small, w, MapOutput};
 use itertools::Itertools;
 use nom::{
@@ -65,7 +68,6 @@ pub enum Directive {
     With(SmartString<LazyCompact>),
 }
 
-pub type TrackPositionSmallVec = SmallVec<[f32; 4]>;
 pub type IndexSmallVec = SmallVec<[Option<i64>; 8]>;
 pub type ArgumentSmallVec = SmallVec<[SmartString<LazyCompact>; 8]>;
 

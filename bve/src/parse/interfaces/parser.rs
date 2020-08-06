@@ -3,6 +3,49 @@ use crate::parse::{
     util::strip_comments,
     PrettyPrintResult, UserError,
 };
+use async_std::path::Path;
+use async_trait::async_trait;
+
+/// Types that implement this trait can be parsed from a single input and a way to look up new files.
+#[async_trait(?Send)]
+pub trait FileAwareFileParser {
+    type Output: PrettyPrintResult;
+    type Warnings: UserError;
+    type Errors: UserError;
+
+    #[must_use]
+    async fn file_aware_parse_from<'a, IntoIter, AsRefPath>(
+        resolve_bases: IntoIter,
+        current_path: &str,
+        input: &str,
+    ) -> ParserResult<Self::Output, Self::Warnings, Self::Errors>
+    where
+        IntoIter: IntoIterator<Item = &'a AsRefPath> + Clone + 'a,
+        AsRefPath: AsRef<Path> + 'a;
+}
+
+#[async_trait(?Send)]
+impl<T> FileAwareFileParser for T
+where
+    T: FileParser,
+{
+    type Output = <T as FileParser>::Output;
+    type Warnings = <T as FileParser>::Warnings;
+    type Errors = <T as FileParser>::Errors;
+
+    #[must_use]
+    async fn file_aware_parse_from<'a, IntoIter, AsRefPath>(
+        _: IntoIter,
+        _: &str,
+        input: &str,
+    ) -> ParserResult<Self::Output, Self::Warnings, Self::Errors>
+    where
+        IntoIter: IntoIterator<Item = &'a AsRefPath> + Clone + 'a,
+        AsRefPath: AsRef<Path> + 'a,
+    {
+        Self::parse_from(input)
+    }
+}
 
 /// Types that implement this trait can be parsed from a single input.
 pub trait FileParser {
@@ -53,9 +96,9 @@ impl<T> FileParser for T
 where
     T: KVPFileParser,
 {
-    type Errors = ();
     type Output = Self;
     type Warnings = <Self as FromKVPFile>::Warnings;
+    type Errors = ();
 
     fn parse_from(input: &str) -> ParserResult<Self::Output, Self::Warnings, Self::Errors> {
         Self::parse_from_kvp(input)

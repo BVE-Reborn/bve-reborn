@@ -6,8 +6,9 @@ use crate::{
 use rand::distributions::WeightedError;
 use smallvec::SmallVec;
 use smartstring::{LazyCompact, SmartString};
+use std::io;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug)]
 pub enum RouteError {
     PreprocessingError(PreprocessingError),
     ParsingError(SmartString<LazyCompact>),
@@ -40,7 +41,7 @@ impl From<PreprocessingError> for RouteError {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug)]
 pub enum PreprocessingError {
     /// Directive syntax is incorrect
     MalformedDirective { directive: SmartString<LazyCompact> },
@@ -50,6 +51,11 @@ pub enum PreprocessingError {
     InvalidSubArgument { code: SmartString<LazyCompact> },
     /// Include file doesn't exist
     IncludeFileNotFound { file: SmartString<LazyCompact> },
+    /// Include file can't be read
+    IncludeFileUnreadable {
+        file: SmartString<LazyCompact>,
+        error: io::Error,
+    },
     /// Invalid random include.
     RandomIncludeError {
         weights: SmallVec<[i64; 8]>,
@@ -65,6 +71,10 @@ impl PreprocessingError {
             }
             PreprocessingError::IncludeFileNotFound { file } => {
                 localize!(@en, "route-preprocessing-include-file-not-found", "file" -> file.as_str())
+            }
+            PreprocessingError::IncludeFileUnreadable { file, error } => {
+                let err_str = format!("{:?}", error);
+                localize!(@en, "route-preprocessing-include-file-not-found", "file" -> file.as_str(), "reason" -> err_str.as_str())
             }
             PreprocessingError::RandomIncludeError {
                 weights,
@@ -94,7 +104,7 @@ impl From<CommandCreationError> for RouteError {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug)]
 pub enum CommandCreationError {
     /// No namespace with a command that needs it
     MissingNamespace { command: String },

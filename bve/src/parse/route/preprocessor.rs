@@ -33,7 +33,7 @@ pub struct FileInput {
 
 pub struct FileOutput {
     pub path: String,
-    pub output: String,
+    pub contents: String,
 }
 
 // (pass -> pass2) means pass2 is applied to the result of pass
@@ -103,7 +103,7 @@ where
                 }
             };
 
-            let recursive_processed = run_includes(&content.path, &content.output, errors, rng, file_fn).await;
+            let recursive_processed = run_includes(&content.path, &content.contents, errors, rng, file_fn).await;
 
             output.push_str(&format!("\n%O{}%\n", chosen.offset));
             output.push_str(&recursive_processed);
@@ -424,7 +424,7 @@ mod test {
             async move {
                 Ok(FileOutput {
                     path: requested,
-                    output: output_opt?,
+                    contents: output_opt?,
                 })
             }
         }

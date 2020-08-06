@@ -16,6 +16,7 @@ mesh-error-unknown-csv = Unknown error in csv-like parsing
 
 route-preprocessing-malformed-directive = The syntax for preprocessing directive "{$directive}"" is incorrect
 route-preprocessing-include-file-not-found = File "{$file}" included is not found
+route-preprocessing-include-unreadable = File "{$file}" included cannot be opened due to "{$reason}"
 route-preprocessing-random-include-none = Empty include directive
 route-preprocessing-random-invalid-weight = List of include weights includes an invalid (weight < 0) weight: {$weights}
 route-preprocessing-random-all-zero = List of include weights has all weights set at zero

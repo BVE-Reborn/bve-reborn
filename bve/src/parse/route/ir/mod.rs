@@ -1,6 +1,10 @@
 use super::parser::Command;
-use crate::{parse::route::errors::CommandCreationError, ColorU8RGB, ColorU8RGBA, Time};
+use crate::{
+    parse::route::{errors::CommandCreationError, TrackPositionSmallVec},
+    ColorU8RGB, ColorU8RGBA, Time,
+};
 use bve_derive::FromRouteCommand;
+pub use dispatch::*;
 use smallvec::SmallVec;
 use smartstring::{LazyCompact, SmartString};
 pub use specials::*;
@@ -10,7 +14,14 @@ use std::{num::NonZeroU64, str::FromStr};
 mod specials;
 mod dispatch;
 
-enum ParsedCommand {
+#[derive(Debug, Clone, PartialEq)]
+pub struct ParsedDirective {
+    pub command: ParsedCommand,
+    pub position: TrackPositionSmallVec,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ParsedCommand {
     OptionsUnitOfLength(OptionsUnitOfLength),
     OptionsUnitOfSpeed(OptionsUnitOfSpeed),
     OptionsBlockLength(OptionsBlockLength),
