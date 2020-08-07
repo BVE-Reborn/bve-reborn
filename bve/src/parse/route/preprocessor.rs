@@ -3,7 +3,7 @@ use bve_common::nom::w;
 use nom::{
     branch::alt,
     bytes::complete::{is_a, is_not, tag, tag_no_case},
-    combinator::map_res,
+    combinator::{map_res, opt},
     multi::separated_list,
     sequence::{delimited, separated_pair, tuple},
     IResult,
@@ -344,7 +344,7 @@ fn parse_include(include: &str) -> Result<IncludeSmallVec<'_>, PreprocessingErro
     delimited(
         tuple((w(tag_no_case("$include")), w(tag("(")))),
         alt((parse_weighted_include, parse_offset_include, parse_naked_include)),
-        w(tag(")")),
+        tuple((w(tag(")")), w(opt(tag(","))))),
     )(include)
     .map(|(_, v)| v)
     .map_err(|_| PreprocessingError::MalformedDirective {
@@ -791,6 +791,26 @@ mod test {
         let input: &str = indoc::indoc!(
             r"
             $include(file1)
+        "
+        );
+
+        let processed: String = run_includes("", input, &mut errors, &mut rng, &file_fn).await;
+        assert!(
+            processed.contains("contents1"),
+            "output missing contents: {}",
+            processed
+        );
+        assert!(
+            !PREPROCESSING_VALIDATION.is_match(&processed),
+            "contains preprocessing directives: {}",
+            processed
+        );
+        assert!(errors.is_empty(), "{:?}", errors);
+
+        // With a trailing comma this time
+        let input: &str = indoc::indoc!(
+            r"
+            $include(file1),
         "
         );
 

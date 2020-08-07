@@ -126,10 +126,12 @@ pub fn enumerate_all_files(options: &Options, file_sink: &Sender<File>, shared: 
     info!("Scanning {}", path.display());
     let count = enumerate(path, |path: PathBuf, _entry| {
         match path.extension().map(|v| v.to_string_lossy().to_lowercase()) {
-            ext if ext == Some("csv".into()) && false => add_file(file_sink, shared, &shared.route_csv, File {
-                path,
-                kind: FileKind::RouteCsv,
-            }),
+            ext if ext == Some("csv".into()) && should_add_file(options.file_types, FileType::RouteCSV) => {
+                add_file(file_sink, shared, &shared.route_csv, File {
+                    path,
+                    kind: FileKind::RouteCsv,
+                })
+            }
             ext if ext == Some("rw".into()) && false => add_file(file_sink, shared, &shared.route_rw, File {
                 path,
                 kind: FileKind::RouteRw,

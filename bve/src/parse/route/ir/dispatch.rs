@@ -33,7 +33,7 @@ where
     pub fn new(instruction_stream: T, errors: &'a RefCell<Vec<RouteError>>) -> Self {
         Self {
             current_namespace: None,
-            current_position: TrackPositionSmallVec::new(),
+            current_position: smallvec::smallvec![0.0],
             errors,
             instruction_stream,
         }
@@ -54,6 +54,10 @@ where
                 }
                 Directive::With(v) => {
                     self.current_namespace = Some(v.chars().flat_map(char::to_lowercase).collect());
+                }
+                Directive::TrackPositionOffset(offset) => {
+                    debug_assert!(!self.current_position.is_empty());
+                    self.current_position[0] += offset;
                 }
                 Directive::Command(command) => {
                     let parsed_command: Result<ParsedCommand, CommandCreationError> = try {

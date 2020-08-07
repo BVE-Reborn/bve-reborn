@@ -66,6 +66,7 @@ pub enum Directive {
     TrackPosition(TrackPositionSmallVec),
     Command(Command),
     With(SmartString<LazyCompact>),
+    TrackPositionOffset(f32),
 }
 
 pub type IndexSmallVec = SmallVec<[Option<i64>; 8]>;
@@ -135,6 +136,7 @@ fn remove_comments(input: SmartString<LazyCompact>) -> Option<SmartString<LazyCo
 
 fn parse_directive(command: &str) -> Option<Directive> {
     alt((
+        parse_with_offset,
         parse_with,
         parse_track_position,
         parse_command_indices_args,
@@ -219,6 +221,13 @@ fn parse_with(command: &str) -> IResult<&str, Directive> {
     preceded(w(tag_no_case("with")), parse_identifier)(command).map_output(|v| Directive::With(SmartString::from(v)))
 }
 
+fn parse_with_offset(command: &str) -> IResult<&str, Directive> {
+    map_res(
+        delimited(w(tag_no_case("%O")), parse_floating_number, w(tag_no_case("%"))),
+        |v| v.map(|v| Directive::TrackPositionOffset(v)).ok_or(()),
+    )(command)
+}
+
 fn parse_track_position(command: &str) -> IResult<&str, Directive> {
     map_res(
         separated_list_small(w(tag_no_case(";")), parse_floating_number),
@@ -294,6 +303,7 @@ fn parse_argument_list(command: &str) -> IResult<&str, ArgumentSmallVec> {
 }
 
 fn parse_argument_list_free(command: &str) -> IResult<&str, ArgumentSmallVec> {
+    let (command, _) = opt(w(tag_no_case(";")))(command)?;
     separated_list_small(w(tag_no_case(";")), parse_argument_free)(command).map_output(
         |array: SmallVec<[Option<&str>; 8]>| {
             array
@@ -367,6 +377,13 @@ mod test {
         );
         assert_eq!(parse_directive(""), None);
         assert_eq!(parse_directive(";"), None);
+    }
+
+    #[test]
+    fn offset_marker() {
+        assert_eq!(parse_directive("%O10%"), Some(Directive::TrackPositionOffset(10.0)));
+        assert_eq!(parse_directive("%O-10%"), Some(Directive::TrackPositionOffset(-10.0)));
+        assert_eq!(parse_directive("%O-10.2%"), Some(Directive::TrackPositionOffset(-10.2)));
     }
 
     #[test]
@@ -535,10 +552,21 @@ mod test {
         assert_eq!(
             parse_directive(".WallL(7) some_path_with(parens)"),
             Some(Directive::Command(Command {
-                namespace: None,
                 name: ss!("WallL"),
                 indices: smallvec_opt![7],
                 arguments: smallvec::smallvec![ss!("some_path_with(parens)")],
+                ..default_command()
+            }))
+        );
+    }
+
+    #[test]
+    fn extra_semicolon() {
+        assert_eq!(
+            parse_directive(".Boop ;boop"),
+            Some(Directive::Command(Command {
+                name: ss!("Boop"),
+                arguments: smallvec::smallvec![ss!("boop")],
                 ..default_command()
             }))
         );

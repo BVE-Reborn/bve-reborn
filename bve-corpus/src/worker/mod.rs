@@ -13,6 +13,7 @@ use bve::{
         mesh::{ParsedStaticObjectB3D, ParsedStaticObjectCSV},
         panel1_cfg::ParsedPanel1Cfg,
         panel2_cfg::ParsedPanel2Cfg,
+        route::ParsedRoute,
         sound_cfg::ParsedSoundCfg,
         train_dat::ParsedTrainDat,
         FileAwareFileParser, ParserResult, UserError,
@@ -126,6 +127,7 @@ fn processing_loop(
             FileKind::Panel1Cfg => run_parser::<ParsedPanel1Cfg>(&folder, &file_contents, &shared.panel1_cfg.finished),
             FileKind::Panel2Cfg => run_parser::<ParsedPanel2Cfg>(&folder, &file_contents, &shared.panel2_cfg.finished),
             FileKind::SoundCfg => run_parser::<ParsedSoundCfg>(&folder, &file_contents, &shared.sound_cfg.finished),
+            FileKind::RouteCsv => run_parser::<ParsedRoute>(&folder, &file_contents, &shared.route_csv.finished),
             _ => ParseResult::Success,
         });
         USE_DEFAULT_PANIC_HANLDER.with(|v| *v.borrow_mut() = true);

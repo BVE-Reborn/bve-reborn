@@ -705,7 +705,9 @@ flag_enum!(ForcedRedSingleMode, u8, Unaffected = 0, Enabled = 1);
 pub struct TrackSta {
     #[command(default = "SmartString::new()")]
     pub name: SmartString<LazyCompact>,
+    #[command(default = "ArrivalTimeState::Player(None)")]
     pub arrival_time: ArrivalTimeState,
+    #[command(default = "DepartureTimeState::Regular(None)")]
     pub departure_time: DepartureTimeState,
     #[command(default = "PassAlarmMode::Silent")]
     pub pass_alarm: PassAlarmMode,

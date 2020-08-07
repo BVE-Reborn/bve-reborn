@@ -6,6 +6,7 @@ pub enum FileType {
     AtsCfg,
     B3D,
     CSV,
+    RouteCSV,
     Animated,
     TrainDat,
     ExtensionsCfg,
@@ -23,6 +24,7 @@ impl FromStr for FileType {
             "ats" | "ats.cfg" => Self::AtsCfg,
             "b3d" => Self::B3D,
             "csv-mesh" => Self::CSV,
+            "route-csv" => Self::RouteCSV,
             "anim" | "animated" => Self::Animated,
             "train" | "train.dat" => Self::TrainDat,
             "ext" | "extensions.cfg" => Self::ExtensionsCfg,
@@ -61,6 +63,7 @@ General Options:
                  ats[.cfg]
                  b3d
                  csv-mesh
+                 route-csv
                  anim[ated]
                  train[.dat]
                  ext[ensions.cfg]
