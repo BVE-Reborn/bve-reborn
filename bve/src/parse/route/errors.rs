@@ -10,9 +10,9 @@ use std::io;
 
 #[derive(Debug)]
 pub enum RouteError {
-    PreprocessingError(PreprocessingError),
-    ParsingError(SmartString<LazyCompact>),
-    CommandCreationError(CommandCreationError),
+    Preprocessing(PreprocessingError),
+    Parsing(SmartString<LazyCompact>),
+    CommandCreation(CommandCreationError),
 }
 
 impl UserError for RouteError {
@@ -26,16 +26,16 @@ impl UserError for RouteError {
 
     fn description(&self, en: ForceEnglish) -> String {
         match self {
-            Self::PreprocessingError(err) => err.description(en),
-            Self::ParsingError(command) => localize!(@en, "route-parse-failure", "command" -> command.as_str()),
-            Self::CommandCreationError(err) => err.description(en),
+            Self::Preprocessing(err) => err.description(en),
+            Self::Parsing(command) => localize!(@en, "route-parse-failure", "command" -> command.as_str()),
+            Self::CommandCreation(err) => err.description(en),
         }
     }
 }
 
 impl From<PreprocessingError> for RouteError {
     fn from(err: PreprocessingError) -> Self {
-        RouteError::PreprocessingError(err)
+        Self::Preprocessing(err)
     }
 }
 
@@ -64,17 +64,17 @@ pub enum PreprocessingError {
 impl PreprocessingError {
     fn description(&self, en: ForceEnglish) -> String {
         match self {
-            PreprocessingError::MalformedDirective { directive } => {
+            Self::MalformedDirective { directive } => {
                 localize!(@en, "route-preprocessing-malformed-directive", "directive" -> directive.as_str())
             }
-            PreprocessingError::IncludeFileNotFound { file } => {
+            Self::IncludeFileNotFound { file } => {
                 localize!(@en, "route-preprocessing-include-file-not-found", "file" -> file.as_str())
             }
-            PreprocessingError::IncludeFileUnreadable { file, error } => {
+            Self::IncludeFileUnreadable { file, error } => {
                 let err_str = format!("{:?}", error);
                 localize!(@en, "route-preprocessing-include-file-not-found", "file" -> file.as_str(), "reason" -> err_str.as_str())
             }
-            PreprocessingError::RandomIncludeError {
+            Self::RandomIncludeError {
                 weights,
                 sub: weighted_error,
             } => match weighted_error {
@@ -86,10 +86,10 @@ impl PreprocessingError {
                 WeightedError::AllWeightsZero => localize!(@en, "route-preprocessing-random-all-zero"),
                 WeightedError::TooMany => unreachable!("Should OOM before we get here :)"),
             },
-            PreprocessingError::InvalidChrArgument { code } => {
+            Self::InvalidChrArgument { code } => {
                 localize!(@en, "route-preprocessing-invalid-argument", "arg" -> code.as_str(), "directive" -> "chr")
             }
-            PreprocessingError::InvalidSubArgument { code } => {
+            Self::InvalidSubArgument { code } => {
                 localize!(@en, "route-preprocessing-invalid-argument", "arg" -> code.as_str(), "directive" -> "sub")
             }
         }
@@ -98,7 +98,7 @@ impl PreprocessingError {
 
 impl From<CommandCreationError> for RouteError {
     fn from(err: CommandCreationError) -> Self {
-        RouteError::CommandCreationError(err)
+        Self::CommandCreation(err)
     }
 }
 

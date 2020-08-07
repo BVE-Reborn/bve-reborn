@@ -26,7 +26,7 @@ impl PrettyPrintResult for ParsedRoute {
 
 #[async_trait(?Send)]
 impl FileAwareFileParser for ParsedRoute {
-    type Output = ParsedRoute;
+    type Output = Self;
     type Warnings = ();
     type Errors = errors::RouteError;
 
@@ -42,9 +42,10 @@ impl FileAwareFileParser for ParsedRoute {
         let mut rng = rand::rngs::StdRng::seed_from_u64(42);
         let resolve_bases_ref = &resolve_bases;
         let file_func = |input: preprocessor::FileInput| async move {
-            let current_dir = Path::new(&input.base_path).parent().unwrap();
+            let current_dir = Path::new(&input.base_path).parent().expect("Path has no parent");
             try {
                 let requested_path = &*input.requested_path;
+                #[allow(clippy::redundant_closure_for_method_calls)] // needed for the manual lifetime
                 let file = filesystem::resolve_path_bases(
                     resolve_bases_ref
                         .clone()

@@ -25,13 +25,14 @@ pub trait FileAwareFileParser {
 }
 
 #[async_trait(?Send)]
+#[allow(clippy::use_self)] // false positive
 impl<T> FileAwareFileParser for T
 where
     T: FileParser,
 {
-    type Output = <T as FileParser>::Output;
-    type Warnings = <T as FileParser>::Warnings;
-    type Errors = <T as FileParser>::Errors;
+    type Output = <Self as FileParser>::Output;
+    type Warnings = <Self as FileParser>::Warnings;
+    type Errors = <Self as FileParser>::Errors;
 
     #[must_use]
     async fn file_aware_parse_from<'a, IntoIter, AsRefPath>(

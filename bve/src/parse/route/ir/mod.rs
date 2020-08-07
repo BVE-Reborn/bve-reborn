@@ -111,6 +111,7 @@ pub enum ParsedCommand {
 }
 
 pub trait FromRouteCommand {
+    #[allow(clippy::missing_errors_doc)]
     fn from_route_command(command: Command) -> Result<Self, CommandCreationError>
     where
         Self: Sized;

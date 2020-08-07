@@ -88,7 +88,7 @@ pub fn parse_route<'a>(
         .filter_map(move |v| match parse_directive(&v) {
             Some(r) => Some(r),
             None => {
-                errors.borrow_mut().push(RouteError::ParsingError(v));
+                errors.borrow_mut().push(RouteError::Parsing(v));
                 None
             }
         })
@@ -224,7 +224,7 @@ fn parse_with(command: &str) -> IResult<&str, Directive> {
 fn parse_with_offset(command: &str) -> IResult<&str, Directive> {
     map_res(
         delimited(w(tag_no_case("%O")), parse_floating_number, w(tag_no_case("%"))),
-        |v| v.map(|v| Directive::TrackPositionOffset(v)).ok_or(()),
+        |v| v.map(Directive::TrackPositionOffset).ok_or(()),
     )(command)
 }
 
@@ -542,7 +542,6 @@ mod test {
                 indices: smallvec_opt![2],
                 suffix: Some(ss!("Load")),
                 arguments: smallvec::smallvec![ss!("H"), ss!("K")],
-                ..default_command()
             }))
         );
     }
