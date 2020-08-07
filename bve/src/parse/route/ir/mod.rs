@@ -128,6 +128,8 @@ where
     Array: smallvec::Array,
     Array::Item: FromStr,
 {
+    // TODO: This really should return a vector of errors, as we should still gracefully handle missing argumnets at the
+    // end
     fn from_variadic_route_argument(command: &Command) -> Result<Self, CommandCreationError>
     where
         Self: Sized,
