@@ -69,7 +69,8 @@ fn read_from_file(filename: impl AsRef<Path>) -> String {
 }
 
 fn run_parser<P: FileAwareFileParser>(path: &str, input: &str, counter: &AtomicU64) -> ParseResult {
-    let ParserResult { warnings, errors, .. } = block_on(P::file_aware_parse_from(&[path], path, input));
+    let ParserResult { warnings, errors, .. } =
+        block_on(P::file_aware_parse_from(std::iter::empty::<&Path>(), path, input));
 
     counter.fetch_add(1, Ordering::AcqRel);
 

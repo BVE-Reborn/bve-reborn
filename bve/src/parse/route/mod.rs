@@ -15,11 +15,12 @@ pub mod preprocessor;
 
 pub type TrackPositionSmallVec = SmallVec<[f32; 4]>;
 
+#[derive(Debug)]
 pub struct ParsedRoute(Vec<ir::ParsedDirective>);
 
 impl PrettyPrintResult for ParsedRoute {
-    fn fmt(&self, _indent: usize, _out: &mut dyn io::Write) -> io::Result<()> {
-        unimplemented!()
+    fn fmt(&self, _indent: usize, out: &mut dyn io::Write) -> io::Result<()> {
+        write!(out, "{:#?}", self)
     }
 }
 
@@ -36,7 +37,7 @@ impl FileAwareFileParser for ParsedRoute {
     ) -> ParserResult<Self::Output, Self::Warnings, Self::Errors>
     where
         IntoIter: IntoIterator<Item = &'a AsRefPath> + Clone + 'a,
-        AsRefPath: AsRef<Path> + 'a,
+        AsRefPath: AsRef<Path> + ?Sized + 'a,
     {
         let mut rng = rand::rngs::StdRng::seed_from_u64(42);
         let resolve_bases_ref = &resolve_bases;

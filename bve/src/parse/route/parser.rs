@@ -119,6 +119,8 @@ fn apply_chr(input: &str) -> Result<SmartString<LazyCompact>, PreprocessingError
 
         last_capture = mat.end();
     }
+    output.push_str(&input[last_capture..]);
+
     output = SmartString::from(output.trim());
     Ok(output)
 }
@@ -163,7 +165,7 @@ fn parse_command_args(command: &str) -> IResult<&str, Directive> {
         separated_pair(opt(w(parse_identifier)), w(tag_no_case(".")), parse_identifier)(command)?;
     let (command, arguments) = alt((
         delimited(w(tag_no_case("(")), parse_argument_list, opt(w(tag_no_case(")")))),
-        parse_argument_list,
+        parse_argument_list_free,
     ))(command)?;
     Ok((
         command,
@@ -196,10 +198,10 @@ fn parse_command_indices_args(command: &str) -> IResult<&str, Directive> {
     let (command, arguments) = if suffix.is_some() {
         alt((
             delimited(w(tag_no_case("(")), parse_argument_list1, opt(w(tag_no_case(")")))),
-            parse_argument_list1,
+            parse_argument_list1_free,
         ))(command)?
     } else {
-        parse_argument_list1(command)?
+        parse_argument_list1_free(command)?
     };
     Ok((
         command,
@@ -274,6 +276,12 @@ fn parse_argument_list1(command: &str) -> IResult<&str, ArgumentSmallVec> {
     )(command)
 }
 
+fn parse_argument_list1_free(command: &str) -> IResult<&str, ArgumentSmallVec> {
+    map_res(parse_argument_list_free, |list| {
+        if list.is_empty() { Err(()) } else { Ok(list) }
+    })(command)
+}
+
 fn parse_argument_list(command: &str) -> IResult<&str, ArgumentSmallVec> {
     separated_list_small(w(tag_no_case(";")), parse_argument)(command).map_output(
         |array: SmallVec<[Option<&str>; 8]>| {
@@ -285,8 +293,23 @@ fn parse_argument_list(command: &str) -> IResult<&str, ArgumentSmallVec> {
     )
 }
 
+fn parse_argument_list_free(command: &str) -> IResult<&str, ArgumentSmallVec> {
+    separated_list_small(w(tag_no_case(";")), parse_argument_free)(command).map_output(
+        |array: SmallVec<[Option<&str>; 8]>| {
+            array
+                .into_iter()
+                .map(|arg| arg.map_or_else(SmartString::new, SmartString::from))
+                .collect()
+        },
+    )
+}
+
 fn parse_argument(command: &str) -> IResult<&str, Option<&str>> {
     opt(w(is_not("(;)")))(command).map_output(|opt| opt.map(str::trim))
+}
+
+fn parse_argument_free(command: &str) -> IResult<&str, Option<&str>> {
+    opt(w(is_not(";")))(command).map_output(|opt| opt.map(str::trim))
 }
 
 #[cfg(test)]
@@ -446,8 +469,6 @@ mod test {
                 ..default_command()
             }))
         );
-        // Parens around arguments forbidden after indices
-        assert_eq!(parse_directive(".command(-1)(2)"), None);
     }
 
     #[test]
@@ -504,6 +525,20 @@ mod test {
                 indices: smallvec_opt![2],
                 suffix: Some(ss!("Load")),
                 arguments: smallvec::smallvec![ss!("H"), ss!("K")],
+                ..default_command()
+            }))
+        );
+    }
+
+    #[test]
+    fn parens_command() {
+        assert_eq!(
+            parse_directive(".WallL(7) some_path_with(parens)"),
+            Some(Directive::Command(Command {
+                namespace: None,
+                name: ss!("WallL"),
+                indices: smallvec_opt![7],
+                arguments: smallvec::smallvec![ss!("some_path_with(parens)")],
                 ..default_command()
             }))
         );

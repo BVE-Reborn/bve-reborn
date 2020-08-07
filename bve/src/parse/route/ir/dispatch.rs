@@ -53,14 +53,17 @@ where
                     self.current_position = v;
                 }
                 Directive::With(v) => {
-                    self.current_namespace = Some(v);
+                    self.current_namespace = Some(v.chars().flat_map(char::to_lowercase).collect());
                 }
                 Directive::Command(command) => {
                     let parsed_command: Result<ParsedCommand, CommandCreationError> = try {
                         let namespace = command
                             .namespace
                             .clone()
-                            .or_else(|| self.current_namespace.clone())
+                            .map_or_else(
+                                || self.current_namespace.clone(),
+                                |ns| Some(ns.chars().flat_map(char::to_lowercase).collect()),
+                            )
                             .ok_or_else(|| CommandCreationError::MissingNamespace {
                                 command: command.to_string(),
                             })?;

@@ -27,9 +27,7 @@ impl UserError for RouteError {
     fn description(&self, en: ForceEnglish) -> String {
         match self {
             Self::PreprocessingError(err) => err.description(en),
-            Self::ParsingError(command) => {
-                localize!(@en, "route-preprocessing-invalid-argument", "command" -> command.as_str())
-            }
+            Self::ParsingError(command) => localize!(@en, "route-parse-failure", "command" -> command.as_str()),
             Self::CommandCreationError(err) => err.description(en),
         }
     }

@@ -21,7 +21,7 @@ pub trait FileAwareFileParser {
     ) -> ParserResult<Self::Output, Self::Warnings, Self::Errors>
     where
         IntoIter: IntoIterator<Item = &'a AsRefPath> + Clone + 'a,
-        AsRefPath: AsRef<Path> + 'a;
+        AsRefPath: AsRef<Path> + ?Sized + 'a;
 }
 
 #[async_trait(?Send)]
@@ -41,7 +41,7 @@ where
     ) -> ParserResult<Self::Output, Self::Warnings, Self::Errors>
     where
         IntoIter: IntoIterator<Item = &'a AsRefPath> + Clone + 'a,
-        AsRefPath: AsRef<Path> + 'a,
+        AsRefPath: AsRef<Path> + ?Sized + 'a,
     {
         Self::parse_from(input)
     }

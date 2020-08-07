@@ -524,11 +524,11 @@ pub struct SignalSplit {
 pub struct TrackRailStart {
     pub rail_index: NonZeroU64,
     /// unit: UnitOfDistance
-    #[command(optional)]
-    pub x_offset: Option<f32>,
+    #[command(default = "0.0")]
+    pub x_offset: f32,
     /// unit: UnitOfDistance
-    #[command(optional)]
-    pub y_offset: Option<f32>,
+    #[command(default = "0.0")]
+    pub y_offset: f32,
     #[command(optional)]
     pub rail_type: Option<u64>,
 }
@@ -537,10 +537,13 @@ pub struct TrackRailStart {
 pub struct TrackRail {
     pub rail_index: NonZeroU64,
     /// unit: UnitOfDistance
+    #[command(default = "0.0")]
     pub x_offset: f32,
     /// unit: UnitOfDistance
+    #[command(default = "0.0")]
     pub y_offset: f32,
-    pub rail_type: u64,
+    #[command(optional)]
+    pub rail_type: Option<u64>,
 }
 
 #[derive(Debug, Clone, PartialEq, FromRouteCommand)]
@@ -555,11 +558,11 @@ pub struct TrackRailType {
 pub struct TrackRailEnd {
     pub rail_index: NonZeroU64,
     /// unit: UnitOfDistance
-    #[command(optional)]
-    pub x_offset: Option<f32>,
+    #[command(default = "0.0")]
+    pub x_offset: f32,
     /// unit: UnitOfDistance
-    #[command(optional)]
-    pub y_offset: Option<f32>,
+    #[command(default = "0.0")]
+    pub y_offset: f32,
 }
 
 #[derive(Debug, Clone, PartialEq, FromRouteCommand)]
@@ -776,8 +779,10 @@ pub struct TrackStop {
 pub struct TrackForm {
     pub rail_index1: u64,
     pub rail_index2: FormRailIndex2Data,
-    pub structure_index: u64,
-    pub form_structure_index: u64,
+    #[command(optional)]
+    pub structure_index: Option<u64>,
+    #[command(optional)]
+    pub form_structure_index: Option<u64>,
 }
 
 flag_enum!(TrackLimitPostDirection, i8, Left = -1, None = 0, Right = 1);
