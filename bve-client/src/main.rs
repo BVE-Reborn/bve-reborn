@@ -53,15 +53,12 @@
 #![allow(clippy::wildcard_imports)]
 
 use crate::platform::*;
-use async_std::{
-    path::PathBuf,
-    sync::{Arc, Mutex},
-    task::block_on,
-};
+use async_std::{path::PathBuf, task::block_on};
 use bve::{
     load::mesh::Vertex,
     runtime,
     runtime::{LightDescriptor, LightType, Location, RenderLightDescriptor},
+    AsyncMutex,
 };
 use bve_render::{
     DebugMode, LightHandle, MSAASetting, MeshHandle, OITNodeCount, ObjectHandle, Renderer, RendererStatistics,
@@ -76,6 +73,7 @@ use std::{
     fs::File,
     io::BufReader,
     panic::catch_unwind,
+    sync::Arc,
     time::{Duration, Instant},
 };
 use winit::{
@@ -101,10 +99,13 @@ impl Client {
         oit_node_count: OITNodeCount,
         samples: MSAASetting,
         vsync: Vsync,
-    ) -> Arc<Mutex<Self>> {
-        Arc::new(Mutex::new(Self {
-            renderer: Renderer::new(window, imgui_context, oit_node_count, samples, vsync).await,
-        }))
+    ) -> Arc<AsyncMutex<Self>> {
+        Arc::new(AsyncMutex::new(
+            Self {
+                renderer: Renderer::new(window, imgui_context, oit_node_count, samples, vsync).await,
+            },
+            false,
+        ))
     }
 }
 

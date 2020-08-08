@@ -5,11 +5,9 @@ use crate::{
         cache::{Cache, PathHandle, PathSet},
         client::Client,
     },
+    AsyncMutex,
 };
-use async_std::{
-    path::{Path, PathBuf},
-    sync::Mutex,
-};
+use async_std::path::{Path, PathBuf};
 use itertools::Itertools;
 use log::trace;
 
@@ -70,7 +68,7 @@ impl<C: Client> MeshCache<C> {
         }
     }
 
-    async fn load_mesh_impl(&self, client: &Mutex<C>, path_set: &PathSet, path: &Path) -> MeshData<C> {
+    async fn load_mesh_impl(&self, client: &AsyncMutex<C>, path_set: &PathSet, path: &Path) -> MeshData<C> {
         trace!("Loading mesh {}", path.display());
         let meta_mesh = load_mesh_from_file(path)
             .await
@@ -98,7 +96,7 @@ impl<C: Client> MeshCache<C> {
         mesh_data
     }
 
-    pub async fn load_mesh(&self, client: &Mutex<C>, path_set: &PathSet, path: PathBuf) -> Option<MeshData<C>> {
+    pub async fn load_mesh(&self, client: &AsyncMutex<C>, path_set: &PathSet, path: PathBuf) -> Option<MeshData<C>> {
         let canonicalized = path.canonicalize().await.ok()?;
         let path_handle = path_set.insert(canonicalized.clone()).await;
 
@@ -112,7 +110,7 @@ impl<C: Client> MeshCache<C> {
         Some(mesh)
     }
 
-    pub async fn remove_mesh(&self, client: &Mutex<C>, path_handle: PathHandle) -> Option<Vec<PathHandle>> {
+    pub async fn remove_mesh(&self, client: &AsyncMutex<C>, path_handle: PathHandle) -> Option<Vec<PathHandle>> {
         trace!("Checking mesh {}", path_handle.0);
         self.inner
             .remove(path_handle, async move |data| {

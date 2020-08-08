@@ -1,10 +1,14 @@
-use async_std::sync::{Arc, Mutex, RwLock};
+use crate::{AsyncMutex, AsyncRwLock};
+use async_std::sync::RwLock;
 pub use mesh::*;
 pub use path::*;
 use std::{
     collections::HashMap,
     future::Future,
-    sync::atomic::{AtomicU64, Ordering},
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc,
+    },
 };
 pub use texture::*;
 
@@ -17,12 +21,12 @@ struct LoadedCacheEntry<D: Clone> {
     count: AtomicU64,
 }
 
-type CacheEntry<D> = Arc<RwLock<Option<LoadedCacheEntry<D>>>>;
-struct Cache<D: Clone>(Mutex<HashMap<PathHandle, CacheEntry<D>>>);
+type CacheEntry<D> = Arc<AsyncRwLock<Option<LoadedCacheEntry<D>>>>;
+struct Cache<D: Clone>(AsyncMutex<HashMap<PathHandle, CacheEntry<D>>>);
 
 impl<D: Clone> Cache<D> {
     pub fn new() -> Self {
-        Self(Mutex::new(HashMap::new()))
+        Self(AsyncMutex::new(HashMap::new(), false))
     }
 
     pub async fn get_or_insert(&self, path_handle: PathHandle, gen_data: impl Future<Output = D>) -> D {

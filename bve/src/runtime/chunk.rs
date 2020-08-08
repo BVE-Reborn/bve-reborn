@@ -1,14 +1,13 @@
 use crate::{
     runtime::{cache::PathHandle, LightDescriptor},
-    IVec2,
+    AsyncRwLock, IVec2,
 };
-use async_std::sync::{Arc, RwLock};
 use dashmap::{DashMap, DashSet};
 use derive_more::{AsMut, AsRef, Deref, Display, From as DmFrom, Into};
 use glam::f32::Vec3A;
 use std::{
     hash::{Hash, Hasher},
-    sync::atomic::AtomicU8,
+    sync::{atomic::AtomicU8, Arc},
 };
 
 pub const CHUNK_SIZE: f32 = 64.0;
@@ -38,7 +37,7 @@ impl ChunkOffset {
 pub struct Chunk {
     pub address: ChunkAddress,
     pub objects: DashSet<UnloadedObject>,
-    pub lights: RwLock<Vec<LightDescriptor>>,
+    pub lights: AsyncRwLock<Vec<LightDescriptor>>,
     pub state: AtomicU8,
 }
 
@@ -97,7 +96,7 @@ impl ChunkSet {
                 let arc = Arc::new(Chunk {
                     address,
                     objects: DashSet::new(),
-                    lights: RwLock::new(Vec::new()),
+                    lights: AsyncRwLock::new(Vec::new()),
                     state: AtomicU8::new(ChunkState::Unloaded as u8),
                 });
                 self.inner.insert(address, Arc::clone(&arc));
