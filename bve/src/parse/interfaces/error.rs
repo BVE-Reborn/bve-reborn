@@ -12,7 +12,7 @@ pub trait UserError {
     }
 
     fn category(&self) -> UserErrorCategory;
-    fn line(&self) -> u64;
+    fn line(&self) -> Option<u64>;
 
     fn description(&self, en: ForceEnglish) -> String;
 }
@@ -20,7 +20,7 @@ pub trait UserError {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct UserErrorData {
     pub category: UserErrorCategory,
-    pub line: u64,
+    pub line: Option<u64>,
     pub description: String,
     pub description_english: String,
 }
@@ -41,7 +41,7 @@ impl UserError for () {
         unreachable!("Types that have () as their error/warning type should return only empty vectors of them.");
     }
 
-    fn line(&self) -> u64 {
+    fn line(&self) -> Option<u64> {
         unreachable!("Types that have () as their error/warning type should return only empty vectors of them.");
     }
 

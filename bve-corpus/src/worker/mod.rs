@@ -13,9 +13,10 @@ use bve::{
         mesh::{ParsedStaticObjectB3D, ParsedStaticObjectCSV},
         panel1_cfg::ParsedPanel1Cfg,
         panel2_cfg::ParsedPanel2Cfg,
+        route::ParsedRoute,
         sound_cfg::ParsedSoundCfg,
         train_dat::ParsedTrainDat,
-        FileParser, ParserResult, UserError,
+        FileAwareFileParser, ParserResult, UserError,
     },
 };
 use crossbeam_channel::{Receiver, Sender};
@@ -68,8 +69,9 @@ fn read_from_file(filename: impl AsRef<Path>) -> String {
     }
 }
 
-fn run_parser<P: FileParser>(input: &str, counter: &AtomicU64) -> ParseResult {
-    let ParserResult { warnings, errors, .. } = P::parse_from(input);
+fn run_parser<P: FileAwareFileParser>(path: &str, input: &str, counter: &AtomicU64) -> ParseResult {
+    let ParserResult { warnings, errors, .. } =
+        block_on(P::file_aware_parse_from(std::iter::empty::<&Path>(), path, input));
 
     counter.fetch_add(1, Ordering::AcqRel);
 
@@ -102,24 +104,30 @@ fn processing_loop(
 
         // File reading isn't part of the operation.
         let file_contents = read_from_file(&file_ref.path);
+        let folder = file_ref.path.parent().unwrap().to_string_lossy();
         // Say that we're still alive
         last_respond.store(Instant::now());
 
         USE_DEFAULT_PANIC_HANLDER.with(|v| *v.borrow_mut() = false);
         let panicked = std::panic::catch_unwind(|| match &file_ref.kind {
-            FileKind::AtsCfg => run_parser::<ParsedAtsConfig>(&file_contents, &shared.ats_cfg.finished),
-            FileKind::ModelCsv => run_parser::<ParsedStaticObjectCSV>(&file_contents, &shared.model_csv.finished),
-            FileKind::ModelB3d => run_parser::<ParsedStaticObjectB3D>(&file_contents, &shared.model_b3d.finished),
+            FileKind::AtsCfg => run_parser::<ParsedAtsConfig>(&folder, &file_contents, &shared.ats_cfg.finished),
+            FileKind::ModelCsv => {
+                run_parser::<ParsedStaticObjectCSV>(&folder, &file_contents, &shared.model_csv.finished)
+            }
+            FileKind::ModelB3d => {
+                run_parser::<ParsedStaticObjectB3D>(&folder, &file_contents, &shared.model_b3d.finished)
+            }
             FileKind::ModelAnimated => {
-                run_parser::<ParsedAnimatedObject>(&file_contents, &shared.model_animated.finished)
+                run_parser::<ParsedAnimatedObject>(&folder, &file_contents, &shared.model_animated.finished)
             }
-            FileKind::TrainDat => run_parser::<ParsedTrainDat>(&file_contents, &shared.train_dat.finished),
+            FileKind::TrainDat => run_parser::<ParsedTrainDat>(&folder, &file_contents, &shared.train_dat.finished),
             FileKind::ExtensionsCfg => {
-                run_parser::<ParsedExtensionsCfg>(&file_contents, &shared.extensions_cfg.finished)
+                run_parser::<ParsedExtensionsCfg>(&folder, &file_contents, &shared.extensions_cfg.finished)
             }
-            FileKind::Panel1Cfg => run_parser::<ParsedPanel1Cfg>(&file_contents, &shared.panel1_cfg.finished),
-            FileKind::Panel2Cfg => run_parser::<ParsedPanel2Cfg>(&file_contents, &shared.panel2_cfg.finished),
-            FileKind::SoundCfg => run_parser::<ParsedSoundCfg>(&file_contents, &shared.sound_cfg.finished),
+            FileKind::Panel1Cfg => run_parser::<ParsedPanel1Cfg>(&folder, &file_contents, &shared.panel1_cfg.finished),
+            FileKind::Panel2Cfg => run_parser::<ParsedPanel2Cfg>(&folder, &file_contents, &shared.panel2_cfg.finished),
+            FileKind::SoundCfg => run_parser::<ParsedSoundCfg>(&folder, &file_contents, &shared.sound_cfg.finished),
+            FileKind::RouteCsv => run_parser::<ParsedRoute>(&folder, &file_contents, &shared.route_csv.finished),
             _ => ParseResult::Success,
         });
         USE_DEFAULT_PANIC_HANLDER.with(|v| *v.borrow_mut() = true);

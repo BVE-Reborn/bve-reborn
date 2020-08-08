@@ -1,6 +1,10 @@
-use super::parser::{ArgumentSmallVec, Command};
-use crate::{ColorU8RGB, ColorU8RGBA, Time};
+use super::parser::Command;
+use crate::{
+    parse::route::{errors::CommandCreationError, TrackPositionSmallVec},
+    ColorU8RGB, ColorU8RGBA, Time,
+};
 use bve_derive::FromRouteCommand;
+pub use dispatch::*;
 use smallvec::SmallVec;
 use smartstring::{LazyCompact, SmartString};
 pub use specials::*;
@@ -10,7 +14,14 @@ use std::{num::NonZeroU64, str::FromStr};
 mod specials;
 mod dispatch;
 
-enum ParsedCommand {
+#[derive(Debug, Clone, PartialEq)]
+pub struct ParsedDirective {
+    pub command: ParsedCommand,
+    pub position: TrackPositionSmallVec,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ParsedCommand {
     OptionsUnitOfLength(OptionsUnitOfLength),
     OptionsUnitOfSpeed(OptionsUnitOfSpeed),
     OptionsBlockLength(OptionsBlockLength),
@@ -100,16 +111,15 @@ enum ParsedCommand {
 }
 
 pub trait FromRouteCommand {
-    fn from_route_command(command: Command) -> Option<Self>
+    #[allow(clippy::missing_errors_doc)]
+    fn from_route_command(command: Command) -> Result<Self, CommandCreationError>
     where
         Self: Sized;
 }
 
 pub trait FromVariadicRouteArgument<'a> {
-    type Error;
-
     #[allow(clippy::missing_errors_doc)]
-    fn from_variadic_route_argument(value: &ArgumentSmallVec) -> Result<Self, Self::Error>
+    fn from_variadic_route_argument(command: &Command) -> Result<Self, CommandCreationError>
     where
         Self: Sized;
 }
@@ -119,40 +129,65 @@ where
     Array: smallvec::Array,
     Array::Item: FromStr,
 {
-    type Error = <Array::Item as FromStr>::Err;
-
-    fn from_variadic_route_argument(value: &ArgumentSmallVec) -> Result<Self, Self::Error>
+    // TODO: This really should return a vector of errors, as we should still gracefully handle missing argumnets at the
+    // end
+    fn from_variadic_route_argument(command: &Command) -> Result<Self, CommandCreationError>
     where
         Self: Sized,
     {
         let mut out = Self::new();
-        for v in value {
-            out.push(v.parse()?)
+        for (idx, v) in command.arguments.iter().enumerate() {
+            out.push(v.parse().map_err(|_| CommandCreationError::InvalidArgument {
+                command: command.to_string(),
+                index: idx,
+            })?)
         }
         Ok(out)
     }
 }
 
 impl<'a> FromVariadicRouteArgument<'a> for ColorU8RGB {
-    type Error = ();
-
-    fn from_variadic_route_argument(value: &ArgumentSmallVec) -> Result<Self, Self::Error>
+    fn from_variadic_route_argument(command: &Command) -> Result<Self, CommandCreationError>
     where
         Self: Sized,
     {
-        let get = |idx: usize| value.get(idx).ok_or(())?.parse::<u8>().map_err(|_| ());
+        let get = |idx: usize| {
+            command
+                .arguments
+                .get(idx)
+                .ok_or_else(|| CommandCreationError::MissingArgument {
+                    command: command.to_string(),
+                    index: idx,
+                })?
+                .parse::<u8>()
+                .map_err(|_| CommandCreationError::InvalidArgument {
+                    command: command.to_string(),
+                    index: idx,
+                })
+        };
         Ok(Self::new(get(0)?, get(1)?, get(2)?))
     }
 }
 
 impl<'a> FromVariadicRouteArgument<'a> for ColorU8RGBA {
-    type Error = ();
-
-    fn from_variadic_route_argument(value: &ArgumentSmallVec) -> Result<Self, Self::Error>
+    fn from_variadic_route_argument(command: &Command) -> Result<Self, CommandCreationError>
     where
         Self: Sized,
     {
-        let get = |idx: usize| value.get(idx).ok_or(())?.parse::<u8>().map_err(|_| ());
+        let get = |idx: usize| {
+            command
+                .arguments
+                .get(idx)
+                .ok_or_else(|| CommandCreationError::MissingArgument {
+                    command: command.to_string(),
+                    index: idx,
+                })?
+                .parse::<u8>()
+                .map_err(|_| CommandCreationError::InvalidArgument {
+                    command: command.to_string(),
+                    index: idx,
+                })
+        };
         Ok(Self::new(get(0)?, get(1)?, get(2)?, get(3)?))
     }
 }
@@ -492,11 +527,11 @@ pub struct SignalSplit {
 pub struct TrackRailStart {
     pub rail_index: NonZeroU64,
     /// unit: UnitOfDistance
-    #[command(optional)]
-    pub x_offset: Option<f32>,
+    #[command(default = "0.0")]
+    pub x_offset: f32,
     /// unit: UnitOfDistance
-    #[command(optional)]
-    pub y_offset: Option<f32>,
+    #[command(default = "0.0")]
+    pub y_offset: f32,
     #[command(optional)]
     pub rail_type: Option<u64>,
 }
@@ -505,10 +540,13 @@ pub struct TrackRailStart {
 pub struct TrackRail {
     pub rail_index: NonZeroU64,
     /// unit: UnitOfDistance
+    #[command(default = "0.0")]
     pub x_offset: f32,
     /// unit: UnitOfDistance
+    #[command(default = "0.0")]
     pub y_offset: f32,
-    pub rail_type: u64,
+    #[command(optional)]
+    pub rail_type: Option<u64>,
 }
 
 #[derive(Debug, Clone, PartialEq, FromRouteCommand)]
@@ -523,11 +561,11 @@ pub struct TrackRailType {
 pub struct TrackRailEnd {
     pub rail_index: NonZeroU64,
     /// unit: UnitOfDistance
-    #[command(optional)]
-    pub x_offset: Option<f32>,
+    #[command(default = "0.0")]
+    pub x_offset: f32,
     /// unit: UnitOfDistance
-    #[command(optional)]
-    pub y_offset: Option<f32>,
+    #[command(default = "0.0")]
+    pub y_offset: f32,
 }
 
 #[derive(Debug, Clone, PartialEq, FromRouteCommand)]
@@ -670,7 +708,9 @@ flag_enum!(ForcedRedSingleMode, u8, Unaffected = 0, Enabled = 1);
 pub struct TrackSta {
     #[command(default = "SmartString::new()")]
     pub name: SmartString<LazyCompact>,
+    #[command(default = "ArrivalTimeState::Player(None)")]
     pub arrival_time: ArrivalTimeState,
+    #[command(default = "DepartureTimeState::Regular(None)")]
     pub departure_time: DepartureTimeState,
     #[command(default = "PassAlarmMode::Silent")]
     pub pass_alarm: PassAlarmMode,
@@ -744,8 +784,10 @@ pub struct TrackStop {
 pub struct TrackForm {
     pub rail_index1: u64,
     pub rail_index2: FormRailIndex2Data,
-    pub structure_index: u64,
-    pub form_structure_index: u64,
+    #[command(optional)]
+    pub structure_index: Option<u64>,
+    #[command(optional)]
+    pub form_structure_index: Option<u64>,
 }
 
 flag_enum!(TrackLimitPostDirection, i8, Left = -1, None = 0, Right = 1);

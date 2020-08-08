@@ -1,8 +1,9 @@
+use crate::parse::route::errors::{PreprocessingError, RouteError};
 use bve_common::nom::w;
 use nom::{
     branch::alt,
     bytes::complete::{is_a, is_not, tag, tag_no_case},
-    combinator::map_res,
+    combinator::{map_res, opt},
     multi::separated_list,
     sequence::{delimited, separated_pair, tuple},
     IResult,
@@ -32,7 +33,7 @@ pub struct FileInput {
 
 pub struct FileOutput {
     pub path: String,
-    pub output: String,
+    pub contents: String,
 }
 
 // (pass -> pass2) means pass2 is applied to the result of pass
@@ -46,28 +47,31 @@ pub async fn preprocess_route<R, FileFn, FileFut>(
     content: &str,
     rng: &mut R,
     file_fn: FileFn,
-) -> String
+) -> (String, Vec<RouteError>)
 where
     R: Rng + ?Sized,
     FileFn: FnMut(FileInput) -> FileFut + Copy,
-    FileFut: Future<Output = Option<FileOutput>>,
+    FileFut: Future<Output = Result<FileOutput, PreprocessingError>>,
 {
-    let content = run_includes(file_path, content, rng, file_fn).await;
-    let content = run_if(&content, rng, &mut SubMap::new());
-    let content = run_rnd(&content, rng);
-    run_chr(&content)
+    let mut errors = Vec::new();
+    let content = run_includes(file_path, content, &mut errors, rng, file_fn).await;
+    let content = run_if(&content, &mut errors, rng, &mut SubMap::new());
+    let content = run_rnd(&content, &mut errors, rng);
+    let content = run_chr(&content, &mut errors);
+    (content, errors)
 }
 
 fn run_includes<'a, R, FileFn, FileFut>(
     file_path: &'a str,
     content: &'a str,
+    errors: &'a mut Vec<RouteError>,
     rng: &'a mut R,
     mut file_fn: FileFn,
 ) -> Pin<Box<dyn Future<Output = String> + 'a>>
 where
     R: Rng + ?Sized,
     FileFn: FnMut(FileInput) -> FileFut + Copy + 'a,
-    FileFut: Future<Output = Option<FileOutput>>,
+    FileFut: Future<Output = Result<FileOutput, PreprocessingError>>,
 {
     Box::pin(async move {
         // Content will likely get much bigger
@@ -76,9 +80,9 @@ where
         for mat in INCLUDE_REGEX.find_iter(content) {
             output.push_str(&content[last_match..mat.start()]);
             let include = &content[mat.range()];
-            let include = run_rnd(include, rng);
-            let include = run_chr(&include);
-            let chosen_opt: Option<(Include<'_>, FileOutput)> = try {
+            let include = run_rnd(include, errors, rng);
+            let include = run_chr(&include, errors);
+            let chosen_opt: Result<(Include<'_>, FileOutput), PreprocessingError> = try {
                 let parsed = parse_include(&include)?;
                 let chosen = choose_include(&parsed, rng)?;
                 (
@@ -91,14 +95,15 @@ where
                 )
             };
             let (chosen, content) = match chosen_opt {
-                Some(c) => c,
-                None => {
+                Ok(c) => c,
+                Err(error) => {
+                    errors.push(error.into());
                     last_match = mat.end();
                     continue;
                 }
             };
 
-            let recursive_processed = run_includes(&content.path, &content.output, rng, file_fn).await;
+            let recursive_processed = run_includes(&content.path, &content.contents, errors, rng, file_fn).await;
 
             output.push_str(&format!("\n%O{}%\n", chosen.offset));
             output.push_str(&recursive_processed);
@@ -111,7 +116,7 @@ where
     })
 }
 
-fn run_sub<R: Rng + ?Sized>(content: &str, rng: &mut R, sub_map: &mut SubMap) -> String {
+fn run_sub<R: Rng + ?Sized>(content: &str, errors: &mut Vec<RouteError>, rng: &mut R, sub_map: &mut SubMap) -> String {
     // Content likely gets larger
     let mut output = String::with_capacity(content.len() * 2);
     let mut last_match = 0_usize;
@@ -119,13 +124,21 @@ fn run_sub<R: Rng + ?Sized>(content: &str, rng: &mut R, sub_map: &mut SubMap) ->
         let mat = capture_set.get(0).unwrap_or_else(|| unreachable!());
         output.push_str(&content[last_match..mat.start()]);
 
-        let index_int_opt: Option<u64> = try {
-            let index = capture_set.get(1)?.as_str();
-            index.parse().ok()?
+        let index_int_opt: Result<u64, PreprocessingError> = try {
+            let index = capture_set
+                .get(1)
+                .ok_or_else(|| PreprocessingError::MalformedDirective {
+                    directive: mat.as_str().into(),
+                })?
+                .as_str();
+            index
+                .parse()
+                .map_err(|_| PreprocessingError::InvalidSubArgument { code: index.into() })?
         };
         let index_int = match index_int_opt {
-            Some(v) => v,
-            None => {
+            Ok(v) => v,
+            Err(error) => {
+                errors.push(error.into());
                 last_match = mat.end();
                 continue;
             }
@@ -137,8 +150,8 @@ fn run_sub<R: Rng + ?Sized>(content: &str, rng: &mut R, sub_map: &mut SubMap) ->
             sub_map.insert(index_int, assignment.to_string());
         } else {
             let value = sub_map.get(&index_int).map_or("", |s| s.as_str());
-            let value = run_rnd(value, rng);
-            let value = run_chr(&value);
+            let value = run_rnd(value, errors, rng);
+            let value = run_chr(&value, errors);
             output.push_str(&value);
         }
         last_match = mat.end();
@@ -148,7 +161,7 @@ fn run_sub<R: Rng + ?Sized>(content: &str, rng: &mut R, sub_map: &mut SubMap) ->
     output
 }
 
-fn run_rnd<R: Rng + ?Sized>(content: &str, rng: &mut R) -> String {
+fn run_rnd<R: Rng + ?Sized>(content: &str, errors: &mut Vec<RouteError>, rng: &mut R) -> String {
     // Content by definition only gets smaller.
     let mut output = String::with_capacity(content.len());
     let mut last_match = 0_usize;
@@ -167,6 +180,12 @@ fn run_rnd<R: Rng + ?Sized>(content: &str, rng: &mut R) -> String {
         let (begin_int, end_int): (u64, u64) = match ints_opt {
             Some(v) => v,
             None => {
+                errors.push(
+                    PreprocessingError::MalformedDirective {
+                        directive: mat.as_str().into(),
+                    }
+                    .into(),
+                );
                 last_match = mat.end();
                 continue;
             }
@@ -182,7 +201,7 @@ fn run_rnd<R: Rng + ?Sized>(content: &str, rng: &mut R) -> String {
     output
 }
 
-fn run_chr(content: &str) -> String {
+fn run_chr(content: &str, errors: &mut Vec<RouteError>) -> String {
     // Content gets a bit larger.
     let mut output = String::with_capacity(content.len() + content.len() / 16);
     let mut last_match = 0_usize;
@@ -190,10 +209,16 @@ fn run_chr(content: &str) -> String {
         let mat = capture_set.get(0).unwrap_or_else(|| unreachable!());
         output.push_str(&content[last_match..mat.start()]);
 
-        let value_opt = try { capture_set.get(1)?.as_str() };
+        let value_opt = capture_set.get(1);
         let value: &str = match value_opt {
-            Some(v) => v,
+            Some(v) => v.as_str(),
             None => {
+                errors.push(
+                    PreprocessingError::InvalidChrArgument {
+                        code: mat.as_str().into(),
+                    }
+                    .into(),
+                );
                 last_match = mat.end();
                 continue;
             }
@@ -208,7 +233,7 @@ fn run_chr(content: &str) -> String {
     output
 }
 
-fn run_if<R: Rng + ?Sized>(content: &str, rng: &mut R, sub_map: &mut SubMap) -> String {
+fn run_if<R: Rng + ?Sized>(content: &str, errors: &mut Vec<RouteError>, rng: &mut R, sub_map: &mut SubMap) -> String {
     // Content always gets smaller
     let mut output = String::with_capacity(content.len());
     let mut last_match = 0_usize;
@@ -228,12 +253,12 @@ fn run_if<R: Rng + ?Sized>(content: &str, rng: &mut R, sub_map: &mut SubMap) -> 
                     continue;
                 }
                 let previous = &content[last_match..mat.start()];
-                let previous = run_sub(previous, rng, sub_map);
+                let previous = run_sub(previous, errors, rng, sub_map);
                 output.push_str(&previous);
 
                 let statement = &content[mat.range()];
-                let statement = run_sub(statement, rng, sub_map);
-                let statement = run_rnd(&statement, rng);
+                let statement = run_sub(statement, errors, rng, sub_map);
+                let statement = run_rnd(&statement, errors, rng);
                 let bool_value = if let Some(parsed) = IF_PARSE_REGEX.captures(&statement) {
                     let bool_value_opt: Option<bool> = try {
                         let group = parsed.get(1)?;
@@ -254,7 +279,7 @@ fn run_if<R: Rng + ?Sized>(content: &str, rng: &mut R, sub_map: &mut SubMap) -> 
                 }
                 if if_value {
                     let body = &content[if_start..mat.start()];
-                    let body = run_if(body, rng, sub_map);
+                    let body = run_if(body, errors, rng, sub_map);
                     output.push_str(&body);
                 }
                 if_value = !if_value;
@@ -270,7 +295,7 @@ fn run_if<R: Rng + ?Sized>(content: &str, rng: &mut R, sub_map: &mut SubMap) -> 
                 }
                 if if_value {
                     let body = &content[if_start..mat.start()];
-                    let body = run_if(body, rng, sub_map);
+                    let body = run_if(body, errors, rng, sub_map);
                     output.push_str(&body);
                 }
             }
@@ -280,11 +305,11 @@ fn run_if<R: Rng + ?Sized>(content: &str, rng: &mut R, sub_map: &mut SubMap) -> 
     }
     if stack_depth == 0 {
         let remaining = &content[last_match..];
-        let remaining = run_sub(remaining, rng, sub_map);
+        let remaining = run_sub(remaining, errors, rng, sub_map);
         output.push_str(&remaining);
     } else if if_value {
         let remaining = &content[last_match..];
-        let remaining = run_if(remaining, rng, sub_map);
+        let remaining = run_if(remaining, errors, rng, sub_map);
         output.push_str(&remaining);
     }
 
@@ -300,22 +325,31 @@ struct Include<'a> {
     weight: i64,
 }
 
-fn choose_include<'a, R: Rng + ?Sized>(includes: &IncludeSmallVec<'a>, rng: &mut R) -> Option<Include<'a>> {
+fn choose_include<'a, R: Rng + ?Sized>(
+    includes: &IncludeSmallVec<'a>,
+    rng: &mut R,
+) -> Result<Include<'a>, PreprocessingError> {
     if includes.len() == 1 {
-        return Some(includes[0]);
+        return Ok(includes[0]);
     }
-    let index = WeightedIndex::new(includes.iter().map(|inc| inc.weight)).ok()?;
-    Some(includes[index.sample(rng)])
+    let weight_iter = includes.iter().map(|inc| inc.weight);
+    let index = WeightedIndex::new(weight_iter.clone()).map_err(|e| PreprocessingError::RandomIncludeError {
+        weights: weight_iter.collect(),
+        sub: e,
+    })?;
+    Ok(includes[index.sample(rng)])
 }
 
-fn parse_include(include: &str) -> Option<IncludeSmallVec<'_>> {
+fn parse_include(include: &str) -> Result<IncludeSmallVec<'_>, PreprocessingError> {
     delimited(
         tuple((w(tag_no_case("$include")), w(tag("(")))),
         alt((parse_weighted_include, parse_offset_include, parse_naked_include)),
-        w(tag(")")),
+        tuple((w(tag(")")), w(opt(tag(","))))),
     )(include)
     .map(|(_, v)| v)
-    .ok()
+    .map_err(|_| PreprocessingError::MalformedDirective {
+        directive: include.into(),
+    })
 }
 
 fn parse_naked_include(include: &str) -> IResult<&str, IncludeSmallVec<'_>> {
@@ -372,20 +406,25 @@ mod test {
     use super::*;
     use itertools::assert_equal;
     use rand::SeedableRng;
+    use smartstring::{LazyCompact, SmartString};
 
     fn new_rng() -> impl Rng {
         rand::rngs::StdRng::seed_from_u64(42)
     }
 
-    type NewFileFnFut = impl Future<Output = Option<FileOutput>>;
+    type NewFileFnFut = impl Future<Output = Result<FileOutput, PreprocessingError>>;
     fn new_file_fn(file_database: HashMap<String, String>) -> impl Fn(FileInput) -> NewFileFnFut {
         move |file_input| {
             let requested = file_input.requested_path;
-            let output_opt = file_database.get(&requested).map(String::clone);
+            let requested_smart: SmartString<LazyCompact> = requested[..].into();
+            let output_opt = file_database
+                .get(&requested)
+                .map(String::clone)
+                .ok_or_else(move || PreprocessingError::IncludeFileNotFound { file: requested_smart });
             async move {
-                Some(FileOutput {
+                Ok(FileOutput {
                     path: requested,
-                    output: output_opt?,
+                    contents: output_opt?,
                 })
             }
         }
@@ -394,33 +433,52 @@ mod test {
     static PREPROCESSING_VALIDATION: Lazy<Regex> =
         Lazy::new(|| Regex::new(r#"(?i)(include|if|else|endif|sub|rnd|chr)"#).expect("invalid regex"));
 
+    macro_rules! errors_assert_eq {
+        ($errors:expr, $left:expr, $right:expr) => {
+            assert_eq!($left, $right);
+            assert!($errors.is_empty(), "{:?}", $errors);
+        };
+    }
+
     #[test]
     fn chr() {
-        assert_eq!(run_chr("$chr(10)"), "%C10%");
-        assert_eq!(run_chr("$chr(13)"), "%C13%");
-        assert_eq!(run_chr("$CHR ( 13 )"), "%C13%");
+        let mut errors = Vec::new();
+        errors_assert_eq!(errors, run_chr("$chr(10)", &mut errors), "%C10%");
+        errors_assert_eq!(errors, run_chr("$chr(13)", &mut errors), "%C13%");
+        errors_assert_eq!(errors, run_chr("$CHR ( 13 )", &mut errors), "%C13%");
     }
 
     #[test]
     fn rnd() {
-        assert_eq!(run_rnd("$rnd(1; 6)", &mut new_rng()), "4");
-        assert_eq!(run_rnd("$RND ( 1 ; 6 )", &mut new_rng()), "4");
-        assert_eq!(run_rnd("$rnd(1;1)", &mut new_rng()), "1");
+        let mut errors = Vec::new();
+        errors_assert_eq!(errors, run_rnd("$rnd(1; 6)", &mut errors, &mut new_rng()), "4");
+        errors_assert_eq!(errors, run_rnd("$RND ( 1 ; 6 )", &mut errors, &mut new_rng()), "4");
+        errors_assert_eq!(errors, run_rnd("$rnd(1;1)", &mut errors, &mut new_rng()), "1");
     }
 
     #[test]
     fn sub() {
-        assert_eq!(
-            run_sub("$sub(0) = hi\n$sub(0)", &mut new_rng(), &mut SubMap::new()),
+        let mut errors = Vec::new();
+        errors_assert_eq!(
+            errors,
+            run_sub("$sub(0) = hi\n$sub(0)", &mut errors, &mut new_rng(), &mut SubMap::new()),
             "\nhi"
         );
-        assert_eq!(
-            run_sub("$sub ( 0 ) = hi\n$sub ( 0 )", &mut new_rng(), &mut SubMap::new()),
+        errors_assert_eq!(
+            errors,
+            run_sub(
+                "$sub ( 0 ) = hi\n$sub ( 0 )",
+                &mut errors,
+                &mut new_rng(),
+                &mut SubMap::new()
+            ),
             "\nhi"
         );
-        assert_eq!(
+        errors_assert_eq!(
+            errors,
             run_sub(
                 "$sub(0) = hi\n$sub(0) = bye\n$sub(0)",
+                &mut errors,
                 &mut new_rng(),
                 &mut SubMap::new()
             ),
@@ -430,63 +488,97 @@ mod test {
 
     #[test]
     fn i_f() {
-        assert_eq!(
+        let mut errors = Vec::new();
+        errors_assert_eq!(
+            errors,
             run_if(
                 "$if(1)\ntrue\n$else()\nfalse\n$endif()",
+                &mut errors,
                 &mut new_rng(),
                 &mut SubMap::new()
             ),
             "\ntrue\n"
         );
-        assert_eq!(
+        errors_assert_eq!(
+            errors,
             run_if(
                 "$if(0)\ntrue\n$else()\nfalse\n$endif()",
+                &mut errors,
                 &mut new_rng(),
                 &mut SubMap::new()
             ),
             "\nfalse\n"
         );
-        assert_eq!(
+        errors_assert_eq!(
+            errors,
             run_if(
                 "$if($rnd(1;1))\ntrue\n$else()\nfalse\n$endif()",
+                &mut errors,
                 &mut new_rng(),
                 &mut SubMap::new()
             ),
             "\ntrue\n"
         );
-        assert_eq!(
+        errors_assert_eq!(
+            errors,
             run_if(
                 "$if($rnd(0;0))\ntrue\n$else()\nfalse\n$endif()",
+                &mut errors,
                 &mut new_rng(),
                 &mut SubMap::new()
             ),
             "\nfalse\n"
         );
-        assert_eq!(run_if("$if(1)\ntrue\n", &mut new_rng(), &mut SubMap::new()), "\ntrue\n");
-        assert_eq!(run_if("$if(0)\nfalse\n", &mut new_rng(), &mut SubMap::new()), "");
-        assert_eq!(
-            run_if("$if(1)\ntrue\n$else()\nfalse\n", &mut new_rng(), &mut SubMap::new()),
+        errors_assert_eq!(
+            errors,
+            run_if("$if(1)\ntrue\n", &mut errors, &mut new_rng(), &mut SubMap::new()),
             "\ntrue\n"
         );
-        assert_eq!(
-            run_if("$if(0)\nfalse\n$else()\ntrue\n", &mut new_rng(), &mut SubMap::new()),
+        errors_assert_eq!(
+            errors,
+            run_if("$if(0)\nfalse\n", &mut errors, &mut new_rng(), &mut SubMap::new()),
+            ""
+        );
+        errors_assert_eq!(
+            errors,
+            run_if(
+                "$if(1)\ntrue\n$else()\nfalse\n",
+                &mut errors,
+                &mut new_rng(),
+                &mut SubMap::new()
+            ),
+            "\ntrue\n"
+        );
+        errors_assert_eq!(
+            errors,
+            run_if(
+                "$if(0)\nfalse\n$else()\ntrue\n",
+                &mut errors,
+                &mut new_rng(),
+                &mut SubMap::new()
+            ),
             "\ntrue\n"
         );
     }
 
     #[test]
     fn nested_if() {
-        assert_eq!(
+        let mut errors = Vec::new();
+        errors_assert_eq!(
+            errors,
             run_if(
                 "$if(1)\n$if(1)\ntrue\n$endif()\n$else()\n$if(1)\nfalse\n$endif()\n$endif()",
+                &mut errors,
                 &mut new_rng(),
                 &mut SubMap::new()
             ),
             "\n\ntrue\n\n"
         );
-        assert_eq!(
+        errors_assert_eq!(
+            errors,
             run_if(
                 "$if(0)\n$if(1)\ntrue\n$endif()\n$else()\n$if(1)\nfalse\n$endif()\n$endif()",
+                &mut errors,
                 &mut new_rng(),
                 &mut SubMap::new()
             ),
@@ -497,6 +589,8 @@ mod test {
     #[test]
     #[allow(clippy::shadow_unrelated)]
     fn if_sub_integration() {
+        let mut errors = Vec::new();
+
         let input_positive: &str = indoc::indoc!(
             r"
             $sub(0) = 1
@@ -517,7 +611,7 @@ mod test {
             $endif()
         "
         );
-        let processed = run_if(input_positive, &mut new_rng(), &mut SubMap::new());
+        let processed = run_if(input_positive, &mut errors, &mut new_rng(), &mut SubMap::new());
         assert!(processed.contains("true"), "output missing true: {}", processed);
         assert!(!processed.contains("false"), "output contains false: {}", processed);
         assert!(
@@ -525,8 +619,9 @@ mod test {
             "contains preprocessing directives: {}",
             processed
         );
+        assert!(errors.is_empty(), "{:?}", errors);
 
-        let processed = run_if(input_negative, &mut new_rng(), &mut SubMap::new());
+        let processed = run_if(input_negative, &mut errors, &mut new_rng(), &mut SubMap::new());
         assert!(processed.contains("false"), "output missing false: {}", processed);
         assert!(!processed.contains("true"), "output contains true: {}", processed);
         assert!(
@@ -534,6 +629,7 @@ mod test {
             "contains preprocessing directives: {}",
             processed
         );
+        assert!(errors.is_empty(), "{:?}", errors);
 
         let input_positive: &str = indoc::indoc!(
             r"
@@ -555,7 +651,7 @@ mod test {
             $sub(0)
         "
         );
-        let processed = run_if(input_positive, &mut new_rng(), &mut SubMap::new());
+        let processed = run_if(input_positive, &mut errors, &mut new_rng(), &mut SubMap::new());
         assert!(processed.contains("true"), "output missing true: {}", processed);
         assert!(!processed.contains("false"), "output contains false: {}", processed);
         assert!(
@@ -563,8 +659,9 @@ mod test {
             "contains preprocessing directives: {}",
             processed
         );
+        assert!(errors.is_empty(), "{:?}", errors);
 
-        let processed = run_if(input_negative, &mut new_rng(), &mut SubMap::new());
+        let processed = run_if(input_negative, &mut errors, &mut new_rng(), &mut SubMap::new());
         assert!(processed.contains("false"), "output missing false: {}", processed);
         assert!(!processed.contains("true"), "output contains true: {}", processed);
         assert!(
@@ -572,10 +669,13 @@ mod test {
             "contains preprocessing directives: {}",
             processed
         );
+        assert!(errors.is_empty(), "{:?}", errors);
     }
 
     #[test]
     fn if_sub_rnd_integration() {
+        let mut errors = Vec::new();
+
         let input_positive: &str = indoc::indoc!(
             r"
             $sub(1) = $rnd(1;4)
@@ -598,7 +698,7 @@ mod test {
             $sub(0)
         "
         );
-        let processed = run_if(input_positive, &mut new_rng(), &mut SubMap::new());
+        let processed = run_if(input_positive, &mut errors, &mut new_rng(), &mut SubMap::new());
         assert!(processed.contains("true"), "output missing true: {}", processed);
         assert!(!processed.contains("false"), "output contains false: {}", processed);
         assert!(
@@ -606,8 +706,9 @@ mod test {
             "contains preprocessing directives: {}",
             processed
         );
+        assert!(errors.is_empty(), "{:?}", errors);
 
-        let processed = run_if(input_negative, &mut new_rng(), &mut SubMap::new());
+        let processed = run_if(input_negative, &mut errors, &mut new_rng(), &mut SubMap::new());
         assert!(processed.contains("false"), "output missing false: {}", processed);
         assert!(!processed.contains("true"), "output contains true: {}", processed);
         assert!(
@@ -615,6 +716,7 @@ mod test {
             "contains preprocessing directives: {}",
             processed
         );
+        assert!(errors.is_empty(), "{:?}", errors);
     }
 
     #[test]
@@ -682,6 +784,7 @@ mod test {
             String::from("file1") => String::from("contents1"),
         };
 
+        let mut errors = Vec::new();
         let file_fn = new_file_fn(file_database);
         let mut rng = new_rng();
 
@@ -691,7 +794,7 @@ mod test {
         "
         );
 
-        let processed: String = run_includes("", input, &mut rng, &file_fn).await;
+        let processed: String = run_includes("", input, &mut errors, &mut rng, &file_fn).await;
         assert!(
             processed.contains("contents1"),
             "output missing contents: {}",
@@ -702,6 +805,27 @@ mod test {
             "contains preprocessing directives: {}",
             processed
         );
+        assert!(errors.is_empty(), "{:?}", errors);
+
+        // With a trailing comma this time
+        let input: &str = indoc::indoc!(
+            r"
+            $include(file1),
+        "
+        );
+
+        let processed: String = run_includes("", input, &mut errors, &mut rng, &file_fn).await;
+        assert!(
+            processed.contains("contents1"),
+            "output missing contents: {}",
+            processed
+        );
+        assert!(
+            !PREPROCESSING_VALIDATION.is_match(&processed),
+            "contains preprocessing directives: {}",
+            processed
+        );
+        assert!(errors.is_empty(), "{:?}", errors);
     }
 
     #[async_std::test]
@@ -710,6 +834,7 @@ mod test {
             String::from("file1") => String::from("contents1"),
         };
 
+        let mut errors = Vec::new();
         let file_fn = new_file_fn(file_database);
         let mut rng = new_rng();
 
@@ -719,7 +844,7 @@ mod test {
         "
         );
 
-        let processed: String = run_includes("", input, &mut rng, &file_fn).await;
+        let processed: String = run_includes("", input, &mut errors, &mut rng, &file_fn).await;
         assert!(
             processed.contains("contents1"),
             "output missing contents: {}",
@@ -736,6 +861,7 @@ mod test {
             "contains preprocessing directives: {}",
             processed
         );
+        assert!(errors.is_empty(), "{:?}", errors);
     }
 
     #[async_std::test]
@@ -745,6 +871,7 @@ mod test {
             String::from("file2") => String::from("contents2"),
         };
 
+        let mut errors = Vec::new();
         let file_fn = new_file_fn(file_database);
         let mut rng = new_rng();
 
@@ -759,7 +886,7 @@ mod test {
         "
         );
 
-        let processed: String = run_includes("", positive_input, &mut rng, &file_fn).await;
+        let processed: String = run_includes("", positive_input, &mut errors, &mut rng, &file_fn).await;
         assert!(
             processed.contains("contents1"),
             "output missing contents: {}",
@@ -770,8 +897,9 @@ mod test {
             "contains preprocessing directives: {}",
             processed
         );
+        assert!(errors.is_empty(), "{:?}", errors);
 
-        let processed: String = run_includes("", negative_input, &mut rng, &file_fn).await;
+        let processed: String = run_includes("", negative_input, &mut errors, &mut rng, &file_fn).await;
         assert!(
             processed.contains("contents2"),
             "output missing contents: {}",
@@ -782,6 +910,7 @@ mod test {
             "contains preprocessing directives: {}",
             processed
         );
+        assert!(errors.is_empty(), "{:?}", errors);
     }
 
     #[async_std::test]
@@ -791,6 +920,7 @@ mod test {
             String::from("file2") => String::from("contents2"),
         };
 
+        let mut errors = Vec::new();
         let file_fn = new_file_fn(file_database);
         let mut rng = new_rng();
 
@@ -800,7 +930,7 @@ mod test {
         "
         );
 
-        let processed: String = run_includes("", input, &mut rng, &file_fn).await;
+        let processed: String = run_includes("", input, &mut errors, &mut rng, &file_fn).await;
         assert!(
             processed.contains("contents1"),
             "output missing contents: {}",
@@ -816,6 +946,7 @@ mod test {
             "contains preprocessing directives: {}",
             processed
         );
+        assert!(errors.is_empty(), "{:?}", errors);
     }
 
     #[async_std::test]
@@ -834,7 +965,7 @@ mod test {
         "
         );
 
-        let processed: String = preprocess_route("", input, &mut rng, &file_fn).await;
+        let (processed, errors) = preprocess_route("", input, &mut rng, &file_fn).await;
         assert!(
             processed.contains("contents1"),
             "output missing contents: {}",
@@ -845,5 +976,6 @@ mod test {
             "contains preprocessing directives: {}",
             processed
         );
+        assert!(errors.is_empty(), "{:?}", errors);
     }
 }

@@ -15,6 +15,7 @@ keywords = ["bve", "serialization", "simulation"]
 
 [dependencies]
 async-std = "1.5"
+async-trait = "0.1"
 bve-common = { version = "0.0.1", path = "../bve-common", features = ["iter", "nom"]}
 bve-derive = { version = "0.0.1", path = "../bve-derive" }
 chardetng = "0.1"

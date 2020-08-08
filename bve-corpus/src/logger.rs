@@ -46,7 +46,13 @@ pub fn receive_results(options: &Options, result_source: Receiver<FileResult>) {
                         path: result.path.clone(),
                         issues: warnings
                             .into_iter()
-                            .map(|err| format!("{} - {}", err.line, err.description_english))
+                            .map(|err| {
+                                format!(
+                                    "{} - {}",
+                                    err.line.map(|v| v.to_string()).as_deref().unwrap_or("None"),
+                                    err.description_english
+                                )
+                            })
                             .collect(),
                     })
                 }
@@ -56,7 +62,13 @@ pub fn receive_results(options: &Options, result_source: Receiver<FileResult>) {
                         path: result.path.clone(),
                         issues: errors
                             .into_iter()
-                            .map(|err| format!("{} - {}", err.line, err.description_english))
+                            .map(|err| {
+                                format!(
+                                    "{} - {}",
+                                    err.line.map(|v| v.to_string()).as_deref().unwrap_or("None"),
+                                    err.description_english
+                                )
+                            })
                             .collect(),
                     })
                 }

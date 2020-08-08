@@ -2,7 +2,7 @@ use crate::helpers::combine_token_streams;
 use darling::FromField;
 use proc_macro::TokenStream;
 use proc_macro2::Ident;
-use syn::{export::TokenStream2, Expr, ItemStruct, Type};
+use syn::{Expr, ItemStruct, Type};
 
 #[derive(Debug, FromField)]
 #[darling(attributes(command))]
@@ -37,34 +37,27 @@ pub fn from_route_command(stream: TokenStream) -> TokenStream {
         let ty = f.ty.clone();
         let index = f.index;
         let optional = f.optional;
-        let optional_type = if f.optional {
-            quote::quote! {#ty}
-        } else {
-            quote::quote! {Option<#ty>}
-        };
-        let defaulted = f.default.map_or_else(|| if optional {
-            TokenStream2::new()
-        } else {
-            quote::quote! {?}
-        }, |string| {
+        let defaulted = f.default.map_or_else(|| quote::quote! {?}, |string| {
             let expr: Expr = syn::parse_str(&string).expect("Could not parse default expression");
 
             quote::quote! {
-                .unwrap_or_else(|| #expr)
+                .unwrap_or_else(|_| #expr)
             }
         });
         if index {
-            assert!(!f.variadic, "Structs can't be indices and variadic");
+            assert!(!f.variadic, "Fields can't be indices and variadic");
+            assert!(!f.optional, "Fields can't be indices and optional");
             let idx = index_count;
             index_count += 1;
             let len = index_count;
             quote::quote! {
                 #ident: {
-                    let value: #optional_type  = try {
+                    let value: Result<#ty, crate::parse::route::errors::CommandCreationError> = try {
                         if command.indices.len() >= #len {
-                            ::std::convert::TryFrom::try_from(command.indices[#idx]?).ok()?
+                            let index = command.indices[#idx].ok_or_else(|| crate::parse::route::errors::CommandCreationError::MissingIndex { command: command.to_string(), index: #idx })?;
+                            ::std::convert::TryFrom::try_from(index).map_err(|_| crate::parse::route::errors::CommandCreationError::InvalidIndex { command: command.to_string(), index: #idx })?
                         } else {
-                            None?
+                            Err(crate::parse::route::errors::CommandCreationError::MissingIndex { command: command.to_string(), index: #idx })?
                         }
                     };
                     value #defaulted
@@ -72,7 +65,10 @@ pub fn from_route_command(stream: TokenStream) -> TokenStream {
             }
         } else if f.suffix {
             quote::quote! {
-                #ident: ::std::str::FromStr::from_str(&command.suffix?).ok()?,
+                #ident: {
+                    let suffix = command.suffix.as_ref().ok_or_else(|| crate::parse::route::errors::CommandCreationError::MissingSuffix { command: command.to_string() })?;
+                    ::std::str::FromStr::from_str(suffix).map_err(|_| crate::parse::route::errors::CommandCreationError::InvalidSuffix { command: command.to_string() })?
+                },
             }
         } else if f.ignore {
             quote::quote! {
@@ -80,35 +76,51 @@ pub fn from_route_command(stream: TokenStream) -> TokenStream {
             }
         } else if f.variadic {
             quote::quote! {
-                    #ident: crate::parse::route::ir::FromVariadicRouteArgument::from_variadic_route_argument(&command.arguments).ok() #defaulted,
-                }
+                #ident: crate::parse::route::ir::FromVariadicRouteArgument::from_variadic_route_argument(&command) #defaulted,
+            }
         } else {
             let idx = argument_count;
             argument_count += 1;
             let len = argument_count;
-            quote::quote! {
+            if optional {
+                quote::quote! {
                     #ident: {
-                        let value: #optional_type = try {
+                        let value: #ty = {
                             if command.indices.len() >= #len {
-                                ::std::str::FromStr::from_str(&command.arguments[#idx]).ok()?
+                                ::std::str::FromStr::from_str(&command.arguments[#idx]).ok()
                             } else {
-                                None?
+                                None
+                            }
+                        };
+                        value
+                    },
+                }
+            }
+            else {
+                quote::quote! {
+                    #ident: {
+                        let value: Result<#ty, crate::parse::route::errors::CommandCreationError> = try {
+                            if command.arguments.len() >= #len {
+                                ::std::str::FromStr::from_str(&command.arguments[#idx]).map_err(|_| crate::parse::route::errors::CommandCreationError::InvalidArgument { command: command.to_string(), index: #idx })?
+                            } else {
+                                Err(crate::parse::route::errors::CommandCreationError::MissingArgument { command: command.to_string(), index: #idx })?
                             }
                         };
                         value #defaulted
                     },
                 }
+            }
         }
     }));
 
     let output = quote::quote! {
         #[automatically_derived]
         impl crate::parse::route::ir::FromRouteCommand for #ident {
-            fn from_route_command(command: crate::parse::route::parser::Command) -> Option<Self>
+            fn from_route_command(command: crate::parse::route::parser::Command) -> Result<Self, crate::parse::route::errors::CommandCreationError>
             where
                 Self: Sized
             {
-                Some(Self {
+                Ok(Self {
                     #members
                 })
             }

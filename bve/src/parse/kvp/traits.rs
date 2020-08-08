@@ -25,8 +25,8 @@ impl UserError for KVPGenericWarning {
         UserErrorCategory::Warning
     }
 
-    fn line(&self) -> u64 {
-        self.span.line.unwrap_or(0)
+    fn line(&self) -> Option<u64> {
+        self.span.line
     }
 
     fn description(&self, en: ForceEnglish) -> String {

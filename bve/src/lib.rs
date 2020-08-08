@@ -46,6 +46,7 @@
 #![allow(clippy::multiple_inherent_impl)]
 #![allow(clippy::non_ascii_literal)]
 #![allow(clippy::panic)]
+#![allow(clippy::type_repetition_in_bounds)] // async_trait needs this
 #![allow(clippy::single_match_else)] // I like matches
 #![allow(clippy::similar_names)]
 #![allow(clippy::shadow_reuse)]

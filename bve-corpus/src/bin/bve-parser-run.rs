@@ -11,9 +11,10 @@ use bve::{
         mesh::{ParsedStaticObjectB3D, ParsedStaticObjectCSV},
         panel1_cfg::ParsedPanel1Cfg,
         panel2_cfg::ParsedPanel2Cfg,
+        route::ParsedRoute,
         sound_cfg::ParsedSoundCfg,
         train_dat::ParsedTrainDat,
-        FileParser, ParserResult, PrettyPrintResult, UserError,
+        FileAwareFileParser, ParserResult, PrettyPrintResult, UserError,
     },
 };
 use log::{error, info, warn};
@@ -24,6 +25,7 @@ pub enum FileType {
     AtsCfg,
     B3D,
     CSV,
+    RouteCsv,
     Animated,
     TrainDat,
     ExtensionsCfg,
@@ -41,6 +43,7 @@ impl FromStr for FileType {
             "ats" | "ats.cfg" => Self::AtsCfg,
             "b3d" => Self::B3D,
             "csv-mesh" => Self::CSV,
+            "route-csv" => Self::RouteCsv,
             "anim" | "animated" => Self::Animated,
             "train" | "train.dat" => Self::TrainDat,
             "ext" | "extensions.cfg" => Self::ExtensionsCfg,
@@ -74,6 +77,7 @@ General Options:
                ats[.cfg]
                b3d
                csv-mesh
+               route-csv
                anim[ated]
                train[.dat]
                ext[ensions.cfg]
@@ -144,7 +148,7 @@ impl Arguments {
     }
 }
 
-async fn parse_file<T: FileParser>(source: &Path, options: &Arguments) {
+async fn parse_file<T: FileAwareFileParser>(source: &Path, options: &Arguments) {
     let contents = read_convert_utf8(source).await.expect("Must be able to read file");
 
     let start = Instant::now();
@@ -152,7 +156,7 @@ async fn parse_file<T: FileParser>(source: &Path, options: &Arguments) {
         output,
         warnings,
         errors,
-    } = T::parse_from(&contents);
+    } = T::file_aware_parse_from(std::iter::empty::<&Path>(), &source.to_string_lossy(), &contents).await;
     let duration = Instant::now() - start;
 
     info!("Duration: {:.4}", duration.as_secs_f32());
@@ -167,7 +171,11 @@ async fn parse_file<T: FileParser>(source: &Path, options: &Arguments) {
         info!("Warnings:");
         for w in warnings {
             let w = w.to_data();
-            warn!("\t{} {:?}", w.line, w.description_english);
+            warn!(
+                "\t{} {:?}",
+                w.line.map(|v| v.to_string()).as_deref().unwrap_or("None"),
+                w.description_english
+            );
         }
     } else {
         info!("Warnings: {}", warnings.len());
@@ -176,7 +184,11 @@ async fn parse_file<T: FileParser>(source: &Path, options: &Arguments) {
         info!("Errors:");
         for e in errors {
             let e = e.to_data();
-            error!("\t{} {:?}", e.line, e.description_english);
+            error!(
+                "\t{} {:?}",
+                e.line.map(|v| v.to_string()).as_deref().unwrap_or("None"),
+                e.description_english
+            );
         }
     } else {
         info!("Errors: {}", errors.len());
@@ -192,6 +204,7 @@ fn main() {
         FileType::AtsCfg => block_on(parse_file::<ParsedAtsConfig>(&options.source_file, &options)),
         FileType::B3D => block_on(parse_file::<ParsedStaticObjectB3D>(&options.source_file, &options)),
         FileType::CSV => block_on(parse_file::<ParsedStaticObjectCSV>(&options.source_file, &options)),
+        FileType::RouteCsv => block_on(parse_file::<ParsedRoute>(&options.source_file, &options)),
         FileType::Animated => block_on(parse_file::<ParsedAnimatedObject>(&options.source_file, &options)),
         FileType::TrainDat => block_on(parse_file::<ParsedTrainDat>(&options.source_file, &options)),
         FileType::ExtensionsCfg => block_on(parse_file::<ParsedExtensionsCfg>(&options.source_file, &options)),
