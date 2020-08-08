@@ -36,4 +36,4 @@ lto = "thin"
 inherits = "release"
 debug = true
 debug-assertions = false
-lto = true
+lto = "thin"
