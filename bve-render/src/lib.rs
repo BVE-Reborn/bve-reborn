@@ -73,7 +73,7 @@ use itertools::Itertools;
 use log::{debug, error, info};
 use num_traits::{ToPrimitive, Zero};
 use slotmap::{DefaultKey, SlotMap};
-use std::{mem::size_of, sync::Arc, time::Instant};
+use std::{mem::size_of, num::NonZeroU8, sync::Arc, time::Instant};
 use wgpu::*;
 use winit::{dpi::PhysicalSize, window::Window};
 use zerocopy::{AsBytes, FromBytes};
@@ -171,13 +171,10 @@ impl Renderer {
         let instance = Instance::new(BackendBit::VULKAN | BackendBit::METAL);
         let surface = unsafe { instance.create_surface(window) };
         let adapter = instance
-            .request_adapter(
-                &RequestAdapterOptions {
-                    power_preference: PowerPreference::HighPerformance,
-                    compatible_surface: Some(&surface),
-                },
-                UnsafeFeatures::disallow(),
-            )
+            .request_adapter(&RequestAdapterOptions {
+                power_preference: PowerPreference::HighPerformance,
+                compatible_surface: Some(&surface),
+            })
             .await
             .expect("Could not create Adapter");
 
@@ -226,9 +223,8 @@ impl Renderer {
             lod_min_clamp: -100.0,
             lod_max_clamp: 100.0,
             compare: None,
-            anisotropy_clamp: Some(16),
+            anisotropy_clamp: NonZeroU8::new(16),
             label: Some("primary texture sampler"),
-            ..Default::default()
         });
 
         let framebuffer = render::create_framebuffer(&device, screen_size, samples);
@@ -250,18 +246,30 @@ impl Renderer {
         );
 
         let texture_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            bindings: &[
-                BindGroupLayoutEntry::new(0, ShaderStage::FRAGMENT, BindingType::SampledTexture {
-                    multisampled: false,
-                    component_type: TextureComponentType::Uint,
-                    dimension: TextureViewDimension::D2,
-                }),
-                BindGroupLayoutEntry::new(1, ShaderStage::FRAGMENT, BindingType::Sampler { comparison: false }),
+            entries: &[
+                BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: ShaderStage::FRAGMENT,
+                    ty: BindingType::SampledTexture {
+                        multisampled: false,
+                        component_type: TextureComponentType::Uint,
+                        dimension: TextureViewDimension::D2,
+                    },
+                    count: None,
+                },
+                BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: ShaderStage::FRAGMENT,
+                    ty: BindingType::Sampler { comparison: false },
+                    count: None,
+                },
             ],
             label: Some("texture and sampler"),
         });
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
+            label: Some("standard layout"),
             bind_group_layouts: &[&texture_bind_group_layout, cluster_renderer.bind_group_layout()],
+            push_constant_ranges: &[],
         });
 
         let opaque_pipeline = render::create_pipeline(&device, &pipeline_layout, &vs_module, &fs_module, samples);

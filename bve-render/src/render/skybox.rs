@@ -15,7 +15,8 @@ fn create_pipeline(device: &Device, pipeline_layout: &PipelineLayout, samples: M
     let vs = shader!(device; skybox - vert);
     let fs = shader!(device; skybox - frag);
     device.create_render_pipeline(&RenderPipelineDescriptor {
-        layout: pipeline_layout,
+        label: Some("skybox pipeline"),
+        layout: Some(pipeline_layout),
         vertex_stage: ProgrammableStageDescriptor {
             module: &vs,
             entry_point: "main",
@@ -27,6 +28,7 @@ fn create_pipeline(device: &Device, pipeline_layout: &PipelineLayout, samples: M
         rasterization_state: Some(RasterizationStateDescriptor {
             front_face: FrontFace::Ccw,
             cull_mode: CullMode::Back,
+            clamp_depth: false,
             depth_bias: 0,
             depth_bias_slope_scale: 0.0,
             depth_bias_clamp: 0.0,
@@ -42,10 +44,7 @@ fn create_pipeline(device: &Device, pipeline_layout: &PipelineLayout, samples: M
             format: TextureFormat::Depth32Float,
             depth_write_enabled: false,
             depth_compare: CompareFunction::GreaterEqual,
-            stencil_front: StencilStateFaceDescriptor::IGNORE,
-            stencil_back: StencilStateFaceDescriptor::IGNORE,
-            stencil_read_mask: 0,
-            stencil_write_mask: 0,
+            stencil: StencilStateDescriptor::default(),
         }),
         vertex_state: VertexStateDescriptor {
             index_format: IndexFormat::Uint32,
@@ -81,19 +80,22 @@ impl Skybox {
         samples: MSAASetting,
     ) -> Self {
         let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            bindings: &[BindGroupLayoutEntry::new(
-                0,
-                ShaderStage::FRAGMENT,
-                BindingType::UniformBuffer {
+            entries: &[BindGroupLayoutEntry {
+                binding: 0,
+                visibility: ShaderStage::FRAGMENT,
+                ty: BindingType::UniformBuffer {
                     dynamic: false,
                     min_binding_size: None,
                 },
-            )],
+                count: None,
+            }],
             label: Some("skybox"),
         });
 
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
+            label: Some("skybox pipeline layout"),
             bind_group_layouts: &[&bind_group_layout, texture_bind_group_layout],
+            push_constant_ranges: &[],
         });
         let pipeline = create_pipeline(device, &pipeline_layout, samples);
 
@@ -145,7 +147,7 @@ impl Skybox {
                 .create_bind_group(&self.uniform_buffer, true, move |uniform_buffer| {
                     device.create_bind_group(&BindGroupDescriptor {
                         layout: bind_group_layout,
-                        bindings: &[Binding {
+                        entries: &[BindGroupEntry {
                             binding: 0,
                             resource: BindingResource::Buffer(uniform_buffer.inner.slice(..)),
                         }],

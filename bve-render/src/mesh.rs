@@ -1,6 +1,7 @@
 use crate::*;
 use glam::Vec3A;
 use log::trace;
+use wgpu::util::{BufferInitDescriptor, DeviceExt};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MeshHandle(pub(crate) DefaultKey);
@@ -100,12 +101,16 @@ impl Renderer {
             .collect_vec();
         let (vertices, indices) = convert_mesh_verts_to_render_verts(mesh_verts, indices);
 
-        let vertex_buffer = self
-            .device
-            .create_buffer_with_data(vertices.as_bytes(), BufferUsage::VERTEX);
-        let index_buffer = self
-            .device
-            .create_buffer_with_data(indices.as_bytes(), BufferUsage::INDEX);
+        let vertex_buffer = self.device.create_buffer_init(&BufferInitDescriptor {
+            label: None,
+            contents: vertices.as_bytes(),
+            usage: BufferUsage::VERTEX,
+        });
+        let index_buffer = self.device.create_buffer_init(&BufferInitDescriptor {
+            label: None,
+            contents: indices.as_bytes(),
+            usage: BufferUsage::INDEX,
+        });
 
         let mesh_center_offset = find_mesh_center(&vertices);
         let mesh_bounding_sphere_radius = find_mesh_bounding_sphere_radius(mesh_center_offset, &vertices);

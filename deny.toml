@@ -18,6 +18,13 @@ skip = [
     { name = "miniz_oxide", version = "0.3.7" }, # png uses old version
     { name = "core-foundation", version = "0.7.0" }, # winit uses old version
     { name = "core-foundation-sys", version = "0.7.0" }, # winit uses old version
+    # parking_lot
+    { name = "parking_lot", version = "0.10" },
+    { name = "parking_lot_core", version = "0.7.2" },
+    { name = "lock_api", version = "0.3.4" },
+    { name = "cloudabi", version = "0.0.3" },
+    # async-std
+    { name = "parking", version = "1.0.6" },
 ]
 
 [advisories]

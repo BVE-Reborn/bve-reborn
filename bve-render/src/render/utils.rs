@@ -42,7 +42,8 @@ pub fn create_pipeline(
 ) -> RenderPipeline {
     debug!("Creating opaque pipeline: samples: {}", samples as u8);
     device.create_render_pipeline(&RenderPipelineDescriptor {
-        layout,
+        label: Some("opaque pipeline"),
+        layout: Some(layout),
         vertex_stage: ProgrammableStageDescriptor {
             module: vs,
             entry_point: "main",
@@ -54,6 +55,7 @@ pub fn create_pipeline(
         rasterization_state: Some(RasterizationStateDescriptor {
             front_face: FrontFace::Cw,
             cull_mode: CullMode::Back,
+            clamp_depth: false,
             depth_bias: 0,
             depth_bias_slope_scale: 0.0,
             depth_bias_clamp: 0.0,
@@ -69,10 +71,7 @@ pub fn create_pipeline(
             format: TextureFormat::Depth32Float,
             depth_write_enabled: true,
             depth_compare: CompareFunction::GreaterEqual,
-            stencil_front: StencilStateFaceDescriptor::IGNORE,
-            stencil_back: StencilStateFaceDescriptor::IGNORE,
-            stencil_read_mask: 0,
-            stencil_write_mask: 0,
+            stencil: StencilStateDescriptor::default()
         }),
         vertex_state: VertexStateDescriptor {
             index_format: IndexFormat::Uint32,
@@ -113,7 +112,7 @@ pub fn create_depth_buffer(device: &Device, size: PhysicalSize<u32>, samples: MS
         usage: TextureUsage::OUTPUT_ATTACHMENT,
         label: Some("depth buffer"),
     });
-    depth_texture.create_default_view()
+    depth_texture.create_view(&TextureViewDescriptor::default())
 }
 
 pub fn create_framebuffer(device: &Device, size: PhysicalSize<u32>, samples: MSAASetting) -> TextureView {
@@ -136,7 +135,7 @@ pub fn create_framebuffer(device: &Device, size: PhysicalSize<u32>, samples: MSA
         usage: TextureUsage::OUTPUT_ATTACHMENT | TextureUsage::SAMPLED,
         label: Some("framebuffer"),
     });
-    tex.create_default_view()
+    tex.create_view(&TextureViewDescriptor::default())
 }
 
 pub fn create_swapchain_descriptor(screen_size: PhysicalSize<u32>, vsync: Vsync) -> SwapChainDescriptor {

@@ -16,8 +16,6 @@ members = [
 ]
 
 [patch.crates-io]
-# Override for hashbrown
-hecs = { version = "0.2.12", git = "https://github.com/Ralith/hecs.git", rev = "79405e773c304f9f0f6d21b89a8982438f700adb" }
 
 [profile.opt-dev]
 inherits = "dev"

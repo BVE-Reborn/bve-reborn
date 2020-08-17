@@ -1,5 +1,6 @@
 use crate::{screenspace::ScreenSpaceVertex, *};
 use log::debug;
+use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use zerocopy::AsBytes;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -61,7 +62,8 @@ fn create_pipeline_pass1(
     debug!("Creating OIT pass1 pipeline: samples = {}", samples as u8);
     let oit1_module = shader!(device; oit_pass1 - frag);
     device.create_render_pipeline(&RenderPipelineDescriptor {
-        layout: pipeline_layout,
+        label: Some("OIT1 pipeline"),
+        layout: Some(pipeline_layout),
         vertex_stage: ProgrammableStageDescriptor {
             module: vert,
             entry_point: "main",
@@ -73,6 +75,7 @@ fn create_pipeline_pass1(
         rasterization_state: Some(RasterizationStateDescriptor {
             front_face: FrontFace::Cw,
             cull_mode: CullMode::None,
+            clamp_depth: false,
             depth_bias: 0,
             depth_bias_slope_scale: 0.0,
             depth_bias_clamp: 0.0,
@@ -88,10 +91,7 @@ fn create_pipeline_pass1(
             format: TextureFormat::Depth32Float,
             depth_write_enabled: false,
             depth_compare: CompareFunction::GreaterEqual,
-            stencil_front: StencilStateFaceDescriptor::IGNORE,
-            stencil_back: StencilStateFaceDescriptor::IGNORE,
-            stencil_read_mask: 0,
-            stencil_write_mask: 0,
+            stencil: StencilStateDescriptor::default(),
         }),
         vertex_state: VertexStateDescriptor {
             index_format: IndexFormat::Uint32,
@@ -127,7 +127,8 @@ fn create_pipeline_pass2(
     let fx_module = shader!(device; fx - vert);
     let oit2_module = shader!(device; oit_pass2 - frag: MAX_SAMPLES = samples as u8; MAX_NODES = node_count as u8);
     device.create_render_pipeline(&RenderPipelineDescriptor {
-        layout: pipeline_layout,
+        label: Some("OIT2 pipline"),
+        layout: Some(pipeline_layout),
         vertex_stage: ProgrammableStageDescriptor {
             module: &fx_module,
             entry_point: "main",
@@ -139,6 +140,7 @@ fn create_pipeline_pass2(
         rasterization_state: Some(RasterizationStateDescriptor {
             front_face: FrontFace::Cw,
             cull_mode: CullMode::None,
+            clamp_depth: false,
             depth_bias: 0,
             depth_bias_slope_scale: 0.0,
             depth_bias_clamp: 0.0,
@@ -194,20 +196,24 @@ fn create_uniform_buffer(
         _sample_count: samples as u32,
         _screen_size: resolution.into_array(),
     };
-    let uniform_buffer = device.create_buffer_with_data(uniforms.as_bytes(), BufferUsage::UNIFORM);
+    let uniform_buffer = device.create_buffer_init(&BufferInitDescriptor {
+        label: Some("OIT uniform buffer"),
+        contents: uniforms.as_bytes(),
+        usage: BufferUsage::UNIFORM,
+    });
 
     let oit_bind_group = device.create_bind_group(&BindGroupDescriptor {
         layout: oit_bind_group_layout,
-        bindings: &[
-            Binding {
+        entries: &[
+            BindGroupEntry {
                 binding: 0,
                 resource: BindingResource::Buffer(head_pointer_buffer.slice(..)),
             },
-            Binding {
+            BindGroupEntry {
                 binding: 1,
                 resource: BindingResource::Buffer(uniform_buffer.slice(..)),
             },
-            Binding {
+            BindGroupEntry {
                 binding: 2,
                 resource: BindingResource::Buffer(node_buffer.slice(..)),
             },
@@ -217,12 +223,12 @@ fn create_uniform_buffer(
 
     let framebuffer_bind_group = device.create_bind_group(&BindGroupDescriptor {
         layout: framebuffer_bind_group_layout,
-        bindings: &[
-            Binding {
+        entries: &[
+            BindGroupEntry {
                 binding: 0,
                 resource: BindingResource::TextureView(framebuffer),
             },
-            Binding {
+            BindGroupEntry {
                 binding: 1,
                 resource: BindingResource::Sampler(framebuffer_sampler),
             },
@@ -248,10 +254,11 @@ fn create_oit_buffers(
         resolution.x, resolution.y, samples as u8
     );
 
-    let head_pointer_buffer = device.create_buffer_with_data(
-        &vec![0xFF; (resolution.x * resolution.y * 4) as usize],
-        BufferUsage::STORAGE,
-    );
+    let head_pointer_buffer = device.create_buffer_init(&BufferInitDescriptor {
+        label: Some("head pointer buffer"),
+        contents: &vec![0xFF; (resolution.x * resolution.y * 4) as usize],
+        usage: BufferUsage::STORAGE,
+    });
 
     let node_buffer = device.create_buffer(&BufferDescriptor {
         size: size_of_node_buffer(resolution),
@@ -288,18 +295,30 @@ fn create_pass2_pipeline_layout(
 ) -> (BindGroupLayout, PipelineLayout) {
     debug!("Creating OIT pass2 pipeline layout: samples = {}", samples as u8);
     let framebuffer_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-        bindings: &[
-            BindGroupLayoutEntry::new(0, ShaderStage::FRAGMENT, BindingType::SampledTexture {
-                component_type: TextureComponentType::Float,
-                dimension: TextureViewDimension::D2,
-                multisampled: samples != MSAASetting::X1,
-            }),
-            BindGroupLayoutEntry::new(1, ShaderStage::FRAGMENT, BindingType::Sampler { comparison: false }),
+        entries: &[
+            BindGroupLayoutEntry {
+                binding: 0,
+                visibility: ShaderStage::FRAGMENT,
+                ty: BindingType::SampledTexture {
+                    component_type: TextureComponentType::Float,
+                    dimension: TextureViewDimension::D2,
+                    multisampled: samples != MSAASetting::X1,
+                },
+                count: None,
+            },
+            BindGroupLayoutEntry {
+                binding: 1,
+                visibility: ShaderStage::FRAGMENT,
+                ty: BindingType::Sampler { comparison: false },
+                count: None,
+            },
         ],
         label: Some("framebuffer binding"),
     });
     let pass2_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
+        label: Some("OIT2 pipeline layout"),
         bind_group_layouts: &[oit_bind_group_layout, &framebuffer_bind_group_layout],
+        push_constant_ranges: &[],
     });
     (framebuffer_bind_group_layout, pass2_pipeline_layout)
 }
@@ -358,31 +377,48 @@ impl Oit {
         samples: MSAASetting,
     ) -> Self {
         let oit_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            bindings: &[
-                BindGroupLayoutEntry::new(0, ShaderStage::FRAGMENT, BindingType::StorageBuffer {
-                    dynamic: false,
-                    readonly: false,
-                    min_binding_size: None,
-                }),
-                BindGroupLayoutEntry::new(1, ShaderStage::FRAGMENT, BindingType::UniformBuffer {
-                    dynamic: false,
-                    min_binding_size: None,
-                }),
-                BindGroupLayoutEntry::new(2, ShaderStage::FRAGMENT, BindingType::StorageBuffer {
-                    dynamic: false,
-                    readonly: false,
-                    min_binding_size: None,
-                }),
+            entries: &[
+                BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: ShaderStage::FRAGMENT,
+                    ty: BindingType::StorageBuffer {
+                        dynamic: false,
+                        readonly: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: ShaderStage::FRAGMENT,
+                    ty: BindingType::UniformBuffer {
+                        dynamic: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: ShaderStage::FRAGMENT,
+                    ty: BindingType::StorageBuffer {
+                        dynamic: false,
+                        readonly: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
             ],
             label: Some("oit binding"),
         });
 
         let pass1_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
+            label: Some("OIT1 pipeline layout"),
             bind_group_layouts: &[
                 opaque_bind_group_layout,
                 cluster_bind_group_layout,
                 &oit_bind_group_layout,
             ],
+            push_constant_ranges: &[],
         });
         let (framebuffer_bind_group_layout, pass2_pipeline_layout) =
             create_pass2_pipeline_layout(device, &oit_bind_group_layout, samples);
@@ -391,7 +427,11 @@ impl Oit {
         let pass2_pipeline = create_pipeline_pass2(device, &pass2_pipeline_layout, oit_node_count, samples);
 
         let node_buffer_data = create_node_buffer_header();
-        let node_source_buffer = device.create_buffer_with_data(&node_buffer_data, BufferUsage::COPY_SRC);
+        let node_source_buffer = device.create_buffer_init(&BufferInitDescriptor {
+            label: Some("node source buffer"),
+            contents: &node_buffer_data,
+            usage: BufferUsage::COPY_SRC,
+        });
 
         let framebuffer_sampler = device.create_sampler(&SamplerDescriptor {
             address_mode_u: AddressMode::ClampToEdge,

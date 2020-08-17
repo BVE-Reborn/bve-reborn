@@ -1,6 +1,7 @@
 use log::debug;
 use once_cell::sync::Lazy;
 use std::{
+    borrow::Cow,
     collections::HashMap,
     sync::{Arc, Mutex},
 };
@@ -20,7 +21,8 @@ pub fn find_shader_module(device: &Device, name: &str) -> Arc<ShaderModule> {
             .unwrap_or_else(|| panic!("Shader {} not found", name))
             .contents()
             .to_vec();
-        let shader = device.create_shader_module(ShaderModuleSource::SpirV(bytemuck::cast_slice(&source)));
+        let shader =
+            device.create_shader_module(ShaderModuleSource::SpirV(Cow::Borrowed(bytemuck::cast_slice(&source))));
         Arc::new(shader)
     }))
 }

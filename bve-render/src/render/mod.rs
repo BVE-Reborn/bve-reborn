@@ -195,13 +195,13 @@ impl Renderer {
         let ts_uniforms = create_timestamp(&mut stats.compute_uniforms_time, ts_sorting);
 
         // Retry getting a swapchain texture a couple times to smooth over spurious timeouts when tons of state changes
-        let mut frame_res = self.swapchain.get_next_frame();
+        let mut frame_res = self.swapchain.get_current_frame();
         for _ in 1..=4 {
             if let Ok(..) = &frame_res {
                 break;
             }
             error!("Dropping frame");
-            frame_res = self.swapchain.get_next_frame();
+            frame_res = self.swapchain.get_current_frame();
         }
 
         let frame = frame_res.expect("Could not get next swapchain texture");
