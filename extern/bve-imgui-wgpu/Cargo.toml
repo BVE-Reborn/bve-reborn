@@ -21,7 +21,7 @@ bytemuck = "1"
 imgui = "0.4"
 log = "0.4"
 smallvec = "1"
-wgpu = { git = "https://github.com/gfx-rs/wgpu-rs.git", rev = "02c1fa563f709bfa7b4781b938781bed57069ad1" }
+wgpu = "0.6"
 
 [package.metadata.docs.rs]
 all-features = true

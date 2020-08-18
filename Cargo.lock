@@ -231,9 +231,9 @@ checksum = "0d8c1fef690941d3e7788d328517591fecc684c084084702d6ff1641e993699a"
 
 [[package]]
 name = "blocking"
-version = "0.5.1"
+version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2ad97f54e1c9030ad57fae2f5e3791447f48bb225ab20f9d80515e7017d04378"
+checksum = "ea5800d29218fea137b0880387e5948694a23c93fcdde157006966693a865c7c"
 dependencies = [
  "async-channel",
  "atomic-waker",
@@ -2570,9 +2570,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-attributes"
-version = "0.1.10"
+version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1fe233f4227389ab7df5b32649239da7ebe0b281824b4e84b342d04d3fd8c25e"
+checksum = "80e0ccfc3378da0cce270c946b676a376943f5cd16aeba64568e7939806f4ada"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2806,8 +2806,9 @@ dependencies = [
 
 [[package]]
 name = "wgpu"
-version = "0.5.0"
-source = "git+https://github.com/gfx-rs/wgpu-rs.git?rev=02c1fa563f709bfa7b4781b938781bed57069ad1#02c1fa563f709bfa7b4781b938781bed57069ad1"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "549160f188eef412ac978499ddf0ceadad4c9159bb1160f9e6b9d4cc8ee977dc"
 dependencies = [
  "arrayvec",
  "futures",
@@ -2828,8 +2829,9 @@ dependencies = [
 
 [[package]]
 name = "wgpu-core"
-version = "0.5.0"
-source = "git+https://github.com/gfx-rs/wgpu?rev=096c57008f2907c07ddaa7d0ff02fae21a5e676b#096c57008f2907c07ddaa7d0ff02fae21a5e676b"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3a5558a9607100816a033b0d06a2d6d06e8bf6fb294803d1dea871e9a479eec0"
 dependencies = [
  "arrayvec",
  "bitflags",
@@ -2854,8 +2856,9 @@ dependencies = [
 
 [[package]]
 name = "wgpu-types"
-version = "0.5.0"
-source = "git+https://github.com/gfx-rs/wgpu?rev=096c57008f2907c07ddaa7d0ff02fae21a5e676b#096c57008f2907c07ddaa7d0ff02fae21a5e676b"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6fb82203cfaa5165e6eb9f1daca5b0ba8a2b8d632f6c9a7f9b10463b145deb2b"
 dependencies = [
  "bitflags",
 ]
