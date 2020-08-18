@@ -292,7 +292,7 @@ dependencies = [
  "num-traits",
  "obj",
  "once_cell",
- "parking_lot 0.10.2",
+ "parking_lot 0.11.0",
  "rand",
  "regex",
  "serde",
@@ -331,6 +331,7 @@ dependencies = [
  "num-traits",
  "serde",
  "serde_json",
+ "tracing",
  "winit",
 ]
 
@@ -2562,7 +2563,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6d79ca061b032d6ce30c660fded31189ca0b9922bf483cd70759f13a2d86786c"
 dependencies = [
  "cfg-if",
+ "log",
+ "tracing-attributes",
  "tracing-core",
+]
+
+[[package]]
+name = "tracing-attributes"
+version = "0.1.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1fe233f4227389ab7df5b32649239da7ebe0b281824b4e84b342d04d3fd8c25e"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -2793,14 +2807,14 @@ dependencies = [
 [[package]]
 name = "wgpu"
 version = "0.5.0"
-source = "git+https://github.com/gfx-rs/wgpu-rs.git?rev=809a3b5ba77793879ded32f9bb6c1e395a2654ae#809a3b5ba77793879ded32f9bb6c1e395a2654ae"
+source = "git+https://github.com/gfx-rs/wgpu-rs.git?rev=02c1fa563f709bfa7b4781b938781bed57069ad1#02c1fa563f709bfa7b4781b938781bed57069ad1"
 dependencies = [
  "arrayvec",
  "futures",
  "gfx-backend-vulkan",
  "js-sys",
  "objc",
- "parking_lot 0.10.2",
+ "parking_lot 0.11.0",
  "raw-window-handle",
  "smallvec",
  "tracing",

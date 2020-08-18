@@ -39,7 +39,7 @@ log = "0.4"
 nom = { version = "5", default-features = false, features = ["alloc"] }
 num-traits = "0.2"
 once_cell = "1.3"
-parking_lot = { version = "0.10", features = ["nightly"] }
+parking_lot = { version = "0.11", features = ["nightly"] }
 regex = "1"
 rand = "0.7"
 serde = { version = "1", features = ["derive"] }

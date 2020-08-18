@@ -123,7 +123,7 @@ impl FrustumCreation {
         let uniform_staging_buffer = device.create_buffer_init(&BufferInitDescriptor {
             label: Some("froxel resize temp uniform buffer"),
             contents: uniforms.as_bytes(),
-            usage: BufferUsage::UNIFORM | BufferUsage::COPY_DST,
+            usage: BufferUsage::UNIFORM | BufferUsage::COPY_SRC,
         });
 
         encoder.copy_buffer_to_buffer(
