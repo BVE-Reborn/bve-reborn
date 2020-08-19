@@ -205,7 +205,7 @@ impl Clustering {
                     binding: 3,
                     visibility: ShaderStage::FRAGMENT,
                     ty: BindingType::StorageBuffer {
-                        readonly: true,
+                        readonly: false,
                         dynamic: false,
                         min_binding_size: None,
                     },
