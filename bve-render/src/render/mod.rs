@@ -3,8 +3,8 @@ use slotmap::Key;
 use std::fmt;
 pub use utils::*;
 
+pub mod blit;
 pub mod cluster;
-pub mod oit;
 pub mod skybox;
 mod utils;
 
@@ -211,8 +211,6 @@ impl Renderer {
             .await;
 
         {
-            self.oit_renderer.clear_buffers(&mut encoder);
-
             let matrix_buffer = if !object_references.is_empty() {
                 Some(self.matrix_buffer.get_current_inner().await)
             } else {
@@ -222,7 +220,7 @@ impl Renderer {
             let mut rpass = encoder.begin_render_pass(&RenderPassDescriptor {
                 color_attachments: &[RenderPassColorAttachmentDescriptor {
                     attachment: &self.framebuffer,
-                    resolve_target: None,
+                    resolve_target: self.unsampled_framebuffer.as_ref(),
                     ops: Operations {
                         load: LoadOp::Clear(Color {
                             r: 0.3,
@@ -237,7 +235,7 @@ impl Renderer {
                     attachment: &self.depth_buffer,
                     depth_ops: Some(Operations {
                         load: LoadOp::Clear(0.0),
-                        store: true,
+                        store: false,
                     }),
                     stencil_ops: None,
                 }),
@@ -255,11 +253,21 @@ impl Renderer {
                     .group_by(|o| (o.mesh, o.texture, o.transparent))
                 {
                     if transparent && rendering_opaque {
-                        if self.debug_mode != DebugMode::None {
-                            break;
-                        }
-                        self.oit_renderer.prepare_rendering(&mut rpass);
                         rendering_opaque = false;
+
+                        if let DebugMode::None = self.debug_mode {
+                            self.skybox_renderer.render_skybox(
+                                &mut rpass,
+                                if self.skybox_renderer.texture_id.is_null() {
+                                    &self.textures[self.null_texture].bind_group
+                                } else {
+                                    &self.textures[self.skybox_renderer.texture_id].bind_group
+                                },
+                            );
+                        }
+
+                        rpass.set_pipeline(&self.transparent_pipeline);
+                        rpass.set_bind_group(1, self.cluster_renderer.bind_group(), &[]);
                     }
 
                     let mesh = &self.mesh[mesh_idx];
@@ -300,34 +308,23 @@ impl Renderer {
                 stats.total_visible_objects = stats.visible_transparent_objects + stats.visible_opaque_objects;
                 stats.total_draws = stats.transparent_draws + stats.opaque_draws;
             }
+        }
 
-            if let DebugMode::None = self.debug_mode {
-                self.skybox_renderer.render_skybox(
-                    &mut rpass,
-                    if self.skybox_renderer.texture_id.is_null() {
-                        &self.textures[self.null_texture].bind_group
-                    } else {
-                        &self.textures[self.skybox_renderer.texture_id].bind_group
-                    },
-                    &self.screenspace_triangle_verts,
-                );
-            }
-        }
-        {
-            let mut rpass = encoder.begin_render_pass(&RenderPassDescriptor {
-                color_attachments: &[RenderPassColorAttachmentDescriptor {
-                    attachment: &frame.output.view,
-                    resolve_target: None,
-                    ops: Operations {
-                        load: LoadOp::Clear(Color::BLACK),
-                        store: true,
-                    },
-                }],
-                depth_stencil_attachment: None,
-            });
-            self.oit_renderer
-                .render_transparent(&mut rpass, &self.screenspace_triangle_verts);
-        }
+        let mut blit_rpass = encoder.begin_render_pass(&RenderPassDescriptor {
+            color_attachments: &[RenderPassColorAttachmentDescriptor {
+                attachment: &frame.output.view,
+                resolve_target: None,
+                ops: Operations {
+                    load: LoadOp::Clear(Color::BLACK),
+                    store: true,
+                },
+            }],
+            depth_stencil_attachment: None,
+        });
+
+        self.framebuffer_blitter.render(&mut blit_rpass);
+
+        drop(blit_rpass);
 
         let ts_main_render = create_timestamp(&mut stats.render_main_cpu_time, ts_uniforms);
 

@@ -463,9 +463,10 @@ impl Renderer {
         indices: &[DrawIdx],
     ) {
         let data: &[u8] = bytemuck::cast_slice(indices);
+        let length = (data.len() + 3) & !3;
         buffer
-            .write_to_buffer(device, encoder, data.len() as BufferAddress, |buf| {
-                buf.copy_from_slice(data)
+            .write_to_buffer(device, encoder, length as u64, |buf| {
+                buf[..data.len()].copy_from_slice(data)
             })
             .await;
     }

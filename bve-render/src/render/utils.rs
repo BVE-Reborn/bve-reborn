@@ -39,10 +39,15 @@ pub fn create_pipeline(
     vs: &ShaderModule,
     fs: &ShaderModule,
     samples: MSAASetting,
+    transparent: bool,
 ) -> RenderPipeline {
     debug!("Creating opaque pipeline: samples: {}", samples as u8);
     device.create_render_pipeline(&RenderPipelineDescriptor {
-        label: Some("opaque pipeline"),
+        label: Some(if transparent {
+            "transparent pipeline"
+        } else {
+            "opaque pipeline"
+        }),
         layout: Some(layout),
         vertex_stage: ProgrammableStageDescriptor {
             module: vs,
@@ -63,7 +68,11 @@ pub fn create_pipeline(
         primitive_topology: PrimitiveTopology::TriangleList,
         color_states: &[ColorStateDescriptor {
             format: TextureFormat::Rgba16Float,
-            color_blend: BlendDescriptor::REPLACE,
+            color_blend: BlendDescriptor {
+                src_factor: BlendFactor::SrcAlpha,
+                dst_factor: BlendFactor::OneMinusSrcAlpha,
+                operation: BlendOperation::Add
+            },
             alpha_blend: BlendDescriptor::REPLACE,
             write_mask: ColorWrite::ALL,
         }],
@@ -115,7 +124,11 @@ pub fn create_depth_buffer(device: &Device, size: PhysicalSize<u32>, samples: MS
     depth_texture.create_view(&TextureViewDescriptor::default())
 }
 
-pub fn create_framebuffer(device: &Device, size: PhysicalSize<u32>, samples: MSAASetting) -> TextureView {
+pub fn create_framebuffers(
+    device: &Device,
+    size: PhysicalSize<u32>,
+    samples: MSAASetting,
+) -> (TextureView, Option<TextureView>) {
     debug!(
         "Creating framebuffer: {}x{}; samples = {}",
         size.width, size.height, samples as u8
@@ -126,16 +139,36 @@ pub fn create_framebuffer(device: &Device, size: PhysicalSize<u32>, samples: MSA
         depth: 1,
     };
 
-    let tex = device.create_texture(&TextureDescriptor {
-        size: extent,
-        mip_level_count: 1,
-        sample_count: samples as u32,
-        dimension: TextureDimension::D2,
-        format: TextureFormat::Rgba16Float,
-        usage: TextureUsage::OUTPUT_ATTACHMENT | TextureUsage::SAMPLED,
-        label: Some("framebuffer"),
-    });
-    tex.create_view(&TextureViewDescriptor::default())
+    let multi_tex = device
+        .create_texture(&TextureDescriptor {
+            size: extent,
+            mip_level_count: 1,
+            sample_count: samples as u32,
+            dimension: TextureDimension::D2,
+            format: TextureFormat::Rgba16Float,
+            usage: TextureUsage::OUTPUT_ATTACHMENT | TextureUsage::SAMPLED,
+            label: Some("framebuffer"),
+        })
+        .create_view(&TextureViewDescriptor::default());
+
+    let tex = if samples != MSAASetting::X1 {
+        Some(
+            device
+                .create_texture(&TextureDescriptor {
+                    size: extent,
+                    mip_level_count: 1,
+                    sample_count: 1,
+                    dimension: TextureDimension::D2,
+                    format: TextureFormat::Rgba16Float,
+                    usage: TextureUsage::OUTPUT_ATTACHMENT | TextureUsage::SAMPLED,
+                    label: Some("framebuffer"),
+                })
+                .create_view(&TextureViewDescriptor::default()),
+        )
+    } else {
+        None
+    };
+    (multi_tex, tex)
 }
 
 pub fn create_swapchain_descriptor(screen_size: PhysicalSize<u32>, vsync: Vsync) -> SwapChainDescriptor {
@@ -147,7 +180,7 @@ pub fn create_swapchain_descriptor(screen_size: PhysicalSize<u32>, vsync: Vsync)
     );
     SwapChainDescriptor {
         usage: TextureUsage::OUTPUT_ATTACHMENT,
-        format: TextureFormat::Bgra8Unorm,
+        format: TextureFormat::Bgra8UnormSrgb,
         width: screen_size.width,
         height: screen_size.height,
         present_mode: if vsync == Vsync::Enabled {
@@ -156,6 +189,53 @@ pub fn create_swapchain_descriptor(screen_size: PhysicalSize<u32>, vsync: Vsync)
             PresentMode::Mailbox
         },
     }
+}
+
+pub fn create_texture_bind_group_layout(device: &Device, component_type: TextureComponentType) -> BindGroupLayout {
+    device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+        entries: &[
+            BindGroupLayoutEntry {
+                binding: 0,
+                visibility: ShaderStage::FRAGMENT,
+                ty: BindingType::SampledTexture {
+                    multisampled: false,
+                    component_type,
+                    dimension: TextureViewDimension::D2,
+                },
+                count: None,
+            },
+            BindGroupLayoutEntry {
+                binding: 1,
+                visibility: ShaderStage::FRAGMENT,
+                ty: BindingType::Sampler { comparison: false },
+                count: None,
+            },
+        ],
+        label: Some("texture and sampler"),
+    })
+}
+
+pub fn create_texture_bind_group(
+    device: &Device,
+    layout: &BindGroupLayout,
+    texture: &TextureView,
+    sampler: &Sampler,
+    label: Option<&str>,
+) -> BindGroup {
+    device.create_bind_group(&BindGroupDescriptor {
+        label,
+        layout,
+        entries: &[
+            BindGroupEntry {
+                binding: 0,
+                resource: BindingResource::TextureView(texture),
+            },
+            BindGroupEntry {
+                binding: 1,
+                resource: BindingResource::Sampler(sampler),
+            },
+        ],
+    })
 }
 
 impl Renderer {
