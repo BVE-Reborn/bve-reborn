@@ -1,25 +1,27 @@
-use crate::runtime::{
-    cache::{MeshCache, PathHandle, PathSet, TextureCache},
-    chunk::{Chunk, ChunkSet, ChunkState, UnloadedObject, CHUNK_SIZE},
-};
 pub use crate::runtime::{
     chunk::{ChunkAddress, ChunkOffset},
     client::Client,
     light::*,
     location::Location,
 };
-use async_std::{
-    path::PathBuf,
-    sync::{Arc, Mutex, RwLock},
-    task::spawn,
+use crate::{
+    runtime::{
+        cache::{MeshCache, PathHandle, PathSet, TextureCache},
+        chunk::{Chunk, ChunkSet, ChunkState, UnloadedObject, CHUNK_SIZE},
+    },
+    AsyncMutex, AsyncRwLock,
 };
+use async_std::{path::PathBuf, task::spawn};
 use futures::{
     stream::{FuturesOrdered, FuturesUnordered},
     StreamExt,
 };
 use hecs::World;
 use log::{debug, trace};
-use std::sync::atomic::{AtomicI32, Ordering};
+use std::sync::{
+    atomic::{AtomicI32, Ordering},
+    Arc,
+};
 
 macro_rules! async_clone_own {
     ($($name:ident = $value:expr;)* { $($tokens:tt)* }) => {{
@@ -84,37 +86,40 @@ const DEFAULT_RENDER_DISTANCE: f32 = 32.0 * CHUNK_SIZE;
 // Mutexes are always grabbed in the following order
 // ecs -> chunks -> client -> location
 pub struct Runtime<C: Client> {
-    client: Arc<Mutex<C>>,
+    client: Arc<AsyncMutex<C>>,
     path_set: PathSet,
     chunks: ChunkSet,
     meshes: MeshCache<C>,
     textures: TextureCache<C>,
-    location: Mutex<RuntimeLocation>,
+    location: AsyncMutex<RuntimeLocation>,
     view_distance: AtomicI32,
-    ecs: RwLock<World>,
+    ecs: AsyncRwLock<World>,
 }
 
 impl<C: Client> Runtime<C> {
     #[must_use]
-    pub fn new(client: Arc<Mutex<C>>) -> Arc<Self> {
+    pub fn new(client: Arc<AsyncMutex<C>>) -> Arc<Self> {
         Arc::new(Self {
             client,
             path_set: PathSet::new(),
             chunks: ChunkSet::new(),
             meshes: MeshCache::new(),
             textures: TextureCache::new(),
-            location: Mutex::new(RuntimeLocation {
-                location: Location {
-                    chunk: ChunkAddress::new(0, 0),
-                    offset: ChunkOffset::new(0.0, 0.0, 0.0),
+            location: AsyncMutex::new(
+                RuntimeLocation {
+                    location: Location {
+                        chunk: ChunkAddress::new(0, 0),
+                        offset: ChunkOffset::new(0.0, 0.0, 0.0),
+                    },
+                    old_location: Location {
+                        chunk: ChunkAddress::new(0, 0),
+                        offset: ChunkOffset::new(0.0, 0.0, 0.0),
+                    },
                 },
-                old_location: Location {
-                    chunk: ChunkAddress::new(0, 0),
-                    offset: ChunkOffset::new(0.0, 0.0, 0.0),
-                },
-            }),
+                false,
+            ),
             view_distance: AtomicI32::new((DEFAULT_RENDER_DISTANCE / CHUNK_SIZE) as i32),
-            ecs: RwLock::new(World::new()),
+            ecs: AsyncRwLock::new(World::new()),
         })
     }
 
@@ -173,7 +178,7 @@ impl<C: Client> Runtime<C> {
         let mut mesh_futures = FuturesOrdered::new();
         let mut mesh_locations = Vec::new();
         for unloaded_object in chunk.objects.iter() {
-            let path = self.path_set.get(unloaded_object.path).await;
+            let path = self.path_set.get(unloaded_object.path);
             mesh_locations.push(unloaded_object.offset);
             mesh_futures.push(spawn(
                 async_clone_own!(runtime = self; { runtime.load_mesh_textures(path).await }),

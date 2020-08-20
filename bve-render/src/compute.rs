@@ -1,13 +1,19 @@
 use crate::*;
 use log::debug;
-use std::{mem::size_of, num::NonZeroU64};
-use zerocopy::AsBytes;
+use std::{
+    mem::size_of,
+    num::{NonZeroU32, NonZeroU64},
+};
+use wgpu::util::{BufferInitDescriptor, DeviceExt};
 
 #[repr(C)]
-#[derive(AsBytes)]
+#[derive(Copy, Clone)]
 struct Uniforms {
-    _max_size: [u32; 2],
+    _max_size: shader_types::UVec2,
 }
+
+unsafe impl bytemuck::Zeroable for Uniforms {}
+unsafe impl bytemuck::Pod for Uniforms {}
 
 fn create_texture_compute_pipeline(
     device: &Device,
@@ -15,31 +21,49 @@ fn create_texture_compute_pipeline(
 ) -> (ComputePipeline, BindGroupLayout) {
     debug!("Creating texture compute pipeline");
     let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-        bindings: &[
-            BindGroupLayoutEntry::new(0, ShaderStage::COMPUTE, BindingType::StorageTexture {
-                dimension: TextureViewDimension::D2,
-                format: TextureFormat::Rgba8Uint,
-                readonly: true,
-            }),
-            BindGroupLayoutEntry::new(1, ShaderStage::COMPUTE, BindingType::StorageTexture {
-                dimension: TextureViewDimension::D2,
-                format: TextureFormat::Rgba8Uint,
-                readonly: false,
-            }),
-            BindGroupLayoutEntry::new(2, ShaderStage::COMPUTE, BindingType::UniformBuffer {
-                dynamic: false,
-                min_binding_size: Some(NonZeroU64::new(size_of::<Uniforms>() as _).expect("Uniforms are a ZST")),
-            }),
+        entries: &[
+            BindGroupLayoutEntry {
+                binding: 0,
+                visibility: ShaderStage::COMPUTE,
+                ty: BindingType::StorageTexture {
+                    dimension: TextureViewDimension::D2,
+                    format: TextureFormat::Rgba8Uint,
+                    readonly: true,
+                },
+                count: None,
+            },
+            BindGroupLayoutEntry {
+                binding: 1,
+                visibility: ShaderStage::COMPUTE,
+                ty: BindingType::StorageTexture {
+                    dimension: TextureViewDimension::D2,
+                    format: TextureFormat::Rgba8Uint,
+                    readonly: false,
+                },
+                count: None,
+            },
+            BindGroupLayoutEntry {
+                binding: 2,
+                visibility: ShaderStage::COMPUTE,
+                ty: BindingType::UniformBuffer {
+                    dynamic: false,
+                    min_binding_size: NonZeroU64::new(size_of::<Uniforms>() as _),
+                },
+                count: None,
+            },
         ],
         label: Some("compute"),
     });
 
     let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
+        label: Some("texture compute layout"),
         bind_group_layouts: &[&bind_group_layout],
+        push_constant_ranges: &[],
     });
 
     let pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
-        layout: &pipeline_layout,
+        label: Some("texture compute pipeline"),
+        layout: Some(&pipeline_layout),
         compute_stage: ProgrammableStageDescriptor {
             module: shader_module,
             entry_point: "main",
@@ -51,10 +75,13 @@ fn create_texture_compute_pipeline(
 
 fn create_uniform_buffer(device: &Device, _encoder: &mut CommandEncoder, max_size: UVec2) -> Buffer {
     let uniforms = Uniforms {
-        _max_size: max_size.into_array(),
+        _max_size: shader_types::UVec2::from(max_size.into_array()),
     };
-    let bytes = uniforms.as_bytes();
-    device.create_buffer_with_data(bytes, BufferUsage::UNIFORM)
+    device.create_buffer_init(&BufferInitDescriptor {
+        label: Some("compute uniform buffer"),
+        usage: BufferUsage::UNIFORM,
+        contents: bytemuck::bytes_of(&uniforms),
+    })
 }
 
 fn create_texture_compute_bind_group(
@@ -66,16 +93,16 @@ fn create_texture_compute_bind_group(
 ) -> BindGroup {
     device.create_bind_group(&BindGroupDescriptor {
         layout,
-        bindings: &[
-            Binding {
+        entries: &[
+            BindGroupEntry {
                 binding: 0,
                 resource: BindingResource::TextureView(source),
             },
-            Binding {
+            BindGroupEntry {
                 binding: 1,
                 resource: BindingResource::TextureView(dest),
             },
-            Binding {
+            BindGroupEntry {
                 binding: 2,
                 resource: BindingResource::Buffer(uniform_buffer.slice(..)),
             },
@@ -102,24 +129,24 @@ impl MipmapCompute {
     pub fn compute_mipmaps(&self, device: &Device, encoder: &mut CommandEncoder, texture: &Texture, dimensions: UVec2) {
         for (level, dimensions) in render::enumerate_mip_levels(dimensions) {
             let parent = texture.create_view(&TextureViewDescriptor {
-                dimension: TextureViewDimension::D2,
-                format: TextureFormat::Rgba8Unorm,
+                dimension: Some(TextureViewDimension::D2),
+                format: Some(TextureFormat::Rgba8Unorm),
                 aspect: TextureAspect::All,
                 base_mip_level: level - 1,
-                level_count: 1,
+                level_count: NonZeroU32::new(1),
                 base_array_layer: 0,
-                array_layer_count: 1,
+                array_layer_count: NonZeroU32::new(1),
                 label: Some("mipmap creation parent"),
             });
 
             let child = texture.create_view(&TextureViewDescriptor {
-                dimension: TextureViewDimension::D2,
-                format: TextureFormat::Rgba8Unorm,
+                dimension: Some(TextureViewDimension::D2),
+                format: Some(TextureFormat::Rgba8Unorm),
                 aspect: TextureAspect::All,
                 base_mip_level: level,
-                level_count: 1,
+                level_count: NonZeroU32::new(1),
                 base_array_layer: 0,
-                array_layer_count: 1,
+                array_layer_count: NonZeroU32::new(1),
                 label: Some("mipmap creation child"),
             });
 
@@ -163,13 +190,13 @@ impl CutoutTransparencyCompute {
         dimensions: UVec2,
     ) {
         let mut view = TextureViewDescriptor {
-            dimension: TextureViewDimension::D2,
-            format: TextureFormat::Rgba8Unorm,
+            dimension: Some(TextureViewDimension::D2),
+            format: Some(TextureFormat::Rgba8Unorm),
             aspect: TextureAspect::All,
             base_mip_level: 0,
-            level_count: 1,
+            level_count: NonZeroU32::new(1),
             base_array_layer: 0,
-            array_layer_count: 1,
+            array_layer_count: NonZeroU32::new(1),
             label: Some("transparency source"),
         };
         let source = texture.create_view(&view);

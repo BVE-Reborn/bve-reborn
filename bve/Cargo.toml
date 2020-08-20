@@ -27,6 +27,7 @@ encoding_rs = "0.8"
 fern = "0.6"
 fluent = "0.12"
 futures = { version = "0.3", default-features = false, features = ["std", "async-await"] }
+futures-intrusive = "0.3"
 glam = { version = "0.9.1", features = ["debug-glam-assert", "serde"] }
 hecs = "0.2"
 image = { version = "0.23", default-features = false, features = ["bmp", "gif", "png"] }
@@ -38,11 +39,12 @@ log = "0.4"
 nom = { version = "5", default-features = false, features = ["alloc"] }
 num-traits = "0.2"
 once_cell = "1.3"
+parking_lot = { version = "0.11", features = ["nightly"] }
 regex = "1"
 rand = "0.7"
 serde = { version = "1", features = ["derive"] }
 serde_plain = "0.3"
-smallvec = { version = "1", features = ["const_generics", "specialization", "may_dangle", "union"] }
+smallvec = { version = "1", features = ["specialization", "may_dangle", "union"] }
 smartstring = { version = "0.2", features = ["serde"] }
 unic-langid = { version = "0.9", features = ["unic-langid-macros"] }
 unic-locale = "0.9"

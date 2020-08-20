@@ -1,59 +1,45 @@
-use crate::{screenspace::ScreenSpaceVertex, *};
+use crate::*;
 use bve_conveyor::{AutomatedBuffer, BeltBufferId, BindGroupCache};
-use log::debug;
-use zerocopy::AsBytes;
 
-#[derive(AsBytes)]
-#[repr(C)]
-pub struct SkyboxUniforms {
-    _inv_view_proj: [f32; 16],
-    _repeats: f32,
-}
-
-fn create_pipeline(device: &Device, pipeline_layout: &PipelineLayout, samples: MSAASetting) -> RenderPipeline {
-    debug!("Creating skybox pipeline: samples = {}", samples as u8);
-    let vs = shader!(device; skybox - vert);
-    let fs = shader!(device; skybox - frag);
+fn create_skybox_pipeline(
+    device: &Device,
+    pipeline_layout: &PipelineLayout,
+    vertex_shader: &ShaderModule,
+    fragment_shader: &ShaderModule,
+    samples: MSAASetting,
+) -> RenderPipeline {
     device.create_render_pipeline(&RenderPipelineDescriptor {
-        layout: pipeline_layout,
+        label: Some("framebuffer blit bind group"),
+        layout: Some(pipeline_layout),
         vertex_stage: ProgrammableStageDescriptor {
-            module: &vs,
             entry_point: "main",
+            module: vertex_shader,
         },
         fragment_stage: Some(ProgrammableStageDescriptor {
-            module: &fs,
             entry_point: "main",
+            module: fragment_shader,
         }),
         rasterization_state: Some(RasterizationStateDescriptor {
             front_face: FrontFace::Ccw,
-            cull_mode: CullMode::Back,
-            depth_bias: 0,
-            depth_bias_slope_scale: 0.0,
-            depth_bias_clamp: 0.0,
+            cull_mode: CullMode::None,
+            ..Default::default()
         }),
         primitive_topology: PrimitiveTopology::TriangleList,
         color_states: &[ColorStateDescriptor {
             format: TextureFormat::Rgba16Float,
-            color_blend: BlendDescriptor::REPLACE,
             alpha_blend: BlendDescriptor::REPLACE,
+            color_blend: BlendDescriptor::REPLACE,
             write_mask: ColorWrite::ALL,
         }],
         depth_stencil_state: Some(DepthStencilStateDescriptor {
             format: TextureFormat::Depth32Float,
             depth_write_enabled: false,
             depth_compare: CompareFunction::GreaterEqual,
-            stencil_front: StencilStateFaceDescriptor::IGNORE,
-            stencil_back: StencilStateFaceDescriptor::IGNORE,
-            stencil_read_mask: 0,
-            stencil_write_mask: 0,
+            stencil: StencilStateDescriptor::default(),
         }),
         vertex_state: VertexStateDescriptor {
             index_format: IndexFormat::Uint32,
-            vertex_buffers: &[VertexBufferDescriptor {
-                stride: size_of::<ScreenSpaceVertex>() as BufferAddress,
-                step_mode: InputStepMode::Vertex,
-                attributes: &vertex_attr_array![0 => Float2],
-            }],
+            vertex_buffers: &[],
         },
         sample_count: samples as u32,
         sample_mask: !0,
@@ -61,12 +47,25 @@ fn create_pipeline(device: &Device, pipeline_layout: &PipelineLayout, samples: M
     })
 }
 
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct SkyboxUniforms {
+    _inv_view_proj: shader_types::Mat4,
+    _repeats: f32,
+}
+
+unsafe impl bytemuck::Zeroable for SkyboxUniforms {}
+unsafe impl bytemuck::Pod for SkyboxUniforms {}
+
 pub struct Skybox {
     pipeline: RenderPipeline,
     pipeline_layout: PipelineLayout,
     bind_group: BindGroupCache<BeltBufferId>,
     bind_group_layout: BindGroupLayout,
     bind_group_key: Option<BeltBufferId>,
+
+    vertex_shader: Arc<ShaderModule>,
+    fragment_shader: Arc<ShaderModule>,
 
     uniform_buffer: AutomatedBuffer,
 
@@ -80,22 +79,28 @@ impl Skybox {
         texture_bind_group_layout: &BindGroupLayout,
         samples: MSAASetting,
     ) -> Self {
+        let vertex_shader = shader!(device; skybox - vert);
+        let fragment_shader = shader!(device; skybox - frag);
+
         let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            bindings: &[BindGroupLayoutEntry::new(
-                0,
-                ShaderStage::FRAGMENT,
-                BindingType::UniformBuffer {
+            entries: &[BindGroupLayoutEntry {
+                binding: 0,
+                visibility: ShaderStage::FRAGMENT,
+                ty: BindingType::UniformBuffer {
                     dynamic: false,
                     min_binding_size: None,
                 },
-            )],
+                count: None,
+            }],
             label: Some("skybox"),
         });
 
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
+            label: Some("skybox pipeline layout"),
             bind_group_layouts: &[&bind_group_layout, texture_bind_group_layout],
+            push_constant_ranges: &[],
         });
-        let pipeline = create_pipeline(device, &pipeline_layout, samples);
+        let pipeline = create_skybox_pipeline(device, &pipeline_layout, &vertex_shader, &fragment_shader, samples);
 
         let uniform_buffer = buffer_manager.create_new_buffer(
             device,
@@ -110,7 +115,12 @@ impl Skybox {
             bind_group: BindGroupCache::new(),
             bind_group_key: None,
             bind_group_layout,
+
+            vertex_shader,
+            fragment_shader,
+
             uniform_buffer,
+
             texture_id: DefaultKey::default(),
             repeats: 1.0,
         }
@@ -129,13 +139,13 @@ impl Skybox {
         let mx_inv_view_proj_bytes: &[f32; 16] = mx_inv_view_proj.as_ref();
 
         let uniform = SkyboxUniforms {
-            _inv_view_proj: *mx_inv_view_proj_bytes,
+            _inv_view_proj: shader_types::Mat4::from(*mx_inv_view_proj_bytes),
             _repeats: self.repeats,
         };
 
         self.uniform_buffer
             .write_to_buffer(device, encoder, size_of::<SkyboxUniforms>() as BufferAddress, |data| {
-                data.copy_from_slice(uniform.as_bytes())
+                data.copy_from_slice(bytemuck::bytes_of(&uniform))
             })
             .await;
 
@@ -145,7 +155,7 @@ impl Skybox {
                 .create_bind_group(&self.uniform_buffer, true, move |uniform_buffer| {
                     device.create_bind_group(&BindGroupDescriptor {
                         layout: bind_group_layout,
-                        bindings: &[Binding {
+                        entries: &[BindGroupEntry {
                             binding: 0,
                             resource: BindingResource::Buffer(uniform_buffer.inner.slice(..)),
                         }],
@@ -157,16 +167,25 @@ impl Skybox {
     }
 
     pub fn set_samples(&mut self, device: &Device, samples: MSAASetting) {
-        self.pipeline = create_pipeline(device, &self.pipeline_layout, samples);
+        self.pipeline = create_skybox_pipeline(
+            device,
+            &self.pipeline_layout,
+            &self.vertex_shader,
+            &self.fragment_shader,
+            samples,
+        );
     }
 
     pub fn render_skybox<'a>(
         &'a self,
         rpass: &mut RenderPass<'a>,
         texture_bind_group: &'a BindGroup,
-        screenspace_verts: &'a Buffer,
+        debug: DebugMode,
     ) {
         const ERROR_MSG: &str = "update not called before render";
+        if debug != DebugMode::None {
+            return;
+        }
         rpass.set_pipeline(&self.pipeline);
         rpass.set_bind_group(
             0,
@@ -176,7 +195,6 @@ impl Skybox {
             &[],
         );
         rpass.set_bind_group(1, texture_bind_group, &[]);
-        rpass.set_vertex_buffer(0, screenspace_verts.slice(..));
         rpass.draw(0..3, 0..1);
     }
 }

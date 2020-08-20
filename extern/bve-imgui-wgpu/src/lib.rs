@@ -3,7 +3,7 @@
 use bve_conveyor::{AutomatedBuffer, AutomatedBufferManager, IdBuffer};
 use imgui::{Context, DrawCmd::Elements, DrawData, DrawIdx, DrawList, DrawVert, TextureId, Textures};
 use smallvec::SmallVec;
-use std::{mem::size_of, num::NonZeroU64, sync::Arc};
+use std::{borrow::Cow, mem::size_of, num::NonZeroU64, sync::Arc};
 use wgpu::*;
 
 pub type RendererResult<T> = Result<T, RendererError>;
@@ -29,7 +29,7 @@ impl Texture {
     /// Creates a new imgui texture from a wgpu texture.
     pub fn new(texture: wgpu::Texture, layout: &BindGroupLayout, device: &Device) -> Self {
         // Extract the texture view.
-        let view = texture.create_default_view();
+        let view = texture.create_view(&TextureViewDescriptor::default());
 
         // Create the texture sampler.
         let sampler = device.create_sampler(&SamplerDescriptor {
@@ -50,12 +50,12 @@ impl Texture {
         let bind_group = device.create_bind_group(&BindGroupDescriptor {
             label: None,
             layout,
-            bindings: &[
-                Binding {
+            entries: &[
+                BindGroupEntry {
                     binding: 0,
                     resource: BindingResource::TextureView(&view),
                 },
-                Binding {
+                BindGroupEntry {
                     binding: 1,
                     resource: BindingResource::Sampler(&sampler),
                 },
@@ -123,8 +123,8 @@ impl Renderer {
         fs_raw: Vec<u32>,
     ) -> Renderer {
         // Load shaders.
-        let vs_module = device.create_shader_module(ShaderModuleSource::SpirV(&vs_raw));
-        let fs_module = device.create_shader_module(ShaderModuleSource::SpirV(&fs_raw));
+        let vs_module = device.create_shader_module(ShaderModuleSource::SpirV(Cow::Owned(vs_raw)));
+        let fs_module = device.create_shader_module(ShaderModuleSource::SpirV(Cow::Owned(fs_raw)));
 
         // Create the uniform matrix buffer.
         let size = 64;
@@ -138,39 +138,51 @@ impl Renderer {
         // Create the uniform matrix buffer bind group layout.
         let uniform_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             label: None,
-            bindings: &[BindGroupLayoutEntry::new(
-                0,
-                wgpu::ShaderStage::VERTEX,
-                BindingType::UniformBuffer {
+            entries: &[BindGroupLayoutEntry {
+                binding: 0,
+                count: None,
+                visibility: wgpu::ShaderStage::VERTEX,
+                ty: BindingType::UniformBuffer {
                     dynamic: false,
                     min_binding_size: Some(NonZeroU64::new(size).unwrap()),
                 },
-            )],
+            }],
         });
 
         // Create the texture layout for further usage.
         let texture_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             label: None,
-            bindings: &[
-                BindGroupLayoutEntry::new(0, wgpu::ShaderStage::FRAGMENT, BindingType::SampledTexture {
-                    multisampled: false,
-                    component_type: TextureComponentType::Float,
-                    dimension: TextureViewDimension::D2,
-                }),
-                BindGroupLayoutEntry::new(1, wgpu::ShaderStage::FRAGMENT, BindingType::Sampler {
-                    comparison: false,
-                }),
+            entries: &[
+                BindGroupLayoutEntry {
+                    binding: 0,
+                    count: None,
+                    visibility: wgpu::ShaderStage::FRAGMENT,
+                    ty: BindingType::SampledTexture {
+                        multisampled: false,
+                        component_type: TextureComponentType::Float,
+                        dimension: TextureViewDimension::D2,
+                    },
+                },
+                BindGroupLayoutEntry {
+                    binding: 1,
+                    count: None,
+                    visibility: wgpu::ShaderStage::FRAGMENT,
+                    ty: BindingType::Sampler { comparison: false },
+                },
             ],
         });
 
         // Create the render pipeline layout.
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
+            label: Some("imgui-wgpu pipeline layout"),
             bind_group_layouts: &[&uniform_bind_group_layout, &texture_layout],
+            push_constant_ranges: &[],
         });
 
         // Create the render pipeline.
         let pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
-            layout: &pipeline_layout,
+            label: Some("imgui-wgpu pipeline"),
+            layout: Some(&pipeline_layout),
             vertex_stage: ProgrammableStageDescriptor {
                 module: &vs_module,
                 entry_point: "main",
@@ -182,6 +194,7 @@ impl Renderer {
             rasterization_state: Some(RasterizationStateDescriptor {
                 front_face: FrontFace::Cw,
                 cull_mode: CullMode::None,
+                clamp_depth: false,
                 depth_bias: 0,
                 depth_bias_slope_scale: 0.0,
                 depth_bias_clamp: 0.0,
@@ -289,7 +302,7 @@ impl Renderer {
         let uniform_bind_group = device.create_bind_group(&BindGroupDescriptor {
             label: None,
             layout: &self.uniform_bind_group_layout,
-            bindings: &[Binding {
+            entries: &[BindGroupEntry {
                 binding: 0,
                 resource: BindingResource::Buffer(uniform_buffer.inner.slice(..)),
             }],
@@ -450,9 +463,10 @@ impl Renderer {
         indices: &[DrawIdx],
     ) {
         let data: &[u8] = bytemuck::cast_slice(indices);
+        let length = (data.len() + 3) & !3;
         buffer
-            .write_to_buffer(device, encoder, data.len() as BufferAddress, |buf| {
-                buf.copy_from_slice(data)
+            .write_to_buffer(device, encoder, length as u64, |buf| {
+                buf[..data.len()].copy_from_slice(data)
             })
             .await;
     }

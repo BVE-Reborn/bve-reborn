@@ -6,9 +6,9 @@
 
 // Actually a PointLight and ConeLight in one, eliminates a nasty branch
 struct ConeLight {
-    vec4 location;
-    vec4 direction;
-    vec4 color;
+    vec3 location;
+    vec3 direction;
+    vec3 color;
     float radius;
     float angle;
     int point;

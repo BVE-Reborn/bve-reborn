@@ -53,19 +53,15 @@
 #![allow(clippy::wildcard_imports)]
 
 use crate::platform::*;
-use async_std::{
-    path::PathBuf,
-    sync::{Arc, Mutex},
-    task::block_on,
-};
+use async_std::{path::PathBuf, task::block_on};
 use bve::{
     load::mesh::Vertex,
     runtime,
     runtime::{LightDescriptor, LightType, Location, RenderLightDescriptor},
+    AsyncMutex,
 };
 use bve_render::{
-    DebugMode, LightHandle, MSAASetting, MeshHandle, OITNodeCount, ObjectHandle, Renderer, RendererStatistics,
-    TextureHandle, Vsync,
+    DebugMode, LightHandle, MSAASetting, MeshHandle, ObjectHandle, Renderer, RendererStatistics, TextureHandle, Vsync,
 };
 use glam::Vec3A;
 use image::RgbaImage;
@@ -76,12 +72,12 @@ use std::{
     fs::File,
     io::BufReader,
     panic::catch_unwind,
+    sync::Arc,
     time::{Duration, Instant},
 };
 use winit::{
     event::{DeviceEvent, ElementState, Event, KeyboardInput, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
-    platform::desktop::EventLoopExtDesktop,
     window::{Window, WindowBuilder},
 };
 
@@ -98,13 +94,15 @@ impl Client {
     async fn new(
         window: &Window,
         imgui_context: &mut imgui::Context,
-        oit_node_count: OITNodeCount,
         samples: MSAASetting,
         vsync: Vsync,
-    ) -> Arc<Mutex<Self>> {
-        Arc::new(Mutex::new(Self {
-            renderer: Renderer::new(window, imgui_context, oit_node_count, samples, vsync).await,
-        }))
+    ) -> Arc<AsyncMutex<Self>> {
+        Arc::new(AsyncMutex::new(
+            Self {
+                renderer: Renderer::new(window, imgui_context, samples, vsync).await,
+            },
+            false,
+        ))
     }
 }
 
@@ -172,9 +170,17 @@ impl runtime::Client for Client {
 struct Object {
     path: std::path::PathBuf,
     count: usize,
+    #[serde(default)]
     x: f32,
+    #[serde(default)]
+    y: f32,
+    #[serde(default)]
     z: f32,
+    #[serde(default)]
     offset_x: f32,
+    #[serde(default)]
+    offset_y: f32,
+    #[serde(default)]
     offset_z: f32,
 }
 
@@ -191,7 +197,7 @@ struct Loading {
 }
 
 fn client_main() {
-    let mut event_loop = EventLoop::new();
+    let event_loop = EventLoop::new();
 
     env_logger::init();
 
@@ -223,10 +229,9 @@ fn client_main() {
         (false, false, false, false, false, false, false);
 
     let mut sample_count = MSAASetting::X1;
-    let mut oit_node_count = OITNodeCount::Four;
     let mut vsync = Vsync::Enabled;
     let mut debug_mode = DebugMode::None;
-    let client = block_on(async { Client::new(&window, &mut imgui, oit_node_count, sample_count, vsync).await });
+    let client = block_on(async { Client::new(&window, &mut imgui, sample_count, vsync).await });
     let runtime = runtime::Runtime::new(Arc::clone(&client));
 
     let mut camera_location = Vec3A::new(-7.0, 3.0, 0.0);
@@ -249,7 +254,7 @@ fn client_main() {
                     .add_static_object(
                         runtime::Location::from_absolute_position(Vec3A::new(
                             f32::mul_add(object.offset_x, idx as f32, object.x),
-                            0.0,
+                            f32::mul_add(object.offset_y, idx as f32, object.y),
                             f32::mul_add(object.offset_z, idx as f32, object.z),
                         )),
                         PathBuf::from(object.path.clone()),
@@ -322,7 +327,7 @@ fn client_main() {
     let mut last_renderer_stats_instant = Instant::now();
     let mut last_cursor = None;
 
-    event_loop.run_return(move |event, _, control_flow| {
+    event_loop.run(move |event, _, control_flow| {
         match event {
             Event::MainEventsCleared => {
                 let last_frame_time = frame_times
@@ -568,20 +573,6 @@ fn client_main() {
                             {
                                 sample_count = MSAASetting::from_selection_integer(current_msaa);
                                 block_on(async { client.lock().await.renderer.set_samples(sample_count) });
-                            };
-
-                            let mut current_transparency = sample_count.into_selection_integer();
-                            if imgui::ComboBox::new(im_str!("Transparency Depth"))
-                                .flags(imgui::ComboBoxFlags::NO_PREVIEW)
-                                .build_simple_string(&frame, &mut current_transparency, &[
-                                    im_str!("4"),
-                                    im_str!("8"),
-                                    im_str!("16"),
-                                    im_str!("32"),
-                                ])
-                            {
-                                oit_node_count = OITNodeCount::from_selection_integer(current_transparency);
-                                block_on(async { client.lock().await.renderer.set_oit_node_count(oit_node_count) });
                             };
 
                             let mut current_debug = debug_mode.into_selection_integer();

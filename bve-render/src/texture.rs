@@ -75,22 +75,15 @@ impl Renderer {
         self.mip_creator
             .compute_mipmaps(&self.device, &mut encoder, &filtered_texture, dimensions);
 
-        let texture_view = filtered_texture.create_default_view();
+        let texture_view = filtered_texture.create_view(&TextureViewDescriptor::default());
 
-        let bind_group = self.device.create_bind_group(&BindGroupDescriptor {
-            layout: &self.texture_bind_group_layout,
-            bindings: &[
-                Binding {
-                    binding: 0,
-                    resource: BindingResource::TextureView(&texture_view),
-                },
-                Binding {
-                    binding: 1,
-                    resource: BindingResource::Sampler(&self.sampler),
-                },
-            ],
-            label: None,
-        });
+        let bind_group = create_texture_bind_group(
+            &self.device,
+            &self.texture_bind_group_layout,
+            &texture_view,
+            &self.sampler,
+            None,
+        );
 
         self.command_buffers.push(encoder.finish());
 

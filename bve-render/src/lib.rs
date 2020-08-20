@@ -60,11 +60,14 @@ pub use crate::{
     lights::LightHandle,
     mesh::MeshHandle,
     object::ObjectHandle,
-    render::{oit::OITNodeCount, DebugMode, MSAASetting, Vsync},
+    render::{DebugMode, MSAASetting, Vsync},
     statistics::RendererStatistics,
     texture::TextureHandle,
 };
-use crate::{object::perspective_matrix, render::UniformVerts};
+use crate::{
+    object::perspective_matrix,
+    render::{create_texture_bind_group, create_texture_bind_group_layout, UniformVerts},
+};
 use bve::{load::mesh::Vertex as MeshVertex, runtime::RenderLightDescriptor, UVec2};
 use bve_conveyor::{AutomatedBuffer, AutomatedBufferManager, UploadStyle};
 use glam::{Mat4, Vec3A};
@@ -73,10 +76,9 @@ use itertools::Itertools;
 use log::{debug, error, info};
 use num_traits::{ToPrimitive, Zero};
 use slotmap::{DefaultKey, SlotMap};
-use std::{mem::size_of, sync::Arc, time::Instant};
+use std::{mem::size_of, num::NonZeroU8, sync::Arc, time::Instant};
 use wgpu::*;
 use winit::{dpi::PhysicalSize, window::Window};
-use zerocopy::{AsBytes, FromBytes};
 
 #[cfg(feature = "renderdoc")]
 macro_rules! renderdoc {
@@ -97,7 +99,6 @@ mod lights;
 mod mesh;
 mod object;
 mod render;
-mod screenspace;
 mod shader;
 mod statistics;
 mod texture;
@@ -117,7 +118,6 @@ pub struct Renderer {
 
     camera: camera::Camera,
     resolution: PhysicalSize<u32>,
-    oit_node_count: OITNodeCount,
     samples: MSAASetting,
     vsync: Vsync,
     debug_mode: DebugMode,
@@ -129,23 +129,26 @@ pub struct Renderer {
     queue: Queue,
     swapchain: SwapChain,
     framebuffer: TextureView,
+    unsampled_framebuffer: Option<TextureView>,
     depth_buffer: TextureView,
     opaque_pipeline: RenderPipeline,
+    transparent_pipeline: RenderPipeline,
     pipeline_layout: PipelineLayout,
     texture_bind_group_layout: BindGroupLayout,
     sampler: Sampler,
+    nearest_sampler: Sampler,
 
     buffer_manager: AutomatedBufferManager,
-    screenspace_triangle_verts: Buffer,
     matrix_buffer: AutomatedBuffer,
 
     vert_shader: Arc<ShaderModule>,
     frag_shader: Arc<ShaderModule>,
+    transparent_shader: Arc<ShaderModule>,
 
     transparency_processor: compute::CutoutTransparencyCompute,
     mip_creator: compute::MipmapCompute,
+    framebuffer_blitter: render::blit::FramebufferBlitter,
     cluster_renderer: render::cluster::Clustering,
-    oit_renderer: render::oit::Oit,
     skybox_renderer: render::skybox::Skybox,
     imgui_renderer: bve_imgui_wgpu::Renderer,
 
@@ -157,27 +160,23 @@ impl Renderer {
     pub async fn new(
         window: &Window,
         imgui_context: &mut imgui::Context,
-        oit_node_count: OITNodeCount,
         samples: render::MSAASetting,
         vsync: render::Vsync,
     ) -> Self {
         let screen_size = window.inner_size();
 
         info!(
-            "Creating renderer with: screen size = {}x{}, oit nodes = {}; samples = {}, vsync = {}",
-            screen_size.width, screen_size.height, oit_node_count as u8, samples as u8, vsync
+            "Creating renderer with: screen size = {}x{}, samples = {}, vsync = {}",
+            screen_size.width, screen_size.height, samples as u8, vsync
         );
 
         let instance = Instance::new(BackendBit::VULKAN | BackendBit::METAL);
         let surface = unsafe { instance.create_surface(window) };
         let adapter = instance
-            .request_adapter(
-                &RequestAdapterOptions {
-                    power_preference: PowerPreference::HighPerformance,
-                    compatible_surface: Some(&surface),
-                },
-                UnsafeFeatures::disallow(),
-            )
+            .request_adapter(&RequestAdapterOptions {
+                power_preference: PowerPreference::HighPerformance,
+                compatible_surface: Some(&surface),
+            })
             .await
             .expect("Could not create Adapter");
 
@@ -213,8 +212,8 @@ impl Renderer {
         let swapchain = device.create_swap_chain(&surface, &swapchain_desc);
 
         let vs_module = shader!(&device; opaque - vert);
-
         let fs_module = shader!(&device; opaque - frag);
+        let transparent_fs_module = shader!(&device; transparent - frag);
 
         let sampler = device.create_sampler(&SamplerDescriptor {
             address_mode_u: AddressMode::Repeat,
@@ -226,12 +225,12 @@ impl Renderer {
             lod_min_clamp: -100.0,
             lod_max_clamp: 100.0,
             compare: None,
-            anisotropy_clamp: Some(16),
+            anisotropy_clamp: NonZeroU8::new(16),
             label: Some("primary texture sampler"),
-            ..Default::default()
         });
+        let nearest_sampler = device.create_sampler(&SamplerDescriptor::default());
 
-        let framebuffer = render::create_framebuffer(&device, screen_size, samples);
+        let (framebuffer, unsampled_framebuffer) = render::create_framebuffers(&device, screen_size, samples);
         let depth_buffer = render::create_depth_buffer(&device, screen_size, samples);
 
         let projection_matrix = perspective_matrix(
@@ -249,37 +248,32 @@ impl Renderer {
             frustum::Frustum::from_matrix(projection_matrix),
         );
 
-        let texture_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            bindings: &[
-                BindGroupLayoutEntry::new(0, ShaderStage::FRAGMENT, BindingType::SampledTexture {
-                    multisampled: false,
-                    component_type: TextureComponentType::Uint,
-                    dimension: TextureViewDimension::D2,
-                }),
-                BindGroupLayoutEntry::new(1, ShaderStage::FRAGMENT, BindingType::Sampler { comparison: false }),
-            ],
-            label: Some("texture and sampler"),
-        });
+        let texture_bind_group_layout = create_texture_bind_group_layout(&device, TextureComponentType::Uint);
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
+            label: Some("standard layout"),
             bind_group_layouts: &[&texture_bind_group_layout, cluster_renderer.bind_group_layout()],
+            push_constant_ranges: &[],
         });
 
-        let opaque_pipeline = render::create_pipeline(&device, &pipeline_layout, &vs_module, &fs_module, samples);
+        let opaque_pipeline =
+            render::create_pipeline(&device, &pipeline_layout, &vs_module, &fs_module, samples, false);
+        let transparent_pipeline = render::create_pipeline(
+            &device,
+            &pipeline_layout,
+            &vs_module,
+            &transparent_fs_module,
+            samples,
+            true,
+        );
 
         let matrix_buffer = buffer_manager.create_new_buffer(&device, 0, BufferUsage::VERTEX, Some("uniform buffer"));
 
         let transparency_processor = compute::CutoutTransparencyCompute::new(&device);
         let mip_creator = compute::MipmapCompute::new(&device);
-        let oit_renderer = render::oit::Oit::new(
+        let framebuffer_blitter = render::blit::FramebufferBlitter::new(
             &device,
-            &mut startup_encoder,
-            &vs_module,
-            &texture_bind_group_layout,
-            cluster_renderer.bind_group_layout(),
-            &framebuffer,
-            UVec2::new(screen_size.width, screen_size.height),
-            oit_node_count,
-            samples,
+            unsampled_framebuffer.as_ref().unwrap_or(&framebuffer),
+            &nearest_sampler,
         );
         let skybox_renderer =
             render::skybox::Skybox::new(&mut buffer_manager, &device, &texture_bind_group_layout, samples);
@@ -291,8 +285,6 @@ impl Renderer {
             swapchain_desc.format,
             None,
         );
-
-        let screenspace_triangle_verts = screenspace::create_screen_space_verts(&device);
 
         // Create the Renderer object early so we can can call methods on it.
         let mut renderer = Self {
@@ -309,7 +301,6 @@ impl Renderer {
             },
             resolution: screen_size,
             samples,
-            oit_node_count,
             projection_matrix,
             debug_mode: DebugMode::None,
             vsync,
@@ -319,24 +310,26 @@ impl Renderer {
             queue,
             swapchain,
             framebuffer,
+            unsampled_framebuffer,
             depth_buffer,
             opaque_pipeline,
+            transparent_pipeline,
             pipeline_layout,
             texture_bind_group_layout,
             sampler,
+            nearest_sampler,
 
             buffer_manager,
             matrix_buffer,
 
             vert_shader: vs_module,
             frag_shader: fs_module,
-
-            screenspace_triangle_verts,
+            transparent_shader: transparent_fs_module,
 
             transparency_processor,
             mip_creator,
+            framebuffer_blitter,
             cluster_renderer,
-            oit_renderer,
             skybox_renderer,
             imgui_renderer,
 
@@ -357,7 +350,9 @@ impl Renderer {
             .device
             .create_command_encoder(&CommandEncoderDescriptor { label: Some("resizer") });
         debug!("Resizing to {}x{}", screen_size.width, screen_size.height);
-        self.framebuffer = render::create_framebuffer(&self.device, screen_size, self.samples);
+        let (framebuffer, unsampled_framebuffer) = render::create_framebuffers(&self.device, screen_size, self.samples);
+        self.framebuffer = framebuffer;
+        self.unsampled_framebuffer = unsampled_framebuffer;
         self.depth_buffer = render::create_depth_buffer(&self.device, screen_size, self.samples);
         self.resolution = screen_size;
 
@@ -370,17 +365,16 @@ impl Renderer {
             screen_size.width as f32 / screen_size.height as f32,
         );
 
+        self.framebuffer_blitter.resize(
+            &self.device,
+            self.unsampled_framebuffer.as_ref().unwrap_or(&self.framebuffer),
+            &self.nearest_sampler,
+        );
         self.cluster_renderer.resize(
             &self.device,
             &mut encoder,
             self.projection_matrix.inverse(),
             frustum::Frustum::from_matrix(self.projection_matrix),
-        );
-        self.oit_renderer.resize(
-            &self.device,
-            UVec2::new(screen_size.width, screen_size.height),
-            &self.framebuffer,
-            self.samples,
         );
         self.command_buffers.push(encoder.finish());
     }
@@ -410,12 +404,23 @@ impl Renderer {
             &self.vert_shader,
             &self.frag_shader,
             self.samples,
+            false,
+        );
+        self.transparent_pipeline = render::create_pipeline(
+            &self.device,
+            &self.pipeline_layout,
+            &self.vert_shader,
+            &self.transparent_shader,
+            self.samples,
+            true,
         );
     }
 
     pub fn set_samples(&mut self, samples: render::MSAASetting) {
         debug!("Setting sample count to {}", samples as u8);
-        self.framebuffer = render::create_framebuffer(&self.device, self.resolution, samples);
+        let (framebuffer, unsampled_framebuffer) = render::create_framebuffers(&self.device, self.resolution, samples);
+        self.framebuffer = framebuffer;
+        self.unsampled_framebuffer = unsampled_framebuffer;
         self.depth_buffer = render::create_depth_buffer(&self.device, self.resolution, samples);
         self.opaque_pipeline = render::create_pipeline(
             &self.device,
@@ -423,25 +428,24 @@ impl Renderer {
             &self.vert_shader,
             &self.frag_shader,
             samples,
+            false,
+        );
+        self.transparent_pipeline = render::create_pipeline(
+            &self.device,
+            &self.pipeline_layout,
+            &self.vert_shader,
+            &self.transparent_shader,
+            samples,
+            true,
         );
         self.samples = samples;
 
-        self.oit_renderer.set_samples(
+        self.framebuffer_blitter.set_samples(
             &self.device,
-            &self.vert_shader,
-            &self.framebuffer,
-            UVec2::new(self.resolution.width, self.resolution.height),
-            self.oit_node_count,
-            samples,
+            self.unsampled_framebuffer.as_ref().unwrap_or(&self.framebuffer),
+            &self.nearest_sampler,
         );
         self.skybox_renderer.set_samples(&self.device, samples);
-    }
-
-    pub fn set_oit_node_count(&mut self, oit_node_count: OITNodeCount) {
-        debug!("Setting oit node count to {}", oit_node_count as u8);
-        self.oit_renderer
-            .set_node_count(&self.device, oit_node_count, self.samples);
-        self.oit_node_count = oit_node_count;
     }
 
     pub fn set_vsync(&mut self, vsync: Vsync) {

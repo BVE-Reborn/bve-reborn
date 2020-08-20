@@ -4,15 +4,18 @@ use crate::{
     *,
 };
 use bve::UVec2;
-use zerocopy::AsBytes;
+use wgpu::util::{BufferInitDescriptor, DeviceExt};
 
-#[derive(AsBytes)]
 #[repr(C)]
+#[derive(Clone, Copy)]
 struct FroxelUniforms {
-    _inv_proj: [f32; 16],
+    _inv_proj: shader_types::Mat4,
     _frustum: FrustumBytes,
-    _frustum_count: [u32; 2],
+    _frustum_count: shader_types::UVec2,
 }
+
+unsafe impl bytemuck::Zeroable for FroxelUniforms {}
+unsafe impl bytemuck::Pod for FroxelUniforms {}
 
 pub struct FrustumCreation {
     uniform_buffer: Buffer,
@@ -29,28 +32,41 @@ impl FrustumCreation {
         frustum_count: UVec2,
     ) -> Self {
         let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            bindings: &[
-                BindGroupLayoutEntry::new(0, ShaderStage::COMPUTE, BindingType::UniformBuffer {
-                    dynamic: false,
-                    min_binding_size: None,
-                }),
-                BindGroupLayoutEntry::new(1, ShaderStage::COMPUTE, BindingType::StorageBuffer {
-                    readonly: false,
-                    dynamic: false,
-                    min_binding_size: None,
-                }),
+            entries: &[
+                BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: ShaderStage::COMPUTE,
+                    ty: BindingType::UniformBuffer {
+                        dynamic: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: ShaderStage::COMPUTE,
+                    ty: BindingType::StorageBuffer {
+                        readonly: false,
+                        dynamic: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
             ],
             label: Some("frustum creation bind group layout"),
         });
 
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
+            label: Some("frustum creation pipeline layout"),
             bind_group_layouts: &[&bind_group_layout],
+            push_constant_ranges: &[],
         });
 
         let shader = shader!(device; froxels - compute);
 
         let pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
-            layout: &pipeline_layout,
+            label: Some("frustum creation pipeline"),
+            layout: Some(&pipeline_layout),
             compute_stage: ProgrammableStageDescriptor {
                 entry_point: "main",
                 module: &*shader,
@@ -59,21 +75,24 @@ impl FrustumCreation {
 
         let uniforms = FroxelUniforms {
             _frustum: frustum.into(),
-            _frustum_count: frustum_count.into_array(),
-            _inv_proj: *mx_inv_proj.as_ref(),
+            _frustum_count: shader_types::UVec2::from(frustum_count.into_array()),
+            _inv_proj: shader_types::Mat4::from(*mx_inv_proj.as_ref()),
         };
 
-        let uniform_buffer =
-            device.create_buffer_with_data(uniforms.as_bytes(), BufferUsage::UNIFORM | BufferUsage::COPY_DST);
+        let uniform_buffer = device.create_buffer_init(&BufferInitDescriptor {
+            label: Some("froxel uniform buffer"),
+            contents: bytemuck::bytes_of(&uniforms),
+            usage: BufferUsage::UNIFORM | BufferUsage::COPY_DST,
+        });
 
         let bind_group = device.create_bind_group(&BindGroupDescriptor {
             layout: &bind_group_layout,
-            bindings: &[
-                Binding {
+            entries: &[
+                BindGroupEntry {
                     binding: 0,
                     resource: BindingResource::Buffer(uniform_buffer.slice(..)),
                 },
-                Binding {
+                BindGroupEntry {
                     binding: 1,
                     resource: BindingResource::Buffer(frustum_buffer.slice(..)),
                 },
@@ -98,11 +117,16 @@ impl FrustumCreation {
     ) {
         let uniforms = FroxelUniforms {
             _frustum: frustum.into(),
-            _frustum_count: frustum_count.into_array(),
-            _inv_proj: *mx_inv_proj.as_ref(),
+            _frustum_count: shader_types::UVec2::from(frustum_count.into_array()),
+            _inv_proj: shader_types::Mat4::from(*mx_inv_proj.as_ref()),
         };
 
-        let uniform_staging_buffer = device.create_buffer_with_data(uniforms.as_bytes(), BufferUsage::COPY_SRC);
+        // TODO: use a belt
+        let uniform_staging_buffer = device.create_buffer_init(&BufferInitDescriptor {
+            label: Some("froxel resize temp uniform buffer"),
+            contents: bytemuck::bytes_of(&uniforms),
+            usage: BufferUsage::UNIFORM | BufferUsage::COPY_SRC,
+        });
 
         encoder.copy_buffer_to_buffer(
             &uniform_staging_buffer,
