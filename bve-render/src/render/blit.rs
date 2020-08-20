@@ -48,7 +48,7 @@ pub struct FramebufferBlitter {
 
 impl FramebufferBlitter {
     pub fn new(device: &Device, texture: &TextureView, sampler: &Sampler) -> Self {
-        let bind_group_layout = create_texture_bind_group_layout(&device, TextureComponentType::Float);
+        let bind_group_layout = create_texture_bind_group_layout(device, TextureComponentType::Float);
         let bind_group = create_texture_bind_group(
             device,
             &bind_group_layout,
@@ -70,6 +70,10 @@ impl FramebufferBlitter {
             bind_group,
             pipeline,
         }
+    }
+
+    pub fn set_samples(&mut self, device: &Device, texture: &TextureView, sampler: &Sampler) {
+        self.resize(device, texture, sampler)
     }
 
     pub fn resize(&mut self, device: &Device, texture: &TextureView, sampler: &Sampler) {

@@ -5,15 +5,17 @@ use crate::{
 };
 use bve::UVec2;
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
-use zerocopy::AsBytes;
 
-#[derive(AsBytes)]
 #[repr(C)]
+#[derive(Clone, Copy)]
 struct FroxelUniforms {
-    _inv_proj: [f32; 16],
+    _inv_proj: shader_types::Mat4,
     _frustum: FrustumBytes,
-    _frustum_count: [u32; 2],
+    _frustum_count: shader_types::UVec2,
 }
+
+unsafe impl bytemuck::Zeroable for FroxelUniforms {}
+unsafe impl bytemuck::Pod for FroxelUniforms {}
 
 pub struct FrustumCreation {
     uniform_buffer: Buffer,
@@ -73,13 +75,13 @@ impl FrustumCreation {
 
         let uniforms = FroxelUniforms {
             _frustum: frustum.into(),
-            _frustum_count: frustum_count.into_array(),
-            _inv_proj: *mx_inv_proj.as_ref(),
+            _frustum_count: shader_types::UVec2::from(frustum_count.into_array()),
+            _inv_proj: shader_types::Mat4::from(*mx_inv_proj.as_ref()),
         };
 
         let uniform_buffer = device.create_buffer_init(&BufferInitDescriptor {
             label: Some("froxel uniform buffer"),
-            contents: uniforms.as_bytes(),
+            contents: bytemuck::bytes_of(&uniforms),
             usage: BufferUsage::UNIFORM | BufferUsage::COPY_DST,
         });
 
@@ -115,14 +117,14 @@ impl FrustumCreation {
     ) {
         let uniforms = FroxelUniforms {
             _frustum: frustum.into(),
-            _frustum_count: frustum_count.into_array(),
-            _inv_proj: *mx_inv_proj.as_ref(),
+            _frustum_count: shader_types::UVec2::from(frustum_count.into_array()),
+            _inv_proj: shader_types::Mat4::from(*mx_inv_proj.as_ref()),
         };
 
         // TODO: use a belt
         let uniform_staging_buffer = device.create_buffer_init(&BufferInitDescriptor {
             label: Some("froxel resize temp uniform buffer"),
-            contents: uniforms.as_bytes(),
+            contents: bytemuck::bytes_of(&uniforms),
             usage: BufferUsage::UNIFORM | BufferUsage::COPY_SRC,
         });
 

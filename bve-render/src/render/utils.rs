@@ -316,11 +316,11 @@ impl Renderer {
                 let (mx_model_view_proj, mx_model_view, mx_inv_trans_model_view) =
                     object::generate_matrix(&projection_matrix, &camera_mat, object.location);
                 let uniforms = UniformVerts {
-                    _model_view_proj: *mx_model_view_proj.as_ref(),
-                    _model_view: *mx_model_view.as_ref(),
-                    _inv_trans_model_view: *mx_inv_trans_model_view.as_ref(),
+                    _model_view_proj: shader_types::Mat4::from(*mx_model_view_proj.as_ref()),
+                    _model_view: shader_types::Mat4::from(*mx_model_view.as_ref()),
+                    _inv_trans_model_view: shader_types::Mat4::from(*mx_inv_trans_model_view.as_ref()),
                 };
-                matrix_buffer_data.extend_from_slice(uniforms.as_bytes());
+                matrix_buffer_data.extend_from_slice(bytemuck::bytes_of(&uniforms));
             }
             // alignment between groups is 256
             while matrix_buffer_data.len() & 0xFF != 0 {

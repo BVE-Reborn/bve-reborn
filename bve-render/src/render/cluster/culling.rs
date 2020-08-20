@@ -6,13 +6,16 @@ use crate::{
 use bve_conveyor::{BeltBufferId, BindGroupCache};
 
 // TODO: Unify these with the regular uniforms? This would make bind groups sharable.
-#[derive(AsBytes)]
 #[repr(C)]
+#[derive(Copy, Clone)]
 struct CullingUniforms {
-    _cluster_count: [u32; 3],
+    _cluster_count: shader_types::UVec3,
     _light_count: u32,
     _max_depth: f32,
 }
+
+unsafe impl bytemuck::Zeroable for CullingUniforms {}
+unsafe impl bytemuck::Pod for CullingUniforms {}
 
 pub struct LightCulling {
     uniform_buffer: AutomatedBuffer,
@@ -111,14 +114,14 @@ impl LightCulling {
         light_count: u32,
     ) {
         let uniforms = CullingUniforms {
-            _cluster_count: [FROXELS_X, FROXELS_Y, FROXELS_Z],
+            _cluster_count: shader_types::UVec3::from([FROXELS_X, FROXELS_Y, FROXELS_Z]),
             _light_count: light_count,
             _max_depth: FAR_PLANE_DISTANCE,
         };
 
         self.uniform_buffer
             .write_to_buffer(device, encoder, size_of::<CullingUniforms>() as BufferAddress, |buf| {
-                buf.copy_from_slice(uniforms.as_bytes())
+                buf.copy_from_slice(bytemuck::bytes_of(&uniforms))
             })
             .await;
 

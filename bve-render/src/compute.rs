@@ -5,13 +5,15 @@ use std::{
     num::{NonZeroU32, NonZeroU64},
 };
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
-use zerocopy::AsBytes;
 
 #[repr(C)]
-#[derive(AsBytes)]
+#[derive(Copy, Clone)]
 struct Uniforms {
-    _max_size: [u32; 2],
+    _max_size: shader_types::UVec2,
 }
+
+unsafe impl bytemuck::Zeroable for Uniforms {}
+unsafe impl bytemuck::Pod for Uniforms {}
 
 fn create_texture_compute_pipeline(
     device: &Device,
@@ -73,13 +75,12 @@ fn create_texture_compute_pipeline(
 
 fn create_uniform_buffer(device: &Device, _encoder: &mut CommandEncoder, max_size: UVec2) -> Buffer {
     let uniforms = Uniforms {
-        _max_size: max_size.into_array(),
+        _max_size: shader_types::UVec2::from(max_size.into_array()),
     };
-    let bytes = uniforms.as_bytes();
     device.create_buffer_init(&BufferInitDescriptor {
         label: Some("compute uniform buffer"),
         usage: BufferUsage::UNIFORM,
-        contents: bytes,
+        contents: bytemuck::bytes_of(&uniforms),
     })
 }
 

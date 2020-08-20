@@ -103,12 +103,12 @@ impl Renderer {
 
         let vertex_buffer = self.device.create_buffer_init(&BufferInitDescriptor {
             label: None,
-            contents: vertices.as_bytes(),
+            contents: bytemuck::cast_slice(&vertices),
             usage: BufferUsage::VERTEX,
         });
         let index_buffer = self.device.create_buffer_init(&BufferInitDescriptor {
             label: None,
-            contents: indices.as_bytes(),
+            contents: bytemuck::cast_slice(&indices),
             usage: BufferUsage::INDEX,
         });
 

@@ -79,7 +79,6 @@ use slotmap::{DefaultKey, SlotMap};
 use std::{mem::size_of, num::NonZeroU8, sync::Arc, time::Instant};
 use wgpu::*;
 use winit::{dpi::PhysicalSize, window::Window};
-use zerocopy::{AsBytes, FromBytes};
 
 #[cfg(feature = "renderdoc")]
 macro_rules! renderdoc {
@@ -428,7 +427,7 @@ impl Renderer {
             &self.pipeline_layout,
             &self.vert_shader,
             &self.frag_shader,
-            self.samples,
+            samples,
             false,
         );
         self.transparent_pipeline = render::create_pipeline(
@@ -436,11 +435,16 @@ impl Renderer {
             &self.pipeline_layout,
             &self.vert_shader,
             &self.transparent_shader,
-            self.samples,
+            samples,
             true,
         );
         self.samples = samples;
 
+        self.framebuffer_blitter.set_samples(
+            &self.device,
+            self.unsampled_framebuffer.as_ref().unwrap_or(&self.framebuffer),
+            &self.nearest_sampler,
+        );
         self.skybox_renderer.set_samples(&self.device, samples);
     }
 

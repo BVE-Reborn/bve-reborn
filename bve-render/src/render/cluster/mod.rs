@@ -3,6 +3,7 @@ use bve::{runtime::LightType, UVec2};
 use bve_conveyor::{BeltBufferId, BindGroupCache};
 use culling::*;
 use froxels::*;
+use glam::f32::Vec4;
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
 
 mod culling;
@@ -20,15 +21,15 @@ const MAX_LIGHTS_PER_FROXEL: u32 = 128;
 const LIGHT_LIST_BUFFER_SIZE: BufferAddress =
     (FROXEL_COUNT * MAX_LIGHTS_PER_FROXEL * size_of::<u32>() as u32) as BufferAddress;
 
-#[derive(AsBytes)]
 #[repr(C)]
+#[derive(Clone, Copy)]
 struct PlaneBytes {
-    _abc: [f32; 3],
+    _abc: shader_types::Vec3,
     _d: f32,
 }
 
-#[derive(AsBytes)]
 #[repr(C)]
+#[derive(Clone, Copy)]
 struct FrustumBytes {
     _planes: [PlaneBytes; 4],
 }
@@ -38,19 +39,19 @@ impl From<frustum::Frustum> for FrustumBytes {
         Self {
             _planes: [
                 PlaneBytes {
-                    _abc: *frustum.planes[0].abc.as_ref(),
+                    _abc: shader_types::Vec3::from(*frustum.planes[0].abc.as_ref()),
                     _d: frustum.planes[0].d,
                 },
                 PlaneBytes {
-                    _abc: *frustum.planes[1].abc.as_ref(),
+                    _abc: shader_types::Vec3::from(*frustum.planes[1].abc.as_ref()),
                     _d: frustum.planes[1].d,
                 },
                 PlaneBytes {
-                    _abc: *frustum.planes[2].abc.as_ref(),
+                    _abc: shader_types::Vec3::from(*frustum.planes[2].abc.as_ref()),
                     _d: frustum.planes[2].d,
                 },
                 PlaneBytes {
-                    _abc: *frustum.planes[3].abc.as_ref(),
+                    _abc: shader_types::Vec3::from(*frustum.planes[3].abc.as_ref()),
                     _d: frustum.planes[3].d,
                 },
             ],
@@ -58,17 +59,19 @@ impl From<frustum::Frustum> for FrustumBytes {
     }
 }
 
-#[derive(AsBytes)]
 #[repr(C)]
+#[derive(Copy, Clone)]
 struct ConeLightBytes {
-    _location: [f32; 4],
-    _direction: [f32; 4],
-    _color: [f32; 4],
+    _location: shader_types::Vec3,
+    _direction: shader_types::Vec3,
+    _color: shader_types::Vec3,
     _radius: f32,
     _angle: f32,
     _point: bool,
-    _padding0: [u8; 7],
 }
+
+unsafe impl bytemuck::Zeroable for ConeLightBytes {}
+unsafe impl bytemuck::Pod for ConeLightBytes {}
 
 /// TODO: have this write directly into the buffer
 fn convert_lights_to_data(input: &SlotMap<DefaultKey, RenderLightDescriptor>, mx_view: Mat4) -> Vec<ConeLightBytes> {
@@ -77,38 +80,39 @@ fn convert_lights_to_data(input: &SlotMap<DefaultKey, RenderLightDescriptor>, mx
         .map(|light: &RenderLightDescriptor| {
             let homogeneous_location = light.location.extend(1.0);
 
-            let transformed = mx_view * homogeneous_location;
+            let transformed: Vec4 = mx_view * homogeneous_location;
 
             match &light.ty {
                 LightType::Point => ConeLightBytes {
-                    _location: *transformed.as_ref(),
-                    _direction: [0.0; 4],
-                    _color: [light.color.x(), light.color.y(), light.color.z(), 0.0],
+                    _location: shader_types::Vec3::from(*transformed.truncate().as_ref()),
+                    _direction: shader_types::Vec3::from([0.0; 3]),
+                    _color: shader_types::Vec3::from(*light.color.as_ref()),
                     _radius: light.radius,
                     _angle: 0.0,
                     _point: true,
-                    _padding0: [0; 7],
                 },
                 LightType::Cone(cone) => ConeLightBytes {
-                    _location: *transformed.as_ref(),
-                    _direction: [cone.direction.x(), cone.direction.y(), cone.direction.z(), 0.0],
-                    _color: [light.color.x(), light.color.y(), light.color.z(), 0.0],
+                    _location: shader_types::Vec3::from(*transformed.truncate().as_ref()),
+                    _direction: shader_types::Vec3::from(*cone.direction.as_ref()),
+                    _color: shader_types::Vec3::from(*light.color.as_ref()),
                     _radius: light.radius,
                     _angle: cone.angle,
                     _point: false,
-                    _padding0: [0; 7],
                 },
             }
         })
         .collect_vec()
 }
 
-#[derive(AsBytes)]
 #[repr(C)]
+#[derive(Copy, Clone)]
 struct ClusterUniforms {
-    _froxel_count: [u32; 3],
+    _froxel_count: shader_types::UVec3,
     _max_depth: f32,
 }
+
+unsafe impl bytemuck::Zeroable for ClusterUniforms {}
+unsafe impl bytemuck::Pod for ClusterUniforms {}
 
 pub struct Clustering {
     frustum_creation: FrustumCreation,
@@ -139,13 +143,13 @@ impl Clustering {
         });
 
         let cluster_uniforms = ClusterUniforms {
-            _froxel_count: [FROXELS_X, FROXELS_Y, FROXELS_Z],
+            _froxel_count: shader_types::UVec3::from([FROXELS_X, FROXELS_Y, FROXELS_Z]),
             _max_depth: FAR_PLANE_DISTANCE,
         };
 
         let cluster_uniforms_buffer = device.create_buffer_init(&BufferInitDescriptor {
             label: None,
-            contents: cluster_uniforms.as_bytes(),
+            contents: bytemuck::bytes_of(&cluster_uniforms),
             usage: BufferUsage::UNIFORM,
         });
 
@@ -258,7 +262,7 @@ impl Clustering {
 
         self.light_buffer
             .write_to_buffer(device, encoder, light_buffer_size, |buf| {
-                buf.copy_from_slice(lights.as_bytes())
+                buf.copy_from_slice(bytemuck::cast_slice(&lights))
             })
             .await;
 

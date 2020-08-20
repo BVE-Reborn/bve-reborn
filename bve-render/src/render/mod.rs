@@ -9,7 +9,7 @@ pub mod skybox;
 mod utils;
 
 #[repr(C)]
-#[derive(Clone, Copy, AsBytes, FromBytes)]
+#[derive(Clone, Copy)]
 pub struct Vertex {
     pub pos: [f32; 3],
     pub _normal: [f32; 3],
@@ -17,13 +17,19 @@ pub struct Vertex {
     pub _texcoord: [f32; 2],
 }
 
+unsafe impl bytemuck::Zeroable for Vertex {}
+unsafe impl bytemuck::Pod for Vertex {}
+
 #[repr(C)]
-#[derive(AsBytes)]
+#[derive(Copy, Clone)]
 pub struct UniformVerts {
-    pub _model_view_proj: [f32; 16],
-    pub _model_view: [f32; 16],
-    pub _inv_trans_model_view: [f32; 16],
+    pub _model_view_proj: shader_types::Mat4,
+    pub _model_view: shader_types::Mat4,
+    pub _inv_trans_model_view: shader_types::Mat4,
 }
+
+unsafe impl bytemuck::Zeroable for UniformVerts {}
+unsafe impl bytemuck::Pod for UniformVerts {}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum DebugMode {
@@ -210,105 +216,102 @@ impl Renderer {
             .execute(&self.device, &mut encoder, &self.lights, self.camera.compute_matrix())
             .await;
 
-        {
-            let matrix_buffer = if !object_references.is_empty() {
-                Some(self.matrix_buffer.get_current_inner().await)
-            } else {
-                None
-            };
+        let matrix_buffer = if !object_references.is_empty() {
+            Some(self.matrix_buffer.get_current_inner().await)
+        } else {
+            None
+        };
 
-            let mut rpass = encoder.begin_render_pass(&RenderPassDescriptor {
-                color_attachments: &[RenderPassColorAttachmentDescriptor {
-                    attachment: &self.framebuffer,
-                    resolve_target: self.unsampled_framebuffer.as_ref(),
-                    ops: Operations {
-                        load: LoadOp::Clear(Color {
-                            r: 0.3,
-                            g: 0.3,
-                            b: 0.3,
-                            a: 1.0,
-                        }),
-                        store: true,
-                    },
-                }],
-                depth_stencil_attachment: Some(RenderPassDepthStencilAttachmentDescriptor {
-                    attachment: &self.depth_buffer,
-                    depth_ops: Some(Operations {
-                        load: LoadOp::Clear(0.0),
-                        store: false,
-                    }),
-                    stencil_ops: None,
+        let mut rpass = encoder.begin_render_pass(&RenderPassDescriptor {
+            color_attachments: &[RenderPassColorAttachmentDescriptor {
+                attachment: &self.framebuffer,
+                resolve_target: self.unsampled_framebuffer.as_ref(),
+                ops: Operations {
+                    load: LoadOp::Clear(Color::BLACK),
+                    store: true,
+                },
+            }],
+            depth_stencil_attachment: Some(RenderPassDepthStencilAttachmentDescriptor {
+                attachment: &self.depth_buffer,
+                depth_ops: Some(Operations {
+                    load: LoadOp::Clear(0.0),
+                    store: false,
                 }),
-            });
+                stencil_ops: None,
+            }),
+        });
 
-            // If se don't have a matrix buffer we have nothing to render
-            if let Some(ref matrix_buffer) = matrix_buffer {
-                let mut current_matrix_offset = 0 as BufferAddress;
+        let skybox_texture_bind_group = if self.skybox_renderer.texture_id.is_null() {
+            &self.textures[self.null_texture].bind_group
+        } else {
+            &self.textures[self.skybox_renderer.texture_id].bind_group
+        };
 
-                let mut rendering_opaque = true;
-                rpass.set_pipeline(&self.opaque_pipeline);
-                rpass.set_bind_group(1, self.cluster_renderer.bind_group(), &[]);
-                for ((mesh_idx, texture_idx, transparent), group) in &object_references
-                    .into_iter()
-                    .group_by(|o| (o.mesh, o.texture, o.transparent))
-                {
-                    if transparent && rendering_opaque {
-                        rendering_opaque = false;
+        // If se don't have a matrix buffer we have nothing to render
+        if let Some(ref matrix_buffer) = matrix_buffer {
+            let mut current_matrix_offset = 0 as BufferAddress;
 
-                        if let DebugMode::None = self.debug_mode {
-                            self.skybox_renderer.render_skybox(
-                                &mut rpass,
-                                if self.skybox_renderer.texture_id.is_null() {
-                                    &self.textures[self.null_texture].bind_group
-                                } else {
-                                    &self.textures[self.skybox_renderer.texture_id].bind_group
-                                },
-                            );
-                        }
+            let mut rendering_opaque = true;
+            rpass.set_pipeline(&self.opaque_pipeline);
+            rpass.set_bind_group(1, self.cluster_renderer.bind_group(), &[]);
+            for ((mesh_idx, texture_idx, transparent), group) in &object_references
+                .into_iter()
+                .group_by(|o| (o.mesh, o.texture, o.transparent))
+            {
+                if transparent && rendering_opaque {
+                    rendering_opaque = false;
 
-                        rpass.set_pipeline(&self.transparent_pipeline);
-                        rpass.set_bind_group(1, self.cluster_renderer.bind_group(), &[]);
-                    }
+                    self.skybox_renderer
+                        .render_skybox(&mut rpass, skybox_texture_bind_group, self.debug_mode);
 
-                    let mesh = &self.mesh[mesh_idx];
-                    let texture_bind = if texture_idx.is_null() {
-                        &self.textures[self.null_texture].bind_group
-                    } else {
-                        &self.textures[texture_idx].bind_group
-                    };
-                    let count = group.count();
-                    let matrix_buffer_size = (count * size_of::<UniformVerts>()) as BufferAddress;
-
-                    rpass.set_bind_group(0, texture_bind, &[]);
-                    rpass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
-                    rpass.set_vertex_buffer(
-                        1,
-                        matrix_buffer
-                            .inner
-                            .slice(current_matrix_offset..(current_matrix_offset + matrix_buffer_size)),
-                    );
-                    rpass.set_index_buffer(mesh.index_buffer.slice(..));
-                    rpass.draw_indexed(0..(mesh.index_count as u32), 0, 0..(count as u32));
-
-                    current_matrix_offset += matrix_buffer_size;
-                    if current_matrix_offset & 255 != 0 {
-                        current_matrix_offset += 256 - (current_matrix_offset & 255)
-                    }
-
-                    // statistics
-                    if transparent {
-                        stats.visible_transparent_objects += count;
-                        stats.transparent_draws += 1;
-                    } else {
-                        stats.visible_opaque_objects += count;
-                        stats.opaque_draws += 1;
-                    }
+                    rpass.set_pipeline(&self.transparent_pipeline);
+                    rpass.set_bind_group(1, self.cluster_renderer.bind_group(), &[]);
                 }
 
-                stats.total_visible_objects = stats.visible_transparent_objects + stats.visible_opaque_objects;
-                stats.total_draws = stats.transparent_draws + stats.opaque_draws;
+                let mesh = &self.mesh[mesh_idx];
+                let texture_bind = if texture_idx.is_null() {
+                    &self.textures[self.null_texture].bind_group
+                } else {
+                    &self.textures[texture_idx].bind_group
+                };
+                let count = group.count();
+                let matrix_buffer_size = (count * size_of::<UniformVerts>()) as BufferAddress;
+
+                rpass.set_bind_group(0, texture_bind, &[]);
+                rpass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+                rpass.set_vertex_buffer(
+                    1,
+                    matrix_buffer
+                        .inner
+                        .slice(current_matrix_offset..(current_matrix_offset + matrix_buffer_size)),
+                );
+                rpass.set_index_buffer(mesh.index_buffer.slice(..));
+                rpass.draw_indexed(0..(mesh.index_count as u32), 0, 0..(count as u32));
+
+                current_matrix_offset += matrix_buffer_size;
+                if current_matrix_offset & 255 != 0 {
+                    current_matrix_offset += 256 - (current_matrix_offset & 255)
+                }
+
+                // statistics
+                if transparent {
+                    stats.visible_transparent_objects += count;
+                    stats.transparent_draws += 1;
+                } else {
+                    stats.visible_opaque_objects += count;
+                    stats.opaque_draws += 1;
+                }
             }
+
+            stats.total_visible_objects = stats.visible_transparent_objects + stats.visible_opaque_objects;
+            stats.total_draws = stats.transparent_draws + stats.opaque_draws;
+        } else {
+            // We don't have anything to render, so render the skybox
+            self.skybox_renderer
+                .render_skybox(&mut rpass, skybox_texture_bind_group, self.debug_mode);
         }
+
+        drop(rpass);
 
         let mut blit_rpass = encoder.begin_render_pass(&RenderPassDescriptor {
             color_attachments: &[RenderPassColorAttachmentDescriptor {

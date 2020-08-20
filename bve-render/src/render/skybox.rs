@@ -1,6 +1,5 @@
 use crate::*;
 use bve_conveyor::{AutomatedBuffer, BeltBufferId, BindGroupCache};
-use zerocopy::AsBytes;
 
 fn create_skybox_pipeline(
     device: &Device,
@@ -48,12 +47,15 @@ fn create_skybox_pipeline(
     })
 }
 
-#[derive(AsBytes)]
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct SkyboxUniforms {
-    _inv_view_proj: [f32; 16],
+    _inv_view_proj: shader_types::Mat4,
     _repeats: f32,
 }
+
+unsafe impl bytemuck::Zeroable for SkyboxUniforms {}
+unsafe impl bytemuck::Pod for SkyboxUniforms {}
 
 pub struct Skybox {
     pipeline: RenderPipeline,
@@ -137,13 +139,13 @@ impl Skybox {
         let mx_inv_view_proj_bytes: &[f32; 16] = mx_inv_view_proj.as_ref();
 
         let uniform = SkyboxUniforms {
-            _inv_view_proj: *mx_inv_view_proj_bytes,
+            _inv_view_proj: shader_types::Mat4::from(*mx_inv_view_proj_bytes),
             _repeats: self.repeats,
         };
 
         self.uniform_buffer
             .write_to_buffer(device, encoder, size_of::<SkyboxUniforms>() as BufferAddress, |data| {
-                data.copy_from_slice(uniform.as_bytes())
+                data.copy_from_slice(bytemuck::bytes_of(&uniform))
             })
             .await;
 
@@ -174,8 +176,16 @@ impl Skybox {
         );
     }
 
-    pub fn render_skybox<'a>(&'a self, rpass: &mut RenderPass<'a>, texture_bind_group: &'a BindGroup) {
+    pub fn render_skybox<'a>(
+        &'a self,
+        rpass: &mut RenderPass<'a>,
+        texture_bind_group: &'a BindGroup,
+        debug: DebugMode,
+    ) {
         const ERROR_MSG: &str = "update not called before render";
+        if debug != DebugMode::None {
+            return;
+        }
         rpass.set_pipeline(&self.pipeline);
         rpass.set_bind_group(
             0,
