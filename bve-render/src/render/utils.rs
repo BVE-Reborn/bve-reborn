@@ -309,7 +309,8 @@ impl Renderer {
             return;
         }
 
-        let mut matrix_buffer_data = Vec::new();
+        // Not pre-allocating this vector is extremely slow, lots of memcpy
+        let mut matrix_buffer_data = Vec::with_capacity(objects.len() * ((size_of::<UniformVerts>() + 255) & !255));
 
         for (_, group) in &objects.iter().group_by(|o| (o.mesh, o.texture, o.transparent)) {
             for object in group {
