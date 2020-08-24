@@ -1,4 +1,5 @@
 use crate::*;
+use async_std::task::spawn;
 use slotmap::Key;
 use std::fmt;
 pub use utils::*;
@@ -149,7 +150,7 @@ impl fmt::Display for Vsync {
 }
 
 impl Renderer {
-    pub async fn render(&mut self, imgui_frame_opt: Option<imgui::Ui<'_>>) -> statistics::RendererStatistics {
+    pub fn render(&mut self, imgui_frame_opt: Option<imgui::Ui<'_>>) -> statistics::RendererStatistics {
         renderdoc! {
             let mut rd = renderdoc::RenderDoc::<renderdoc::V140>::new().expect("Could not initialize renderdoc");
             if self._renderdoc_capture {
@@ -170,8 +171,7 @@ impl Renderer {
         let ts_start = Instant::now();
         // Update skybox
         self.skybox_renderer
-            .update(&self.device, &mut encoder, &self.camera, &self.projection_matrix)
-            .await;
+            .update(&self.device, &mut encoder, &self.camera, &self.projection_matrix);
         let ts_skybox = create_timestamp(&mut stats.compute_skybox_update_time, ts_start);
 
         // Update objects and uniforms
@@ -195,8 +195,7 @@ impl Renderer {
             &mut self.matrix_buffer,
             &mut encoder,
             &object_references,
-        )
-        .await;
+        );
 
         let ts_uniforms = create_timestamp(&mut stats.compute_uniforms_time, ts_sorting);
 
@@ -213,11 +212,10 @@ impl Renderer {
         let frame = frame_res.expect("Could not get next swapchain texture");
 
         self.cluster_renderer
-            .execute(&self.device, &mut encoder, &self.lights, self.camera.compute_matrix())
-            .await;
+            .execute(&self.device, &mut encoder, &self.lights, self.camera.compute_matrix());
 
         let matrix_buffer = if !object_references.is_empty() {
-            Some(self.matrix_buffer.get_current_inner().await)
+            Some(self.matrix_buffer.get_current_inner())
         } else {
             None
         };
@@ -340,7 +338,6 @@ impl Renderer {
                     &mut encoder,
                     &frame.output.view,
                 )
-                .await
                 .expect("Imgui rendering failed");
         }
 
@@ -352,7 +349,10 @@ impl Renderer {
 
         let ts_wgpu_time = create_timestamp(&mut stats.render_wgpu_cpu_time, ts_imgui_render);
 
-        self.buffer_manager.pump().await;
+        let futures = self.buffer_manager.pump();
+        for fut in futures {
+            spawn(fut);
+        }
 
         let _ts_pump_time = create_timestamp(&mut stats.render_buffer_pump_cpu_time, ts_wgpu_time);
 

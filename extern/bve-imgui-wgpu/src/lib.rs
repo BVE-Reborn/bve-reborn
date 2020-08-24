@@ -1,10 +1,10 @@
 #![allow(clippy::too_many_arguments)]
 
-use bve_conveyor::{AutomatedBuffer, AutomatedBufferManager, IdBuffer};
 use imgui::{Context, DrawCmd::Elements, DrawData, DrawIdx, DrawList, DrawVert, TextureId, Textures};
 use smallvec::SmallVec;
 use std::{borrow::Cow, mem::size_of, num::NonZeroU64, sync::Arc};
 use wgpu::*;
+use wgpu_conveyor::{AutomatedBuffer, AutomatedBufferManager, IdBuffer};
 
 pub type RendererResult<T> = Result<T, RendererError>;
 
@@ -262,7 +262,7 @@ impl Renderer {
     }
 
     /// Render the current imgui frame.
-    pub async fn render<'r>(
+    pub fn render<'r>(
         &'r mut self,
         draw_data: &DrawData,
         device: &Device,
@@ -295,10 +295,10 @@ impl Renderer {
             [0.0, 0.0, 1.0, 0.0],
             [-1.0, 1.0, 0.0, 1.0],
         ];
-        self.update_uniform_buffer(device, encoder, matrix).await;
+        self.update_uniform_buffer(device, encoder, matrix);
 
         // Create the uniform matrix buffer bind group.
-        let uniform_buffer = self.uniform_buffer.get_current_inner().await;
+        let uniform_buffer = self.uniform_buffer.get_current_inner();
         let uniform_bind_group = device.create_bind_group(&BindGroupDescriptor {
             label: None,
             layout: &self.uniform_bind_group_layout,
@@ -333,17 +333,17 @@ impl Renderer {
                 }
                 _ => unreachable!("Lengths of Vertex and Index Buffers should be in sync"),
             };
-            Self::upload_vertex_buffer(device, encoder, vert, imgui_vert_buffer).await;
-            Self::upload_index_buffer(device, encoder, index, imgui_index_buffer).await;
+            Self::upload_vertex_buffer(device, encoder, vert, imgui_vert_buffer);
+            Self::upload_index_buffer(device, encoder, index, imgui_index_buffer);
         }
 
         let mut vertex_buffers: SmallVec<[Arc<IdBuffer>; 4]> = SmallVec::new();
         for v in &self.vertex_buffers {
-            vertex_buffers.push(v.get_current_inner().await);
+            vertex_buffers.push(v.get_current_inner());
         }
         let mut index_buffers: SmallVec<[Arc<IdBuffer>; 4]> = SmallVec::new();
         for i in &self.index_buffers {
-            index_buffers.push(i.get_current_inner().await);
+            index_buffers.push(i.get_current_inner());
         }
 
         // Start a new renderpass and prepare it properly.
@@ -431,32 +431,29 @@ impl Renderer {
     }
 
     /// Updates the current uniform buffer containing the transform matrix.
-    async fn update_uniform_buffer(&mut self, device: &Device, encoder: &mut CommandEncoder, matrix: [[f32; 4]; 4]) {
+    fn update_uniform_buffer(&mut self, device: &Device, encoder: &mut CommandEncoder, matrix: [[f32; 4]; 4]) {
         let data: &[u8] = bytemuck::cast_slice(&matrix);
 
         // Copy the new buffer to the real buffer.
         self.uniform_buffer
-            .write_to_buffer(device, encoder, 64, |buf| buf.copy_from_slice(data))
-            .await;
+            .write_to_buffer(device, encoder, 64, |buf| buf.copy_from_slice(data));
     }
 
     /// Upload the vertex buffer to the gPU.
-    async fn upload_vertex_buffer(
+    fn upload_vertex_buffer(
         device: &Device,
         encoder: &mut CommandEncoder,
         buffer: &mut AutomatedBuffer,
         vertices: &[DrawVert],
     ) {
         let data = unsafe { as_byte_slice(&vertices) };
-        buffer
-            .write_to_buffer(device, encoder, data.len() as BufferAddress, |buf| {
-                buf.copy_from_slice(data)
-            })
-            .await;
+        buffer.write_to_buffer(device, encoder, data.len() as BufferAddress, |buf| {
+            buf.copy_from_slice(data)
+        });
     }
 
     /// Upload the index buffer to the GPU.
-    async fn upload_index_buffer(
+    fn upload_index_buffer(
         device: &Device,
         encoder: &mut CommandEncoder,
         buffer: &mut AutomatedBuffer,
@@ -464,11 +461,9 @@ impl Renderer {
     ) {
         let data: &[u8] = bytemuck::cast_slice(indices);
         let length = (data.len() + 3) & !3;
-        buffer
-            .write_to_buffer(device, encoder, length as u64, |buf| {
-                buf[..data.len()].copy_from_slice(data)
-            })
-            .await;
+        buffer.write_to_buffer(device, encoder, length as u64, |buf| {
+            buf[..data.len()].copy_from_slice(data)
+        });
     }
 
     /// Updates the texture on the GPU corresponding to the current imgui font atlas.

@@ -1,5 +1,5 @@
 use crate::*;
-use bve_conveyor::{AutomatedBuffer, BeltBufferId, BindGroupCache};
+use wgpu_conveyor::{AutomatedBuffer, BeltBufferId, BindGroupCache};
 
 fn create_skybox_pipeline(
     device: &Device,
@@ -126,13 +126,7 @@ impl Skybox {
         }
     }
 
-    pub async fn update(
-        &mut self,
-        device: &Device,
-        encoder: &mut CommandEncoder,
-        camera: &camera::Camera,
-        mx_proj: &Mat4,
-    ) {
+    pub fn update(&mut self, device: &Device, encoder: &mut CommandEncoder, camera: &camera::Camera, mx_proj: &Mat4) {
         let mx_view = camera.compute_origin_matrix();
         let mx_view_proj = *mx_proj * mx_view;
         let mx_inv_view_proj = mx_view_proj.inverse();
@@ -146,24 +140,23 @@ impl Skybox {
         self.uniform_buffer
             .write_to_buffer(device, encoder, size_of::<SkyboxUniforms>() as BufferAddress, |data| {
                 data.copy_from_slice(bytemuck::bytes_of(&uniform))
-            })
-            .await;
+            });
 
         let bind_group_layout = &self.bind_group_layout;
-        self.bind_group_key = Some(
-            self.bind_group
-                .create_bind_group(&self.uniform_buffer, true, move |uniform_buffer| {
-                    device.create_bind_group(&BindGroupDescriptor {
-                        layout: bind_group_layout,
-                        entries: &[BindGroupEntry {
-                            binding: 0,
-                            resource: BindingResource::Buffer(uniform_buffer.inner.slice(..)),
-                        }],
-                        label: Some("skybox"),
-                    })
+        self.bind_group_key = Some(self.bind_group.create_bind_group(
+            &self.uniform_buffer,
+            true,
+            move |uniform_buffer| {
+                device.create_bind_group(&BindGroupDescriptor {
+                    layout: bind_group_layout,
+                    entries: &[BindGroupEntry {
+                        binding: 0,
+                        resource: BindingResource::Buffer(uniform_buffer.inner.slice(..)),
+                    }],
+                    label: Some("skybox"),
                 })
-                .await,
-        );
+            },
+        ));
     }
 
     pub fn set_samples(&mut self, device: &Device, samples: MSAASetting) {

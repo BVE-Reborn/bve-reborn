@@ -69,7 +69,6 @@ use crate::{
     render::{create_texture_bind_group, create_texture_bind_group_layout, UniformVerts},
 };
 use bve::{load::mesh::Vertex as MeshVertex, runtime::RenderLightDescriptor, UVec2};
-use bve_conveyor::{AutomatedBuffer, AutomatedBufferManager, UploadStyle};
 use glam::{Mat4, Vec3A};
 use image::RgbaImage;
 use itertools::Itertools;
@@ -78,6 +77,7 @@ use num_traits::{ToPrimitive, Zero};
 use slotmap::{DefaultKey, SlotMap};
 use std::{mem::size_of, num::NonZeroU8, sync::Arc, time::Instant};
 use wgpu::*;
+use wgpu_conveyor::{AutomatedBuffer, AutomatedBufferManager, UploadStyle};
 use winit::{dpi::PhysicalSize, window::Window};
 
 #[cfg(feature = "renderdoc")]

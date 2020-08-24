@@ -16,12 +16,12 @@ license = "MIT OR Apache-2.0"
 default = []
 
 [dependencies]
-bve-conveyor = { version = "0.1", path = "../../bve-conveyor" }
 bytemuck = "1"
 imgui = "0.4"
 log = "0.4"
 smallvec = "1"
 wgpu = "0.6"
+wgpu-conveyor = "0.1"
 
 [package.metadata.docs.rs]
 all-features = true

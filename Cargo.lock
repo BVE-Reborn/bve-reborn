@@ -345,18 +345,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bve-conveyor"
-version = "0.1.0"
-dependencies = [
- "arrayvec",
- "async-std",
- "bitflags",
- "log",
- "lru",
- "wgpu",
-]
-
-[[package]]
 name = "bve-corpus"
 version = "0.1.0"
 dependencies = [
@@ -391,12 +379,12 @@ dependencies = [
 name = "bve-imgui-wgpu"
 version = "0.0.1"
 dependencies = [
- "bve-conveyor",
  "bytemuck",
  "imgui",
  "log",
  "smallvec",
  "wgpu",
+ "wgpu-conveyor",
 ]
 
 [[package]]
@@ -427,7 +415,6 @@ dependencies = [
  "async-std",
  "bve",
  "bve-build",
- "bve-conveyor",
  "bve-imgui-wgpu",
  "bytemuck",
  "cc",
@@ -444,6 +431,7 @@ dependencies = [
  "shader-types",
  "slotmap",
  "wgpu",
+ "wgpu-conveyor",
  "winit",
 ]
 
@@ -2822,6 +2810,20 @@ dependencies = [
  "web-sys",
  "wgpu-core",
  "wgpu-types",
+]
+
+[[package]]
+name = "wgpu-conveyor"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ebe24fa60a8fe92fe8429b40306b11b579de81615d653d31949c7161d4c89fc4"
+dependencies = [
+ "arrayvec",
+ "bitflags",
+ "lru",
+ "parking_lot 0.11.0",
+ "tracing",
+ "wgpu",
 ]
 
 [[package]]

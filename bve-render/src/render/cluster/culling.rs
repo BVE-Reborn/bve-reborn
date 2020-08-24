@@ -3,7 +3,7 @@ use crate::{
     render::cluster::{FROXELS_X, FROXELS_Y, FROXELS_Z, FROXEL_COUNT},
     *,
 };
-use bve_conveyor::{BeltBufferId, BindGroupCache};
+use wgpu_conveyor::{BeltBufferId, BindGroupCache};
 
 // TODO: Unify these with the regular uniforms? This would make bind groups sharable.
 #[repr(C)]
@@ -104,7 +104,7 @@ impl LightCulling {
         }
     }
 
-    pub async fn update_light_counts(
+    pub fn update_light_counts(
         &mut self,
         device: &Device,
         encoder: &mut CommandEncoder,
@@ -122,43 +122,38 @@ impl LightCulling {
         self.uniform_buffer
             .write_to_buffer(device, encoder, size_of::<CullingUniforms>() as BufferAddress, |buf| {
                 buf.copy_from_slice(bytemuck::bytes_of(&uniforms))
-            })
-            .await;
+            });
 
         let bind_group_layout = &self.bind_group_layout;
-        self.bind_group_key = Some(
-            self.bind_group
-                .create_bind_group(
-                    (&self.uniform_buffer, light_buffer),
-                    true,
-                    move |(uniform_buffer, light_buffer)| {
-                        dbg!(uniform_buffer.id, light_buffer.id);
-                        device.create_bind_group(&BindGroupDescriptor {
-                            layout: bind_group_layout,
-                            entries: &[
-                                BindGroupEntry {
-                                    binding: 0,
-                                    resource: BindingResource::Buffer(uniform_buffer.inner.slice(..)),
-                                },
-                                BindGroupEntry {
-                                    binding: 1,
-                                    resource: BindingResource::Buffer(frustum_buffer.slice(..)),
-                                },
-                                BindGroupEntry {
-                                    binding: 2,
-                                    resource: BindingResource::Buffer(light_buffer.inner.slice(..)),
-                                },
-                                BindGroupEntry {
-                                    binding: 3,
-                                    resource: BindingResource::Buffer(light_list_buffer.slice(..)),
-                                },
-                            ],
-                            label: Some("light culling bind group"),
-                        })
-                    },
-                )
-                .await,
-        );
+        self.bind_group_key = Some(self.bind_group.create_bind_group(
+            (&self.uniform_buffer, light_buffer),
+            true,
+            move |(uniform_buffer, light_buffer)| {
+                dbg!(uniform_buffer.id, light_buffer.id);
+                device.create_bind_group(&BindGroupDescriptor {
+                    layout: bind_group_layout,
+                    entries: &[
+                        BindGroupEntry {
+                            binding: 0,
+                            resource: BindingResource::Buffer(uniform_buffer.inner.slice(..)),
+                        },
+                        BindGroupEntry {
+                            binding: 1,
+                            resource: BindingResource::Buffer(frustum_buffer.slice(..)),
+                        },
+                        BindGroupEntry {
+                            binding: 2,
+                            resource: BindingResource::Buffer(light_buffer.inner.slice(..)),
+                        },
+                        BindGroupEntry {
+                            binding: 3,
+                            resource: BindingResource::Buffer(light_list_buffer.slice(..)),
+                        },
+                    ],
+                    label: Some("light culling bind group"),
+                })
+            },
+        ));
     }
 
     pub fn execute<'a>(&'a self, pass: &mut ComputePass<'a>) {

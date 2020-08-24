@@ -297,7 +297,7 @@ impl Renderer {
             .collect_vec()
     }
 
-    pub async fn recompute_uniforms(
+    pub fn recompute_uniforms(
         device: &Device,
         projection_matrix: Mat4,
         camera_mat: Mat4,
@@ -326,11 +326,9 @@ impl Renderer {
         }
 
         let byte_array: &[u8] = bytemuck::cast_slice(&matrix_buffer_data);
-        matrix_buffer
-            .write_to_buffer(device, encoder, byte_array.len() as BufferAddress, |arr| {
-                arr.copy_from_slice(&byte_array)
-            })
-            .await;
+        matrix_buffer.write_to_buffer(device, encoder, byte_array.len() as BufferAddress, |arr| {
+            arr.copy_from_slice(&byte_array)
+        });
     }
 
     pub fn compute_object_distances(&mut self) {

@@ -598,7 +598,7 @@ fn client_main() {
                     platform.prepare_render(&frame, &window);
                 }
 
-                let tmp_renderer_stats = block_on(async { client.lock().await.renderer.render(Some(frame)).await });
+                let tmp_renderer_stats = block_on(async { client.lock().await.renderer.render(Some(frame)) });
                 if now - last_renderer_stats_instant >= Duration::from_millis(200) {
                     last_renderer_stats_instant = now;
                     renderer_stats = tmp_renderer_stats;

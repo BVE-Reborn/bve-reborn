@@ -1,10 +1,10 @@
 use crate::{camera::FAR_PLANE_DISTANCE, frustum::Frustum, *};
 use bve::{runtime::LightType, UVec2};
-use bve_conveyor::{BeltBufferId, BindGroupCache};
 use culling::*;
 use froxels::*;
 use glam::f32::Vec4;
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
+use wgpu_conveyor::{BeltBufferId, BindGroupCache};
 
 mod culling;
 mod froxels;
@@ -249,7 +249,7 @@ impl Clustering {
             .expect(ERROR_MESSAGE)
     }
 
-    pub async fn execute(
+    pub fn execute(
         &mut self,
         device: &Device,
         encoder: &mut CommandEncoder,
@@ -263,53 +263,50 @@ impl Clustering {
         self.light_buffer
             .write_to_buffer(device, encoder, light_buffer_size, |buf| {
                 buf.copy_from_slice(bytemuck::cast_slice(&lights))
-            })
-            .await;
+            });
 
         let cluster_uniforms_buffer_slice = self.cluster_uniforms_buffer.slice(..);
         let frustum_buffer_slice = self.frustum_buffer.slice(..);
         let light_list_buffer_slice = self.light_list_buffer.slice(..);
         let render_group_layout = &self.render_bind_group_layout;
-        self.render_bind_group_key = Some(
-            self.render_bind_group
-                .create_bind_group(&self.light_buffer, true, move |light_buffer| {
-                    device.create_bind_group(&BindGroupDescriptor {
-                        layout: render_group_layout,
-                        entries: &[
-                            BindGroupEntry {
-                                binding: 0,
-                                resource: BindingResource::Buffer(cluster_uniforms_buffer_slice),
-                            },
-                            BindGroupEntry {
-                                binding: 1,
-                                resource: BindingResource::Buffer(frustum_buffer_slice),
-                            },
-                            BindGroupEntry {
-                                binding: 2,
-                                resource: BindingResource::Buffer(light_buffer.inner.slice(..)),
-                            },
-                            BindGroupEntry {
-                                binding: 3,
-                                resource: BindingResource::Buffer(light_list_buffer_slice),
-                            },
-                        ],
-                        label: Some("clustering bind group"),
-                    })
+        self.render_bind_group_key = Some(self.render_bind_group.create_bind_group(
+            &self.light_buffer,
+            true,
+            move |light_buffer| {
+                device.create_bind_group(&BindGroupDescriptor {
+                    layout: render_group_layout,
+                    entries: &[
+                        BindGroupEntry {
+                            binding: 0,
+                            resource: BindingResource::Buffer(cluster_uniforms_buffer_slice),
+                        },
+                        BindGroupEntry {
+                            binding: 1,
+                            resource: BindingResource::Buffer(frustum_buffer_slice),
+                        },
+                        BindGroupEntry {
+                            binding: 2,
+                            resource: BindingResource::Buffer(light_buffer.inner.slice(..)),
+                        },
+                        BindGroupEntry {
+                            binding: 3,
+                            resource: BindingResource::Buffer(light_list_buffer_slice),
+                        },
+                    ],
+                    label: Some("clustering bind group"),
                 })
-                .await,
-        );
+            },
+        ));
 
         if !lights.is_empty() {
-            self.light_culling
-                .update_light_counts(
-                    device,
-                    encoder,
-                    &self.frustum_buffer,
-                    &self.light_buffer,
-                    &self.light_list_buffer,
-                    light_count as u32,
-                )
-                .await;
+            self.light_culling.update_light_counts(
+                device,
+                encoder,
+                &self.frustum_buffer,
+                &self.light_buffer,
+                &self.light_list_buffer,
+                light_count as u32,
+            );
 
             let mut pass = encoder.begin_compute_pass();
             self.frustum_creation.execute(&mut pass);
