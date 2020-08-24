@@ -310,7 +310,7 @@ impl Renderer {
         }
 
         // Not pre-allocating this vector is extremely slow, lots of memcpy
-        let mut matrix_buffer_data = Vec::with_capacity(objects.len() * ((size_of::<UniformVerts>() + 255) & !255));
+        let mut matrix_buffer_data = Vec::with_capacity(objects.len());
 
         for (_, group) in &objects.iter().group_by(|o| (o.mesh, o.texture, o.transparent)) {
             for object in group {
@@ -321,17 +321,14 @@ impl Renderer {
                     _model_view: shader_types::Mat4::from(*mx_model_view.as_ref()),
                     _inv_trans_model_view: shader_types::Mat4::from(*mx_inv_trans_model_view.as_ref()),
                 };
-                matrix_buffer_data.extend_from_slice(bytemuck::bytes_of(&uniforms));
-            }
-            // alignment between groups is 256
-            while matrix_buffer_data.len() & 0xFF != 0 {
-                matrix_buffer_data.push(0x00_u8);
+                matrix_buffer_data.push(shader_types::DynamicOffsetMember(uniforms));
             }
         }
 
+        let byte_array: &[u8] = bytemuck::cast_slice(&matrix_buffer_data);
         matrix_buffer
-            .write_to_buffer(device, encoder, matrix_buffer_data.len() as BufferAddress, |arr| {
-                arr.copy_from_slice(&matrix_buffer_data)
+            .write_to_buffer(device, encoder, byte_array.len() as BufferAddress, |arr| {
+                arr.copy_from_slice(&byte_array)
             })
             .await;
     }

@@ -2365,9 +2365,12 @@ dependencies = [
 
 [[package]]
 name = "shader-types"
-version = "0.2.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f33f7ab95aeb482f8e8cdf8a2276af71c44456c7cf04b7eb6f68f8229e9fb0f7"
+checksum = "84a724c1f7d2c67cb30edfb778d57a77e135f3c772140af096b5390f1e7779c8"
+dependencies = [
+ "bytemuck",
+]
 
 [[package]]
 name = "slab"
