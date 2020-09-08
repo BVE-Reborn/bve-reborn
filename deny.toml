@@ -4,6 +4,7 @@ allow-osi-fsf-free = "either"
 allow = [
     "Apache-2.0",
     "BSL-1.0",
+    "LGPL-3.0",
     "MIT",
     "MPL-2.0",
     "Unlicense",
@@ -11,6 +12,7 @@ allow = [
 
 [bans]
 multiple-versions = "deny"
+wildcards = "allow"
 skip = [
     # Winit
     { name = "winapi", version = "0.2.8" }, # winit -> mio-extras -> mio requires this
@@ -23,6 +25,10 @@ skip = [
     { name = "parking_lot_core", version = "0.7.2" },
     { name = "lock_api", version = "0.3.4" },
     { name = "cloudabi", version = "0.0.3" },
+    # hecs & lru
+    { name = "hashbrown", version = "0.8.2" },
+    # time vs rand
+    { name = "wasi", version = "0.9.0+wasi-snapshot-preview1" },
     # async-std
     { name = "parking", version = "1.0.6" },
 ]
