@@ -1,5 +1,6 @@
 use crate::{
     filesystem,
+    filesystem::convert_path_separators,
     parse::{FileAwareFileParser, ParserResult, PrettyPrintResult},
 };
 use async_std::path::Path;
@@ -43,8 +44,9 @@ impl FileAwareFileParser for ParsedRoute {
         let resolve_bases_ref = &resolve_bases;
         let file_func = |input: preprocessor::FileInput| async move {
             let current_dir = Path::new(&input.base_path).parent().expect("Path has no parent");
+            dbg!(&input, current_dir);
             try {
-                let requested_path = &*input.requested_path;
+                let requested_path = &*convert_path_separators(&input.requested_path);
                 #[allow(clippy::redundant_closure_for_method_calls)] // needed for the manual lifetime
                 let file = filesystem::resolve_path_bases(
                     resolve_bases_ref
@@ -52,7 +54,7 @@ impl FileAwareFileParser for ParsedRoute {
                         .into_iter()
                         .map(|v: &'a AsRefPath| v.as_ref())
                         .chain(std::iter::once(current_dir)),
-                    &input.requested_path,
+                    requested_path,
                 )
                 .await
                 .ok_or_else(|| errors::PreprocessingError::IncludeFileNotFound {

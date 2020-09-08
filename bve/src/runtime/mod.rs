@@ -1,6 +1,7 @@
 pub use crate::runtime::{
     chunk::{ChunkAddress, ChunkOffset},
     client::Client,
+    executor::*,
     light::*,
     location::Location,
 };
@@ -11,7 +12,7 @@ use crate::{
     },
     AsyncMutex, AsyncRwLock,
 };
-use async_std::{path::PathBuf, task::spawn};
+use async_std::path::PathBuf;
 use futures::{
     stream::{FuturesOrdered, FuturesUnordered},
     StreamExt,
@@ -37,6 +38,7 @@ macro_rules! async_clone_own {
 mod cache;
 mod chunk;
 mod client;
+mod executor;
 mod light;
 mod location;
 
@@ -153,7 +155,7 @@ impl<C: Client> Runtime<C> {
 
         let mut texture_futures = FuturesOrdered::new();
         for texture_path_handle in mesh.textures {
-            texture_futures.push(spawn(async_clone_own!(runtime = self; { runtime.textures.load_texture_handle(&runtime.client, &runtime.path_set, texture_path_handle).await })));
+            texture_futures.push(spawn(Pool::IO, 0, async_clone_own!(runtime = self; { runtime.textures.load_texture_handle(&runtime.client, &runtime.path_set, texture_path_handle).await })));
         }
 
         let mut texture_handles = Vec::with_capacity(texture_futures.len());
@@ -181,6 +183,8 @@ impl<C: Client> Runtime<C> {
             let path = self.path_set.get(unloaded_object.path);
             mesh_locations.push(unloaded_object.offset);
             mesh_futures.push(spawn(
+                Pool::IO,
+                0,
                 async_clone_own!(runtime = self; { runtime.load_mesh_textures(path).await }),
             ));
         }
@@ -225,10 +229,16 @@ impl<C: Client> Runtime<C> {
     }
 
     async fn load_chunk(self: Arc<Self>, chunk: Arc<Chunk>) {
-        let subobjects_handle =
-            spawn(async_clone_own!(runtime = self; chunk = chunk; { runtime.load_chunk_objects(chunk).await }));
-        let lights_handle =
-            spawn(async_clone_own!(runtime = self; chunk = chunk; { runtime.load_chunk_lights(chunk).await }));
+        let subobjects_handle = spawn(
+            Pool::IO,
+            0,
+            async_clone_own!(runtime = self; chunk = chunk; { runtime.load_chunk_objects(chunk).await }),
+        );
+        let lights_handle = spawn(
+            Pool::IO,
+            0,
+            async_clone_own!(runtime = self; chunk = chunk; { runtime.load_chunk_lights(chunk).await }),
+        );
 
         let subobjects = subobjects_handle.await;
         let lights = lights_handle.await;
@@ -281,6 +291,8 @@ impl<C: Client> Runtime<C> {
         for subobject in chunk.objects.iter() {
             let mesh_path = subobject.path;
             despawn_futures.push(spawn(
+                Pool::IO,
+                0,
                 async_clone_own!(runtime = self; { runtime.deload_mesh(mesh_path).await }),
             ));
         }
@@ -334,6 +346,8 @@ impl<C: Client> Runtime<C> {
             drop(runtime_location);
             // We're no longer in the same chunk, so we need to update the positions of objects
             Some(spawn(
+                Pool::IO,
+                0,
                 async_clone_own!(runtime = self; {runtime.update_camera_position(location).await}),
             ))
         } else {
@@ -355,11 +369,19 @@ impl<C: Client> Runtime<C> {
             let inside = bounding_box.inside(location);
             if state == ChunkState::Finished && !inside {
                 debug!("Deloading chunk ({}, {})", location.x, location.y);
-                spawn(async_clone_own!(runtime = self; chunk = chunk; { runtime.deload_chunk(chunk).await }));
+                spawn(
+                    Pool::IO,
+                    0,
+                    async_clone_own!(runtime = self; chunk = chunk; { runtime.deload_chunk(chunk).await }),
+                );
                 chunk.state.store(ChunkState::Unloading as u8, Ordering::Release);
             } else if state == ChunkState::Unloaded && inside {
                 debug!("Loading chunk ({}, {})", location.x, location.y);
-                spawn(async_clone_own!(runtime = self; chunk = chunk; { runtime.load_chunk(chunk).await }));
+                spawn(
+                    Pool::IO,
+                    0,
+                    async_clone_own!(runtime = self; chunk = chunk; { runtime.load_chunk(chunk).await }),
+                );
                 chunk.state.store(ChunkState::Loading as u8, Ordering::Release);
             }
         }
