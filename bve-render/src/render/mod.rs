@@ -1,5 +1,5 @@
 use crate::*;
-use async_std::task::spawn;
+use bve::runtime::{spawn, Pool};
 use slotmap::Key;
 use std::fmt;
 pub use utils::*;
@@ -351,7 +351,7 @@ impl Renderer {
 
         let futures = self.buffer_manager.pump();
         for fut in futures {
-            spawn(fut);
+            spawn(Pool::Compute, 0, fut);
         }
 
         let _ts_pump_time = create_timestamp(&mut stats.render_buffer_pump_cpu_time, ts_wgpu_time);

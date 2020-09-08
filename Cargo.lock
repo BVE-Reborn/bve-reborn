@@ -2509,7 +2509,7 @@ dependencies = [
  "futures-intrusive",
  "futures-task",
  "num_cpus",
- "parking_lot",
+ "parking_lot 0.10.2",
  "priority-queue",
  "slotmap",
 ]
