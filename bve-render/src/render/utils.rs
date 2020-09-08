@@ -327,7 +327,7 @@ impl Renderer {
 
         let byte_array: &[u8] = bytemuck::cast_slice(&matrix_buffer_data);
         matrix_buffer.write_to_buffer(device, encoder, byte_array.len() as BufferAddress, |arr| {
-            arr.copy_from_slice(&byte_array)
+            arr.copy_from_slice(byte_array)
         });
     }
 

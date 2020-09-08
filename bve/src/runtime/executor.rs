@@ -11,7 +11,7 @@ pub static BVE_EXECUTOR: Lazy<Switchyard<ThreadLocalData>> = Lazy::new(|| {
     Switchyard::new(2, double_pool_one_to_one(thread_info(), Some("bve-executor")), || {
         ThreadLocalData {}
     })
-    .unwrap()
+    .expect("Could not launch executor")
 });
 
 pub enum Pool {
