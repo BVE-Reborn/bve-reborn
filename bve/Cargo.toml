@@ -46,6 +46,7 @@ serde = { version = "1", features = ["derive"] }
 serde_plain = "0.3"
 smallvec = { version = "1", features = ["specialization", "may_dangle", "union"] }
 smartstring = { version = "0.2", features = ["serde"] }
+switchyard = { version = "0.1", git = "https://github.com/BVE-Reborn/switchyard.git", rev = "891679db1d7ed55498691bd098ebd13ce4d3fb00" }
 unic-langid = { version = "0.9", features = ["unic-langid-macros"] }
 unic-locale = "0.9"
 

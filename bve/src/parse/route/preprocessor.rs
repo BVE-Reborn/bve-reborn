@@ -26,11 +26,13 @@ static IF_PARSE_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r#"(?i)\$if\s*\(\s*
 
 type SubMap = HashMap<u64, String>;
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct FileInput {
     pub base_path: String,
     pub requested_path: String,
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct FileOutput {
     pub path: String,
     pub contents: String,
