@@ -171,7 +171,7 @@ impl Renderer {
             screen_size.width, screen_size.height, samples as u8, vsync
         );
 
-        let instance = Instance::new(BackendBit::VULKAN | BackendBit::METAL);
+        let instance = Instance::new(BackendBit::DX11);
         let surface = unsafe { instance.create_surface(window) };
         let adapter = instance
             .request_adapter(&RequestAdapterOptions {
@@ -183,16 +183,12 @@ impl Renderer {
 
         let adapter_info = adapter.get_info();
         let adapter_features = adapter.features();
-        let needed_features = Features::MAPPABLE_PRIMARY_BUFFERS
-            | Features::SAMPLED_TEXTURE_BINDING_ARRAY
-            | Features::SAMPLED_TEXTURE_ARRAY_NON_UNIFORM_INDEXING
-            | Features::MULTI_DRAW_INDIRECT
-            | Features::MULTI_DRAW_INDIRECT_COUNT;
+        let needed_features = Features::MAPPABLE_PRIMARY_BUFFERS;
 
         assert!(
             adapter_features.contains(needed_features),
             "Adapter must support all features needed. Missing features: {:?}",
-            adapter_features - needed_features
+            needed_features - adapter_features
         );
 
         let (device, mut queue) = adapter

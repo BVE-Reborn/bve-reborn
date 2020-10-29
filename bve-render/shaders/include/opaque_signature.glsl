@@ -23,7 +23,7 @@ layout(set = 1, binding = 1) readonly buffer Frustums {
 layout(set = 1, binding = 2) readonly buffer Lights {
     ConeLight lights[];
 };
-layout(set = 1, binding = 3) readonly buffer LightList {
+layout(set = 1, binding = 3) buffer LightList {
     LightIndexSet light_index_list[];
 };
 
