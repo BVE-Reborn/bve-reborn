@@ -4,7 +4,7 @@
 
 layout (local_size_x = 8, local_size_y = 8) in;
 
-layout (set = 0, binding = 0, rgba8) uniform image2D inTexture;
+layout (set = 0, binding = 0, rgba8) readonly uniform image2D inTexture;
 layout (set = 0, binding = 1, rgba8) uniform image2D outTexture;
 layout (set = 0, binding = 2) uniform Locals {
     uvec2 texture_dimensions;

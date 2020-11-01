@@ -424,7 +424,7 @@ impl Renderer {
             &self.pipeline_layout,
             &self.vert_shader,
             &self.frag_shader,
-            self.samples,
+            samples,
             false,
         );
         self.transparent_pipeline = render::create_pipeline(
@@ -432,7 +432,7 @@ impl Renderer {
             &self.pipeline_layout,
             &self.vert_shader,
             &self.transparent_shader,
-            self.samples,
+            samples,
             true,
         );
         self.samples = samples;

@@ -41,7 +41,11 @@ pub fn create_pipeline(
     samples: MSAASetting,
     transparent: bool,
 ) -> RenderPipeline {
-    debug!("Creating opaque pipeline: samples: {}", samples as u8);
+    debug!(
+        "Creating {} pipeline: samples: {}",
+        if transparent { "transparent" } else { "opaque" },
+        samples as u8
+    );
     device.create_render_pipeline(&RenderPipelineDescriptor {
         label: Some(if transparent {
             "transparent pipeline"
