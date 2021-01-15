@@ -17,7 +17,7 @@ independent = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-async-std = "1.6"
+async-std = "1.9"
 bve = { version = "0.0.1", path = "../bve" }
 itertools = "0.9"
 obj = "0.10"

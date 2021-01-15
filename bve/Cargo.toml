@@ -14,7 +14,7 @@ keywords = ["bve", "serialization", "simulation"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-async-std = "1.5"
+async-std = "1.9"
 async-trait = "0.1"
 bve-common = { version = "0.0.1", path = "../bve-common", features = ["iter", "nom"]}
 bve-derive = { version = "0.0.1", path = "../bve-derive" }
@@ -50,7 +50,7 @@ unic-langid = { version = "0.9", features = ["unic-langid-macros"] }
 unic-locale = "0.9"
 
 [dev-dependencies]
-async-std = { version = "1.6", features = ["attributes"] }
+async-std = { version = "1.9", features = ["attributes"] }
 indoc = "1.0"
 fern = "0.6"
 maplit = "1"

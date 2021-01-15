@@ -17,7 +17,7 @@ keywords = ["bve", "renderer", "wgpu"]
 default = []
 
 [dependencies]
-async-std = "1.6"
+async-std = "1.9"
 bve = { version = "0.0.1", path = "../bve" }
 bve-conveyor = { version = "0.1.0", path = "../bve-conveyor" }
 bve-imgui-wgpu = { version = "0.0.1", path = "../extern/bve-imgui-wgpu" }

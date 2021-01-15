@@ -19,7 +19,7 @@ default = []
 renderdoc = ["bve-render/renderdoc"]
 
 [dependencies]
-async-std = "1.6"
+async-std = "1.9"
 bve = { version = "0.0.1", path = "../bve" }
 bve-render = { version = "0.0.1", path = "../bve-render" }
 env_logger = "0.7"

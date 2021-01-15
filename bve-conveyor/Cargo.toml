@@ -13,7 +13,7 @@ keywords = ["bve", "memory", "buffer-belt", "wgpu"]
 
 [dependencies]
 arrayvec = "0.5"
-async-std = "1.6"
+async-std = "1.9"
 bitflags = "1"
 lru = { version = "0.6", features = ["nightly"] }
 log = "0.4"
